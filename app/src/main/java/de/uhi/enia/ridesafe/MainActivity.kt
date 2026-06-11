@@ -6,7 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -16,11 +15,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import de.uhi.enia.ridesafe.ui.theme.RidesafeTheme
+import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,20 +35,22 @@ class MainActivity : ComponentActivity() {
 @PreviewScreenSizes
 @Composable
 fun RidesafeApp() {
-    var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.DASHBOARD) }
+    var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
 
     NavigationSuiteScaffold(
         navigationSuiteItems = {
             AppDestinations.entries.forEach {
+                val isSelected = it == currentDestination
                 item(
                     icon = {
-                        Icon(
-                            painterResource(it.icon),
-                            contentDescription = it.label
+                        MaterialSymbol(
+                            symbolName = it.symbolName,
+                            contentDescription = it.label,
+                            fill = isSelected
                         )
                     },
                     label = { Text(it.label) },
-                    selected = it == currentDestination,
+                    selected = isSelected,
                     onClick = { currentDestination = it }
                 )
             }
@@ -67,12 +67,12 @@ fun RidesafeApp() {
 
 enum class AppDestinations(
     val label: String,
-    val icon: Int,
+    val symbolName: String,
 ) {
-    DASHBOARD("Dashboard", R.drawable.ic_home),
-    RIDES("Rides", R.drawable.ic_favorite),
-    GARAGE("Garage", R.drawable.ic_account_box),
-    SETTINGS("Settings", R.drawable.ic_launcher_foreground)
+    HOME("Home", "home"),
+    RIDES("Rides", "route"),
+    GARAGE("Garage", "garage_home"),
+    SETTINGS("Settings", "settings")
 }
 
 @Composable
