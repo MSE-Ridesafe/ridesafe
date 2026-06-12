@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">Ridesafe</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_rides">Fahrten</string>
+    <string name="nav_garage">Garage</string>
+    <string name="nav_settings">Einstellungen</string>
+    
+    <string name="greeting_hello">Hallo %1$s!</string>
+    
+    <string name="settings_language_title">App-Sprache</string>
+    <string name="settings_language_summary">Wählen Sie Ihre bevorzugte Sprache</string>
+    
+    <string name="language_system">Systemstandard</string>
+    <string name="language_english">Englisch</string>
+    <string name="language_german">Deutsch</string>
+    
+    <string name="screen_home_title">Home</string>
+    <string name="screen_rides_title">Fahrten</string>
+    <string name="screen_garage_title">Garage</string>
+    <string name="screen_settings_title">Einstellungen</string>
+</resources>
