@@ -18,4 +18,11 @@
     <string name="screen_rides_title">Fahrten</string>
     <string name="screen_garage_title">Garage</string>
     <string name="screen_settings_title">Einstellungen</string>
+
+    <string name="settings_units_title">Entfernungseinheit</string>
+    <string name="settings_units_summary">Wählen Sie Ihr bevorzugtes Einheitensystem</string>
+    <string name="unit_system_automatic">Automatisch (Basierend auf Sprache)</string>
+    <string name="unit_system_metric">Metrisch (Kilometer)</string>
+    <string name="unit_system_imperial">Imperial (Meilen)</string>
+    <string name="sample_distance_label">Beispielentfernung: %1$s</string>
 </resources>

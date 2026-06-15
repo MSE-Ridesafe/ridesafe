@@ -3,6 +3,9 @@ package de.uhi.enia.ridesafe
 import android.app.LocaleManager
 import android.os.Bundle
 import android.os.LocaleList
+import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import de.uhi.enia.ridesafe.util.UnitPrefs
+import de.uhi.enia.ridesafe.util.formatDistance
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -51,7 +54,9 @@ class MainActivity : ComponentActivity() {
 @PreviewScreenSizes
 @Composable
 fun RidesafeApp() {
+    val context = LocalContext.current
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
+    var unitSystem by rememberSaveable { mutableStateOf(UnitPrefs.get(context)) }
 
     NavigationSuiteScaffold(
         navigationSuiteItems = {
@@ -75,10 +80,17 @@ fun RidesafeApp() {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             val screenModifier = Modifier.padding(innerPadding)
             when (currentDestination) {
-                AppDestinations.HOME -> HomeScreen(screenModifier)
+                AppDestinations.HOME -> HomeScreen(screenModifier, unitSystem)
                 AppDestinations.RIDES -> RidesScreen(screenModifier)
                 AppDestinations.GARAGE -> GarageScreen(screenModifier)
-                AppDestinations.SETTINGS -> SettingsScreen(screenModifier)
+                AppDestinations.SETTINGS -> SettingsScreen(
+                    modifier = screenModifier,
+                    unitSystem = unitSystem,
+                    onUnitSystemChange = { newSetting ->
+                        UnitPrefs.set(context, newSetting)
+                        unitSystem = newSetting
+                    }
+                )
             }
         }
     }
@@ -94,8 +106,12 @@ enum class AppDestinations(
     SETTINGS(R.string.nav_settings, "settings")
 }
 
+
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier) {
+fun HomeScreen(modifier: Modifier = Modifier, unitSystem: UnitSystemSetting = UnitSystemSetting.AUTOMATIC) {
+    val context = LocalContext.current
+    val formattedDistance = formatDistance(context, 5000.0, unitSystem)
+
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -107,6 +123,11 @@ fun HomeScreen(modifier: Modifier = Modifier) {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Greeting(name = "Android")
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = stringResource(R.string.sample_distance_label, formattedDistance),
+                style = MaterialTheme.typography.bodyLarge
+            )
         }
     }
 }
@@ -138,7 +159,11 @@ fun GarageScreen(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun SettingsScreen(modifier: Modifier = Modifier) {
+fun SettingsScreen(
+    modifier: Modifier = Modifier,
+    unitSystem: UnitSystemSetting,
+    onUnitSystemChange: (UnitSystemSetting) -> Unit
+) {
     val context = LocalContext.current
     val localeManager = context.getSystemService(LocaleManager::class.java)
     val currentLocales = localeManager.applicationLocales
@@ -160,6 +185,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             )
             Spacer(modifier = Modifier.height(24.dp))
 
+            // App Language Section
             Text(
                 text = stringResource(R.string.settings_language_title),
                 style = MaterialTheme.typography.titleMedium
@@ -169,15 +195,15 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            val options = listOf(
+            val langOptions = listOf(
                 "system" to R.string.language_system,
                 "en" to R.string.language_english,
                 "de" to R.string.language_german
             )
 
-            options.forEach { (tag, labelRes) ->
+            langOptions.forEach { (tag, labelRes) ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -192,7 +218,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                                 localeManager.applicationLocales = locales
                             }
                         )
-                        .padding(vertical = 12.dp),
+                        .padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
@@ -205,6 +231,49 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                             }
                             localeManager.applicationLocales = locales
                         }
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = stringResource(labelRes),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Distance Units Section
+            Text(
+                text = stringResource(R.string.settings_units_title),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.settings_units_summary),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val unitOptions = listOf(
+                UnitSystemSetting.AUTOMATIC to R.string.unit_system_automatic,
+                UnitSystemSetting.METRIC to R.string.unit_system_metric,
+                UnitSystemSetting.IMPERIAL to R.string.unit_system_imperial
+            )
+
+            unitOptions.forEach { (option, labelRes) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .selectable(
+                            selected = (option == unitSystem),
+                            onClick = { onUnitSystemChange(option) }
+                        )
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = (option == unitSystem),
+                        onClick = { onUnitSystemChange(option) }
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
