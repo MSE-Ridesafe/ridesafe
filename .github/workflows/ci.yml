@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel an in-progress run when new commits land on the same branch/PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # --- Code style: ktlint via the official CLI (no Gradle plugin to keep off the
+  # bleeding-edge AGP/Gradle build config). Run `ktlint -F` locally to auto-fix.
+  ktlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run ktlint
+        run: |
+          curl -sSLO https://github.com/pinterest/ktlint/releases/download/1.5.0/ktlint
+          chmod +x ktlint
+          ./ktlint --relative
+
+  # --- Compilation, unit tests, Android Lint, APK, and Firebase distribution.
+  # One Gradle invocation so the daemon/config-cache is reused (fail-fast).
+  build:
+    runs-on: ubuntu-latest
+    env:
+      FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'   # AGP 9 requires JDK 17+
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build, test & lint
+        run: ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            app/build/reports/tests/**
+            app/build/reports/lint-results-*.html
+            app/build/test-results/**
+
+      # Distributes every PR/main build to Firebase App Distribution so it can be
+      # reviewed on a device without a local build. Self-skips until the secrets
+      # exist (also on fork PRs, which don't receive secrets).
+      - name: Distribute to Firebase App Distribution
+        if: ${{ env.FIREBASE_APP_ID != '' }}
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ env.FIREBASE_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          groups: developers
+          file: app/build/outputs/apk/debug/app-debug.apk
+          releaseNotes: |
+            Branch: ${{ github.head_ref || github.ref_name }}
+            Commit: ${{ github.sha }}
+
+  # --- JetBrains Qodana static analysis. Advisory for now: a fresh project will
+  # surface findings, and the very new Gradle 9.5 stack may not import cleanly.
+  # Remove `continue-on-error` to make it a required check once the baseline is clean.
+  qodana:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Qodana needs full history for PR analysis
+      - name: Qodana Scan
+        uses: JetBrains/qodana-action@v2024.3   # bump: github.com/JetBrains/qodana-action/releases
+        env:
+          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}   # optional: enables Qodana Cloud reporting
