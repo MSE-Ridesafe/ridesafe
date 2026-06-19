@@ -89,6 +89,6 @@ jobs:
         with:
           fetch-depth: 0   # Qodana needs full history for PR analysis
       - name: Qodana Scan
-        uses: JetBrains/qodana-action@v2026  # bump: github.com/JetBrains/qodana-action/releases
+        uses: JetBrains/qodana-action@v2026.1  # bump: github.com/JetBrains/qodana-action/releases
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}   # optional: enables Qodana Cloud reporting
