@@ -7,6 +7,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -16,11 +21,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.uhi.enia.ridesafe.R
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 
 /**
  * A Composable that renders a Google Material Symbol by loading the font and using its ligature features.
@@ -44,28 +44,31 @@ fun MaterialSymbol(
     weight: Int = 400,
     grade: Int = 0,
     size: Dp = 24.dp,
-    color: Color = LocalContentColor.current
+    color: Color = LocalContentColor.current,
 ) {
-    val semanticsModifier = if (contentDescription != null) {
-        Modifier.semantics {
-            this.contentDescription = contentDescription
-            this.role = Role.Image
+    val semanticsModifier =
+        if (contentDescription != null) {
+            Modifier.semantics {
+                this.contentDescription = contentDescription
+                this.role = Role.Image
+            }
+        } else {
+            Modifier.clearAndSetSemantics { }
         }
-    } else {
-        Modifier.clearAndSetSemantics { }
-    }
 
-    val dynamicFontFamily = FontFamily(
-        Font(
-            resId = R.font.material_symbols_outlined,
-            variationSettings = FontVariation.Settings(
-                FontVariation.Setting("FILL", if (fill) 1f else 0f),
-                FontVariation.weight(weight),
-                FontVariation.Setting("GRAD", grade.toFloat()),
-                FontVariation.Setting("opsz", size.value)
-            )
+    val dynamicFontFamily =
+        FontFamily(
+            Font(
+                resId = R.font.material_symbols_outlined,
+                variationSettings =
+                    FontVariation.Settings(
+                        FontVariation.Setting("FILL", if (fill) 1f else 0f),
+                        FontVariation.weight(weight),
+                        FontVariation.Setting("GRAD", grade.toFloat()),
+                        FontVariation.Setting("opsz", size.value),
+                    ),
+            ),
         )
-    )
 
     Text(
         text = symbolName,
@@ -73,6 +76,6 @@ fun MaterialSymbol(
         fontSize = size.value.sp,
         color = color,
         textAlign = TextAlign.Center,
-        modifier = modifier.then(semanticsModifier)
+        modifier = modifier.then(semanticsModifier),
     )
 }
