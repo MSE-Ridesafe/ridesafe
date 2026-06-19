@@ -1,9 +1,9 @@
 name: CI
 
 on:
-  pull_request:
   push:
-    branches: [main]
+    branches: ['**']   # every branch, so you can validate before opening a PR
+  pull_request:
 
 # Cancel an in-progress run when new commits land on the same branch/PR.
 concurrency:
@@ -58,11 +58,12 @@ jobs:
             app/build/reports/lint-results-*.html
             app/build/test-results/**
 
-      # Distributes every PR/main build to Firebase App Distribution so it can be
-      # reviewed on a device without a local build. Self-skips until the secrets
-      # exist (also on fork PRs, which don't receive secrets).
+      # Distributes PR builds to Firebase App Distribution so they can be reviewed
+      # on a device without a local build. Only on pull_request events, so feature
+      # branch pushes don't spam testers. Self-skips until the secrets exist (also
+      # on fork PRs, which don't receive secrets).
       - name: Distribute to Firebase App Distribution
-        if: ${{ env.FIREBASE_APP_ID != '' }}
+        if: ${{ env.FIREBASE_APP_ID != '' && github.event_name == 'pull_request' }}
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ env.FIREBASE_APP_ID }}
