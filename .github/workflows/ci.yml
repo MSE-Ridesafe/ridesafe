@@ -90,5 +90,10 @@ jobs:
           fetch-depth: 0   # Qodana needs full history for PR analysis
       - name: Qodana Scan
         uses: JetBrains/qodana-action@v2026.1  # bump: github.com/JetBrains/qodana-action/releases
+        with:
+          # Opt into the bundled Android plugin accepting AGP versions newer than it
+          # officially supports (our AGP 9.2.1 > linter's 9.0.0 ceiling). Maintainer
+          # workaround; drop once the linter supports our AGP.
+          args: --property,gradle.ide.support.future.agp.versions=true
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}   # optional: enables Qodana Cloud reporting
