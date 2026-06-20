@@ -1,0 +1,14 @@
+#!/bin/sh
+# Runs the same ktlint version as CI before every push, so the ktlint job
+# never surprises you. Enable once per clone:
+#   git config core.hooksPath .githooks
+KTLINT_VERSION=1.8.0   # keep in sync with .github/workflows/ci.yml
+BIN="$(git rev-parse --git-dir)/ktlint-$KTLINT_VERSION"
+if [ ! -x "$BIN" ]; then
+  echo "Fetching ktlint $KTLINT_VERSION (one-time)…"
+  curl -sSLo "$BIN" "https://github.com/pinterest/ktlint/releases/download/$KTLINT_VERSION/ktlint" && chmod +x "$BIN"
+fi
+"$BIN" --relative || {
+  echo "❌ ktlint failed. Auto-fix with:  \"$BIN\" -F"
+  exit 1
+}

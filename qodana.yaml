@@ -1,0 +1,3 @@
+version: "1.0"
+# Named linter (no tag) so it auto-matches the qodana-action CLI version.
+linter: qodana-jvm-android
