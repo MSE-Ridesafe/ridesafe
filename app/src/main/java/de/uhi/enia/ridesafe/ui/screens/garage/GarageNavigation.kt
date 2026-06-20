@@ -6,6 +6,7 @@ import androidx.navigation.navigation
 import kotlinx.serialization.Serializable
 
 @Serializable data object GarageGraph
+
 @Serializable data object GarageRoute
 
 fun NavGraphBuilder.garageGraph() {

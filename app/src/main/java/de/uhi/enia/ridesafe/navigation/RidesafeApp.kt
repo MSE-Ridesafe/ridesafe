@@ -62,15 +62,15 @@ fun RidesafeApp() {
                         MaterialSymbol(
                             symbolName = dest.symbolName,
                             contentDescription = stringResource(id = dest.labelRes),
-                            fill = isSelected
+                            fill = isSelected,
                         )
                     },
                     label = { Text(stringResource(id = dest.labelRes)) },
                     selected = isSelected,
-                    onClick = { navController.navigateToTab(dest) }
+                    onClick = { navController.navigateToTab(dest) },
                 )
             }
-        }
+        },
     ) {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             NavHost(
@@ -80,7 +80,7 @@ fun RidesafeApp() {
                 // NavHost overrides animation duration to be 700ms; Restore the default native
                 // animation easing curve and duration using "tween()"
                 enterTransition = { fadeIn(tween()) },
-                exitTransition = { fadeOut(tween()) }
+                exitTransition = { fadeOut(tween()) },
             ) {
                 homeGraph(unitSystem)
                 ridesGraph()
@@ -90,7 +90,7 @@ fun RidesafeApp() {
                     onUnitSystemChange = { newSetting ->
                         UnitPrefs.set(context, newSetting)
                         unitSystem = newSetting
-                    }
+                    },
                 )
             }
         }

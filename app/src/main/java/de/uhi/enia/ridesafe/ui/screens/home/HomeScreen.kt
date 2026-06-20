@@ -18,34 +18,40 @@ import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.formatDistance
 
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier, unitSystem: UnitSystemSetting = UnitSystemSetting.AUTOMATIC) {
+fun HomeScreen(
+    modifier: Modifier = Modifier,
+    unitSystem: UnitSystemSetting = UnitSystemSetting.AUTOMATIC,
+) {
     val context = LocalContext.current
     val formattedDistance = formatDistance(context, 5000.0, unitSystem)
 
     Box(
         modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = stringResource(R.string.screen_home_title),
-                style = MaterialTheme.typography.headlineMedium
+                style = MaterialTheme.typography.headlineMedium,
             )
             Spacer(modifier = Modifier.height(16.dp))
             Greeting(name = "Android")
             Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = stringResource(R.string.sample_distance_label, formattedDistance),
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyLarge,
             )
         }
     }
 }
 
 @Composable
-private fun Greeting(name: String, modifier: Modifier = Modifier) {
+private fun Greeting(
+    name: String,
+    modifier: Modifier = Modifier,
+) {
     Text(
         text = stringResource(id = R.string.greeting_hello, name),
-        modifier = modifier
+        modifier = modifier,
     )
 }

@@ -8,6 +8,7 @@ import kotlinx.serialization.Serializable
 
 /** Routes owned by the Home tab. Add child screens (detail/add) as more @Serializable types. */
 @Serializable data object HomeGraph
+
 @Serializable data object HomeRoute
 
 /**

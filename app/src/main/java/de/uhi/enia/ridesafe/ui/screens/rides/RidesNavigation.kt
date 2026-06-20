@@ -6,6 +6,7 @@ import androidx.navigation.navigation
 import kotlinx.serialization.Serializable
 
 @Serializable data object RidesGraph
+
 @Serializable data object RidesRoute
 
 fun NavGraphBuilder.ridesGraph() {

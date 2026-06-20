@@ -7,6 +7,7 @@ import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import kotlinx.serialization.Serializable
 
 @Serializable data object SettingsGraph
+
 @Serializable data object SettingsRoute
 
 fun NavGraphBuilder.settingsGraph(

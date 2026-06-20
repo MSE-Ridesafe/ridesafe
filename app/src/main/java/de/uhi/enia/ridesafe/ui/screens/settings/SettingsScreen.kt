@@ -29,74 +29,78 @@ import de.uhi.enia.ridesafe.util.UnitSystemSetting
 fun SettingsScreen(
     modifier: Modifier = Modifier,
     unitSystem: UnitSystemSetting,
-    onUnitSystemChange: (UnitSystemSetting) -> Unit
+    onUnitSystemChange: (UnitSystemSetting) -> Unit,
 ) {
     val context = LocalContext.current
     val localeManager = context.getSystemService(LocaleManager::class.java)
     val currentLocales = localeManager.applicationLocales
-    val currentLang = if (currentLocales.isEmpty) {
-        "system"
-    } else {
-        currentLocales.get(0).language
-    }
+    val currentLang =
+        if (currentLocales.isEmpty) {
+            "system"
+        } else {
+            currentLocales.get(0).language
+        }
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp)
+        modifier =
+            modifier
+                .fillMaxSize()
+                .padding(16.dp),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Text(
                 text = stringResource(R.string.screen_settings_title),
-                style = MaterialTheme.typography.headlineMedium
+                style = MaterialTheme.typography.headlineMedium,
             )
             Spacer(modifier = Modifier.height(24.dp))
 
             // App Language Section
             Text(
                 text = stringResource(R.string.settings_language_title),
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium,
             )
             Text(
                 text = stringResource(R.string.settings_language_summary),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            val langOptions = listOf(
-                "system" to R.string.language_system,
-                "en" to R.string.language_english,
-                "de" to R.string.language_german
-            )
+            val langOptions =
+                listOf(
+                    "system" to R.string.language_system,
+                    "en" to R.string.language_english,
+                    "de" to R.string.language_german,
+                )
 
             langOptions.forEach { (tag, labelRes) ->
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .selectable(
-                            selected = (tag == currentLang),
-                            role = Role.RadioButton,
-                            onClick = {
-                                val locales = if (tag == "system") {
-                                    LocaleList.getEmptyLocaleList()
-                                } else {
-                                    LocaleList.forLanguageTags(tag)
-                                }
-                                localeManager.applicationLocales = locales
-                            }
-                        )
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = (tag == currentLang),
+                                role = Role.RadioButton,
+                                onClick = {
+                                    val locales =
+                                        if (tag == "system") {
+                                            LocaleList.getEmptyLocaleList()
+                                        } else {
+                                            LocaleList.forLanguageTags(tag)
+                                        }
+                                    localeManager.applicationLocales = locales
+                                },
+                            ).padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     RadioButton(
                         selected = (tag == currentLang),
-                        onClick = null
+                        onClick = null,
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
                         text = stringResource(labelRes),
-                        style = MaterialTheme.typography.bodyLarge
+                        style = MaterialTheme.typography.bodyLarge,
                     )
                 }
             }
@@ -106,41 +110,42 @@ fun SettingsScreen(
             // Distance Units Section
             Text(
                 text = stringResource(R.string.settings_units_title),
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium,
             )
             Text(
                 text = stringResource(R.string.settings_units_summary),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            val unitOptions = listOf(
-                UnitSystemSetting.AUTOMATIC to R.string.unit_system_automatic,
-                UnitSystemSetting.METRIC to R.string.unit_system_metric,
-                UnitSystemSetting.IMPERIAL to R.string.unit_system_imperial
-            )
+            val unitOptions =
+                listOf(
+                    UnitSystemSetting.AUTOMATIC to R.string.unit_system_automatic,
+                    UnitSystemSetting.METRIC to R.string.unit_system_metric,
+                    UnitSystemSetting.IMPERIAL to R.string.unit_system_imperial,
+                )
 
             unitOptions.forEach { (option, labelRes) ->
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .selectable(
-                            selected = (option == unitSystem),
-                            role = Role.RadioButton,
-                            onClick = { onUnitSystemChange(option) }
-                        )
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = (option == unitSystem),
+                                role = Role.RadioButton,
+                                onClick = { onUnitSystemChange(option) },
+                            ).padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     RadioButton(
                         selected = (option == unitSystem),
-                        onClick = null
+                        onClick = null,
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
                         text = stringResource(labelRes),
-                        style = MaterialTheme.typography.bodyLarge
+                        style = MaterialTheme.typography.bodyLarge,
                     )
                 }
             }

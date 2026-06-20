@@ -18,5 +18,5 @@ enum class AppDestinations(
     HOME(R.string.nav_home, "home", HomeGraph),
     RIDES(R.string.nav_rides, "route", RidesGraph),
     GARAGE(R.string.nav_garage, "garage_home", GarageGraph),
-    SETTINGS(R.string.nav_settings, "settings", SettingsGraph)
+    SETTINGS(R.string.nav_settings, "settings", SettingsGraph),
 }
