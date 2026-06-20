@@ -2,14 +2,16 @@ package de.uhi.enia.ridesafe.util
 
 import android.content.Context
 import android.icu.text.MeasureFormat
+import android.icu.util.LocaleData
 import android.icu.util.Measure
 import android.icu.util.MeasureUnit
-import android.icu.util.LocaleData
 import android.icu.util.ULocale
 import androidx.core.content.edit
 
 enum class UnitSystemSetting {
-    AUTOMATIC, METRIC, IMPERIAL
+    AUTOMATIC,
+    METRIC,
+    IMPERIAL,
 }
 
 object UnitPrefs {
@@ -26,15 +28,24 @@ object UnitPrefs {
         }
     }
 
-    fun set(context: Context, value: UnitSystemSetting) {
+    fun set(
+        context: Context,
+        value: UnitSystemSetting,
+    ) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit { putString(KEY_UNIT_SYSTEM, value.name) }
     }
 }
 
-fun getFormattingLocale(context: Context, setting: UnitSystemSetting): java.util.Locale {
-    return if (setting == UnitSystemSetting.AUTOMATIC) {
-        val systemLocales = android.content.res.Resources.getSystem().configuration.locales
+fun getFormattingLocale(
+    context: Context,
+    setting: UnitSystemSetting,
+): java.util.Locale =
+    if (setting == UnitSystemSetting.AUTOMATIC) {
+        val systemLocales =
+            android.content.res.Resources
+                .getSystem()
+                .configuration.locales
         if (!systemLocales.isEmpty) {
             systemLocales.get(0)
         } else {
@@ -43,7 +54,6 @@ fun getFormattingLocale(context: Context, setting: UnitSystemSetting): java.util
     } else {
         java.util.Locale.getDefault()
     }
-}
 
 fun isMetric(locale: java.util.Locale): Boolean {
     val msExtension = locale.getUnicodeLocaleType("ms")
@@ -53,23 +63,29 @@ fun isMetric(locale: java.util.Locale): Boolean {
     val currentULocale = ULocale.forLocale(locale)
     val measurementSystem = LocaleData.getMeasurementSystem(currentULocale)
     return measurementSystem != LocaleData.MeasurementSystem.US &&
-           measurementSystem != LocaleData.MeasurementSystem.UK
+        measurementSystem != LocaleData.MeasurementSystem.UK
 }
 
-fun formatDistance(context: Context, meters: Double, setting: UnitSystemSetting): String {
+fun formatDistance(
+    context: Context,
+    meters: Double,
+    setting: UnitSystemSetting,
+): String {
     val formatLocale = getFormattingLocale(context, setting)
-    val isMetric = when (setting) {
-        UnitSystemSetting.METRIC -> true
-        UnitSystemSetting.IMPERIAL -> false
-        UnitSystemSetting.AUTOMATIC -> isMetric(formatLocale)
-    }
-    val (value, unit) = if (isMetric) {
-        val km = meters / 1000.0
-        km to MeasureUnit.KILOMETER
-    } else {
-        val miles = meters * 0.000621371
-        miles to MeasureUnit.MILE
-    }
+    val isMetric =
+        when (setting) {
+            UnitSystemSetting.METRIC -> true
+            UnitSystemSetting.IMPERIAL -> false
+            UnitSystemSetting.AUTOMATIC -> isMetric(formatLocale)
+        }
+    val (value, unit) =
+        if (isMetric) {
+            val km = meters / 1000.0
+            km to MeasureUnit.KILOMETER
+        } else {
+            val miles = meters * 0.000621371
+            miles to MeasureUnit.MILE
+        }
 
     val measure = Measure(value, unit)
     val formatter = MeasureFormat.getInstance(formatLocale, MeasureFormat.FormatWidth.SHORT)
