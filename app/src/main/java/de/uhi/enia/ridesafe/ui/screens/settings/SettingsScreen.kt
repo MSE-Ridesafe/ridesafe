@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
@@ -75,6 +76,7 @@ fun SettingsScreen(
                         .fillMaxWidth()
                         .selectable(
                             selected = (tag == currentLang),
+                            role = Role.RadioButton,
                             onClick = {
                                 val locales = if (tag == "system") {
                                     LocaleList.getEmptyLocaleList()
@@ -89,14 +91,7 @@ fun SettingsScreen(
                 ) {
                     RadioButton(
                         selected = (tag == currentLang),
-                        onClick = {
-                            val locales = if (tag == "system") {
-                                LocaleList.getEmptyLocaleList()
-                            } else {
-                                LocaleList.forLanguageTags(tag)
-                            }
-                            localeManager.applicationLocales = locales
-                        }
+                        onClick = null
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
@@ -132,6 +127,7 @@ fun SettingsScreen(
                         .fillMaxWidth()
                         .selectable(
                             selected = (option == unitSystem),
+                            role = Role.RadioButton,
                             onClick = { onUnitSystemChange(option) }
                         )
                         .padding(vertical = 8.dp),
@@ -139,7 +135,7 @@ fun SettingsScreen(
                 ) {
                     RadioButton(
                         selected = (option == unitSystem),
-                        onClick = { onUnitSystemChange(option) }
+                        onClick = null
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
