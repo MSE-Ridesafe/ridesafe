@@ -1,5 +1,8 @@
 package de.uhi.enia.ridesafe.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -73,7 +76,11 @@ fun RidesafeApp() {
             NavHost(
                 navController = navController,
                 startDestination = HomeGraph,
-                modifier = Modifier.padding(innerPadding)
+                modifier = Modifier.padding(innerPadding),
+                // NavHost overrides animation duration to be 700ms; Restore the default native
+                // animation easing curve and duration using "tween()"
+                enterTransition = { fadeIn(tween()) },
+                exitTransition = { fadeOut(tween()) }
             ) {
                 homeGraph(unitSystem)
                 ridesGraph()
