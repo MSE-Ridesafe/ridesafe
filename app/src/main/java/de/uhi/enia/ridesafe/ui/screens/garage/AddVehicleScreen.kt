@@ -99,7 +99,7 @@ fun AddVehicleScreen(
 
     Scaffold(
         modifier = modifier,
-        containerColor = Color.Transparent,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.garage_add_vehicle)) },

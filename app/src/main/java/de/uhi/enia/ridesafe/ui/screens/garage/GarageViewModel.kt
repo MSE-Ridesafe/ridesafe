@@ -9,9 +9,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 /**
- * Garage state, graph-scoped so the list/detail/add screens share one instance.
- * The Room [Flow]s are the single source of truth, so an insert from the add screen
- * propagates to the list automatically.
+ * Garage state, app-scoped (hoisted in RidesafeApp) so the list/detail/add screens share
+ * one instance. The Room [Flow]s are the single source of truth, so an insert from the add
+ * screen propagates to the list automatically.
  */
 class GarageViewModel(
     app: Application,

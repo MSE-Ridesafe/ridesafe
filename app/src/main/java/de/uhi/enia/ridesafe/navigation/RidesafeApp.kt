@@ -1,8 +1,5 @@
 package de.uhi.enia.ridesafe.navigation
 
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -14,6 +11,7 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -21,41 +19,60 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
-import androidx.navigation.NavController
-import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.ui.NavDisplay
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.ui.screens.garage.garageGraph
-import de.uhi.enia.ridesafe.ui.screens.home.HomeGraph
-import de.uhi.enia.ridesafe.ui.screens.home.homeGraph
-import de.uhi.enia.ridesafe.ui.screens.rides.ridesGraph
-import de.uhi.enia.ridesafe.ui.screens.settings.settingsGraph
+import de.uhi.enia.ridesafe.ui.screens.garage.GarageRoute
+import de.uhi.enia.ridesafe.ui.screens.garage.GarageViewModel
+import de.uhi.enia.ridesafe.ui.screens.garage.garageEntries
+import de.uhi.enia.ridesafe.ui.screens.home.HomeRoute
+import de.uhi.enia.ridesafe.ui.screens.home.homeEntries
+import de.uhi.enia.ridesafe.ui.screens.rides.RidesRoute
+import de.uhi.enia.ridesafe.ui.screens.rides.ridesEntries
+import de.uhi.enia.ridesafe.ui.screens.settings.SettingsRoute
+import de.uhi.enia.ridesafe.ui.screens.settings.settingsEntries
 import de.uhi.enia.ridesafe.util.UnitPrefs
 
 /**
  * App shell: adaptive navigation suite (bottom bar / rail / drawer) wrapping a
- * [NavHost]. Each tab is a nested graph with its own back stack; switching tabs
- * saves and restores that stack, so in-tab navigation context survives.
+ * [NavDisplay]. Each tab owns a [rememberNavBackStack]; the selected tab decides which
+ * stack [NavDisplay] renders, so switching tabs preserves each tab's in-tab navigation.
+ * NavDisplay supplies the native default transitions and predictive-back animation.
  *
- * App-level state (e.g. [UnitPrefs]) is hoisted above the NavHost so it persists
- * across every route. Per-flow shared state later belongs in nav-graph-scoped
- * ViewModels (hiltViewModel/viewModel keyed to the graph entry).
+ * App-level state (e.g. [UnitPrefs]) is hoisted above the display so it persists across
+ * every route. The garage flow's [GarageViewModel] is hoisted here too (one app-scoped
+ * instance shared by its three screens), since Nav3 has no graph scope.
  *
- * Adding a screen: declare a route + composable in that tab's *Navigation.kt.
- * Adding a tab: new graph + an AppDestinations entry. Nothing here changes.
+ * Adding a screen: declare a @Serializable NavKey + an entry in that tab's *Navigation.kt
+ * and push it onto the tab's back stack. Adding a tab: new root route + entry builder + an
+ * AppDestinations entry + a back stack below.
  */
 @PreviewScreenSizes
 @Composable
 fun RidesafeApp() {
     val context = LocalContext.current
-    val navController = rememberNavController()
     var unitSystem by rememberSaveable { mutableStateOf(UnitPrefs.get(context)) }
 
-    val currentDestination = navController.currentBackStackEntryAsState().value?.destination
+    // One back stack per tab; the active tab selects which one NavDisplay renders.
+    val homeStack = rememberNavBackStack(HomeRoute)
+    val ridesStack = rememberNavBackStack(RidesRoute)
+    val garageStack = rememberNavBackStack(GarageRoute)
+    val settingsStack = rememberNavBackStack(SettingsRoute)
+    val stacks =
+        remember {
+            mapOf(
+                AppDestinations.HOME to homeStack,
+                AppDestinations.RIDES to ridesStack,
+                AppDestinations.GARAGE to garageStack,
+                AppDestinations.SETTINGS to settingsStack,
+            )
+        }
+    var current by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
+
+    // Shared across the garage list/detail/add screens; Room Flow is the source of truth.
+    val garageViewModel: GarageViewModel = viewModel()
 
     NavigationSuiteScaffold(
         // Native three-tier: navigation bar is the dimmest surface, the screen
@@ -68,7 +85,7 @@ fun RidesafeApp() {
             ),
         navigationSuiteItems = {
             AppDestinations.entries.forEach { dest ->
-                val isSelected = currentDestination?.hierarchy?.any { it.hasRoute(dest.route::class) } == true
+                val isSelected = dest == current
                 item(
                     icon = {
                         MaterialSymbol(
@@ -79,7 +96,7 @@ fun RidesafeApp() {
                     },
                     label = { Text(stringResource(id = dest.labelRes)) },
                     selected = isSelected,
-                    onClick = { navController.navigateToTab(dest) },
+                    onClick = { current = dest },
                 )
             }
         },
@@ -90,40 +107,29 @@ fun RidesafeApp() {
             // (incl. behind the status bar); the nav bar keeps its own dimmer surfaceDim.
             containerColor = Color.Transparent,
         ) { innerPadding ->
-            NavHost(
-                navController = navController,
-                startDestination = HomeGraph,
+            NavDisplay(
+                backStack = stacks.getValue(current),
+                onBack = { stacks.getValue(current).removeLastOrNull() },
+                entryProvider =
+                    entryProvider {
+                        homeEntries(unitSystem)
+                        ridesEntries()
+                        garageEntries(garageStack, garageViewModel, unitSystem)
+                        settingsEntries(
+                            unitSystem = unitSystem,
+                            onUnitSystemChange = { newSetting ->
+                                UnitPrefs.set(context, newSetting)
+                                unitSystem = newSetting
+                            },
+                        )
+                    },
                 // Outer Scaffold already insets for system bars; mark them consumed so a
                 // screen's own TopAppBar/Scaffold doesn't apply the same insets again.
                 modifier =
                     Modifier
                         .padding(innerPadding)
                         .consumeWindowInsets(innerPadding),
-                // NavHost overrides animation duration to be 700ms; Restore the default native
-                // animation easing curve and duration using "tween()"
-                enterTransition = { fadeIn(tween()) },
-                exitTransition = { fadeOut(tween()) },
-            ) {
-                homeGraph(unitSystem)
-                ridesGraph()
-                garageGraph(navController = navController, unitSystem = unitSystem)
-                settingsGraph(
-                    unitSystem = unitSystem,
-                    onUnitSystemChange = { newSetting ->
-                        UnitPrefs.set(context, newSetting)
-                        unitSystem = newSetting
-                    },
-                )
-            }
+            )
         }
-    }
-}
-
-/** Switch top-level tabs without stacking duplicates, preserving each tab's back stack. */
-private fun NavController.navigateToTab(dest: AppDestinations) {
-    navigate(dest.route) {
-        popUpTo(graph.findStartDestination().id) { saveState = true }
-        launchSingleTop = true
-        restoreState = true
     }
 }
