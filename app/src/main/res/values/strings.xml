@@ -25,4 +25,39 @@
     <string name="unit_system_metric">Metric (Kilometers)</string>
     <string name="unit_system_imperial">Imperial (Miles)</string>
     <string name="sample_distance_label">Sample Distance: %1$s</string>
+
+    <!-- Garage -->
+    <string name="action_back">Back</string>
+    <string name="action_save">Save</string>
+    <string name="garage_add_vehicle">Add vehicle</string>
+    <string name="garage_empty_title">No vehicles yet</string>
+    <string name="garage_empty_message">Tap + to add your first vehicle.</string>
+    <string name="garage_primary">Primary</string>
+    <string name="garage_vehicle_image">Vehicle image</string>
+    <string name="garage_primary_marker">Primary vehicle</string>
+
+    <string name="vehicle_name">Name</string>
+    <string name="vehicle_make">Make</string>
+    <string name="vehicle_model">Model</string>
+    <string name="vehicle_year">Year</string>
+    <string name="vehicle_license_plate">License plate</string>
+    <string name="vehicle_fuel_type">Fuel type</string>
+    <string name="vehicle_mileage">Mileage</string>
+    <string name="vehicle_fuel_economy">Fuel economy</string>
+    <string name="vehicle_tank_size">Tank size</string>
+    <string name="vehicle_label_optional">%1$s (optional)</string>
+    <string name="add_vehicle_set_primary">Set as primary vehicle</string>
+
+    <string name="fuel_type_petrol">Petrol</string>
+    <string name="fuel_type_diesel">Diesel</string>
+    <string name="fuel_type_electric">Electric</string>
+    <string name="fuel_type_hybrid">Hybrid</string>
+    <string name="fuel_type_lpg">LPG</string>
+    <string name="fuel_type_other">Other</string>
+
+    <string name="unit_km">km</string>
+    <string name="unit_mi">mi</string>
+    <string name="unit_fuel_economy">L/100 km</string>
+    <string name="unit_liter">L</string>
+    <string name="value_not_set">&#8212;</string>
 </resources>

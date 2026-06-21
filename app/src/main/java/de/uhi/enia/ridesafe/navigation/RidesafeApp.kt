@@ -3,6 +3,7 @@ package de.uhi.enia.ridesafe.navigation
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -76,7 +77,12 @@ fun RidesafeApp() {
             NavHost(
                 navController = navController,
                 startDestination = HomeGraph,
-                modifier = Modifier.padding(innerPadding),
+                // Outer Scaffold already insets for system bars; mark them consumed so a
+                // screen's own TopAppBar/Scaffold doesn't apply the same insets again.
+                modifier =
+                    Modifier
+                        .padding(innerPadding)
+                        .consumeWindowInsets(innerPadding),
                 // NavHost overrides animation duration to be 700ms; Restore the default native
                 // animation easing curve and duration using "tween()"
                 enterTransition = { fadeIn(tween()) },
@@ -84,7 +90,7 @@ fun RidesafeApp() {
             ) {
                 homeGraph(unitSystem)
                 ridesGraph()
-                garageGraph()
+                garageGraph(navController = navController, unitSystem = unitSystem)
                 settingsGraph(
                     unitSystem = unitSystem,
                     onUnitSystemChange = { newSetting ->

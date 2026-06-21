@@ -7,6 +7,7 @@ import android.icu.util.Measure
 import android.icu.util.MeasureUnit
 import android.icu.util.ULocale
 import androidx.core.content.edit
+import kotlin.math.roundToLong
 
 enum class UnitSystemSetting {
     AUTOMATIC,
@@ -66,18 +67,24 @@ fun isMetric(locale: java.util.Locale): Boolean {
         measurementSystem != LocaleData.MeasurementSystem.UK
 }
 
+/** Whether the [setting] resolves to metric (km) rather than imperial (mi). */
+fun usesMetric(
+    context: Context,
+    setting: UnitSystemSetting,
+): Boolean =
+    when (setting) {
+        UnitSystemSetting.METRIC -> true
+        UnitSystemSetting.IMPERIAL -> false
+        UnitSystemSetting.AUTOMATIC -> isMetric(getFormattingLocale(context, setting))
+    }
+
 fun formatDistance(
     context: Context,
     meters: Double,
     setting: UnitSystemSetting,
 ): String {
     val formatLocale = getFormattingLocale(context, setting)
-    val isMetric =
-        when (setting) {
-            UnitSystemSetting.METRIC -> true
-            UnitSystemSetting.IMPERIAL -> false
-            UnitSystemSetting.AUTOMATIC -> isMetric(formatLocale)
-        }
+    val isMetric = usesMetric(context, setting)
     val (value, unit) =
         if (isMetric) {
             val km = meters / 1000.0
@@ -90,4 +97,24 @@ fun formatDistance(
     val measure = Measure(value, unit)
     val formatter = MeasureFormat.getInstance(formatLocale, MeasureFormat.FormatWidth.SHORT)
     return formatter.format(measure)
+}
+
+/**
+ * Odometer reading from canonical [kilometers], rounded to a whole unit (an odometer
+ * is a whole-number reading, unlike a trip distance). Returns e.g. "120,000 mi".
+ */
+fun formatOdometer(
+    context: Context,
+    kilometers: Int,
+    setting: UnitSystemSetting,
+): String {
+    val formatLocale = getFormattingLocale(context, setting)
+    val (value, unit) =
+        if (usesMetric(context, setting)) {
+            kilometers.toLong() to MeasureUnit.KILOMETER
+        } else {
+            (kilometers * 0.621371).roundToLong() to MeasureUnit.MILE
+        }
+    val formatter = MeasureFormat.getInstance(formatLocale, MeasureFormat.FormatWidth.SHORT)
+    return formatter.format(Measure(value, unit))
 }
