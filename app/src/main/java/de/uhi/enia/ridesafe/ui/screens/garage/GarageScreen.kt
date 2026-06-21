@@ -99,8 +99,8 @@ private fun VehicleCard(
     onClick: () -> Unit,
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).clip(RoundedCornerShape(24.dp)),
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -150,15 +150,15 @@ internal fun VehicleImage(
         modifier =
             modifier
                 .size(size)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.secondaryContainer),
+                .clip(RoundedCornerShape(size / 4))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
     ) {
         MaterialSymbol(
             symbolName = "directions_car",
             contentDescription = null,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            size = size * 0.5f,
+            color = MaterialTheme.colorScheme.onSurface,
+            size = size / 2,
         )
     }
 }
