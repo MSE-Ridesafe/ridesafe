@@ -6,8 +6,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -15,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
@@ -55,6 +58,14 @@ fun RidesafeApp() {
     val currentDestination = navController.currentBackStackEntryAsState().value?.destination
 
     NavigationSuiteScaffold(
+        // Native three-tier: navigation bar is the dimmest surface, the screen
+        // background a lighter tinted surfaceContainer, and cards (surfaceBright) the
+        // brightest on top. The relationship holds in both light and dark themes.
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        navigationSuiteColors =
+            NavigationSuiteDefaults.colors(
+                navigationBarContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ),
         navigationSuiteItems = {
             AppDestinations.entries.forEach { dest ->
                 val isSelected = currentDestination?.hierarchy?.any { it.hasRoute(dest.route::class) } == true
@@ -73,7 +84,12 @@ fun RidesafeApp() {
             }
         },
     ) {
-        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            // Transparent so the NavigationSuiteScaffold's surfaceContainer shows through
+            // (incl. behind the status bar); the nav bar keeps its own dimmer surfaceDim.
+            containerColor = Color.Transparent,
+        ) { innerPadding ->
             NavHost(
                 navController = navController,
                 startDestination = HomeGraph,
