@@ -24,7 +24,7 @@ jobs:
         run: |
           curl -sSLO https://github.com/pinterest/ktlint/releases/download/1.8.0/ktlint
           chmod +x ktlint
-          ./ktlint --relative
+          ./ktlint --relative '!**/build/**'
 
   # --- Compilation, unit tests, Android Lint, APK, and Firebase distribution.
   # One Gradle invocation so the daemon/config-cache is reused (fail-fast).
