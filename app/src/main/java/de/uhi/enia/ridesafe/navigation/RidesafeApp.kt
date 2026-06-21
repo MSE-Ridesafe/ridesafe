@@ -1,5 +1,12 @@
 package de.uhi.enia.ridesafe.navigation
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -34,6 +41,10 @@ import de.uhi.enia.ridesafe.ui.screens.rides.ridesEntries
 import de.uhi.enia.ridesafe.ui.screens.settings.SettingsRoute
 import de.uhi.enia.ridesafe.ui.screens.settings.settingsEntries
 import de.uhi.enia.ridesafe.util.UnitPrefs
+
+// ponytail: animation durations are tuning knobs — bump if a transition feels off.
+private const val SLIDE_MS = 250 // sub-route slide + matching fade-out of the previous screen
+private const val FADE_MS = 100 // quick cross-fade between tabs
 
 /**
  * App shell: adaptive navigation suite (bottom bar / rail / drawer) wrapping a
@@ -71,6 +82,12 @@ fun RidesafeApp() {
         }
     var current by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
 
+    // Discriminates the two kinds of NavDisplay transition: a tab switch (set here, fades)
+    // vs. an in-tab sub-route push/pop (cleared by the nav lambdas below, slides). Reading
+    // the route off the animation Scene isn't reliable (Nav3 stringifies the content key),
+    // so we track intent explicitly. ponytail: a 1-bit flag beats parsing scene keys.
+    var isTabSwitch by remember { mutableStateOf(false) }
+
     // Shared across the garage list/detail/add screens; Room Flow is the source of truth.
     val garageViewModel: GarageViewModel = viewModel()
 
@@ -96,7 +113,10 @@ fun RidesafeApp() {
                     },
                     label = { Text(stringResource(id = dest.labelRes)) },
                     selected = isSelected,
-                    onClick = { current = dest },
+                    onClick = {
+                        isTabSwitch = true
+                        current = dest
+                    },
                 )
             }
         },
@@ -109,12 +129,46 @@ fun RidesafeApp() {
         ) { innerPadding ->
             NavDisplay(
                 backStack = stacks.getValue(current),
-                onBack = { stacks.getValue(current).removeLastOrNull() },
+                onBack = {
+                    isTabSwitch = false
+                    stacks.getValue(current).removeLastOrNull()
+                },
+                // Sub-route nav: new screen slides in, previous fades out at the same speed;
+                // back mirrors it (top slides out, revealed screen fades in). Tab switches are
+                // a quick cross-fade. predictivePop is always an in-tab back, so always slides.
+                transitionSpec = {
+                    if (isTabSwitch) {
+                        fadeIn(tween(FADE_MS)) togetherWith fadeOut(tween(FADE_MS))
+                    } else {
+                        slideInHorizontally(tween(SLIDE_MS)) { it } togetherWith fadeOut(tween(SLIDE_MS))
+                    }
+                },
+                popTransitionSpec = {
+                    if (isTabSwitch) {
+                        fadeIn(tween(FADE_MS)) togetherWith fadeOut(tween(FADE_MS))
+                    } else {
+                        fadeIn(tween(SLIDE_MS)) togetherWith slideOutHorizontally(tween(SLIDE_MS)) { it }
+                    }
+                },
+                predictivePopTransitionSpec = { _ ->
+                    fadeIn(tween(SLIDE_MS)) togetherWith slideOutHorizontally(tween(SLIDE_MS)) { it }
+                },
                 entryProvider =
                     entryProvider {
                         homeEntries(unitSystem)
                         ridesEntries()
-                        garageEntries(garageStack, garageViewModel, unitSystem)
+                        garageEntries(
+                            viewModel = garageViewModel,
+                            unitSystem = unitSystem,
+                            onOpen = {
+                                isTabSwitch = false
+                                garageStack.add(it)
+                            },
+                            onBack = {
+                                isTabSwitch = false
+                                garageStack.removeLastOrNull()
+                            },
+                        )
                         settingsEntries(
                             unitSystem = unitSystem,
                             onUnitSystemChange = { newSetting ->

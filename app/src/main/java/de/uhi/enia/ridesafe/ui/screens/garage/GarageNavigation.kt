@@ -3,7 +3,6 @@ package de.uhi.enia.ridesafe.ui.screens.garage
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.navigation3.runtime.EntryProviderScope
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import kotlinx.serialization.Serializable
@@ -17,22 +16,24 @@ import kotlinx.serialization.Serializable
 @Serializable data object AddVehicleRoute : NavKey
 
 /**
- * Garage tab entries: list -> detail / add. Navigation is plain back-stack mutation on
- * [backStack] (the garage tab's own stack). [viewModel] is a single app-scoped instance
- * shared by all three screens, so an insert from the add screen propagates to the list
- * via its Room [kotlinx.coroutines.flow.Flow].
+ * Garage tab entries: list -> detail / add. Navigation goes through [onOpen] / [onBack]
+ * (the caller mutates the garage back stack and resets the tab-switch flag, so these
+ * transitions slide). [viewModel] is a single app-scoped instance shared by all three
+ * screens, so an insert from the add screen propagates to the list via its Room
+ * [kotlinx.coroutines.flow.Flow].
  */
 fun EntryProviderScope<NavKey>.garageEntries(
-    backStack: NavBackStack<NavKey>,
     viewModel: GarageViewModel,
     unitSystem: UnitSystemSetting,
+    onOpen: (NavKey) -> Unit,
+    onBack: () -> Unit,
 ) {
     entry<GarageRoute> {
         val vehicles by viewModel.vehicles.collectAsState(initial = emptyList())
         GarageScreen(
             vehicles = vehicles,
-            onVehicleClick = { backStack.add(VehicleDetailRoute(it)) },
-            onAddVehicle = { backStack.add(AddVehicleRoute) },
+            onVehicleClick = { onOpen(VehicleDetailRoute(it)) },
+            onAddVehicle = { onOpen(AddVehicleRoute) },
         )
     }
     entry<VehicleDetailRoute> { key ->
@@ -40,7 +41,7 @@ fun EntryProviderScope<NavKey>.garageEntries(
         VehicleDetailScreen(
             vehicle = vehicle,
             unitSystem = unitSystem,
-            onBack = { backStack.removeLastOrNull() },
+            onBack = onBack,
         )
     }
     entry<AddVehicleRoute> {
@@ -48,9 +49,9 @@ fun EntryProviderScope<NavKey>.garageEntries(
             unitSystem = unitSystem,
             onSave = { vehicle, makePrimary ->
                 viewModel.addVehicle(vehicle, makePrimary)
-                backStack.removeLastOrNull()
+                onBack()
             },
-            onBack = { backStack.removeLastOrNull() },
+            onBack = onBack,
         )
     }
 }

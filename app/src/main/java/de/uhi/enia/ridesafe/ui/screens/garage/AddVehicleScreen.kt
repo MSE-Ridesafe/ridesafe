@@ -110,7 +110,7 @@ fun AddVehicleScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         MaterialSymbol(
-                            symbolName = "arrow_back",
+                            symbolName = "close",
                             contentDescription = stringResource(R.string.action_back),
                         )
                     }
