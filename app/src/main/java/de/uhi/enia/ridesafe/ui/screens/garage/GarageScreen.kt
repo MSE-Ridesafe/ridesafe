@@ -3,7 +3,6 @@
 package de.uhi.enia.ridesafe.ui.screens.garage
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,7 +54,12 @@ fun GarageScreen(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.screen_garage_title)) },
+                title = {
+                    Text(
+                        stringResource(R.string.screen_garage_title),
+                        style = MaterialTheme.typography.headlineMedium,
+                    )
+                },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent,
@@ -99,8 +103,10 @@ private fun VehicleCard(
     onClick: () -> Unit,
 ) {
     Card(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).clip(RoundedCornerShape(24.dp)),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -150,7 +156,7 @@ internal fun VehicleImage(
         modifier =
             modifier
                 .size(size)
-                .clip(RoundedCornerShape(size / 4))
+                .clip(MaterialTheme.shapes.large)
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
     ) {

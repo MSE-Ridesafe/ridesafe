@@ -46,6 +46,8 @@
     <string name="vehicle_fuel_economy">Fuel economy</string>
     <string name="vehicle_tank_size">Tank size</string>
     <string name="vehicle_label_optional">%1$s (optional)</string>
+    <string name="vehicle_section_overview">Overview</string>
+    <string name="vehicle_section_fuel">Fuel</string>
     <string name="add_vehicle_set_primary">Set as primary vehicle</string>
 
     <string name="fuel_type_petrol">Petrol</string>

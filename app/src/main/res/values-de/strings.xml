@@ -46,6 +46,8 @@
     <string name="vehicle_fuel_economy">Kraftstoffverbrauch</string>
     <string name="vehicle_tank_size">Tankgröße</string>
     <string name="vehicle_label_optional">%1$s (optional)</string>
+    <string name="vehicle_section_overview">Übersicht</string>
+    <string name="vehicle_section_fuel">Kraftstoff</string>
     <string name="add_vehicle_set_primary">Als Primärfahrzeug festlegen</string>
 
     <string name="fuel_type_petrol">Benzin</string>
