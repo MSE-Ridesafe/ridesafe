@@ -64,7 +64,7 @@ fun VehicleDetailScreen(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
-                title = { Text(vehicle?.name ?: "") },
+                title = { Text(vehicle?.displayTitle() ?: "") },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent,
@@ -146,14 +146,14 @@ fun VehicleDetailScreen(
 
     if (showDeleteDialog && vehicle != null) {
         DeleteVehicleDialog(
-            vehicleName = vehicle.name,
+            vehicleName = vehicle.displayTitle(),
             onConfirm = onDelete,
             onDismiss = { showDeleteDialog = false },
         )
     }
 }
 
-/** Hero identity block: title image, make · model, and the primary badge. */
+/** Hero identity block: title image, make + model + optional nickname, license plate, primary badge. */
 @Composable
 private fun VehicleHeader(vehicle: Vehicle) {
     Column(
@@ -163,7 +163,7 @@ private fun VehicleHeader(vehicle: Vehicle) {
     ) {
         VehicleImage(size = 120.dp, color = MaterialTheme.colorScheme.surfaceContainerHighest)
         Text(
-            text = "${vehicle.make} ${vehicle.model}",
+            text = vehicle.displayTitle(),
             style = MaterialTheme.typography.displaySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

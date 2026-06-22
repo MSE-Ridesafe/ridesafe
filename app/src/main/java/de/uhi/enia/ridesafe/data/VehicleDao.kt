@@ -10,7 +10,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 abstract class VehicleDao {
-    @Query("SELECT * FROM vehicles ORDER BY isPrimary DESC, name COLLATE NOCASE")
+    // Sort by make/model (shown as the list title); name is an optional nickname now.
+    @Query("SELECT * FROM vehicles ORDER BY isPrimary DESC, make COLLATE NOCASE, model COLLATE NOCASE")
     abstract fun observeAll(): Flow<List<Vehicle>>
 
     @Query("SELECT * FROM vehicles WHERE id = :id")

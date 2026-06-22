@@ -43,7 +43,7 @@
     <string name="garage_vehicle_image">Vehicle image</string>
     <string name="garage_primary_marker">Primary vehicle</string>
 
-    <string name="vehicle_name">Name</string>
+    <string name="vehicle_nickname">Nickname</string>
     <string name="vehicle_make">Make</string>
     <string name="vehicle_model">Model</string>
     <string name="vehicle_year">Year</string>

@@ -7,13 +7,14 @@ import androidx.room.PrimaryKey
  * A vehicle in the user's garage (entity DR-VEH).
  *
  * Odometer is stored canonically in kilometers ([mileageKm]); display converts via
- * [de.uhi.enia.ridesafe.util.formatDistance]. [year], [fuelEconomy] and [tankSize]
- * are optional — the analytics features that need them don't exist yet.
+ * [de.uhi.enia.ridesafe.util.formatDistance]. [name] (an optional nickname), [year],
+ * [fuelEconomy] and [tankSize] are optional — blank/null means "not set". The nickname
+ * is rendered via [de.uhi.enia.ridesafe.ui.screens.garage.displayTitle].
  */
 @Entity(tableName = "vehicles")
 data class Vehicle(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val name: String,
+    val name: String = "",
     val make: String,
     val model: String,
     val licensePlate: String,

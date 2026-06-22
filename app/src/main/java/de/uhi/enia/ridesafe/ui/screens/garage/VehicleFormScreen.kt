@@ -91,8 +91,7 @@ fun VehicleFormScreen(
 
     val mileageValue = mileage.toIntOrNull()
     val canSave =
-        name.isNotBlank() &&
-            make.isNotBlank() &&
+        make.isNotBlank() &&
             model.isNotBlank() &&
             licensePlate.isNotBlank() &&
             mileageValue != null &&
@@ -157,7 +156,9 @@ fun VehicleFormScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text(stringResource(R.string.vehicle_name)) },
+                label = {
+                    Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_nickname)))
+                },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -259,7 +260,7 @@ fun VehicleFormScreen(
 
     if (showDeleteDialog && onDelete != null) {
         DeleteVehicleDialog(
-            vehicleName = existing?.name.orEmpty(),
+            vehicleName = existing?.displayTitle().orEmpty(),
             onConfirm = onDelete,
             onDismiss = { showDeleteDialog = false },
         )

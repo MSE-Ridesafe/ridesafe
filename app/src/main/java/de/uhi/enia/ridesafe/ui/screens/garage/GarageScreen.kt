@@ -115,14 +115,8 @@ private fun VehicleCard(
             VehicleImage(size = 64.dp)
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-//                Text(
-//                    text = vehicle.name,
-//                    style = MaterialTheme.typography.titleMedium,
-//                    maxLines = 1,
-//                    overflow = TextOverflow.Ellipsis,
-//                )
                 Text(
-                    text = "${vehicle.make} ${vehicle.model}",
+                    text = vehicle.displayTitle(),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
@@ -157,14 +151,14 @@ private fun VehicleCard(
 internal fun VehicleImage(
     size: Dp,
     modifier: Modifier = Modifier,
-    color: Color? = null
+    color: Color? = null,
 ) {
     Box(
         modifier =
             modifier
                 .size(size)
                 .clip(MaterialTheme.shapes.large)
-                .background(color?: MaterialTheme.colorScheme.surfaceContainerHigh),
+                .background(color ?: MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
     ) {
         MaterialSymbol(
