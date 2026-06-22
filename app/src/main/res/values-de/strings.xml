@@ -25,4 +25,48 @@
     <string name="unit_system_metric">Metrisch (Kilometer)</string>
     <string name="unit_system_imperial">Imperial (Meilen)</string>
     <string name="sample_distance_label">Beispielentfernung: %1$s</string>
+
+    <!-- Garage -->
+    <string name="action_back">Zurück</string>
+    <string name="action_save">Speichern</string>
+    <string name="action_edit">Bearbeiten</string>
+    <string name="action_delete">Löschen</string>
+    <string name="action_cancel">Abbrechen</string>
+    <string name="garage_add_vehicle">Fahrzeug hinzufügen</string>
+    <string name="garage_edit_vehicle">Fahrzeug bearbeiten</string>
+    <string name="garage_delete_vehicle">Fahrzeug löschen</string>
+    <string name="garage_delete_confirm_title">Fahrzeug löschen?</string>
+    <string name="garage_delete_confirm_message">%1$s wird dauerhaft entfernt. Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="garage_empty_title">Noch keine Fahrzeuge</string>
+    <string name="garage_empty_message">Tippe auf +, um dein erstes Fahrzeug hinzuzufügen.</string>
+    <string name="garage_primary">Primär</string>
+    <string name="garage_vehicle_image">Fahrzeugbild</string>
+    <string name="garage_primary_marker">Primärfahrzeug</string>
+
+    <string name="vehicle_nickname">Spitzname</string>
+    <string name="vehicle_make">Marke</string>
+    <string name="vehicle_model">Modell</string>
+    <string name="vehicle_year">Baujahr</string>
+    <string name="vehicle_license_plate">Kennzeichen</string>
+    <string name="vehicle_fuel_type">Kraftstoffart</string>
+    <string name="vehicle_mileage">Kilometerstand</string>
+    <string name="vehicle_fuel_economy">Kraftstoffverbrauch</string>
+    <string name="vehicle_tank_size">Tankgröße</string>
+    <string name="vehicle_label_optional">%1$s (optional)</string>
+    <string name="vehicle_section_overview">Übersicht</string>
+    <string name="vehicle_section_fuel">Kraftstoff</string>
+    <string name="add_vehicle_set_primary">Als Primärfahrzeug festlegen</string>
+
+    <string name="fuel_type_petrol">Benzin</string>
+    <string name="fuel_type_diesel">Diesel</string>
+    <string name="fuel_type_electric">Elektro</string>
+    <string name="fuel_type_hybrid">Hybrid</string>
+    <string name="fuel_type_lpg">Autogas (LPG)</string>
+    <string name="fuel_type_other">Sonstige</string>
+
+    <string name="unit_km">km</string>
+    <string name="unit_mi">mi</string>
+    <string name="unit_fuel_economy">L/100 km</string>
+    <string name="unit_liter">L</string>
+    <string name="value_not_set">&#8212;</string>
 </resources>

@@ -8,7 +8,10 @@ if [ ! -x "$BIN" ]; then
   echo "Fetching ktlint $KTLINT_VERSION (one-time)…"
   curl -sSLo "$BIN" "https://github.com/pinterest/ktlint/releases/download/$KTLINT_VERSION/ktlint" && chmod +x "$BIN"
 fi
-"$BIN" --relative || {
+# Exclude build/ dirs: locally they hold KSP/Room generated *_Impl.kt files that
+# ktlint would otherwise flag. CI never sees them (build/ is gitignored), so this
+# only matters for the local run, but it's harmless on CI and keeps the two in sync.
+"$BIN" --relative '!**/build/**' || {
   echo "❌ ktlint failed. Auto-fix with:  \"$BIN\" -F"
   exit 1
 }

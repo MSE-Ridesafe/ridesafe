@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: ['**']   # every branch, so you can validate before opening a PR
+    branches: ['main', 'develop']   # Only on protected branches, when needed
   pull_request:
 
 # Cancel an in-progress run when new commits land on the same branch/PR.
@@ -24,7 +24,7 @@ jobs:
         run: |
           curl -sSLO https://github.com/pinterest/ktlint/releases/download/1.8.0/ktlint
           chmod +x ktlint
-          ./ktlint --relative
+          ./ktlint --relative '!**/build/**'
 
   # --- Compilation, unit tests, Android Lint, APK, and Firebase distribution.
   # One Gradle invocation so the daemon/config-cache is reused (fail-fast).
