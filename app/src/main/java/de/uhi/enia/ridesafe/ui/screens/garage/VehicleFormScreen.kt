@@ -9,9 +9,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -19,6 +23,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -34,7 +39,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.focusOrder
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -49,26 +54,40 @@ import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.usesMetric
 import kotlin.math.roundToInt
 
+private const val KM_PER_MILE = 1.609344
+
+/**
+ * Add/edit form for a vehicle. [existing] null = add mode (GAR-02); non-null = edit mode
+ * (GAR-03), with fields pre-filled and a delete action wired through [onDelete] (GAR-04).
+ */
 @Composable
-fun AddVehicleScreen(
+fun VehicleFormScreen(
+    existing: Vehicle?,
     unitSystem: UnitSystemSetting,
     onSave: (vehicle: Vehicle, makePrimary: Boolean) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onDelete: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val metric = usesMetric(context, unitSystem)
+    val editing = existing != null
 
-    var name by rememberSaveable { mutableStateOf("") }
-    var make by rememberSaveable { mutableStateOf("") }
-    var model by rememberSaveable { mutableStateOf("") }
-    var licensePlate by rememberSaveable { mutableStateOf("") }
-    var year by rememberSaveable { mutableStateOf("") }
-    var mileage by rememberSaveable { mutableStateOf("") }
-    var fuelEconomy by rememberSaveable { mutableStateOf("") }
-    var tankSize by rememberSaveable { mutableStateOf("") }
-    var fuelType by rememberSaveable { mutableStateOf(FuelType.PETROL) }
-    var makePrimary by rememberSaveable { mutableStateOf(false) }
+    // Odometer is stored in km; show/edit it in the user's display unit.
+    val initialMileage =
+        existing?.let { if (metric) it.mileageKm else (it.mileageKm / KM_PER_MILE).roundToInt() }
+
+    var name by rememberSaveable { mutableStateOf(existing?.name ?: "") }
+    var make by rememberSaveable { mutableStateOf(existing?.make ?: "") }
+    var model by rememberSaveable { mutableStateOf(existing?.model ?: "") }
+    var licensePlate by rememberSaveable { mutableStateOf(existing?.licensePlate ?: "") }
+    var year by rememberSaveable { mutableStateOf(existing?.year?.toString() ?: "") }
+    var mileage by rememberSaveable { mutableStateOf(initialMileage?.toString() ?: "") }
+    var fuelEconomy by rememberSaveable { mutableStateOf(existing?.fuelEconomy?.toString() ?: "") }
+    var tankSize by rememberSaveable { mutableStateOf(existing?.tankSize?.toString() ?: "") }
+    var fuelType by rememberSaveable { mutableStateOf(existing?.fuelType ?: FuelType.PETROL) }
+    var makePrimary by rememberSaveable { mutableStateOf(existing?.isPrimary ?: false) }
+    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
 
     val mileageValue = mileage.toIntOrNull()
     val canSave =
@@ -80,21 +99,21 @@ fun AddVehicleScreen(
             mileageValue >= 0
 
     fun save() {
-        val mileageKm = if (metric) mileageValue!! else (mileageValue!! * 1.609344).roundToInt()
-        onSave(
-            Vehicle(
-                name = name.trim(),
-                make = make.trim(),
-                model = model.trim(),
-                licensePlate = licensePlate.trim(),
-                fuelType = fuelType,
-                mileageKm = mileageKm,
-                year = year.toIntOrNull(),
-                fuelEconomy = fuelEconomy.toDoubleOrNull(),
-                tankSize = tankSize.toDoubleOrNull(),
-            ),
-            makePrimary,
-        )
+        val mileageKm = if (metric) mileageValue!! else (mileageValue!! * KM_PER_MILE).roundToInt()
+        val edited =
+            (existing ?: Vehicle(name = "", make = "", model = "", licensePlate = "", fuelType = fuelType, mileageKm = 0))
+                .copy(
+                    name = name.trim(),
+                    make = make.trim(),
+                    model = model.trim(),
+                    licensePlate = licensePlate.trim(),
+                    fuelType = fuelType,
+                    mileageKm = mileageKm,
+                    year = year.toIntOrNull(),
+                    fuelEconomy = fuelEconomy.toDoubleOrNull(),
+                    tankSize = tankSize.toDoubleOrNull(),
+                )
+        onSave(edited, makePrimary)
     }
 
     Scaffold(
@@ -102,7 +121,9 @@ fun AddVehicleScreen(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.garage_add_vehicle)) },
+                title = {
+                    Text(stringResource(if (editing) R.string.garage_edit_vehicle else R.string.garage_add_vehicle))
+                },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -116,7 +137,7 @@ fun AddVehicleScreen(
                     }
                 },
                 actions = {
-                    TextButton(onClick = ::save, enabled = canSave) {
+                    Button(modifier = Modifier.padding(end = 8.dp), onClick = ::save, enabled = canSave) {
                         Text(stringResource(R.string.action_save))
                     }
                 },
@@ -212,10 +233,67 @@ fun AddVehicleScreen(
                     text = stringResource(R.string.add_vehicle_set_primary),
                     modifier = Modifier.weight(1f),
                 )
-                Switch(checked = makePrimary, onCheckedChange = { makePrimary = it })
+                // Can't demote the current primary directly (GAR-07) — promote another instead.
+                Switch(
+                    checked = makePrimary,
+                    onCheckedChange = { makePrimary = it },
+                    enabled = existing?.isPrimary != true,
+                )
+            }
+
+            if (onDelete != null) {
+                OutlinedButton(
+                    onClick = { showDeleteDialog = true },
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    MaterialSymbol(symbolName = "delete", contentDescription = null, size = 18.dp)
+                    Text(
+                        text = stringResource(R.string.garage_delete_vehicle),
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
             }
         }
     }
+
+    if (showDeleteDialog && onDelete != null) {
+        DeleteVehicleDialog(
+            vehicleName = existing?.name.orEmpty(),
+            onConfirm = onDelete,
+            onDismiss = { showDeleteDialog = false },
+        )
+    }
+}
+
+/** Confirmation prompt shown before deleting a vehicle (UX-01). */
+@Composable
+internal fun DeleteVehicleDialog(
+    vehicleName: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { MaterialSymbol(symbolName = "delete", contentDescription = null, modifier = Modifier.size(24.dp)) },
+        title = { Text(stringResource(R.string.garage_delete_confirm_title)) },
+        text = { Text(stringResource(R.string.garage_delete_confirm_message, vehicleName)) },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onDismiss()
+                    onConfirm()
+                },
+            ) {
+                Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
 }
 
 @Composable
@@ -257,6 +335,20 @@ private fun FuelTypeDropdown(
 @Composable
 private fun AddVehiclePreview() {
     RidesafeTheme {
-        AddVehicleScreen(unitSystem = UnitSystemSetting.METRIC, onSave = { _, _ -> }, onBack = {})
+        VehicleFormScreen(existing = null, unitSystem = UnitSystemSetting.METRIC, onSave = { _, _ -> }, onBack = {})
+    }
+}
+
+@Preview
+@Composable
+private fun EditVehiclePreview() {
+    RidesafeTheme {
+        VehicleFormScreen(
+            existing = previewVehicles.first(),
+            unitSystem = UnitSystemSetting.METRIC,
+            onSave = { _, _ -> },
+            onBack = {},
+            onDelete = {},
+        )
     }
 }

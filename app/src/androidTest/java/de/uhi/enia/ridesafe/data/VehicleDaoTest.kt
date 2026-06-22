@@ -59,4 +59,18 @@ class VehicleDaoTest {
             assertEquals(1, all.count { it.isPrimary })
             assertEquals("b", all.single { it.isPrimary }.name)
         }
+
+    @Test
+    fun deletingPrimaryPromotesAnotherVehicle() =
+        runBlocking {
+            dao.addVehicle(vehicle("a"), makePrimary = true)
+            dao.addVehicle(vehicle("b"), makePrimary = false)
+            val primary = dao.observeAll().first().single { it.isPrimary }
+
+            dao.deleteVehicle(primary)
+
+            val all = dao.observeAll().first()
+            assertEquals(1, all.size)
+            assertEquals(1, all.count { it.isPrimary })
+        }
 }

@@ -29,7 +29,14 @@
     <!-- Garage -->
     <string name="action_back">Back</string>
     <string name="action_save">Save</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
     <string name="garage_add_vehicle">Add vehicle</string>
+    <string name="garage_edit_vehicle">Edit vehicle</string>
+    <string name="garage_delete_vehicle">Delete vehicle</string>
+    <string name="garage_delete_confirm_title">Delete vehicle?</string>
+    <string name="garage_delete_confirm_message">%1$s will be permanently removed. This can\'t be undone.</string>
     <string name="garage_empty_title">No vehicles yet</string>
     <string name="garage_empty_message">Tap + to add your first vehicle.</string>
     <string name="garage_primary">Primary</string>

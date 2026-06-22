@@ -114,29 +114,35 @@ private fun VehicleCard(
         ) {
             VehicleImage(size = 64.dp)
             Spacer(Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+//                Text(
+//                    text = vehicle.name,
+//                    style = MaterialTheme.typography.titleMedium,
+//                    maxLines = 1,
+//                    overflow = TextOverflow.Ellipsis,
+//                )
                 Text(
-                    text = vehicle.name,
+                    text = "${vehicle.make} ${vehicle.model}",
                     style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = "${vehicle.make} · ${vehicle.model}",
-                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    text = vehicle.licensePlate,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
+                Card(
+                    shape = MaterialTheme.shapes.extraSmall,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                ) {
+                    Text(
+                        text = vehicle.licensePlate,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                    )
+                }
             }
             if (vehicle.isPrimary) {
                 MaterialSymbol(
-                    symbolName = "star",
+                    symbolName = "favorite",
                     contentDescription = stringResource(R.string.garage_primary_marker),
                     fill = true,
                     color = MaterialTheme.colorScheme.primary,
@@ -151,13 +157,14 @@ private fun VehicleCard(
 internal fun VehicleImage(
     size: Dp,
     modifier: Modifier = Modifier,
+    color: Color? = null
 ) {
     Box(
         modifier =
             modifier
                 .size(size)
                 .clip(MaterialTheme.shapes.large)
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                .background(color?: MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
     ) {
         MaterialSymbol(

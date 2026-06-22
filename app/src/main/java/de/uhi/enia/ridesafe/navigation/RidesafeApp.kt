@@ -167,6 +167,10 @@ fun RidesafeApp() {
                                 isTabSwitch = false
                                 garageStack.removeLastOrNull()
                             },
+                            onPopToGarage = {
+                                isTabSwitch = false
+                                while (garageStack.size > 1) garageStack.removeLastOrNull()
+                            },
                         )
                         settingsEntries(
                             unitSystem = unitSystem,

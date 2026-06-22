@@ -15,11 +15,16 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object AddVehicleRoute : NavKey
 
+@Serializable data class EditVehicleRoute(
+    val id: Long,
+) : NavKey
+
 /**
- * Garage tab entries: list -> detail / add. Navigation goes through [onOpen] / [onBack]
- * (the caller mutates the garage back stack and resets the tab-switch flag, so these
- * transitions slide). [viewModel] is a single app-scoped instance shared by all three
- * screens, so an insert from the add screen propagates to the list via its Room
+ * Garage tab entries: list -> detail -> edit, plus add. Navigation goes through [onOpen] /
+ * [onBack] (the caller mutates the garage back stack and resets the tab-switch flag, so
+ * these transitions slide); [onPopToGarage] returns straight to the list after a delete,
+ * regardless of how deep the stack is. [viewModel] is a single app-scoped instance shared
+ * by all screens, so an insert/edit/delete propagates via its Room
  * [kotlinx.coroutines.flow.Flow].
  */
 fun EntryProviderScope<NavKey>.garageEntries(
@@ -27,6 +32,7 @@ fun EntryProviderScope<NavKey>.garageEntries(
     unitSystem: UnitSystemSetting,
     onOpen: (NavKey) -> Unit,
     onBack: () -> Unit,
+    onPopToGarage: () -> Unit,
 ) {
     entry<GarageRoute> {
         val vehicles by viewModel.vehicles.collectAsState(initial = emptyList())
@@ -42,10 +48,16 @@ fun EntryProviderScope<NavKey>.garageEntries(
             vehicle = vehicle,
             unitSystem = unitSystem,
             onBack = onBack,
+            onEdit = { onOpen(EditVehicleRoute(key.id)) },
+            onDelete = {
+                vehicle?.let(viewModel::deleteVehicle)
+                onPopToGarage()
+            },
         )
     }
     entry<AddVehicleRoute> {
-        AddVehicleScreen(
+        VehicleFormScreen(
+            existing = null,
             unitSystem = unitSystem,
             onSave = { vehicle, makePrimary ->
                 viewModel.addVehicle(vehicle, makePrimary)
@@ -53,5 +65,24 @@ fun EntryProviderScope<NavKey>.garageEntries(
             },
             onBack = onBack,
         )
+    }
+    entry<EditVehicleRoute> { key ->
+        // Render only once the vehicle has loaded — the form snapshots its initial fields.
+        val vehicle by viewModel.vehicle(key.id).collectAsState(initial = null)
+        vehicle?.let { loaded ->
+            VehicleFormScreen(
+                existing = loaded,
+                unitSystem = unitSystem,
+                onSave = { updated, makePrimary ->
+                    viewModel.updateVehicle(updated, makePrimary)
+                    onBack()
+                },
+                onBack = onBack,
+                onDelete = {
+                    viewModel.deleteVehicle(loaded)
+                    onPopToGarage()
+                },
+            )
+        }
     }
 }

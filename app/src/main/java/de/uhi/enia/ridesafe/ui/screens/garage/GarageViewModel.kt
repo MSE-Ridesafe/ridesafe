@@ -28,4 +28,15 @@ class GarageViewModel(
     ) {
         viewModelScope.launch { dao.addVehicle(vehicle, makePrimary) }
     }
+
+    fun updateVehicle(
+        vehicle: Vehicle,
+        makePrimary: Boolean,
+    ) {
+        viewModelScope.launch { dao.updateVehicle(vehicle, makePrimary) }
+    }
+
+    fun deleteVehicle(vehicle: Vehicle) {
+        viewModelScope.launch { dao.deleteVehicle(vehicle) }
+    }
 }

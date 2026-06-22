@@ -40,15 +40,15 @@ externally — all analytics and safety scoring happen locally.
 
 ### 3.2 Garage (vehicles)
 
-| ID     | P | Requirement                                                                                                  | Status | Related                        |
-|--------|---|--------------------------------------------------------------------------------------------------------------|--------|--------------------------------|
-| GAR-01 | M | Ridesafe shall provide a Garage page.                                                                        | Draft  | DR-VEH, NAV-01                 |
-| GAR-02 | M | The Garage shall let the user create a vehicle.                                                              | Draft  | DR-VEH                         |
-| GAR-03 | M | The Garage shall let the user edit an existing vehicle.                                                      | Draft  | DR-VEH                         |
-| GAR-04 | M | The Garage shall let the user delete a vehicle.                                                              | Draft  | DR-VEH, UX-01                  |
-| GAR-05 | M | The Garage shall display a list of vehicles showing key fields (make, model, license plate, primary marker). | Draft  | DR-VEH                         |
-| GAR-06 | M | The Garage shall display a detailed view of a vehicle showing all its fields.                                | Draft  | DR-VEH                         |
-| GAR-07 | M | The Garage shall let the user designate exactly one vehicle as the primary vehicle.                          | Draft  | DR-RID, DR-VEH, TRK-02, TRK-08 |
+| ID     | P | Requirement                                                                                                  | Status      | Related                        |
+|--------|---|--------------------------------------------------------------------------------------------------------------|-------------|--------------------------------|
+| GAR-01 | M | Ridesafe shall provide a Garage page.                                                                        | Draft       | DR-VEH, NAV-01                 |
+| GAR-02 | M | The Garage shall let the user create a vehicle.                                                              | Draft       | DR-VEH                         |
+| GAR-03 | M | The Garage shall let the user edit an existing vehicle.                                                      | Implemented | DR-VEH                         |
+| GAR-04 | M | The Garage shall let the user delete a vehicle.                                                              | Implemented | DR-VEH, UX-01                  |
+| GAR-05 | M | The Garage shall display a list of vehicles showing key fields (make, model, license plate, primary marker). | Draft       | DR-VEH                         |
+| GAR-06 | M | The Garage shall display a detailed view of a vehicle showing all its fields.                                | Draft       | DR-VEH                         |
+| GAR-07 | M | The Garage shall let the user designate exactly one vehicle as the primary vehicle.                          | Draft       | DR-RID, DR-VEH, TRK-02, TRK-08 |
 
 ### 3.3 Logbook (rides)
 
