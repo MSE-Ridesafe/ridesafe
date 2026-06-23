@@ -21,16 +21,21 @@ interface RideDao {
     @Insert
     suspend fun insert(ride: Ride): Long
 
-    /** Finalize a ride once recording stops (end time + computed summary). */
+    /**
+     * Finalize a ride once recording stops: end time, start/end position, and max speed.
+     * Distance and avg speed stay null here — the analysis pass over the sample file fills them.
+     */
     @Query(
-        "UPDATE rides SET endedAtEpochMs = :endedAtEpochMs, distanceMeters = :distanceMeters, " +
-            "avgSpeedMps = :avgSpeedMps, maxSpeedMps = :maxSpeedMps WHERE id = :id",
+        "UPDATE rides SET endedAtEpochMs = :endedAtEpochMs, startLat = :startLat, startLon = :startLon, " +
+            "endLat = :endLat, endLon = :endLon, maxSpeedMps = :maxSpeedMps WHERE id = :id",
     )
     suspend fun finalize(
         id: Long,
         endedAtEpochMs: Long,
-        distanceMeters: Double,
-        avgSpeedMps: Double,
+        startLat: Double?,
+        startLon: Double?,
+        endLat: Double?,
+        endLon: Double?,
         maxSpeedMps: Double,
     )
 

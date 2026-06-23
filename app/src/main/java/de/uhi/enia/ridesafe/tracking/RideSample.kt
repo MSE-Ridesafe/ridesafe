@@ -45,15 +45,12 @@ data class MotionSample(
     val w: Float? = null,
 ) : RideSample
 
-data class RideSummary(
-    val distanceMeters: Double,
-    val avgSpeedMps: Double,
-    val maxSpeedMps: Double,
-)
-
 private const val EARTH_RADIUS_M = 6_371_000.0
 
-/** Great-circle distance between two WGS84 points, in meters. */
+/**
+ * Great-circle distance between two WGS84 points, in meters.
+ * ponytail: kept as the primitive for the deferred dataset distance calculation (ANL-02).
+ */
 fun haversineMeters(
     lat1: Double,
     lon1: Double,
@@ -70,36 +67,24 @@ fun haversineMeters(
 }
 
 /**
- * Ride summary fed one GPS fix at a time: distance is the sum of consecutive great-circle hops,
- * avg speed is distance over the wall-clock span, max speed is the fastest reported fix. Motion
- * samples don't affect the summary. One implementation, used live while recording and in batch
- * via [summarize] when recovering a dangling ride from its file.
- *
- * ponytail: raw consecutive-hop sum; GPS noise inflates distance slightly. Accuracy-gating /
- * smoothing is analysis-layer work (TRK-06), not recording.
+ * Record-time ride statistics, fed one GPS fix at a time. Captures the endpoints (start/end
+ * position, DR-RID) and the fastest reported fix. Distance and average speed are deferred to the
+ * analysis pass over the sample file (ANL-02), so they're left for that pass to fill, not here.
  */
 class RideStats {
-    private var first: LocationSample? = null
-    private var last: LocationSample? = null
-
-    var distanceMeters = 0.0
+    var startFix: LocationSample? = null
+        private set
+    var endFix: LocationSample? = null
         private set
     var maxSpeedMps = 0.0
         private set
 
     fun add(loc: LocationSample) {
-        last?.let { distanceMeters += haversineMeters(it.lat, it.lon, loc.lat, loc.lon) }
-        if (first == null) first = loc
-        last = loc
+        if (startFix == null) startFix = loc
+        endFix = loc
         if (loc.speed > maxSpeedMps) maxSpeedMps = loc.speed.toDouble()
-    }
-
-    fun summary(): RideSummary {
-        val span = first?.let { f -> last?.let { l -> (l.t - f.t) / 1_000_000_000.0 } } ?: 0.0
-        val avg = if (span > 0) distanceMeters / span else 0.0
-        return RideSummary(distanceMeters, avg, maxSpeedMps)
     }
 }
 
-fun summarize(locations: List<LocationSample>): RideSummary =
-    RideStats().apply { locations.forEach(::add) }.summary()
+/** Build [RideStats] from a recorded location stream — used when recovering a ride from its file. */
+fun rideStatsOf(locations: List<LocationSample>): RideStats = RideStats().apply { locations.forEach(::add) }

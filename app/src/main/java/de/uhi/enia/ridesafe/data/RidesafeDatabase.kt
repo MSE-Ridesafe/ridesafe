@@ -66,7 +66,42 @@ private val MIGRATION_3_4 =
         }
     }
 
-@Database(entities = [Vehicle::class, Ride::class], version = 4, exportSchema = false)
+/**
+ * Adds start/end GPS position to rides, and makes distanceMeters/avgSpeedMps nullable (deferred to
+ * the analysis pass, ANL-02). SQLite can't drop NOT NULL in place, so the table is recreated and
+ * existing rows copied over; the new position columns default to null.
+ */
+private val MIGRATION_4_5 =
+    object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE rides_new (" +
+                    "id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+                    "vehicleId INTEGER, " +
+                    "startedAtEpochMs INTEGER NOT NULL, " +
+                    "startedElapsedNanos INTEGER NOT NULL, " +
+                    "endedAtEpochMs INTEGER, " +
+                    "startLat REAL, " +
+                    "startLon REAL, " +
+                    "endLat REAL, " +
+                    "endLon REAL, " +
+                    "distanceMeters REAL, " +
+                    "avgSpeedMps REAL, " +
+                    "maxSpeedMps REAL NOT NULL, " +
+                    "sampleFile TEXT NOT NULL)",
+            )
+            db.execSQL(
+                "INSERT INTO rides_new (id, vehicleId, startedAtEpochMs, startedElapsedNanos, " +
+                    "endedAtEpochMs, distanceMeters, avgSpeedMps, maxSpeedMps, sampleFile) " +
+                    "SELECT id, vehicleId, startedAtEpochMs, startedElapsedNanos, endedAtEpochMs, " +
+                    "distanceMeters, avgSpeedMps, maxSpeedMps, sampleFile FROM rides",
+            )
+            db.execSQL("DROP TABLE rides")
+            db.execSQL("ALTER TABLE rides_new RENAME TO rides")
+        }
+    }
+
+@Database(entities = [Vehicle::class, Ride::class], version = 5, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class RidesafeDatabase : RoomDatabase() {
     abstract fun vehicleDao(): VehicleDao
@@ -83,7 +118,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         context.applicationContext,
                         RidesafeDatabase::class.java,
                         "ridesafe.db",
-                    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build()
                     .also { instance = it }
             }

@@ -2,10 +2,11 @@ package de.uhi.enia.ridesafe.tracking
 
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Covers the non-trivial pure logic: the [summarize] math and the on-disk sample round-trip. */
+/** Covers the non-trivial pure logic: the [RideStats] endpoints/speed and the on-disk round-trip. */
 class RideSampleTest {
     private val json =
         Json {
@@ -21,9 +22,11 @@ class RideSampleTest {
     ) = LocationSample(t = tNanos, lat = lat, lon = lon, alt = 0.0, speed = speed, bearing = 0f, accuracy = 0f)
 
     @Test
-    fun emptyOrSinglePointHasNoDistance() {
-        assertEquals(RideSummary(0.0, 0.0, 0.0), summarize(emptyList()))
-        assertEquals(0.0, summarize(listOf(loc(0, 50.0, 8.0))).distanceMeters, 0.0)
+    fun emptyStreamHasNoEndpoints() {
+        val stats = rideStatsOf(emptyList())
+        assertNull(stats.startFix)
+        assertNull(stats.endFix)
+        assertEquals(0.0, stats.maxSpeedMps, 0.0)
     }
 
     @Test
@@ -34,18 +37,20 @@ class RideSampleTest {
     }
 
     @Test
-    fun summaryAccumulatesDistanceAndSpeeds() {
-        // Two 1°-lat hops over 200s => ~222 km, avg ~1111 m/s; max = fastest reported fix.
-        val samples =
-            listOf(
-                loc(0, 50.0, 8.0, speed = 10f),
-                loc(100_000_000_000, 51.0, 8.0, speed = 30f),
-                loc(200_000_000_000, 52.0, 8.0, speed = 20f),
+    fun statsCaptureFirstLastFixAndMaxSpeed() {
+        val stats =
+            rideStatsOf(
+                listOf(
+                    loc(0, 50.0, 8.0, speed = 10f),
+                    loc(100, 51.0, 8.5, speed = 30f),
+                    loc(200, 52.0, 9.0, speed = 20f),
+                ),
             )
-        val s = summarize(samples)
-        assertEquals(222_390.0, s.distanceMeters, 1_200.0)
-        assertEquals(s.distanceMeters / 200.0, s.avgSpeedMps, 0.001)
-        assertEquals(30.0, s.maxSpeedMps, 0.0)
+        assertEquals(50.0, stats.startFix!!.lat, 0.0)
+        assertEquals(8.0, stats.startFix!!.lon, 0.0)
+        assertEquals(52.0, stats.endFix!!.lat, 0.0)
+        assertEquals(9.0, stats.endFix!!.lon, 0.0)
+        assertEquals(30.0, stats.maxSpeedMps, 0.0) // fastest reported fix
     }
 
     @Test

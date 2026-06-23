@@ -29,8 +29,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.BufferedWriter
 import java.io.File
@@ -152,7 +150,7 @@ class RideRecordingEngine(
             runCatching {
                 val file = File(dir, ride.sampleFile)
                 val locations = if (file.exists()) readLocations(file) else emptyList()
-                val summary = summarize(locations)
+                val stats = rideStatsOf(locations)
                 val lastT = locations.lastOrNull()?.t
                 val endedMs =
                     if (lastT != null) {
@@ -160,8 +158,16 @@ class RideRecordingEngine(
                     } else {
                         ride.startedAtEpochMs
                     }
-                dao.finalize(ride.id, endedMs, summary.distanceMeters, summary.avgSpeedMps, summary.maxSpeedMps)
-                Log.i(TAG, "recovered ride ${ride.id}: ${summary.distanceMeters}m from ${locations.size} fixes")
+                dao.finalize(
+                    ride.id,
+                    endedMs,
+                    stats.startFix?.lat,
+                    stats.startFix?.lon,
+                    stats.endFix?.lat,
+                    stats.endFix?.lon,
+                    stats.maxSpeedMps,
+                )
+                Log.i(TAG, "recovered ride ${ride.id}: ${locations.size} fixes")
             }.onFailure { Log.e(TAG, "recover failed for ride ${ride.id}", it) }
         }
     }
@@ -229,17 +235,19 @@ class RideRecordingEngine(
             writerJob.join()
             handlerThread?.quitSafely()
 
-            val summary = stats.summary() // safe to read: writeLoop finished (join above)
+            // safe to read stats: writeLoop finished (join above)
             if (rideId != 0L) {
                 dao.finalize(
                     rideId,
                     System.currentTimeMillis(),
-                    summary.distanceMeters,
-                    summary.avgSpeedMps,
-                    summary.maxSpeedMps,
+                    stats.startFix?.lat,
+                    stats.startFix?.lon,
+                    stats.endFix?.lat,
+                    stats.endFix?.lon,
+                    stats.maxSpeedMps,
                 )
             }
-            Log.i(TAG, "stopped ride $rideId: ${summary.distanceMeters}m")
+            Log.i(TAG, "stopped ride $rideId: maxSpeed=${stats.maxSpeedMps} mps")
         }
 
         // Sole owner of the file handle; flushes on each GPS fix to bound crash loss to ~1s (NFR-06).
@@ -247,7 +255,7 @@ class RideRecordingEngine(
         private suspend fun writeLoop(file: File) =
             withContext(Dispatchers.IO) {
                 BufferedWriter(
-                    OutputStreamWriter(GZIPOutputStream(FileOutputStream(file), /* syncFlush = */ true), Charsets.UTF_8),
+                    OutputStreamWriter(GZIPOutputStream(FileOutputStream(file)), Charsets.UTF_8),
                 ).use { w ->
                     for (sample in channel) {
                         w.write(json.encodeToString<RideSample>(sample))

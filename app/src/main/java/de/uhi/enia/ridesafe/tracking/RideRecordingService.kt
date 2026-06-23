@@ -44,13 +44,18 @@ class RideRecordingService : Service() {
                     if (intent.hasExtra(EXTRA_VEHICLE_ID)) intent.getLongExtra(EXTRA_VEHICLE_ID, -1L) else null
                 engine.onTripStart(vehicleId)
             }
-            ACTION_STOP ->
+
+            ACTION_STOP -> {
                 scope.launch {
                     engine.stopAndAwait() // finalize the ride before the process can die
                     ServiceCompat.stopForeground(this@RideRecordingService, ServiceCompat.STOP_FOREGROUND_REMOVE)
                     stopSelf()
                 }
-            else -> stopSelf()
+            }
+
+            else -> {
+                stopSelf()
+            }
         }
         // Killed mid-trip => the open ride is finalized by recovery on next app start (NFR-06),
         // so there's nothing to resume from a null re-delivery.
