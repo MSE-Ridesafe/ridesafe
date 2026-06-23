@@ -26,6 +26,12 @@
     <string name="unit_system_imperial">Imperial (Meilen)</string>
     <string name="sample_distance_label">Beispielentfernung: %1$s</string>
 
+    <string name="settings_auto_track_title">Automatische Fahrtaufzeichnung</string>
+    <string name="settings_auto_track_summary">Fahrten automatisch erkennen und aufzeichnen</string>
+    <string name="auto_track_off">Aus</string>
+    <string name="auto_track_paired">Nur gekoppelte Fahrzeuge</string>
+    <string name="auto_track_any">Beliebiges Fahrzeug</string>
+
     <!-- Garage -->
     <string name="action_back">Zurück</string>
     <string name="action_save">Speichern</string>
@@ -55,6 +61,12 @@
     <string name="vehicle_label_optional">%1$s (optional)</string>
     <string name="vehicle_section_overview">Übersicht</string>
     <string name="vehicle_section_fuel">Kraftstoff</string>
+    <string name="vehicle_section_tracking">Automatische Erfassung</string>
+    <string name="vehicle_bluetooth_link">Bluetooth-Gerät verknüpfen</string>
+    <string name="vehicle_bluetooth_none">Noch kein Gerät verknüpft</string>
+    <string name="vehicle_bluetooth_remove">Gerät entfernen</string>
+    <string name="vehicle_bluetooth_pick_title">Gerät auswählen</string>
+    <string name="vehicle_bluetooth_pick_empty">Keine gekoppelten Bluetooth-Geräte gefunden</string>
     <string name="add_vehicle_set_primary">Als Primärfahrzeug festlegen</string>
 
     <string name="fuel_type_petrol">Benzin</string>

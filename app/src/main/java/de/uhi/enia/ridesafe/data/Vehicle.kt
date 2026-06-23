@@ -1,5 +1,6 @@
 package de.uhi.enia.ridesafe.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -21,6 +22,8 @@ data class Vehicle(
     val fuelType: FuelType,
     val mileageKm: Int,
     val isPrimary: Boolean = false,
+    // MAC addresses of Bluetooth devices mapped to this vehicle for auto-tracking (GAR-08, TRK-08).
+    @ColumnInfo(defaultValue = "") val bluetoothAddresses: Set<String> = emptySet(),
     val year: Int? = null,
     val fuelEconomy: Double? = null,
     val tankSize: Double? = null,

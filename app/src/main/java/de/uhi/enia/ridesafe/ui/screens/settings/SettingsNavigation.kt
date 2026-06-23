@@ -2,6 +2,7 @@ package de.uhi.enia.ridesafe.ui.screens.settings
 
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
+import de.uhi.enia.ridesafe.tracking.AutoTrackMode
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import kotlinx.serialization.Serializable
 
@@ -10,8 +11,15 @@ import kotlinx.serialization.Serializable
 fun EntryProviderScope<NavKey>.settingsEntries(
     unitSystem: UnitSystemSetting,
     onUnitSystemChange: (UnitSystemSetting) -> Unit,
+    autoTrackMode: AutoTrackMode,
+    onAutoTrackModeChange: (AutoTrackMode) -> Unit,
 ) {
     entry<SettingsRoute> {
-        SettingsScreen(unitSystem = unitSystem, onUnitSystemChange = onUnitSystemChange)
+        SettingsScreen(
+            unitSystem = unitSystem,
+            onUnitSystemChange = onUnitSystemChange,
+            autoTrackMode = autoTrackMode,
+            onAutoTrackModeChange = onAutoTrackModeChange,
+        )
     }
 }

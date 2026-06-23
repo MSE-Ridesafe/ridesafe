@@ -39,4 +39,19 @@ class GarageViewModel(
     fun deleteVehicle(vehicle: Vehicle) {
         viewModelScope.launch { dao.deleteVehicle(vehicle) }
     }
+
+    /** Map/unmap a Bluetooth device to a vehicle for auto-tracking (GAR-08). */
+    fun linkBluetooth(
+        vehicle: Vehicle,
+        address: String,
+    ) {
+        viewModelScope.launch { dao.update(vehicle.copy(bluetoothAddresses = vehicle.bluetoothAddresses + address)) }
+    }
+
+    fun unlinkBluetooth(
+        vehicle: Vehicle,
+        address: String,
+    ) {
+        viewModelScope.launch { dao.update(vehicle.copy(bluetoothAddresses = vehicle.bluetoothAddresses - address)) }
+    }
 }
