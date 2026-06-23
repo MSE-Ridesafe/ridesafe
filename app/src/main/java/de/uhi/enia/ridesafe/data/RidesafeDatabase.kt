@@ -8,6 +8,9 @@ import androidx.room.TypeConverter
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import kotlinx.serialization.json.Json
+
+private val deviceJson = Json { ignoreUnknownKeys = true }
 
 class Converters {
     @TypeConverter
@@ -16,12 +19,11 @@ class Converters {
     @TypeConverter
     fun stringToFuelType(value: String): FuelType = FuelType.valueOf(value)
 
-    // MAC addresses are colon-separated hex, so a comma join is unambiguous.
     @TypeConverter
-    fun stringSetToString(value: Set<String>): String = value.joinToString(",")
+    fun devicesToString(value: List<BtDevice>): String = deviceJson.encodeToString(value)
 
     @TypeConverter
-    fun stringToStringSet(value: String): Set<String> = if (value.isEmpty()) emptySet() else value.split(",").toSet()
+    fun stringToDevices(value: String): List<BtDevice> = if (value.isBlank()) emptyList() else deviceJson.decodeFromString(value)
 }
 
 /** Adds Vehicle.bluetoothAddresses (GAR-08) without dropping existing vehicles (NFR-06). */
@@ -32,7 +34,20 @@ private val MIGRATION_1_2 =
         }
     }
 
-@Database(entities = [Vehicle::class], version = 2, exportSchema = false)
+/**
+ * Replaces the address-only column with one that also stores the device name. Any existing
+ * mappings (addresses only) are dropped — the user re-links once to capture the names; the
+ * vehicles themselves are untouched.
+ */
+private val MIGRATION_2_3 =
+    object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE vehicles DROP COLUMN bluetoothAddresses")
+            db.execSQL("ALTER TABLE vehicles ADD COLUMN bluetoothDevices TEXT NOT NULL DEFAULT '[]'")
+        }
+    }
+
+@Database(entities = [Vehicle::class], version = 3, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class RidesafeDatabase : RoomDatabase() {
     abstract fun vehicleDao(): VehicleDao
@@ -47,7 +62,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         context.applicationContext,
                         RidesafeDatabase::class.java,
                         "ridesafe.db",
-                    ).addMigrations(MIGRATION_1_2)
+                    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                     .also { instance = it }
             }

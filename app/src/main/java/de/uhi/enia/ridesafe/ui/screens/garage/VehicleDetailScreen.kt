@@ -8,7 +8,6 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -51,6 +50,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import de.uhi.enia.ridesafe.R
+import de.uhi.enia.ridesafe.data.BtDevice
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.tracking.BluetoothDevices
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
@@ -66,7 +66,7 @@ fun VehicleDetailScreen(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
-    onLinkBluetooth: (String) -> Unit = {},
+    onLinkBluetooth: (BtDevice) -> Unit = {},
     onUnlinkBluetooth: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -148,7 +148,7 @@ fun VehicleDetailScreen(
             )
 
             TrackingCard(
-                addresses = vehicle.bluetoothAddresses,
+                devices = vehicle.bluetoothDevices,
                 onLink = {
                     if (hasBluetoothConnect(context)) {
                         showBluetoothPicker = true
@@ -182,12 +182,18 @@ fun VehicleDetailScreen(
     }
 
     if (showBluetoothPicker) {
+        val linkedAddresses =
+            vehicle
+                ?.bluetoothDevices
+                .orEmpty()
+                .map { it.address }
+                .toSet()
         BluetoothPickerDialog(
             // Hide devices already linked to this vehicle.
-            devices = BluetoothDevices.bonded(context).filterNot { it.address in vehicle?.bluetoothAddresses.orEmpty() },
-            onPick = { address ->
+            devices = BluetoothDevices.bonded(context).filterNot { it.address in linkedAddresses },
+            onPick = { device ->
                 showBluetoothPicker = false
-                onLinkBluetooth(address)
+                onLinkBluetooth(device)
             },
             onDismiss = { showBluetoothPicker = false },
         )
@@ -307,7 +313,7 @@ private fun DetailCard(
 /** Linked Bluetooth devices for auto-tracking (GAR-08): list with remove + a link action. */
 @Composable
 private fun TrackingCard(
-    addresses: Set<String>,
+    devices: List<BtDevice>,
     onLink: () -> Unit,
     onRemove: (String) -> Unit,
 ) {
@@ -323,7 +329,7 @@ private fun TrackingCard(
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
-            if (addresses.isEmpty()) {
+            if (devices.isEmpty()) {
                 Text(
                     text = stringResource(R.string.vehicle_bluetooth_none),
                     style = MaterialTheme.typography.bodyMedium,
@@ -331,7 +337,7 @@ private fun TrackingCard(
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
                 )
             } else {
-                addresses.forEach { address ->
+                devices.forEach { device ->
                     Row(
                         modifier =
                             Modifier
@@ -341,12 +347,15 @@ private fun TrackingCard(
                     ) {
                         MaterialSymbol(symbolName = "bluetooth", contentDescription = null, size = 20.dp)
                         Spacer(Modifier.width(12.dp))
-                        Text(
-                            text = address,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.weight(1f),
-                        )
-                        IconButton(onClick = { onRemove(address) }) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = device.name, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = device.address,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        IconButton(onClick = { onRemove(device.address) }) {
                             MaterialSymbol(
                                 symbolName = "close",
                                 contentDescription = stringResource(R.string.vehicle_bluetooth_remove),
@@ -377,7 +386,7 @@ private fun TrackingCard(
 @Composable
 private fun BluetoothPickerDialog(
     devices: List<BluetoothDevices.Entry>,
-    onPick: (String) -> Unit,
+    onPick: (BtDevice) -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
@@ -394,7 +403,7 @@ private fun BluetoothPickerDialog(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .clickable { onPick(entry.address) }
+                                    .clickable { onPick(BtDevice(entry.address, entry.name)) }
                                     .padding(vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {

@@ -104,6 +104,6 @@ class ActivityTransitionReceiver : BroadcastReceiver() {
             .getInstance(context)
             .vehicleDao()
             .all()
-            .flatMap { vehicle -> vehicle.bluetoothAddresses.map { it.uppercase() to vehicle.id } }
+            .flatMap { vehicle -> vehicle.bluetoothDevices.map { it.address.uppercase() to vehicle.id } }
             .toMap()
 }

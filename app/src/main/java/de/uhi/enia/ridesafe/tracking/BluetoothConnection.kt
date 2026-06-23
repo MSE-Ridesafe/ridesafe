@@ -73,6 +73,6 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
             .getInstance(context)
             .vehicleDao()
             .all()
-            .firstOrNull { vehicle -> vehicle.bluetoothAddresses.any { it.equals(address, ignoreCase = true) } }
+            .firstOrNull { vehicle -> vehicle.bluetoothDevices.any { it.address.equals(address, ignoreCase = true) } }
             ?.id
 }
