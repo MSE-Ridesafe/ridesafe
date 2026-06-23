@@ -20,12 +20,17 @@ import com.google.android.gms.location.Priority
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RideDao
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.BufferedWriter
 import java.io.File
@@ -73,7 +78,9 @@ class RideRecordingEngine(
         val vehicleId: Long?,
     ) : Cmd
 
-    private data object Stop : Cmd
+    private data class Stop(
+        val done: CompletableDeferred<Unit>? = null,
+    ) : Cmd
 
     private data object Recover : Cmd
 
@@ -87,10 +94,11 @@ class RideRecordingEngine(
                 runCatching {
                     when (cmd) {
                         is Start -> startSession(cmd.vehicleId)
-                        Stop -> stopSession()
+                        is Stop -> stopSession()
                         Recover -> recover()
                     }
                 }.onFailure { Log.e(TAG, "command $cmd failed", it) }
+                if (cmd is Stop) cmd.done?.complete(Unit)
             }
         }
     }
@@ -100,7 +108,19 @@ class RideRecordingEngine(
     }
 
     override fun onTripEnd() {
-        commands.trySend(Stop)
+        commands.trySend(Stop())
+    }
+
+    /** Stop recording and suspend until the ride is finalized — used by [RideRecordingService]. */
+    suspend fun stopAndAwait() {
+        val done = CompletableDeferred<Unit>()
+        commands.send(Stop(done))
+        done.await()
+    }
+
+    /** Dispose the engine's command consumer; call when the owner is done with it. */
+    fun close() {
+        scope.cancel()
     }
 
     /** Finalize rides left open by a crash/kill (NFR-06). Call once on app start. */
@@ -147,22 +167,23 @@ class RideRecordingEngine(
     }
 
     /** Tolerates a truncated/corrupt tail (a crash mid-write) by returning what parsed cleanly. */
-    private fun readLocations(file: File): List<LocationSample> {
-        val out = ArrayList<LocationSample>()
-        try {
-            GZIPInputStream(FileInputStream(file)).bufferedReader().use { r ->
-                var line = r.readLine()
-                while (line != null) {
-                    (runCatching { json.decodeFromString<RideSample>(line) }.getOrNull() as? LocationSample)
-                        ?.let(out::add)
-                    line = r.readLine()
+    private suspend fun readLocations(file: File): List<LocationSample> =
+        withContext(Dispatchers.IO) {
+            val out = ArrayList<LocationSample>()
+            try {
+                GZIPInputStream(FileInputStream(file)).bufferedReader().use { r ->
+                    var line = r.readLine()
+                    while (line != null) {
+                        (runCatching { json.decodeFromString<RideSample>(line) }.getOrNull() as? LocationSample)
+                            ?.let(out::add)
+                        line = r.readLine()
+                    }
                 }
+            } catch (e: Exception) {
+                Log.w(TAG, "truncated sample file ${file.name}; recovered ${out.size} fixes", e)
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "truncated sample file ${file.name}; recovered ${out.size} fixes", e)
+            out
         }
-        return out
-    }
 
     private inner class Session(
         private val vehicleId: Long?,
@@ -223,21 +244,22 @@ class RideRecordingEngine(
 
         // Sole owner of the file handle; flushes on each GPS fix to bound crash loss to ~1s (NFR-06).
         // ponytail: gzip syncFlush survives an app crash (data is in the OS cache), not a power cut.
-        private suspend fun writeLoop(file: File) {
-            BufferedWriter(
-                OutputStreamWriter(GZIPOutputStream(FileOutputStream(file), /* syncFlush = */ true), Charsets.UTF_8),
-            ).use { w ->
-                for (sample in channel) {
-                    w.write(json.encodeToString<RideSample>(sample))
-                    w.newLine()
-                    if (sample is LocationSample) {
-                        stats.add(sample)
-                        w.flush()
+        private suspend fun writeLoop(file: File) =
+            withContext(Dispatchers.IO) {
+                BufferedWriter(
+                    OutputStreamWriter(GZIPOutputStream(FileOutputStream(file), /* syncFlush = */ true), Charsets.UTF_8),
+                ).use { w ->
+                    for (sample in channel) {
+                        w.write(json.encodeToString<RideSample>(sample))
+                        w.newLine()
+                        if (sample is LocationSample) {
+                            stats.add(sample)
+                            w.flush()
+                        }
                     }
+                    w.flush()
                 }
-                w.flush()
             }
-        }
 
         private fun registerSensors(handler: Handler) {
             val sm = sensorManager ?: return

@@ -81,4 +81,8 @@
     <string name="unit_fuel_economy">L/100 km</string>
     <string name="unit_liter">L</string>
     <string name="value_not_set">&#8212;</string>
+
+    <string name="recording_channel_name">Fahrtaufzeichnung</string>
+    <string name="recording_notification_title">Fahrt wird aufgezeichnet</string>
+    <string name="recording_notification_text">Deine Fahrt wird im Hintergrund aufgezeichnet.</string>
 </resources>

@@ -1,7 +1,5 @@
 package de.uhi.enia.ridesafe.tracking
 
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -9,7 +7,11 @@ import org.junit.Test
 
 /** Covers the non-trivial pure logic: the [summarize] math and the on-disk sample round-trip. */
 class RideSampleTest {
-    private val json = Json { classDiscriminator = "ty"; encodeDefaults = false }
+    private val json =
+        Json {
+            classDiscriminator = "ty"
+            encodeDefaults = false
+        }
 
     private fun loc(
         tNanos: Long,
