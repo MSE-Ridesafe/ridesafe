@@ -47,10 +47,31 @@ private val MIGRATION_2_3 =
         }
     }
 
-@Database(entities = [Vehicle::class], version = 3, exportSchema = false)
+/** Adds the rides table (DR-RID) for ride recording; vehicles are untouched. */
+private val MIGRATION_3_4 =
+    object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS rides (" +
+                    "id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+                    "vehicleId INTEGER, " +
+                    "startedAtEpochMs INTEGER NOT NULL, " +
+                    "startedElapsedNanos INTEGER NOT NULL, " +
+                    "endedAtEpochMs INTEGER, " +
+                    "distanceMeters REAL NOT NULL, " +
+                    "avgSpeedMps REAL NOT NULL, " +
+                    "maxSpeedMps REAL NOT NULL, " +
+                    "sampleFile TEXT NOT NULL)",
+            )
+        }
+    }
+
+@Database(entities = [Vehicle::class, Ride::class], version = 4, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class RidesafeDatabase : RoomDatabase() {
     abstract fun vehicleDao(): VehicleDao
+
+    abstract fun rideDao(): RideDao
 
     companion object {
         @Volatile private var instance: RidesafeDatabase? = null
@@ -62,7 +83,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         context.applicationContext,
                         RidesafeDatabase::class.java,
                         "ridesafe.db",
-                    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                     .also { instance = it }
             }

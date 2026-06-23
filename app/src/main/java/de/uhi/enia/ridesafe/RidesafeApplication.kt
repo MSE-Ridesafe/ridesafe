@@ -2,6 +2,7 @@ package de.uhi.enia.ridesafe
 
 import android.app.Application
 import de.uhi.enia.ridesafe.tracking.AutoTrackPrefs
+import de.uhi.enia.ridesafe.tracking.RideRecordingEngine
 import de.uhi.enia.ridesafe.tracking.applyAutoTrackMode
 
 /**
@@ -14,5 +15,8 @@ class RidesafeApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         applyAutoTrackMode(this, AutoTrackPrefs.get(this))
+        // Finalize any ride left open by a crash/kill (NFR-06). The recorder is intentionally
+        // NOT yet wired to the auto-tracking trigger — that lands with the foreground service.
+        RideRecordingEngine(this).recoverDanglingAsync()
     }
 }

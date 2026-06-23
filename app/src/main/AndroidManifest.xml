@@ -7,6 +7,11 @@
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- Ride recording: GPS track (TRK-01). Background-location + foreground-service permissions
+         land with the foreground service in a later round. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <application
         android:name=".RidesafeApplication"
         android:allowBackup="true"
