@@ -1,9 +1,22 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
 }
+
+// Google Maps key: put MAPS_API_KEY in secrets.properties (gitignored, Android Studio never
+// touches it). local.properties is read first as a fallback. Injected as a manifest placeholder.
+val mapsApiKey: String =
+    Properties()
+        .apply {
+            listOf("local.properties", "secrets.properties")
+                .map { rootProject.file(it) }
+                .filter { it.exists() }
+                .forEach { f -> f.inputStream().use { load(it) } }
+        }.getProperty("MAPS_API_KEY", "")
 
 android {
     namespace = "de.uhi.enia.ridesafe"
@@ -17,6 +30,8 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildTypes {
@@ -53,6 +68,7 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.play.services.location)
+    implementation(libs.maps.compose)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

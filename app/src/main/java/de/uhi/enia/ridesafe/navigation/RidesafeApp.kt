@@ -38,6 +38,7 @@ import de.uhi.enia.ridesafe.ui.screens.garage.garageEntries
 import de.uhi.enia.ridesafe.ui.screens.home.HomeRoute
 import de.uhi.enia.ridesafe.ui.screens.home.homeEntries
 import de.uhi.enia.ridesafe.ui.screens.rides.RidesRoute
+import de.uhi.enia.ridesafe.ui.screens.rides.RidesViewModel
 import de.uhi.enia.ridesafe.ui.screens.rides.ridesEntries
 import de.uhi.enia.ridesafe.ui.screens.settings.SettingsRoute
 import de.uhi.enia.ridesafe.ui.screens.settings.settingsEntries
@@ -92,6 +93,9 @@ fun RidesafeApp() {
 
     // Shared across the garage list/detail/add screens; Room Flow is the source of truth.
     val garageViewModel: GarageViewModel = viewModel()
+
+    // Shared across the rides list/detail screens; Room Flow is the source of truth.
+    val ridesViewModel: RidesViewModel = viewModel()
 
     NavigationSuiteScaffold(
         // Native three-tier: navigation bar is the dimmest surface, the screen
@@ -158,7 +162,18 @@ fun RidesafeApp() {
                 entryProvider =
                     entryProvider {
                         homeEntries(unitSystem)
-                        ridesEntries()
+                        ridesEntries(
+                            viewModel = ridesViewModel,
+                            unitSystem = unitSystem,
+                            onOpen = {
+                                isTabSwitch = false
+                                ridesStack.add(it)
+                            },
+                            onBack = {
+                                isTabSwitch = false
+                                ridesStack.removeLastOrNull()
+                            },
+                        )
                         garageEntries(
                             viewModel = garageViewModel,
                             unitSystem = unitSystem,

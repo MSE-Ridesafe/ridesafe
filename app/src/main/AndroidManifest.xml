@@ -16,6 +16,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Google Maps tiles for the ride route view. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:name=".RidesafeApplication"
         android:allowBackup="true"
@@ -27,6 +30,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Ridesafe"
         android:localeConfig="@xml/locales_config">
+
+        <!-- Maps SDK key, injected from local.properties via a manifest placeholder. -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

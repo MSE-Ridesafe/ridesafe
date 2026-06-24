@@ -32,14 +32,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.BufferedWriter
 import java.io.File
-import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
-import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
 private const val TAG = "RideRecording"
-private const val RIDES_DIR = "rides"
 
 /**
  * Records a ride's GPS + motion stream (TRK-01/TRK-04). Implements [RideRecorder] so the
@@ -145,11 +142,11 @@ class RideRecordingEngine(
     }
 
     private suspend fun recover() {
-        val dir = File(appContext.filesDir, RIDES_DIR)
+        val dir = ridesDir(appContext)
         for (ride in dao.dangling()) {
             runCatching {
                 val file = File(dir, ride.sampleFile)
-                val locations = if (file.exists()) readLocations(file) else emptyList()
+                val locations = if (file.exists()) readRideLocations(file) else emptyList()
                 val stats = rideStatsOf(locations)
                 val lastT = locations.lastOrNull()?.t
                 val endedMs =
@@ -172,25 +169,6 @@ class RideRecordingEngine(
         }
     }
 
-    /** Tolerates a truncated/corrupt tail (a crash mid-write) by returning what parsed cleanly. */
-    private suspend fun readLocations(file: File): List<LocationSample> =
-        withContext(Dispatchers.IO) {
-            val out = ArrayList<LocationSample>()
-            try {
-                GZIPInputStream(FileInputStream(file)).bufferedReader().use { r ->
-                    var line = r.readLine()
-                    while (line != null) {
-                        (runCatching { json.decodeFromString<RideSample>(line) }.getOrNull() as? LocationSample)
-                            ?.let(out::add)
-                        line = r.readLine()
-                    }
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "truncated sample file ${file.name}; recovered ${out.size} fixes", e)
-            }
-            out
-        }
-
     private inner class Session(
         private val vehicleId: Long?,
     ) {
@@ -206,7 +184,7 @@ class RideRecordingEngine(
         private var sensorListener: SensorEventListener? = null
 
         suspend fun start() {
-            val dir = File(appContext.filesDir, RIDES_DIR).apply { mkdirs() }
+            val dir = ridesDir(appContext).apply { mkdirs() }
             val file = File(dir, fileName)
             writerJob = scope.launch { writeLoop(file) }
 

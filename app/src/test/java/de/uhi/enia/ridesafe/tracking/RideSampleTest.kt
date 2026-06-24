@@ -54,6 +54,19 @@ class RideSampleTest {
     }
 
     @Test
+    fun trackDistanceIsZeroForEmptyOrSingleFix() {
+        assertEquals(0.0, trackDistanceMeters(emptyList()), 0.0)
+        assertEquals(0.0, trackDistanceMeters(listOf(loc(0, 50.0, 8.0))), 0.0)
+    }
+
+    @Test
+    fun trackDistanceSumsConsecutiveLegs() {
+        // Two ~1-degree-latitude legs (~111.2 km each) should sum to ~222 km.
+        val d = trackDistanceMeters(listOf(loc(0, 50.0, 8.0), loc(1, 51.0, 8.0), loc(2, 52.0, 8.0)))
+        assertEquals(222_390.0, d, 1_200.0)
+    }
+
+    @Test
     fun samplesRoundTripThroughJsonPolymorphically() {
         val original: List<RideSample> =
             listOf(

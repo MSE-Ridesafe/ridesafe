@@ -82,6 +82,26 @@
     <string name="unit_liter">L</string>
     <string name="value_not_set">&#8212;</string>
 
+    <!-- Rides -->
+    <string name="rides_empty_title">No rides yet</string>
+    <string name="rides_empty_message">Recorded rides will show up here.</string>
+    <string name="ride_day_today">Today</string>
+    <string name="ride_day_yesterday">Yesterday</string>
+    <string name="ride_max_speed_short">max %1$s</string>
+    <string name="ride_open">Open ride</string>
+    <string name="ride_start_marker">Start</string>
+    <string name="ride_end_marker">End</string>
+    <string name="ride_detail_section_summary">Summary</string>
+    <string name="ride_detail_section_speed">Speed</string>
+    <string name="ride_detail_section_distance">Distance</string>
+    <string name="ride_detail_start">Start</string>
+    <string name="ride_detail_end">End</string>
+    <string name="ride_detail_duration">Duration</string>
+    <string name="ride_detail_max_speed">Max speed</string>
+    <string name="ride_detail_avg_speed">Average speed</string>
+    <string name="ride_detail_total_distance">Total distance</string>
+    <string name="ride_detail_no_gps">No GPS recorded for this ride</string>
+
     <string name="recording_channel_name">Ride recording</string>
     <string name="recording_notification_title">Recording ride</string>
     <string name="recording_notification_text">Tracking your trip in the background.</string>
