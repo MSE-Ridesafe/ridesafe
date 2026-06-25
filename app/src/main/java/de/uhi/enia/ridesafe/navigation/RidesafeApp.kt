@@ -29,6 +29,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import de.uhi.enia.ridesafe.tracking.AutoTrackPrefs
+import de.uhi.enia.ridesafe.tracking.applyAutoTrackMode
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.screens.garage.GarageRoute
 import de.uhi.enia.ridesafe.ui.screens.garage.GarageViewModel
@@ -64,6 +66,7 @@ private const val FADE_MS = 100 // quick cross-fade between tabs
 fun RidesafeApp() {
     val context = LocalContext.current
     var unitSystem by rememberSaveable { mutableStateOf(UnitPrefs.get(context)) }
+    var autoTrackMode by rememberSaveable { mutableStateOf(AutoTrackPrefs.get(context)) }
 
     // One back stack per tab; the active tab selects which one NavDisplay renders.
     val homeStack = rememberNavBackStack(HomeRoute)
@@ -177,6 +180,11 @@ fun RidesafeApp() {
                             onUnitSystemChange = { newSetting ->
                                 UnitPrefs.set(context, newSetting)
                                 unitSystem = newSetting
+                            },
+                            autoTrackMode = autoTrackMode,
+                            onAutoTrackModeChange = { newMode ->
+                                applyAutoTrackMode(context, newMode)
+                                autoTrackMode = newMode
                             },
                         )
                     },

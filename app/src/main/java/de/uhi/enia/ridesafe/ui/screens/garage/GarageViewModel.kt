@@ -3,6 +3,7 @@ package de.uhi.enia.ridesafe.ui.screens.garage
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import de.uhi.enia.ridesafe.data.BtDevice
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.Vehicle
 import kotlinx.coroutines.flow.Flow
@@ -38,5 +39,22 @@ class GarageViewModel(
 
     fun deleteVehicle(vehicle: Vehicle) {
         viewModelScope.launch { dao.deleteVehicle(vehicle) }
+    }
+
+    /** Map/unmap a Bluetooth device to a vehicle for auto-tracking (GAR-08). */
+    fun linkBluetooth(
+        vehicle: Vehicle,
+        device: BtDevice,
+    ) {
+        viewModelScope.launch { dao.update(vehicle.copy(bluetoothDevices = vehicle.bluetoothDevices + device)) }
+    }
+
+    fun unlinkBluetooth(
+        vehicle: Vehicle,
+        address: String,
+    ) {
+        viewModelScope.launch {
+            dao.update(vehicle.copy(bluetoothDevices = vehicle.bluetoothDevices.filterNot { it.address == address }))
+        }
     }
 }

@@ -53,6 +53,8 @@ fun EntryProviderScope<NavKey>.garageEntries(
                 vehicle?.let(viewModel::deleteVehicle)
                 onPopToGarage()
             },
+            onLinkBluetooth = { device -> vehicle?.let { viewModel.linkBluetooth(it, device) } },
+            onUnlinkBluetooth = { address -> vehicle?.let { viewModel.unlinkBluetooth(it, address) } },
         )
     }
     entry<AddVehicleRoute> {

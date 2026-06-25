@@ -1,7 +1,11 @@
 package de.uhi.enia.ridesafe.ui.screens.settings
 
+import android.Manifest
 import android.app.LocaleManager
+import android.content.pm.PackageManager
 import android.os.LocaleList
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,7 +26,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import de.uhi.enia.ridesafe.R
+import de.uhi.enia.ridesafe.tracking.AutoTrackMode
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 
 @Composable
@@ -30,6 +36,8 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     unitSystem: UnitSystemSetting,
     onUnitSystemChange: (UnitSystemSetting) -> Unit,
+    autoTrackMode: AutoTrackMode,
+    onAutoTrackModeChange: (AutoTrackMode) -> Unit,
 ) {
     val context = LocalContext.current
     val localeManager = context.getSystemService(LocaleManager::class.java)
@@ -140,6 +148,69 @@ fun SettingsScreen(
                 ) {
                     RadioButton(
                         selected = (option == unitSystem),
+                        onClick = null,
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = stringResource(labelRes),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Automatic Ride Recording Section (SET-06)
+            Text(
+                text = stringResource(R.string.settings_auto_track_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = stringResource(R.string.settings_auto_track_summary),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // ANY mode needs Activity Recognition; apply it only once the permission is granted.
+            val activityPermissionLauncher =
+                rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+                    if (granted) onAutoTrackModeChange(AutoTrackMode.ANY)
+                }
+
+            val autoTrackOptions =
+                listOf(
+                    AutoTrackMode.OFF to R.string.auto_track_off,
+                    AutoTrackMode.PAIRED_ONLY to R.string.auto_track_paired,
+                    AutoTrackMode.ANY to R.string.auto_track_any,
+                )
+
+            autoTrackOptions.forEach { (option, labelRes) ->
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = (option == autoTrackMode),
+                                role = Role.RadioButton,
+                                onClick = {
+                                    val needsPermission =
+                                        option == AutoTrackMode.ANY &&
+                                            ContextCompat.checkSelfPermission(
+                                                context,
+                                                Manifest.permission.ACTIVITY_RECOGNITION,
+                                            ) != PackageManager.PERMISSION_GRANTED
+                                    if (needsPermission) {
+                                        activityPermissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+                                    } else {
+                                        onAutoTrackModeChange(option)
+                                    }
+                                },
+                            ).padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(
+                        selected = (option == autoTrackMode),
                         onClick = null,
                     )
                     Spacer(modifier = Modifier.width(16.dp))

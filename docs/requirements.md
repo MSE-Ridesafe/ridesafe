@@ -49,6 +49,7 @@ externally — all analytics and safety scoring happen locally.
 | GAR-05 | M | The Garage shall display a list of vehicles showing key fields (make, model, license plate, primary marker). | Draft       | DR-VEH                         |
 | GAR-06 | M | The Garage shall display a detailed view of a vehicle showing all its fields.                                | Draft       | DR-VEH                         |
 | GAR-07 | M | The Garage shall let the user designate exactly one vehicle as the primary vehicle.                          | Draft       | DR-RID, DR-VEH, TRK-02, TRK-08 |
+| GAR-08 | M | The Garage shall let the user map one or more paired Bluetooth devices to a vehicle for auto-detection.      | Implemented | DR-VEH, TRK-02, TRK-08         |
 
 ### 3.3 Logbook (rides)
 
@@ -70,13 +71,37 @@ externally — all analytics and safety scoring happen locally.
 | ID     | P | Requirement                                                                                                                                                                                           | Status   | Related                                                                |
 |--------|---|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|------------------------------------------------------------------------|
 | TRK-01 | M | Ridesafe shall record rides using GPS location.                                                                                                                                                       | Draft    | ANL-01, DR-RID, LOG-10, NFR-05, NFR-06, NFR-08, TRK-02, TRK-05, TRK-06 |
-| TRK-02 | M | Ridesafe shall automatically detect the start and end of a car ride.                                                                                                                                  | Draft    | GAR-07, NFR-05, SET-06, TRK-01, TRK-03, TRK-07, TRK-08                 |
-| TRK-03 | M | Ridesafe shall distinguish car driving from other movement (walking, cycling, transit) so only car trips are recorded.                                                                                | Proposed | NFR-05, TRK-02                                                         |
+| TRK-02 | M | Ridesafe shall automatically detect the start and end of a ride from the connection and disconnection of a Bluetooth device mapped to a vehicle.                                                      | Draft    | GAR-07, GAR-08, NFR-05, SET-06, TRK-01, TRK-03, TRK-07, TRK-08         |
+| TRK-03 | M | Ridesafe shall record only car trips by gating automatic recording on a vehicle's Bluetooth mapping, so walking, cycling, and other vehicles do not trigger recording.                                | Proposed | GAR-08, NFR-05, SET-06, TRK-02, TRK-08                                 |
 | TRK-04 | M | During recording, Ridesafe shall sample motion sensors (accelerometer/gyroscope) alongside GPS to support safety scoring.                                                                             | Proposed | ANL-01, ANL-03, DR-RID                                                 |
 | TRK-05 | S | Ridesafe shall keep recording reliably while the app is in the background or the screen is off.                                                                                                       | Proposed | NFR-05, NFR-06, NFR-08, TRK-01                                         |
 | TRK-06 | S | Ridesafe shall tolerate temporary GPS signal loss (e.g. tunnels) without ending a ride prematurely.                                                                                                   | Proposed | TRK-01                                                                 |
 | TRK-07 | M | Ridesafe shall provide the ability to start ride recording manually when automatic ride detection is not available, failed, or disabled by the user                                                   | Proposed | SET-06, TRK-02                                                         |
-| TRK-08 | S | Ridesafe shall differentiate between the currently sat-in car using bluetooth or other individual indicators of the current car, to avoid falsely recording rides as a passenger in foreign vehicles. | Proposed | DR-VEH, GAR-07, TRK-02                                                 |
+| TRK-08 | M | Ridesafe shall identify the current vehicle from its mapped Bluetooth device(s) to assign rides correctly and avoid recording rides taken as a passenger in foreign vehicles.                         | Proposed | DR-VEH, GAR-07, GAR-08, SET-06, TRK-02, TRK-03                         |
+
+#### Auto-tracking trigger — implementation notes
+
+The auto-tracking **trigger** (detection + vehicle mapping + the SET-06 mode) is implemented
+and unit-tested. **Ride recording is not built yet**: the trigger fires start/end events
+through a `RideRecorder` seam (`tracking/RideRecorder.kt`) that currently only logs; the
+recording layer plugs in there. TRK-02/03/08 are therefore *trigger-complete* but stay open
+end-to-end until recording (TRK-01, DR-RID) exists.
+
+- **Mapping (GAR-08):** a vehicle is linked to one or more **paired** Bluetooth devices, chosen
+  from the phone's bonded-device list — no need to be in the car. Stored as MAC addresses in
+  `DR-VEH.bluetoothAddresses`; requires the `BLUETOOTH_CONNECT` permission.
+- **Detection per mode (SET-06):**
+  - *Paired vehicles only* (default) — a Bluetooth ACL connect/disconnect of a mapped device
+    (manifest receiver) starts/ends the trip and assigns that vehicle.
+  - *Any vehicle* — Activity Recognition `IN_VEHICLE` (Google Play Services, `ACTIVITY_RECOGNITION`)
+    starts/ends the trip and assigns a connected mapped vehicle if any, else leaves it unassigned.
+  - *Off* — no detection.
+- **Reboot:** a `RECEIVE_BOOT_COMPLETED` receiver re-arms tracking after a restart.
+- **Why ACL, not CompanionDeviceManager:** CDM can only associate a device through a
+  present-device scan dialog, so it can't map a saved car with the engine off; ACL broadcasts
+  were chosen instead. Background delivery is reliable on most devices and will be hardened via
+  the recording foreground service (TRK-05) once recording exists.
+- **On-device (NFR-01):** activity recognition runs on-device; no trip or location data leaves the phone.
 
 ### 3.5 Dashboard
 
@@ -135,24 +160,24 @@ externally — all analytics and safety scoring happen locally.
 
 ### 3.11 Settings
 
-| ID     | P | Requirement                                                                                                            | Status   | Related                |
-|--------|---|------------------------------------------------------------------------------------------------------------------------|----------|------------------------|
-| SET-01 | M | Ridesafe shall provide a Settings page.                                                                                | Draft    | NAV-01                 |
-| SET-02 | M | Ridesafe shall follow the system theme (light/dark) by default.                                                        | Draft    | NFR-10, NFR-12, SET-03 |
-| SET-03 | S | Settings shall let the user override the theme (light / dark / follow system).                                         | Draft    | SET-02                 |
-| SET-04 | M | Ridesafe shall follow the system language by default, falling back to English when the system language is unsupported. | Draft    | NFR-11, SET-05         |
-| SET-05 | S | Settings shall let the user switch the app language between German and English.                                        | Draft    | NFR-11, SET-04         |
-| SET-06 | M | Settings shall let the user enable/disable automatic ride recording.                                                   | Draft    | TRK-02, TRK-07         |
-| SET-07 | S | Settings shall let the user choose speed units (mph / km/h).                                                           | Draft    | ANL-02, SET-08         |
-| SET-08 | C | Settings shall let the user choose distance and fuel-economy units, applied consistently across the app.               | Proposed | ANL-03, ANL-06, SET-07 |
-| SET-09 | C | Settings shall let the user turn grouping reminders on or off.                                                         | Proposed | NOT-01                 |
+| ID     | P | Requirement                                                                                                            | Status      | Related                |
+|--------|---|------------------------------------------------------------------------------------------------------------------------|-------------|------------------------|
+| SET-01 | M | Ridesafe shall provide a Settings page.                                                                                | Draft       | NAV-01                 |
+| SET-02 | M | Ridesafe shall follow the system theme (light/dark) by default.                                                        | Draft       | NFR-10, NFR-12, SET-03 |
+| SET-03 | S | Settings shall let the user override the theme (light / dark / follow system).                                         | Draft       | SET-02                 |
+| SET-04 | M | Ridesafe shall follow the system language by default, falling back to English when the system language is unsupported. | Draft       | NFR-11, SET-05         |
+| SET-05 | S | Settings shall let the user switch the app language between German and English.                                        | Draft       | NFR-11, SET-04         |
+| SET-06 | M | Settings shall let the user set automatic recording: off, paired vehicles only (default), or any vehicle (unassigned). | Implemented | TRK-02, TRK-07, TRK-08 |
+| SET-07 | S | Settings shall let the user choose speed units (mph / km/h).                                                           | Draft       | ANL-02, SET-08         |
+| SET-08 | C | Settings shall let the user choose distance and fuel-economy units, applied consistently across the app.               | Proposed    | ANL-03, ANL-06, SET-07 |
+| SET-09 | C | Settings shall let the user turn grouping reminders on or off.                                                         | Proposed    | NOT-01                 |
 
 ---
 
 ## 4. Data requirements (entities)
 
 ### 4.1 Vehicle — `DR-VEH` (M)
-*Related: ANL-04, ANL-06, ANL-07, CST-01, CST-02, GAR-01, GAR-02, GAR-03, GAR-04, GAR-05, GAR-06, GAR-07, LOG-07, NFR-03, TRK-08*
+*Related: ANL-04, ANL-06, ANL-07, CST-01, CST-02, GAR-01, GAR-02, GAR-03, GAR-04, GAR-05, GAR-06, GAR-07, GAR-08, LOG-07, NFR-03, TRK-08*
 
 | Field                   | Notes                                                    |
 |-------------------------|----------------------------------------------------------|
@@ -165,6 +190,7 @@ externally — all analytics and safety scoring happen locally.
 | fuel type               |                                                          |
 | mileage / odometer      |                                                          |
 | isPrimary               | from GAR-07                                              |
+| bluetooth mapping       | **NEW** — paired device MAC(s) for auto-detection        |
 | fuel economy, tank size | optional — needed only for ANL-06 fuel cost / ANL-07 CO₂ |
 
 ### 4.2 Ride — `DR-RID` (M)

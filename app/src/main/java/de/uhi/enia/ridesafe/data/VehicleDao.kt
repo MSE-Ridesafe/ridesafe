@@ -20,6 +20,10 @@ abstract class VehicleDao {
     @Query("SELECT COUNT(*) FROM vehicles")
     abstract suspend fun count(): Int
 
+    // One-shot read for the background auto-tracking detectors (CDM service / activity receiver).
+    @Query("SELECT * FROM vehicles")
+    abstract suspend fun all(): List<Vehicle>
+
     @Insert
     abstract suspend fun insert(vehicle: Vehicle): Long
 
