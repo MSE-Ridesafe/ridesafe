@@ -7,6 +7,15 @@
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- Ride recording: GPS track (TRK-01), kept alive in the background via a location
+         foreground service (TRK-05) started from the Bluetooth trigger. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:name=".RidesafeApplication"
         android:allowBackup="true"
@@ -30,6 +39,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Hosts ride recording in the foreground so it survives backgrounding / a cold trigger (TRK-05). -->
+        <service
+            android:name=".tracking.RideRecordingService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
 
         <!-- Wakes the app when a mapped Bluetooth device connects/disconnects (TRK-08). -->
         <receiver
