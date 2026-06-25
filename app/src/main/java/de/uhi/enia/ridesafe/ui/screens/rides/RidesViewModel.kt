@@ -60,10 +60,12 @@ class RidesViewModel(
     /** Reverse-geocode whichever endpoints lack an address and persist; a no-op if nothing resolves. */
     private suspend fun fillAddresses(ride: Ride) {
         val app = getApplication<Application>()
-        val start = ride.startAddress
-            ?: ride.startLat?.let { lat -> ride.startLon?.let { lon -> reverseGeocode(app, lat, lon) } }
-        val end = ride.endAddress
-            ?: ride.endLat?.let { lat -> ride.endLon?.let { lon -> reverseGeocode(app, lat, lon) } }
+        val start =
+            ride.startAddress
+                ?: ride.startLat?.let { lat -> ride.startLon?.let { lon -> reverseGeocode(app, lat, lon) } }
+        val end =
+            ride.endAddress
+                ?: ride.endLat?.let { lat -> ride.endLon?.let { lon -> reverseGeocode(app, lat, lon) } }
         if (start != ride.startAddress || end != ride.endAddress) {
             rideDao.setAddresses(ride.id, start, end)
         }

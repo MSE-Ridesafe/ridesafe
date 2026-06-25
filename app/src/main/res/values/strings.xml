@@ -103,6 +103,7 @@
     <string name="ride_detail_avg_speed">Average speed</string>
     <string name="ride_detail_total_distance">Total distance</string>
     <string name="ride_detail_no_gps">No GPS recorded for this ride</string>
+    <string name="ride_address_unknown">Unknown location</string>
 
     <string name="recording_channel_name">Ride recording</string>
     <string name="recording_notification_title">Recording ride</string>

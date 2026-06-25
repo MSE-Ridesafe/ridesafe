@@ -2,15 +2,20 @@
 
 package de.uhi.enia.ridesafe.ui.screens.rides
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
@@ -34,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMapOptions
@@ -44,10 +50,11 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
-import com.google.maps.android.compose.rememberMarkerState
+import com.google.maps.android.compose.rememberUpdatedMarkerState
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.tracking.LocationSample
+import de.uhi.enia.ridesafe.tracking.addressLines
 import de.uhi.enia.ridesafe.tracking.trackDistanceMeters
 import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
@@ -56,6 +63,7 @@ import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDuration
 import de.uhi.enia.ridesafe.util.formatRideDateTime
 import de.uhi.enia.ridesafe.util.formatSpeed
+import de.uhi.enia.ridesafe.util.formatTimeOfDay
 
 /**
  * Ride detail: the recorded route drawn on a Google Map, plus summary/speed/distance cards.
@@ -109,20 +117,13 @@ fun RideDetailScreen(
         ) {
             RouteMapCard(track = track)
 
-            DetailCard(
-                title = stringResource(R.string.ride_detail_section_summary),
-                rows =
-                    listOfNotNull(
-                        ride.startAddress?.let { stringResource(R.string.ride_detail_from) to it },
-                        ride.endAddress?.let { stringResource(R.string.ride_detail_to) to it },
-                        stringResource(R.string.ride_detail_start) to formatRideDateTime(context, ride.startedAtEpochMs),
-                        ride.endedAtEpochMs?.let {
-                            stringResource(R.string.ride_detail_end) to formatRideDateTime(context, it)
-                        },
-                        formatDuration(ride.startedAtEpochMs, ride.endedAtEpochMs)?.let {
-                            stringResource(R.string.ride_detail_duration) to it
-                        },
+            JourneyCard(
+                stops =
+                    listOf(
+                        JourneyStop(ride.startAddress, formatTimeOfDay(context, ride.startedAtEpochMs)),
+                        JourneyStop(ride.endAddress, ride.endedAtEpochMs?.let { formatTimeOfDay(context, it) }),
                     ),
+                duration = formatDuration(ride.startedAtEpochMs, ride.endedAtEpochMs),
             )
 
             DetailCard(
@@ -149,6 +150,161 @@ fun RideDetailScreen(
             )
         }
     }
+}
+
+// Timeline column metrics: the timestamp column width and the icon gutter, with their gaps.
+private val JourneyTimeWidth = 48.dp
+private val JourneyTimeGap = 12.dp
+private val JourneyGutterWidth = 24.dp
+private val JourneyGutterGap = 16.dp
+
+/** One stop in a ride's journey: an address and the time there. Either may be unknown (null). */
+data class JourneyStop(
+    val address: String?,
+    val time: String?,
+)
+
+/**
+ * A ride's journey as a stacked timeline: each stop is an icon + address + time, joined by a
+ * continuous line. Takes an arbitrary number of [stops] so a merged ride (multiple segments)
+ * can render as one origin -> waypoints -> destination chain — the first stop is the origin, the
+ * last the destination (a filled pin), any in between are waypoints.
+ */
+@Composable
+private fun JourneyCard(
+    stops: List<JourneyStop>,
+    duration: String?,
+) {
+    if (stops.isEmpty()) return
+    Card(
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            stops.forEachIndexed { index, stop ->
+                val isLast = index == stops.lastIndex
+                JourneyStopRow(
+                    icon = if (isLast) "place" else "trip_origin",
+                    iconColor = if (isLast) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    iconFill = isLast,
+                    address = stop.address ?: stringResource(R.string.ride_address_unknown),
+                    time = stop.time ?: stringResource(R.string.value_not_set),
+                    lineAbove = index > 0,
+                    lineBelow = !isLast,
+                )
+            }
+            if (duration != null) {
+                Spacer(Modifier.size(4.dp))
+                // Bottom-left total time: schedule icon then duration, not aligned to the timeline columns.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    MaterialSymbol(
+                        symbolName = "schedule",
+                        contentDescription = stringResource(R.string.ride_detail_duration),
+                        size = 16.dp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = duration,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * One row of the journey timeline. The [time] sits in a fixed-width column left of the gutter; the
+ * icon sits in the gutter, both vertically centered (the icon by the weighted line segments
+ * above/below it). [lineAbove]/[lineBelow] draw the connector toward the adjacent stop, so stacked
+ * stops share one continuous line.
+ */
+@Composable
+private fun JourneyStopRow(
+    icon: String,
+    iconColor: Color,
+    address: String,
+    time: String,
+    lineAbove: Boolean,
+    lineBelow: Boolean,
+    iconFill: Boolean = false,
+) {
+    Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+        // Timestamp left of the timeline, vertically centered on the icon; left-aligned so it
+        // shares the card's left edge with the total-duration footer.
+        Box(
+            modifier =
+                Modifier
+                    .width(JourneyTimeWidth)
+                    .fillMaxHeight(),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Text(
+                text = time,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
+        Spacer(Modifier.width(JourneyTimeGap))
+        Column(
+            modifier =
+                Modifier
+                    .width(JourneyGutterWidth)
+                    .fillMaxHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Connector(visible = lineAbove, modifier = Modifier.weight(1f))
+            MaterialSymbol(
+                symbolName = icon,
+                contentDescription = null,
+                size = 18.dp,
+                fill = iconFill,
+                color = iconColor,
+            )
+            Connector(visible = lineBelow, modifier = Modifier.weight(1f))
+        }
+        Spacer(Modifier.width(JourneyGutterGap))
+        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+            val (street, place) = addressLines(address)
+            Text(
+                text = street,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (place != null) {
+                Text(
+                    text = place,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+/** A 2dp vertical line filling its (weighted) slot; invisible when [visible] is false, to keep spacing. */
+@Composable
+private fun Connector(
+    visible: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier =
+            modifier
+                .width(2.dp)
+                .then(
+                    if (visible) Modifier.background(MaterialTheme.colorScheme.outlineVariant) else Modifier,
+                ),
+    )
 }
 
 @Composable
@@ -193,8 +349,8 @@ private fun RouteMap(track: List<LocationSample>) {
         onMapLoaded = { mapLoaded = true },
     ) {
         Polyline(points = points, color = routeColor, width = 12f)
-        Marker(state = rememberMarkerState(position = points.first()), title = stringResource(R.string.ride_start_marker))
-        Marker(state = rememberMarkerState(position = points.last()), title = stringResource(R.string.ride_end_marker))
+        Marker(state = rememberUpdatedMarkerState(position = points.first()), title = stringResource(R.string.ride_start_marker))
+        Marker(state = rememberUpdatedMarkerState(position = points.last()), title = stringResource(R.string.ride_end_marker))
     }
 
     // Frame the whole route once the (lite-mode) map has a laid-out size.

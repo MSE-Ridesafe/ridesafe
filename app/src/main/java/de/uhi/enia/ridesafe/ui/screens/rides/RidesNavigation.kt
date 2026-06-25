@@ -31,7 +31,6 @@ fun EntryProviderScope<NavKey>.ridesEntries(
         val rides by viewModel.rides.collectAsState(initial = emptyList())
         RidesScreen(
             rides = rides,
-            unitSystem = unitSystem,
             onRideClick = { onOpen(RideDetailRoute(it)) },
         )
     }

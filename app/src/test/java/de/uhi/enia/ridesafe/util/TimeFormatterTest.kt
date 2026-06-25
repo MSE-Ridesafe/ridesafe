@@ -5,9 +5,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class TimeFormatterTest {
-    private fun durationOf(
-        seconds: Long,
-    ): String? = formatDuration(0, seconds * 1000)
+    private fun durationOf(seconds: Long): String? = formatDuration(0, seconds * 1000)
 
     @Test
     fun inProgressRideHasNoDuration() {

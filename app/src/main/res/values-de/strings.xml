@@ -103,6 +103,7 @@
     <string name="ride_detail_avg_speed">Durchschnittsgeschwindigkeit</string>
     <string name="ride_detail_total_distance">Gesamtstrecke</string>
     <string name="ride_detail_no_gps">Für diese Fahrt wurde kein GPS aufgezeichnet</string>
+    <string name="ride_address_unknown">Unbekannter Ort</string>
 
     <string name="recording_channel_name">Fahrtaufzeichnung</string>
     <string name="recording_notification_title">Fahrt wird aufgezeichnet</string>

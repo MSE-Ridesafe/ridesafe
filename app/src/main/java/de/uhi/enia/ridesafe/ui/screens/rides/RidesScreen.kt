@@ -36,10 +36,8 @@ import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.tracking.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.formatDayHeader
 import de.uhi.enia.ridesafe.util.formatDuration
-import de.uhi.enia.ridesafe.util.formatSpeed
 import de.uhi.enia.ridesafe.util.formatTimeOfDay
 import de.uhi.enia.ridesafe.util.rideDay
 import java.time.LocalDate
@@ -47,7 +45,6 @@ import java.time.LocalDate
 @Composable
 fun RidesScreen(
     rides: List<RideRow>,
-    unitSystem: UnitSystemSetting,
     onRideClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -80,11 +77,15 @@ fun RidesScreen(
 
         // Group into one card per calendar day; rides arrive newest-first, so insertion order
         // gives newest day first, newest ride first within each day.
-        val groups = remember(rides) { rides.groupByTo(LinkedHashMap()) { rideDay(it.ride.startedAtEpochMs) } }
+        val groups =
+            remember(rides) { rides.groupByTo(LinkedHashMap()) { rideDay(it.ride.startedAtEpochMs) } }
         val today = LocalDate.now()
 
         LazyColumn(
-            modifier = Modifier.padding(innerPadding).fillMaxSize(),
+            modifier =
+                Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -105,7 +106,6 @@ fun RidesScreen(
                                 }
                                 RideListItem(
                                     row = row,
-                                    unitSystem = unitSystem,
                                     onClick = { onRideClick(row.ride.id) },
                                 )
                             }
@@ -130,7 +130,6 @@ private fun DayHeader(text: String) {
 @Composable
 private fun RideListItem(
     row: RideRow,
-    unitSystem: UnitSystemSetting,
     onClick: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -143,13 +142,11 @@ private fun RideListItem(
                 append(formatTimeOfDay(context, it))
             }
         }
-    // Destination is the headline when known; otherwise the time range takes its place.
     val destination = ride.endAddress?.let { shortAddress(it) }
     val supporting =
         listOfNotNull(
-            timeRange.takeIf { destination != null },
+            timeRange,
             formatDuration(ride.startedAtEpochMs, ride.endedAtEpochMs),
-            stringResource(R.string.ride_max_speed_short, formatSpeed(context, ride.maxSpeedMps, unitSystem)),
         ).joinToString("  •  ")
 
     ListItem(
@@ -158,7 +155,12 @@ private fun RideListItem(
         leadingContent = { MaterialSymbol(symbolName = "route", contentDescription = null) },
         overlineContent = row.vehicleName?.let { name -> { Text(name) } },
         headlineContent = {
-            Text(destination ?: timeRange, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                destination ?: stringResource(R.string.ride_address_unknown),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleMedium,
+            )
         },
         supportingContent = { Text(supporting, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         trailingContent = {
