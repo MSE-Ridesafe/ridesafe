@@ -4,7 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
+import android.hardware.SensorEventListener2
 import android.hardware.SensorManager
 import android.os.Handler
 import android.os.HandlerThread
@@ -29,12 +29,14 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
 import java.util.zip.GZIPOutputStream
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val TAG = "RideRecording"
 
@@ -54,6 +56,7 @@ class RideRecordingEngine(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
     private val locationIntervalMs: Long = 1_000, // ~1 Hz GPS; calibration knob (NFR-08)
     private val motionSamplingPeriodUs: Int = 20_000, // ~50 Hz motion; calibration knob (NFR-08)
+    private val motionBatchLatencyUs: Int = 5_000_000, // batch motion in the sensor FIFO to save power (NFR-08)
 ) : RideRecorder {
     private val json =
         Json {
@@ -181,7 +184,8 @@ class RideRecordingEngine(
         private lateinit var writerJob: Job
         private var handlerThread: HandlerThread? = null
         private var locationCallback: LocationCallback? = null
-        private var sensorListener: SensorEventListener? = null
+        private var sensorListener: SensorEventListener2? = null
+        private var flushDone: CompletableDeferred<Unit>? = null
 
         suspend fun start() {
             val dir = ridesDir(appContext).apply { mkdirs() }
@@ -206,9 +210,10 @@ class RideRecordingEngine(
         }
 
         suspend fun stop() {
-            // Stop the sources first so nothing new is enqueued, then drain the writer.
+            // Stop the sources, but first drain the sensor FIFO so the last batched samples aren't
+            // lost, then close the channel and drain the writer.
             locationCallback?.let { fusedClient.removeLocationUpdates(it) }
-            sensorListener?.let { sensorManager?.unregisterListener(it) }
+            flushAndUnregisterSensors()
             channel.close()
             writerJob.join()
             handlerThread?.quitSafely()
@@ -228,12 +233,27 @@ class RideRecordingEngine(
             Log.i(TAG, "stopped ride $rideId: maxSpeed=${stats.maxSpeedMps} mps")
         }
 
+        // Flush the hardware FIFO so any batched motion still buffered is delivered into the channel
+        // before we tear down. onFlushCompleted (per sensor) signals the drain; bounded so it can't
+        // hang if a sensor never reports completion. ponytail: awaits the first completion, which is
+        // enough since the FIFO is shared — the writer then drains whatever reached the channel.
+        private suspend fun flushAndUnregisterSensors() {
+            val sm = sensorManager ?: return
+            val listener = sensorListener ?: return
+            val done = CompletableDeferred<Unit>()
+            flushDone = done
+            if (sm.flush(listener)) {
+                withTimeoutOrNull(2_000.milliseconds) { done.await() }
+            }
+            sm.unregisterListener(listener)
+        }
+
         // Sole owner of the file handle; flushes on each GPS fix to bound crash loss to ~1s (NFR-06).
         // ponytail: gzip syncFlush survives an app crash (data is in the OS cache), not a power cut.
         private suspend fun writeLoop(file: File) =
             withContext(Dispatchers.IO) {
                 BufferedWriter(
-                    OutputStreamWriter(GZIPOutputStream(FileOutputStream(file)), Charsets.UTF_8),
+                    OutputStreamWriter(GZIPOutputStream(FileOutputStream(file), true), Charsets.UTF_8),
                 ).use { w ->
                     for (sample in channel) {
                         w.write(json.encodeToString<RideSample>(sample))
@@ -250,7 +270,7 @@ class RideRecordingEngine(
         private fun registerSensors(handler: Handler) {
             val sm = sensorManager ?: return
             val listener =
-                object : SensorEventListener {
+                object : SensorEventListener2 {
                     override fun onSensorChanged(e: SensorEvent) {
                         val kind =
                             when (e.sensor.type) {
@@ -262,7 +282,9 @@ class RideRecordingEngine(
                         val v = e.values
                         channel.trySend(
                             MotionSample(
-                                t = SystemClock.elapsedRealtimeNanos(),
+                                // Source time the sample was taken (elapsedRealtimeNanos base), not
+                                // receipt time — preserves true spacing even when the FIFO batches.
+                                t = e.timestamp,
                                 sensor = kind,
                                 x = v.getOrElse(0) { 0f },
                                 y = v.getOrElse(1) { 0f },
@@ -276,6 +298,10 @@ class RideRecordingEngine(
                         sensor: Sensor?,
                         accuracy: Int,
                     ) {}
+
+                    override fun onFlushCompleted(sensor: Sensor?) {
+                        flushDone?.complete(Unit)
+                    }
                 }
             sensorListener = listener
             // Open Q2: degrade gracefully when a sensor is absent — just skip it, log it.
@@ -284,7 +310,7 @@ class RideRecordingEngine(
                 if (sensor == null) {
                     Log.w(TAG, "sensor type $type unavailable on this device")
                 } else {
-                    sm.registerListener(listener, sensor, motionSamplingPeriodUs, handler)
+                    sm.registerListener(listener, sensor, motionSamplingPeriodUs, motionBatchLatencyUs, handler)
                 }
             }
         }
@@ -298,7 +324,9 @@ class RideRecordingEngine(
                         for (loc in result.locations) {
                             channel.trySend(
                                 LocationSample(
-                                    t = SystemClock.elapsedRealtimeNanos(),
+                                    // Time of the fix (elapsedRealtimeNanos base), not receipt time —
+                                    // immune to delivery lag; recommended for lining up with sensors.
+                                    t = loc.elapsedRealtimeNanos,
                                     lat = loc.latitude,
                                     lon = loc.longitude,
                                     alt = if (loc.hasAltitude()) loc.altitude else 0.0,
