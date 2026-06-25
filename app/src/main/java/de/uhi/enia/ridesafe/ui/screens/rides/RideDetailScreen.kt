@@ -43,8 +43,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -160,8 +163,7 @@ fun RideDetailScreen(
     }
 }
 
-// Timeline column metrics: the timestamp column width and the icon gutter, with their gaps.
-private val JourneyTimeWidth = 48.dp
+// Timeline column metrics: gap after the (content-sized) timestamp column, the icon gutter, its gap.
 private val JourneyTimeGap = 12.dp
 private val JourneyGutterWidth = 24.dp
 private val JourneyGutterGap = 16.dp
@@ -184,6 +186,17 @@ private fun JourneyCard(
     duration: String?,
 ) {
     if (stops.isEmpty()) return
+
+    // Size the timestamp column to the widest time so it never clips (e.g. 12-hour "12:34 PM"),
+    // then apply that one width to every row so the timeline stays aligned.
+    val unknownTime = stringResource(R.string.value_not_set)
+    val timeStyle = MaterialTheme.typography.bodyMedium
+    val measurer = rememberTextMeasurer()
+    val timeWidth =
+        with(LocalDensity.current) {
+            stops.maxOf { measurer.measure(it.time ?: unknownTime, timeStyle).size.width }.toDp() + 2.dp
+        }
+
     Card(
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
@@ -197,7 +210,8 @@ private fun JourneyCard(
                     iconColor = if (isLast) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     iconFill = isLast,
                     address = stop.address ?: stringResource(R.string.ride_address_unknown),
-                    time = stop.time ?: stringResource(R.string.value_not_set),
+                    time = stop.time ?: unknownTime,
+                    timeWidth = timeWidth,
                     lineAbove = index > 0,
                     lineBelow = !isLast,
                 )
@@ -226,10 +240,10 @@ private fun JourneyCard(
 }
 
 /**
- * One row of the journey timeline. The [time] sits in a fixed-width column left of the gutter; the
- * icon sits in the gutter, both vertically centered (the icon by the weighted line segments
- * above/below it). [lineAbove]/[lineBelow] draw the connector toward the adjacent stop, so stacked
- * stops share one continuous line.
+ * One row of the journey timeline. The [time] sits in a [timeWidth]-wide column left of the gutter
+ * (the caller sizes it to the widest time so all rows align); the icon sits in the gutter, both
+ * vertically centered (the icon by the weighted line segments above/below it). [lineAbove]/
+ * [lineBelow] draw the connector toward the adjacent stop, so stacked stops share one continuous line.
  */
 @Composable
 private fun JourneyStopRow(
@@ -237,6 +251,7 @@ private fun JourneyStopRow(
     iconColor: Color,
     address: String,
     time: String,
+    timeWidth: Dp,
     lineAbove: Boolean,
     lineBelow: Boolean,
     iconFill: Boolean = false,
@@ -247,7 +262,7 @@ private fun JourneyStopRow(
         Box(
             modifier =
                 Modifier
-                    .width(JourneyTimeWidth)
+                    .width(timeWidth)
                     .fillMaxHeight(),
             contentAlignment = Alignment.CenterStart,
         ) {
@@ -278,17 +293,16 @@ private fun JourneyStopRow(
         }
         Spacer(Modifier.width(JourneyGutterGap))
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            val (street, place) = addressLines(address)
+            val (street, locality) = addressLines(address)
             Text(
                 text = street,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (place != null) {
+            if (locality != null) {
                 Text(
-                    text = place,
+                    text = locality,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
