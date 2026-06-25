@@ -82,7 +82,32 @@
     <string name="unit_liter">L</string>
     <string name="value_not_set">&#8212;</string>
 
+    <!-- Fahrten -->
+    <string name="rides_empty_title">Noch keine Fahrten</string>
+    <string name="rides_empty_message">Aufgezeichnete Fahrten erscheinen hier.</string>
+    <string name="ride_day_today">Heute</string>
+    <string name="ride_day_yesterday">Gestern</string>
+    <string name="ride_max_speed_short">max. %1$s</string>
+    <string name="ride_open">Fahrt öffnen</string>
+    <string name="ride_start_marker">Start</string>
+    <string name="ride_end_marker">Ziel</string>
+    <string name="ride_map_close">Karte schließen</string>
+    <string name="ride_detail_section_summary">Übersicht</string>
+    <string name="ride_detail_section_speed">Geschwindigkeit</string>
+    <string name="ride_detail_section_distance">Strecke</string>
+    <string name="ride_detail_from">Von</string>
+    <string name="ride_detail_to">Nach</string>
+    <string name="ride_detail_start">Start</string>
+    <string name="ride_detail_end">Ende</string>
+    <string name="ride_detail_duration">Dauer</string>
+    <string name="ride_detail_max_speed">Höchstgeschwindigkeit</string>
+    <string name="ride_detail_avg_speed">Durchschnittsgeschwindigkeit</string>
+    <string name="ride_detail_total_distance">Gesamtstrecke</string>
+    <string name="ride_detail_no_gps">Für diese Fahrt wurde kein GPS aufgezeichnet</string>
+    <string name="ride_address_unknown">Unbekannter Ort</string>
+
     <string name="recording_channel_name">Fahrtaufzeichnung</string>
     <string name="recording_notification_title">Fahrt wird aufgezeichnet</string>
     <string name="recording_notification_text">Deine Fahrt wird im Hintergrund aufgezeichnet.</string>
+    <string name="ride_map_expand">Vollbild-Karte öffnen</string>
 </resources>

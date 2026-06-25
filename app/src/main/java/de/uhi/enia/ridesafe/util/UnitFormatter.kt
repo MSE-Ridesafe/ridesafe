@@ -99,6 +99,23 @@ fun formatDistance(
     return formatter.format(measure)
 }
 
+/** Speed from canonical [metersPerSecond] in the user's units (km/h or mph), e.g. "92 km/h". */
+fun formatSpeed(
+    context: Context,
+    metersPerSecond: Double,
+    setting: UnitSystemSetting,
+): String {
+    val formatLocale = getFormattingLocale(context, setting)
+    val (value, unit) =
+        if (usesMetric(context, setting)) {
+            metersPerSecond * 3.6 to MeasureUnit.KILOMETER_PER_HOUR
+        } else {
+            metersPerSecond * 2.2369362920544 to MeasureUnit.MILE_PER_HOUR
+        }
+    val formatter = MeasureFormat.getInstance(formatLocale, MeasureFormat.FormatWidth.SHORT)
+    return formatter.format(Measure(value, unit))
+}
+
 /**
  * Odometer reading from canonical [kilometers], rounded to a whole unit (an odometer
  * is a whole-number reading, unlike a trip distance). Returns e.g. "120,000 mi".

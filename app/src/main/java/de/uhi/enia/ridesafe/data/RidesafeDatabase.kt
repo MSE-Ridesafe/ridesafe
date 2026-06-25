@@ -101,7 +101,28 @@ private val MIGRATION_4_5 =
         }
     }
 
-@Database(entities = [Vehicle::class, Ride::class], version = 5, exportSchema = false)
+/** Adds reverse-geocoded start/end address columns to rides (displayed, indexed, searched). */
+private val MIGRATION_5_6 =
+    object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE rides ADD COLUMN startAddress TEXT")
+            db.execSQL("ALTER TABLE rides ADD COLUMN endAddress TEXT")
+        }
+    }
+
+/**
+ * Addresses are now built from the Geocoder result's structured fields and stored newline-separated
+ * (street/place \n zip+city) instead of the raw comma-formatted line. Clear the old values so the
+ * address backfill re-geocodes every ride into the new format (the data is derived, not user input).
+ */
+private val MIGRATION_6_7 =
+    object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("UPDATE rides SET startAddress = NULL, endAddress = NULL")
+        }
+    }
+
+@Database(entities = [Vehicle::class, Ride::class], version = 7, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class RidesafeDatabase : RoomDatabase() {
     abstract fun vehicleDao(): VehicleDao
@@ -118,8 +139,14 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         context.applicationContext,
                         RidesafeDatabase::class.java,
                         "ridesafe.db",
-                    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
-                    .build()
+                    ).addMigrations(
+                        MIGRATION_1_2,
+                        MIGRATION_2_3,
+                        MIGRATION_3_4,
+                        MIGRATION_4_5,
+                        MIGRATION_5_6,
+                        MIGRATION_6_7,
+                    ).build()
                     .also { instance = it }
             }
     }

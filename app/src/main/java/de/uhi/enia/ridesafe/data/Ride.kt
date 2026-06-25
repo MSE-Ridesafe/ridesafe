@@ -19,6 +19,11 @@ import androidx.room.PrimaryKey
  * and filled by the analysis pass that computes distance from the sample file (ANL-02);
  * [maxSpeedMps] is a direct GPS reading, so recording fills it live.
  *
+ * [startAddress]/[endAddress] are the reverse-geocoded addresses for the first/last fix, built from
+ * the Geocoder result's structured fields and stored newline-separated (street/place, then ZIP+city
+ * — see formatAddress). Filled by the UI layer (not recording) so they can be displayed, indexed and
+ * searched. Null until geocoded, or when geocoding is unavailable/offline — a later pass retries.
+ *
  * ponytail: notes/tags/purpose/safety score (DR-RID, ANL-01) are written by later UI/analysis
  * layers, not recording — add the columns via an ALTER-TABLE migration when those land.
  */
@@ -37,4 +42,6 @@ data class Ride(
     val avgSpeedMps: Double? = null,
     val maxSpeedMps: Double = 0.0,
     val sampleFile: String,
+    val startAddress: String? = null,
+    val endAddress: String? = null,
 )
