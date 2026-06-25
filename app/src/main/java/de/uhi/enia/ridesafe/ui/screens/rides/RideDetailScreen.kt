@@ -3,20 +3,25 @@
 package de.uhi.enia.ridesafe.ui.screens.rides
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -41,12 +46,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMapOptions
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
@@ -336,6 +344,60 @@ private fun RouteMapCard(track: List<LocationSample>?) {
 @Composable
 private fun RouteMap(track: List<LocationSample>) {
     val points = remember(track) { track.map { LatLng(it.lat, it.lon) } }
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(Modifier.fillMaxSize()) {
+        RouteMapContent(points = points, liteMode = true)
+        // Lite-mode maps open the Google Maps app when tapped; this transparent overlay
+        // swallows the tap and opens our own full-screen interactive map instead.
+        Box(
+            Modifier
+                .matchParentSize()
+                .clickable(
+                    onClickLabel = stringResource(R.string.ride_map_expand),
+                    onClick = { expanded = true },
+                ),
+        )
+    }
+
+    if (expanded) {
+        Dialog(
+            onDismissRequest = { expanded = false },
+            // decorFitsSystemWindows = false lets the map fill behind the status/navigation bars
+            // (no top/bottom safe-area insets); the close button below re-applies them.
+            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        ) {
+            Box(Modifier.fillMaxSize()) {
+                RouteMapContent(points = points, liteMode = false)
+                IconButton(
+                    onClick = { expanded = false },
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .windowInsetsPadding(WindowInsets.safeDrawing)
+                            .padding(8.dp)
+                            .background(MaterialTheme.colorScheme.surface, CircleShape),
+                ) {
+                    MaterialSymbol(
+                        symbolName = "close",
+                        contentDescription = stringResource(R.string.ride_map_close),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The route drawn on a Google Map, framed to fit. [liteMode] true renders a static snapshot (the
+ * card preview); false is a live, gesture-driven map. Gestures are kept 2D — pan/zoom/rotate on,
+ * tilt off — and the toolbar is hidden so taps stay in-app rather than launching the Maps app.
+ */
+@Composable
+private fun RouteMapContent(
+    points: List<LatLng>,
+    liteMode: Boolean,
+) {
     val cameraPositionState =
         rememberCameraPositionState { position = CameraPosition.fromLatLngZoom(points.first(), 14f) }
     var mapLoaded by remember { mutableStateOf(false) }
@@ -344,8 +406,13 @@ private fun RouteMap(track: List<LocationSample>) {
     GoogleMap(
         modifier = Modifier.fillMaxSize(),
         cameraPositionState = cameraPositionState,
-        // Lite mode: a static route snapshot — lighter and fewer tile fetches than a live map.
-        googleMapOptionsFactory = { GoogleMapOptions().liteMode(true) },
+        googleMapOptionsFactory = { GoogleMapOptions().liteMode(liteMode) },
+        uiSettings =
+            MapUiSettings(
+                tiltGesturesEnabled = false,
+                mapToolbarEnabled = false,
+                zoomControlsEnabled = false,
+            ),
         onMapLoaded = { mapLoaded = true },
     ) {
         Polyline(points = points, color = routeColor, width = 12f)
@@ -353,7 +420,7 @@ private fun RouteMap(track: List<LocationSample>) {
         Marker(state = rememberUpdatedMarkerState(position = points.last()), title = stringResource(R.string.ride_end_marker))
     }
 
-    // Frame the whole route once the (lite-mode) map has a laid-out size.
+    // Frame the whole route once the map has a laid-out size.
     LaunchedEffect(mapLoaded, points) {
         if (mapLoaded && points.size > 1) {
             val bounds = LatLngBounds.builder().apply { points.forEach(::include) }.build()

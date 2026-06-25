@@ -91,6 +91,8 @@
     <string name="ride_open">Open ride</string>
     <string name="ride_start_marker">Start</string>
     <string name="ride_end_marker">End</string>
+    <string name="ride_map_expand">Open full-screen map</string>
+    <string name="ride_map_close">Close map</string>
     <string name="ride_detail_section_summary">Summary</string>
     <string name="ride_detail_section_speed">Speed</string>
     <string name="ride_detail_section_distance">Distance</string>

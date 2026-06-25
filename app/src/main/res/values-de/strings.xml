@@ -91,6 +91,7 @@
     <string name="ride_open">Fahrt öffnen</string>
     <string name="ride_start_marker">Start</string>
     <string name="ride_end_marker">Ziel</string>
+    <string name="ride_map_close">Karte schließen</string>
     <string name="ride_detail_section_summary">Übersicht</string>
     <string name="ride_detail_section_speed">Geschwindigkeit</string>
     <string name="ride_detail_section_distance">Strecke</string>
@@ -108,4 +109,5 @@
     <string name="recording_channel_name">Fahrtaufzeichnung</string>
     <string name="recording_notification_title">Fahrt wird aufgezeichnet</string>
     <string name="recording_notification_text">Deine Fahrt wird im Hintergrund aufgezeichnet.</string>
+    <string name="ride_map_expand">Vollbild-Karte öffnen</string>
 </resources>
