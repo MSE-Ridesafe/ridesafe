@@ -39,6 +39,21 @@ interface RideDao {
         maxSpeedMps: Double,
     )
 
+    /** Rides with a fix but no reverse-geocoded address yet — the address backfill targets these. */
+    @Query(
+        "SELECT * FROM rides WHERE (startLat IS NOT NULL AND startAddress IS NULL) " +
+            "OR (endLat IS NOT NULL AND endAddress IS NULL)",
+    )
+    suspend fun needingAddresses(): List<Ride>
+
+    /** Store the reverse-geocoded start/end addresses (DR-RID); either may be null if it failed. */
+    @Query("UPDATE rides SET startAddress = :startAddress, endAddress = :endAddress WHERE id = :id")
+    suspend fun setAddresses(
+        id: Long,
+        startAddress: String?,
+        endAddress: String?,
+    )
+
     @Delete
     suspend fun delete(ride: Ride)
 }

@@ -94,6 +94,8 @@
     <string name="ride_detail_section_summary">Übersicht</string>
     <string name="ride_detail_section_speed">Geschwindigkeit</string>
     <string name="ride_detail_section_distance">Strecke</string>
+    <string name="ride_detail_from">Von</string>
+    <string name="ride_detail_to">Nach</string>
     <string name="ride_detail_start">Start</string>
     <string name="ride_detail_end">Ende</string>
     <string name="ride_detail_duration">Dauer</string>

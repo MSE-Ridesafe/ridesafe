@@ -31,8 +31,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
+import de.uhi.enia.ridesafe.tracking.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.formatDayHeader
@@ -141,8 +143,11 @@ private fun RideListItem(
                 append(formatTimeOfDay(context, it))
             }
         }
+    // Destination is the headline when known; otherwise the time range takes its place.
+    val destination = ride.endAddress?.let { shortAddress(it) }
     val supporting =
         listOfNotNull(
+            timeRange.takeIf { destination != null },
             formatDuration(ride.startedAtEpochMs, ride.endedAtEpochMs),
             stringResource(R.string.ride_max_speed_short, formatSpeed(context, ride.maxSpeedMps, unitSystem)),
         ).joinToString("  •  ")
@@ -152,8 +157,10 @@ private fun RideListItem(
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         leadingContent = { MaterialSymbol(symbolName = "route", contentDescription = null) },
         overlineContent = row.vehicleName?.let { name -> { Text(name) } },
-        headlineContent = { Text(timeRange) },
-        supportingContent = { Text(supporting) },
+        headlineContent = {
+            Text(destination ?: timeRange, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
+        supportingContent = { Text(supporting, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         trailingContent = {
             MaterialSymbol(
                 symbolName = "chevron_right",

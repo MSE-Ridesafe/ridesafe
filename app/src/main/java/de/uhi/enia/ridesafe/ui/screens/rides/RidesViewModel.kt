@@ -2,15 +2,18 @@ package de.uhi.enia.ridesafe.ui.screens.rides
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.tracking.LocationSample
 import de.uhi.enia.ridesafe.tracking.readRideLocations
+import de.uhi.enia.ridesafe.tracking.reverseGeocode
 import de.uhi.enia.ridesafe.tracking.ridesDir
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -32,6 +35,12 @@ class RidesViewModel(
     private val rideDao = db.rideDao()
     private val vehicleDao = db.vehicleDao()
 
+    init {
+        // One pass per launch: reverse-geocode any ride that has a fix but no stored address yet
+        // (existing rides, plus anything a previous run couldn't geocode while offline).
+        viewModelScope.launch { rideDao.needingAddresses().forEach { fillAddresses(it) } }
+    }
+
     /** Rides (newest first, from the DAO) joined to their vehicle's display name for the list. */
     val rides: Flow<List<RideRow>> =
         combine(rideDao.observeAll(), vehicleDao.observeAll()) { rides, vehicles ->
@@ -47,4 +56,16 @@ class RidesViewModel(
             val file = File(ridesDir(getApplication()), ride.sampleFile)
             if (file.exists()) readRideLocations(file) else emptyList()
         }
+
+    /** Reverse-geocode whichever endpoints lack an address and persist; a no-op if nothing resolves. */
+    private suspend fun fillAddresses(ride: Ride) {
+        val app = getApplication<Application>()
+        val start = ride.startAddress
+            ?: ride.startLat?.let { lat -> ride.startLon?.let { lon -> reverseGeocode(app, lat, lon) } }
+        val end = ride.endAddress
+            ?: ride.endLat?.let { lat -> ride.endLon?.let { lon -> reverseGeocode(app, lat, lon) } }
+        if (start != ride.startAddress || end != ride.endAddress) {
+            rideDao.setAddresses(ride.id, start, end)
+        }
+    }
 }

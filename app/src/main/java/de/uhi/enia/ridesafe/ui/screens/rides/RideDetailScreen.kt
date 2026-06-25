@@ -113,6 +113,8 @@ fun RideDetailScreen(
                 title = stringResource(R.string.ride_detail_section_summary),
                 rows =
                     listOfNotNull(
+                        ride.startAddress?.let { stringResource(R.string.ride_detail_from) to it },
+                        ride.endAddress?.let { stringResource(R.string.ride_detail_to) to it },
                         stringResource(R.string.ride_detail_start) to formatRideDateTime(context, ride.startedAtEpochMs),
                         ride.endedAtEpochMs?.let {
                             stringResource(R.string.ride_detail_end) to formatRideDateTime(context, it)

@@ -16,9 +16,9 @@ class TimeFormatterTest {
 
     @Test
     fun dropsSecondsAndLeadingZeroUnits() {
-        assertEquals("0m", durationOf(45)) // under a minute floors to 0m
-        assertEquals("5m", durationOf(5 * 60 + 59)) // seconds dropped, not rounded
-        assertEquals("1h 05m", durationOf(3600 + 5 * 60))
-        assertEquals("2d 03h 04m", durationOf(2 * 86_400 + 3 * 3600 + 4 * 60))
+        assertEquals("0 min", durationOf(45)) // under a minute floors to 0 min
+        assertEquals("5 min", durationOf(5 * 60 + 59)) // seconds dropped, not rounded
+        assertEquals("1 h 05 min", durationOf(3600 + 5 * 60))
+        assertEquals("2 d 03 h 04 min", durationOf(2 * 86_400 + 3 * 3600 + 4 * 60))
     }
 }

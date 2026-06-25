@@ -101,7 +101,16 @@ private val MIGRATION_4_5 =
         }
     }
 
-@Database(entities = [Vehicle::class, Ride::class], version = 5, exportSchema = false)
+/** Adds reverse-geocoded start/end address columns to rides (displayed, indexed, searched). */
+private val MIGRATION_5_6 =
+    object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE rides ADD COLUMN startAddress TEXT")
+            db.execSQL("ALTER TABLE rides ADD COLUMN endAddress TEXT")
+        }
+    }
+
+@Database(entities = [Vehicle::class, Ride::class], version = 6, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class RidesafeDatabase : RoomDatabase() {
     abstract fun vehicleDao(): VehicleDao
@@ -118,7 +127,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         context.applicationContext,
                         RidesafeDatabase::class.java,
                         "ridesafe.db",
-                    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .build()
                     .also { instance = it }
             }

@@ -28,8 +28,8 @@ fun formatRideDateTime(
     )
 
 /**
- * Elapsed ride duration as "5m" / "1h 05m" / "2d 3h 04m" — whole minutes, seconds dropped.
- * Leading zero units are omitted; null while a ride is still in progress (no end).
+ * Elapsed ride duration as "5 min" / "1 h 05 min" / "2 d 03 h 04 min" — whole minutes, seconds
+ * dropped. Leading zero units are omitted; null while a ride is still in progress (no end).
  */
 fun formatDuration(
     startMs: Long,
