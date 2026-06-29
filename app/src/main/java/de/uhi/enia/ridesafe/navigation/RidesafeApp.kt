@@ -201,6 +201,14 @@ fun RidesafeApp() {
                                 applyAutoTrackMode(context, newMode)
                                 autoTrackMode = newMode
                             },
+                            onOpen = {
+                                isTabSwitch = false
+                                settingsStack.add(it)
+                            },
+                            onBack = {
+                                isTabSwitch = false
+                                settingsStack.removeLastOrNull()
+                            },
                         )
                     },
                 // Outer Scaffold already insets for system bars; mark them consumed so a

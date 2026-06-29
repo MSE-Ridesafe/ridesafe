@@ -19,8 +19,11 @@
     <string name="screen_garage_title">Garage</string>
     <string name="screen_settings_title">Settings</string>
 
+    <string name="settings_category_preferences">Preferences</string>
+    <string name="settings_category_ride_recording">Ride recording</string>
     <string name="settings_units_title">Distance Units</string>
     <string name="settings_units_summary">Choose your preferred unit system</string>
+    <string name="settings_units_detail_description">Choose how distances and ride measurements are shown throughout Ridesafe.</string>
     <string name="unit_system_automatic">Automatic (Based on language)</string>
     <string name="unit_system_metric">Metric (Kilometers)</string>
     <string name="unit_system_imperial">Imperial (Miles)</string>
@@ -28,6 +31,8 @@
 
     <string name="settings_auto_track_title">Automatic ride recording</string>
     <string name="settings_auto_track_summary">Detect and record trips automatically</string>
+    <string name="settings_auto_track_detail_description">Choose when Ridesafe may start recording rides in the background.</string>
+    <string name="settings_language_detail_description">Choose the language used for app labels, settings, and messages.</string>
     <string name="auto_track_off">Off</string>
     <string name="auto_track_paired">Paired vehicles only</string>
     <string name="auto_track_any">Any vehicle</string>
