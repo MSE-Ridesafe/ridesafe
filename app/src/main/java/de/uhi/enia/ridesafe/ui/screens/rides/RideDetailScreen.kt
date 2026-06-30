@@ -64,9 +64,8 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Ride
-import de.uhi.enia.ridesafe.tracking.LocationSample
 import de.uhi.enia.ridesafe.tracking.addressLines
-import de.uhi.enia.ridesafe.tracking.trackDistanceMeters
+import de.uhi.enia.ridesafe.tracking.latLngDistanceMeters
 import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
@@ -78,14 +77,15 @@ import de.uhi.enia.ridesafe.util.formatTimeOfDay
 
 /**
  * Ride detail: the recorded route drawn on a Google Map, plus summary/speed/distance cards.
- * [track] is null while the sample file is still loading; empty when the ride recorded no GPS.
- * Distance and average speed are computed live from [track] (the analysis pass ANL-02 doesn't
- * run yet, so [Ride.distanceMeters]/[Ride.avgSpeedMps] are still null on disk).
+ * [route] is null while it's still loading; empty when the ride recorded no GPS. Distance and average
+ * speed come from the persisted [Ride.distanceMeters]/[Ride.avgSpeedMps] (filled by the processing
+ * pass ANL-02); they fall back to computing from [route] only for a ride not processed yet, where
+ * [route] is the raw track (the simplified sidecar is only ever loaded once the columns are filled).
  */
 @Composable
 fun RideDetailScreen(
     ride: Ride?,
-    track: List<LocationSample>?,
+    route: List<LatLng>?,
     unitSystem: UnitSystemSetting,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -112,10 +112,12 @@ fun RideDetailScreen(
         // ride is null only briefly while the Flow loads, or if it was removed.
         if (ride == null) return@Scaffold
 
-        val distanceMeters = track?.let { trackDistanceMeters(it) }
         val durationSec = ride.endedAtEpochMs?.let { (it - ride.startedAtEpochMs) / 1000.0 }
+        // Prefer the persisted metrics; fall back to computing from the (raw) route for a not-yet-processed ride.
+        val distanceMeters = ride.distanceMeters ?: route?.takeIf { it.isNotEmpty() }?.let { latLngDistanceMeters(it) }
         val avgMps =
-            if (distanceMeters != null && durationSec != null && durationSec > 0) distanceMeters / durationSec else null
+            ride.avgSpeedMps
+                ?: if (distanceMeters != null && durationSec != null && durationSec > 0) distanceMeters / durationSec else null
 
         Column(
             modifier =
@@ -126,7 +128,7 @@ fun RideDetailScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            RouteMapCard(track = track)
+            RouteMapCard(route = route)
 
             JourneyCard(
                 stops =
@@ -330,7 +332,7 @@ private fun Connector(
 }
 
 @Composable
-private fun RouteMapCard(track: List<LocationSample>?) {
+private fun RouteMapCard(route: List<LatLng>?) {
     Card(
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
@@ -340,24 +342,23 @@ private fun RouteMapCard(track: List<LocationSample>?) {
                 .height(300.dp),
     ) {
         when {
-            track == null -> {
+            route == null -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             }
 
-            track.isEmpty() -> {
+            route.isEmpty() -> {
                 NoGps()
             }
 
             else -> {
-                RouteMap(track)
+                RouteMap(route)
             }
         }
     }
 }
 
 @Composable
-private fun RouteMap(track: List<LocationSample>) {
-    val points = remember(track) { track.map { LatLng(it.lat, it.lon) } }
+private fun RouteMap(points: List<LatLng>) {
     var expanded by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {

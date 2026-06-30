@@ -39,6 +39,22 @@ interface RideDao {
         maxSpeedMps: Double,
     )
 
+    /**
+     * Finished rides that recorded a fix but haven't been processed yet (distance still null) — the
+     * GPS-processing backfill targets these. distanceMeters being null is the "not processed" marker;
+     * no-GPS rides (startLat null) are skipped so we don't keep re-reading their sample file.
+     */
+    @Query("SELECT * FROM rides WHERE endedAtEpochMs IS NOT NULL AND distanceMeters IS NULL AND startLat IS NOT NULL")
+    suspend fun needingProcessing(): List<Ride>
+
+    /** Store the distance + average speed the processing pass computed from the filtered track (ANL-02). */
+    @Query("UPDATE rides SET distanceMeters = :distanceMeters, avgSpeedMps = :avgSpeedMps WHERE id = :id")
+    suspend fun setMetrics(
+        id: Long,
+        distanceMeters: Double,
+        avgSpeedMps: Double,
+    )
+
     /** Rides with a fix but no reverse-geocoded address yet — the address backfill targets these. */
     @Query(
         "SELECT * FROM rides WHERE (startLat IS NOT NULL AND startAddress IS NULL) " +

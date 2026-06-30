@@ -37,7 +37,7 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'   # AGP 9 requires JDK 17+
+          java-version: '21'   # AGP 9 requires JDK 17+; matches IDE (jbr-21) & CodeQL
       - uses: gradle/actions/setup-gradle@v6
       - name: Build, test & lint
         run: ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace
