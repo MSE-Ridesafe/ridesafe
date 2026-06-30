@@ -304,7 +304,7 @@ class RideRecordingEngine(
                     }
                 }
             sensorListener = listener
-            // Open Q2: degrade gracefully when a sensor is absent — just skip it, log it.
+            // TODO: Open Q2: degrade gracefully when a sensor is absent — just skip it, log it.
             for (type in intArrayOf(Sensor.TYPE_ACCELEROMETER, Sensor.TYPE_GYROSCOPE, Sensor.TYPE_ROTATION_VECTOR)) {
                 val sensor = sm.getDefaultSensor(type)
                 if (sensor == null) {
@@ -315,7 +315,7 @@ class RideRecordingEngine(
             }
         }
 
-        @SuppressLint("MissingPermission") // permission flow is a later round (NFR-05); guarded below
+        @SuppressLint("MissingPermission") // TODO: permission flow is a later round (NFR-05); guarded below
         private fun requestLocation(looper: Looper) {
             val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, locationIntervalMs).build()
             val callback =

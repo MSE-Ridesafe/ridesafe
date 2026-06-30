@@ -69,6 +69,8 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.play.services.location)
     implementation(libs.maps.compose)
+    implementation(libs.maps.utils)
+    implementation(libs.commons.math3)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

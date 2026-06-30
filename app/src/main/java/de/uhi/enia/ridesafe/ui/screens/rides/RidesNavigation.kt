@@ -5,7 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
-import de.uhi.enia.ridesafe.tracking.LocationSample
+import com.google.android.gms.maps.model.LatLng
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import kotlinx.serialization.Serializable
 
@@ -36,13 +36,13 @@ fun EntryProviderScope<NavKey>.ridesEntries(
     }
     entry<RideDetailRoute> { key ->
         val ride by viewModel.ride(key.id).collectAsState(initial = null)
-        // Read the track once the ride row has loaded; null until then = "loading".
-        val track by produceState<List<LocationSample>?>(initialValue = null, ride) {
-            value = ride?.let { viewModel.track(it) }
+        // Load the route once the ride row has loaded; null until then = "loading".
+        val route by produceState<List<LatLng>?>(initialValue = null, ride) {
+            value = ride?.let { viewModel.route(it) }
         }
         RideDetailScreen(
             ride = ride,
-            track = track,
+            route = route,
             unitSystem = unitSystem,
             onBack = onBack,
         )

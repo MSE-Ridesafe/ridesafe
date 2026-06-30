@@ -45,7 +45,7 @@ data class MotionSample(
     val w: Float? = null,
 ) : RideSample
 
-private const val EARTH_RADIUS_M = 6_371_000.0
+internal const val EARTH_RADIUS_M = 6_371_000.0
 
 /**
  * Great-circle distance between two WGS84 points, in meters.
