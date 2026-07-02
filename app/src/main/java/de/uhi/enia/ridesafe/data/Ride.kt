@@ -24,6 +24,11 @@ import androidx.room.PrimaryKey
  * — see formatAddress). Filled by the UI layer (not recording) so they can be displayed, indexed and
  * searched. Null until geocoded, or when geocoding is unavailable/offline — a later pass retries.
  *
+ * [mergeGroupId] tags this ride as a "stop" inside a merged ride (MRG-01): all stops of one merged
+ * ride share the same value (the smallest stop id at merge time); null means a standalone ride. There
+ * is no separate merged-ride row and no stored stop order — stops order by [startedAtEpochMs] and the
+ * aggregated metrics/addresses are derived on read (MRG-05, MRG-07).
+ *
  * ponytail: notes/tags/purpose/safety score (DR-RID, ANL-01) are written by later UI/analysis
  * layers, not recording — add the columns via an ALTER-TABLE migration when those land.
  */
@@ -31,6 +36,7 @@ import androidx.room.PrimaryKey
 data class Ride(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val vehicleId: Long? = null,
+    val mergeGroupId: Long? = null,
     val startedAtEpochMs: Long,
     val startedElapsedNanos: Long,
     val endedAtEpochMs: Long? = null,

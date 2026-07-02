@@ -112,6 +112,34 @@
     <string name="ride_detail_no_gps">No GPS recorded for this ride</string>
     <string name="ride_address_unknown">Unknown location</string>
 
+    <!-- Ride merging (§3.8) -->
+    <string name="ride_merged_label">Merged</string>
+    <plurals name="ride_stops_count">
+        <item quantity="one">%1$d stop</item>
+        <item quantity="other">%1$d stops</item>
+    </plurals>
+    <string name="ride_selection_count">%1$d selected</string>
+    <string name="action_select_all">Select all</string>
+    <string name="action_deselect_all">Deselect all</string>
+    <string name="action_more">More options</string>
+    <string name="action_exit_selection">Exit selection</string>
+    <string name="ride_selected">Selected</string>
+    <string name="ride_not_selected">Not selected</string>
+    <string name="ride_action_merge">Merge rides</string>
+    <string name="merge_reason_not_enough">Select at least two rides</string>
+    <string name="merge_reason_mixed_vehicle">Rides must be from the same vehicle</string>
+    <string name="merge_reason_not_contiguous">Don\'t skip any ride in between</string>
+    <string name="ride_journey_section">Journey</string>
+    <string name="ride_action_manage_stops">Manage stops</string>
+    <string name="action_done">Done</string>
+    <string name="ride_merged_parked_note">Left %1$s · parked %2$s</string>
+    <string name="ride_merged_stops_section">Stops</string>
+    <string name="ride_stop_label">Stop %1$d</string>
+    <string name="ride_stop_select">Select stop to un-merge</string>
+    <string name="ride_merged_unmerge_hint">Only the first or last stops can be removed.</string>
+    <string name="ride_action_unmerge_all">Unmerge all</string>
+    <string name="ride_action_unmerge_selected">Unmerge (%1$d)</string>
+
     <string name="recording_channel_name">Ride recording</string>
     <string name="recording_notification_title">Recording ride</string>
     <string name="recording_notification_text">Tracking your trip in the background.</string>

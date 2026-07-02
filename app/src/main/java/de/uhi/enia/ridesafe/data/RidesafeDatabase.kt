@@ -122,7 +122,15 @@ private val MIGRATION_6_7 =
         }
     }
 
-@Database(entities = [Vehicle::class, Ride::class], version = 7, exportSchema = false)
+/** Adds Ride.mergeGroupId (MRG-01) so rides can be merged into one trip; existing rides stay standalone (null). */
+private val MIGRATION_7_8 =
+    object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE rides ADD COLUMN mergeGroupId INTEGER")
+        }
+    }
+
+@Database(entities = [Vehicle::class, Ride::class], version = 8, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class RidesafeDatabase : RoomDatabase() {
     abstract fun vehicleDao(): VehicleDao
@@ -146,6 +154,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_4_5,
                         MIGRATION_5_6,
                         MIGRATION_6_7,
+                        MIGRATION_7_8,
                     ).build()
                     .also { instance = it }
             }
