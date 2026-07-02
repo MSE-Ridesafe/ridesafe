@@ -18,6 +18,16 @@
     <string name="screen_rides_title">Rides</string>
     <string name="screen_garage_title">Garage</string>
     <string name="screen_settings_title">Settings</string>
+    <string name="home_notifications">Notifications</string>
+    <string name="home_no_primary_vehicle">No primary vehicle</string>
+    <string name="home_unknown_vehicle">Vehicle</string>
+    <string name="home_add_vehicle_hint">Add a vehicle in Garage</string>
+    <string name="home_active_ride">Active ride</string>
+    <string name="home_started_at">Started at %1$s</string>
+    <string name="home_monthly_distance">Monthly distance</string>
+    <string name="home_time_in_vehicle">Time in vehicle</string>
+    <string name="home_activity_title">Activity</string>
+    <string name="home_activity_distance_week">Distance this week</string>
 
     <string name="settings_category_preferences">Preferences</string>
     <string name="settings_category_ride_recording">Ride recording</string>
