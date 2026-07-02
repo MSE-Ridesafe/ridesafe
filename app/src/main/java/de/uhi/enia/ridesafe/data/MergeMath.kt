@@ -4,9 +4,8 @@ package de.uhi.enia.ridesafe.data
  * Pure merge/un-merge logic (no Android deps) for ride merging (§3.8). Kept separate from the DB and
  * UI so the mathematically-valid aggregation (MRG-05) and the merge/un-merge rules (MRG-02, MRG-09,
  * MRG-11) are unit-testable in isolation. See MergeMathTest.
- */
-
-/** Why a set of selected rides can or cannot be merged (MRG-08 shows the reason to the user). */
+ *
+ * Why a set of selected rides can or cannot be merged (MRG-08 shows the reason to the user). */
 enum class MergeCheck {
     OK,
     NOT_ENOUGH, // fewer than two rides selected
@@ -43,7 +42,8 @@ fun summarizeMerge(stops: List<Ride>): MergedSummary {
     // rather than poisoning the whole total (MRG-05 is best-effort until every stop is processed).
     val distances = ordered.mapNotNull { it.distanceMeters }
     val totalDistance = if (distances.isEmpty()) null else distances.sum()
-    val movingDurationMs = ordered.sumOf { s -> s.endedAtEpochMs?.let { it - s.startedAtEpochMs } ?: 0L }
+    val movingDurationMs =
+        ordered.sumOf { s -> s.endedAtEpochMs?.let { it - s.startedAtEpochMs } ?: 0L }
     val movingSec = movingDurationMs / 1000.0
     val avgSpeed = if (totalDistance != null && movingSec > 0) totalDistance / movingSec else null
 

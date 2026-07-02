@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -98,7 +97,9 @@ fun MergedRideDetailScreen(
                     },
                 )
             },
-        ) {}
+        ) { innerPadding ->
+            Spacer(Modifier.padding(innerPadding))
+        }
         return
     }
 
@@ -306,7 +307,16 @@ private fun buildPlaces(
 ): List<JourneyStop> =
     buildList {
         val first = stops.first()
-        add(JourneyStop(address = first.startAddress, time = first.startedAtEpochMs.let { formatTimeOfDay(context, it) }))
+        add(
+            JourneyStop(
+                address = first.startAddress,
+                time =
+                    formatTimeOfDay(
+                        context,
+                        first.startedAtEpochMs,
+                    ),
+            ),
+        )
         for (i in 0 until stops.size - 1) {
             val arrive = stops[i]
             val depart = stops[i + 1]
