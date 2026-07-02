@@ -23,11 +23,18 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +55,8 @@ import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDuration
 import de.uhi.enia.ridesafe.util.formatOdometer
+import de.uhi.enia.ridesafe.util.usesMetric
+import java.text.NumberFormat
 import java.time.format.TextStyle
 import java.util.Locale
 import kotlin.math.max
@@ -306,8 +315,17 @@ private fun ActivitySection(
     unitSystem: UnitSystemSetting,
 ) {
     val context = LocalContext.current
-    val maxDistance = max(1.0, bars.maxOfOrNull { it.distanceMeters } ?: 0.0)
-
+    var chartMetric by rememberSaveable { mutableStateOf(ActivityChartMetric.DISTANCE) }
+    val maxValue =
+        max(
+            1.0,
+            bars.maxOfOrNull { bar ->
+                when (chartMetric) {
+                    ActivityChartMetric.DISTANCE -> bar.distanceMeters
+                    ActivityChartMetric.RIDES -> bar.rideCount.toDouble()
+                }
+            } ?: 0.0,
+        )
     Card(
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
@@ -324,7 +342,13 @@ private fun ActivitySection(
                         style = MaterialTheme.typography.titleLarge,
                     )
                     Text(
-                        text = stringResource(R.string.home_activity_distance_week),
+                        text =
+                            stringResource(
+                                when (chartMetric) {
+                                    ActivityChartMetric.DISTANCE -> R.string.home_activity_distance_week
+                                    ActivityChartMetric.RIDES -> R.string.home_activity_rides_week
+                                },
+                            ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -335,6 +359,31 @@ private fun ActivitySection(
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                ActivityChartMetric.entries.forEachIndexed { index, metric ->
+                    SegmentedButton(
+                        selected = chartMetric == metric,
+                        onClick = { chartMetric = metric },
+                        shape =
+                            SegmentedButtonDefaults.itemShape(
+                                index = index,
+                                count = ActivityChartMetric.entries.size,
+                            ),
+                    ) {
+                        Text(
+                            text =
+                                stringResource(
+                                    when (metric) {
+                                        ActivityChartMetric.DISTANCE -> R.string.home_activity_metric_distance
+                                        ActivityChartMetric.RIDES -> R.string.home_activity_metric_rides
+                                    },
+                                ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
             Row(
                 modifier =
                     Modifier
@@ -344,10 +393,20 @@ private fun ActivitySection(
                 verticalAlignment = Alignment.Bottom,
             ) {
                 bars.forEach { bar ->
+                    val value =
+                        when (chartMetric) {
+                            ActivityChartMetric.DISTANCE -> bar.distanceMeters
+                            ActivityChartMetric.RIDES -> bar.rideCount.toDouble()
+                        }
                     ActivityBarColumn(
                         bar = bar,
-                        valueLabel = formatDistance(context, bar.distanceMeters, unitSystem),
-                        fraction = (bar.distanceMeters / maxDistance).toFloat().coerceIn(0f, 1f),
+                        valueLabel =
+                            when (chartMetric) {
+                                ActivityChartMetric.DISTANCE -> formatChartDistance(context, bar.distanceMeters, unitSystem)
+                                ActivityChartMetric.RIDES -> bar.rideCount.toString()
+                            },
+                        hasValue = value > 0.0,
+                        fraction = (value / maxValue).toFloat().coerceIn(0f, 1f),
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -360,11 +419,12 @@ private fun ActivitySection(
 private fun ActivityBarColumn(
     bar: ActivityBar,
     valueLabel: String,
+    hasValue: Boolean,
     fraction: Float,
     modifier: Modifier = Modifier,
 ) {
     val locale = Locale.getDefault()
-    val minHeight = if (bar.distanceMeters > 0.0) 18.dp else 8.dp
+    val minHeight = if (hasValue) 18.dp else 8.dp
     val barHeight = max(minHeight.value, 100f * fraction).dp
 
     Column(
@@ -386,7 +446,7 @@ private fun ActivityBarColumn(
                     .height(barHeight)
                     .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 4.dp, bottomEnd = 4.dp))
                     .background(
-                        if (bar.distanceMeters > 0.0) {
+                        if (hasValue) {
                             MaterialTheme.colorScheme.primary
                         } else {
                             MaterialTheme.colorScheme.surfaceContainerHighest
@@ -395,7 +455,11 @@ private fun ActivityBarColumn(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = bar.day.dayOfWeek.getDisplayName(TextStyle.NARROW, locale),
+            text =
+                bar.day.dayOfWeek
+                    .getDisplayName(TextStyle.SHORT, locale)
+                    .trimEnd('.')
+                    .take(2),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Medium,
@@ -444,4 +508,25 @@ private fun formatDuration(durationMillis: Long): String {
         hours > 0 -> "%d h %02d min".format(hours, minutes)
         else -> "%d min".format(minutes)
     }
+}
+
+private enum class ActivityChartMetric {
+    DISTANCE,
+    RIDES,
+}
+
+private fun formatChartDistance(
+    context: android.content.Context,
+    meters: Double,
+    setting: UnitSystemSetting,
+): String {
+    val locale = Locale.getDefault()
+    val value = if (usesMetric(context, setting)) meters / 1000.0 else meters * 0.000621371
+    val unit = context.getString(if (usesMetric(context, setting)) R.string.unit_km else R.string.unit_mi)
+    val number =
+        NumberFormat.getNumberInstance(locale).apply {
+            minimumFractionDigits = 2
+            maximumFractionDigits = 2
+        }
+    return "${number.format(value)} $unit"
 }

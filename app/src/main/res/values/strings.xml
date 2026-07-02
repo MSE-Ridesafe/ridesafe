@@ -28,6 +28,9 @@
     <string name="home_time_in_vehicle">Time in vehicle</string>
     <string name="home_activity_title">Activity</string>
     <string name="home_activity_distance_week">Distance this week</string>
+    <string name="home_activity_rides_week">Rides this week</string>
+    <string name="home_activity_metric_distance">Distance</string>
+    <string name="home_activity_metric_rides">Rides</string>
 
     <string name="settings_category_preferences">Preferences</string>
     <string name="settings_category_ride_recording">Ride recording</string>
