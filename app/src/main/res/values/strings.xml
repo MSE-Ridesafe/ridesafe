@@ -29,8 +29,16 @@
     <string name="home_activity_title">Activity</string>
     <string name="home_activity_distance_week">Distance this week</string>
     <string name="home_activity_rides_week">Rides this week</string>
+    <string name="home_activity_distance_month">Distance this month</string>
+    <string name="home_activity_rides_month">Rides this month</string>
+    <string name="home_activity_period_week">Week</string>
+    <string name="home_activity_period_month">Month</string>
     <string name="home_activity_metric_distance">Distance</string>
     <string name="home_activity_metric_rides">Rides</string>
+    <string name="home_activity_empty_week">No activity this week</string>
+    <string name="home_activity_empty_month">No activity this month</string>
+    <string name="home_activity_dialog_distance">Distance: %1$s</string>
+    <string name="home_activity_dialog_rides">Rides: %1$d</string>
 
     <string name="settings_category_preferences">Preferences</string>
     <string name="settings_category_ride_recording">Ride recording</string>
@@ -56,6 +64,7 @@
     <string name="action_edit">Edit</string>
     <string name="action_delete">Delete</string>
     <string name="action_cancel">Cancel</string>
+    <string name="action_close">Close</string>
     <string name="garage_add_vehicle">Add vehicle</string>
     <string name="garage_edit_vehicle">Edit vehicle</string>
     <string name="garage_delete_vehicle">Delete vehicle</string>
