@@ -471,7 +471,7 @@ private fun ActivitySection(
             1.0,
             visibleData.maxOfOrNull { it.valueFor(selectedMetric) } ?: 0.0,
         )
-    val hasActivity = visibleData.any { it.distanceMeters > 0.0 || it.rideCount > 0 }
+    val hasActivity = visibleData.any { it.distanceMeters > 0.0 || it.durationMillis > 0L }
 
     Card(
         shape = MaterialTheme.shapes.extraLarge,
@@ -495,14 +495,14 @@ private fun ActivitySection(
                                     ActivityTimeRange.WEEK -> {
                                         when (selectedMetric) {
                                             ActivityChartMetric.DISTANCE -> R.string.home_activity_distance_week
-                                            ActivityChartMetric.RIDES -> R.string.home_activity_rides_week
+                                            ActivityChartMetric.TRAVEL_TIME -> R.string.home_activity_time_week
                                         }
                                     }
 
                                     ActivityTimeRange.MONTH -> {
                                         when (selectedMetric) {
                                             ActivityChartMetric.DISTANCE -> R.string.home_activity_distance_month
-                                            ActivityChartMetric.RIDES -> R.string.home_activity_rides_month
+                                            ActivityChartMetric.TRAVEL_TIME -> R.string.home_activity_time_month
                                         }
                                     }
                                 },
@@ -517,13 +517,13 @@ private fun ActivitySection(
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
-            ActivityTimeRangeTabs(
-                selected = selectedTimeRange,
-                onSelected = { selectedTimeRange = it },
-            )
-            ActivityMetricChips(
+            ActivityMetricTabs(
                 selected = selectedMetric,
                 onSelected = { selectedMetric = it },
+            )
+            ActivityTimeRangeChips(
+                selected = selectedTimeRange,
+                onSelected = { selectedTimeRange = it },
             )
             Crossfade(
                 targetState = selectedTimeRange,
@@ -568,42 +568,42 @@ private fun ActivitySection(
 }
 
 @Composable
-private fun ActivityTimeRangeTabs(
-    selected: ActivityTimeRange,
-    onSelected: (ActivityTimeRange) -> Unit,
+private fun ActivityMetricTabs(
+    selected: ActivityChartMetric,
+    onSelected: (ActivityChartMetric) -> Unit,
 ) {
     PrimaryTabRow(
-        selectedTabIndex = ActivityTimeRange.entries.indexOf(selected),
+        selectedTabIndex = ActivityChartMetric.entries.indexOf(selected),
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.primary,
     ) {
-        ActivityTimeRange.entries.forEach { range ->
+        ActivityChartMetric.entries.forEach { metric ->
             Tab(
-                selected = selected == range,
-                onClick = { onSelected(range) },
-                text = { Text(stringResource(range.labelRes)) },
+                selected = selected == metric,
+                onClick = { onSelected(metric) },
+                text = { Text(stringResource(metric.labelRes)) },
             )
         }
     }
 }
 
 @Composable
-private fun ActivityMetricChips(
-    selected: ActivityChartMetric,
-    onSelected: (ActivityChartMetric) -> Unit,
+private fun ActivityTimeRangeChips(
+    selected: ActivityTimeRange,
+    onSelected: (ActivityTimeRange) -> Unit,
 ) {
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        ActivityChartMetric.entries.forEach { metric ->
+        ActivityTimeRange.entries.forEach { range ->
             FilterChip(
-                selected = selected == metric,
-                onClick = { onSelected(metric) },
-                label = { Text(stringResource(metric.labelRes)) },
+                selected = selected == range,
+                onClick = { onSelected(range) },
+                label = { Text(stringResource(range.labelRes)) },
                 leadingIcon =
-                    if (selected == metric) {
+                    if (selected == range) {
                         {
                             MaterialSymbol(
                                 symbolName = "check",
@@ -784,11 +784,11 @@ private fun HeatMapCell(
                 }
             }
 
-            ActivityChartMetric.RIDES -> {
+            ActivityChartMetric.TRAVEL_TIME -> {
                 when {
-                    (activity?.rideCount ?: 0) <= 0 -> ActivityIntensity.EMPTY
-                    activity?.rideCount == 1 -> ActivityIntensity.LOW
-                    activity?.rideCount == 2 -> ActivityIntensity.MEDIUM
+                    (activity?.durationMillis ?: 0L) <= 0L -> ActivityIntensity.EMPTY
+                    fraction < 0.34f -> ActivityIntensity.LOW
+                    fraction < 0.67f -> ActivityIntensity.MEDIUM
                     else -> ActivityIntensity.HIGH
                 }
             }
@@ -852,7 +852,7 @@ private fun ActivityDayDialog(
                         formatChartDistance(context, activity.distanceMeters, unitSystem),
                     ),
                 )
-                Text(stringResource(R.string.home_activity_dialog_rides, activity.rideCount))
+                Text(stringResource(R.string.home_activity_dialog_time, formatDuration(activity.durationMillis)))
             }
         },
     )
@@ -903,7 +903,7 @@ private fun formatDuration(durationMillis: Long): String {
 
 private enum class ActivityChartMetric {
     DISTANCE,
-    RIDES,
+    TRAVEL_TIME,
 }
 
 private enum class ActivityTimeRange {
@@ -929,13 +929,13 @@ private val ActivityChartMetric.labelRes: Int
     get() =
         when (this) {
             ActivityChartMetric.DISTANCE -> R.string.home_activity_metric_distance
-            ActivityChartMetric.RIDES -> R.string.home_activity_metric_rides
+            ActivityChartMetric.TRAVEL_TIME -> R.string.home_activity_metric_time
         }
 
 private fun ActivityBar.valueFor(metric: ActivityChartMetric): Double =
     when (metric) {
         ActivityChartMetric.DISTANCE -> distanceMeters
-        ActivityChartMetric.RIDES -> rideCount.toDouble()
+        ActivityChartMetric.TRAVEL_TIME -> durationMillis.toDouble()
     }
 
 private fun ActivityBar.labelFor(
@@ -945,7 +945,7 @@ private fun ActivityBar.labelFor(
 ): String =
     when (metric) {
         ActivityChartMetric.DISTANCE -> formatChartDistance(context, distanceMeters, unitSystem)
-        ActivityChartMetric.RIDES -> rideCount.toString()
+        ActivityChartMetric.TRAVEL_TIME -> formatDuration(durationMillis)
     }
 
 private fun formatChartDistance(

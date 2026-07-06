@@ -28,17 +28,17 @@
     <string name="home_time_in_vehicle">Zeit im Fahrzeug</string>
     <string name="home_activity_title">Aktivit&#228;t</string>
     <string name="home_activity_distance_week">Strecke diese Woche</string>
-    <string name="home_activity_rides_week">Fahrten diese Woche</string>
+    <string name="home_activity_time_week">Fahrzeit diese Woche</string>
     <string name="home_activity_distance_month">Strecke diesen Monat</string>
-    <string name="home_activity_rides_month">Fahrten diesen Monat</string>
+    <string name="home_activity_time_month">Fahrzeit diesen Monat</string>
     <string name="home_activity_period_week">Woche</string>
     <string name="home_activity_period_month">Monat</string>
     <string name="home_activity_metric_distance">Strecke</string>
-    <string name="home_activity_metric_rides">Fahrten</string>
+    <string name="home_activity_metric_time">Fahrzeit</string>
     <string name="home_activity_empty_week">Keine Aktivität diese Woche</string>
     <string name="home_activity_empty_month">Keine Aktivität diesen Monat</string>
     <string name="home_activity_dialog_distance">Strecke: %1$s</string>
-    <string name="home_activity_dialog_rides">Fahrten: %1$d</string>
+    <string name="home_activity_dialog_time">Fahrzeit: %1$s</string>
 
     <string name="settings_category_preferences">Präferenzen</string>
     <string name="settings_category_ride_recording">Fahrtaufzeichnung</string>
