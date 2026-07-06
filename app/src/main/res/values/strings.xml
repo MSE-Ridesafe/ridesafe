@@ -24,6 +24,7 @@
     <string name="home_add_vehicle_hint">Add a vehicle in Garage</string>
     <string name="home_active_ride">Active ride</string>
     <string name="home_started_at">Started at %1$s</string>
+    <string name="home_vehicle_fuel_consumption">Fuel consumption</string>
     <string name="home_total_distance">Total Distance</string>
     <string name="home_total_travel_time">Total Travel Time</string>
     <string name="home_activity_title">Activity</string>

@@ -68,7 +68,6 @@ import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.tracking.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.screens.garage.VehicleImage
-import de.uhi.enia.ridesafe.ui.screens.garage.labelRes
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDuration
@@ -202,8 +201,8 @@ private fun VehicleCard(
                         modifier = Modifier.weight(1f),
                     )
                     InfoChip(
-                        label = stringResource(R.string.vehicle_fuel_type),
-                        value = stringResource(vehicle.fuelType.labelRes()),
+                        label = stringResource(R.string.home_vehicle_fuel_consumption),
+                        value = formatFuelConsumption(context, vehicle.fuelEconomy),
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -941,6 +940,21 @@ private fun formatDuration(durationMillis: Long): String {
         hours > 0 -> "%d h %02d min".format(hours, minutes)
         else -> "%d min".format(minutes)
     }
+}
+
+private fun formatFuelConsumption(
+    context: android.content.Context,
+    fuelEconomy: Double?,
+): String {
+    if (fuelEconomy == null) {
+        return context.getString(R.string.value_not_set)
+    }
+    val number =
+        NumberFormat.getNumberInstance(Locale.getDefault()).apply {
+            minimumFractionDigits = 1
+            maximumFractionDigits = 1
+        }
+    return "${number.format(fuelEconomy)} ${context.getString(R.string.unit_fuel_economy)}"
 }
 
 private enum class ActivityChartMetric {
