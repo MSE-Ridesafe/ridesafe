@@ -20,6 +20,7 @@ data class HomeDashboardState(
     val totalDurationMillis: Long = 0L,
     val activityBars: List<ActivityBar> = emptyList(),
     val monthlyActivity: List<ActivityBar> = emptyList(),
+    val activityByDay: Map<LocalDate, ActivityBar> = emptyMap(),
 )
 
 data class ActiveRideSummary(
@@ -58,16 +59,21 @@ class HomeViewModel(
                         )
                     }
             val finishedRides = rides.filter { it.endedAtEpochMs != null }
+            val activityByDay =
+                rides
+                    .groupBy { it.startedAtEpochMs.toLocalDate(zone) }
+                    .mapValues { (day, dayRides) ->
+                        ActivityBar(
+                            day = day,
+                            rideCount = dayRides.count { it.endedAtEpochMs != null },
+                            distanceMeters = dayRides.sumOf { it.distanceMeters ?: 0.0 },
+                            durationMillis = dayRides.sumOf { it.durationMillis() },
+                        )
+                    }
             val weekDays = (6 downTo 0).map { today.minusDays(it.toLong()) }
             val bars =
                 weekDays.map { day ->
-                    val dayRides = rides.filter { it.startedAtEpochMs.toLocalDate(zone) == day }
-                    ActivityBar(
-                        day = day,
-                        rideCount = dayRides.count { it.endedAtEpochMs != null },
-                        distanceMeters = dayRides.sumOf { it.distanceMeters ?: 0.0 },
-                        durationMillis = dayRides.sumOf { it.durationMillis() },
-                    )
+                    activityByDay[day] ?: ActivityBar(day, rideCount = 0, distanceMeters = 0.0, durationMillis = 0L)
                 }
             val monthDays =
                 (1..currentMonth.lengthOfMonth()).map { dayOfMonth ->
@@ -75,13 +81,7 @@ class HomeViewModel(
                 }
             val monthlyActivity =
                 monthDays.map { day ->
-                    val dayRides = rides.filter { it.startedAtEpochMs.toLocalDate(zone) == day }
-                    ActivityBar(
-                        day = day,
-                        rideCount = dayRides.count { it.endedAtEpochMs != null },
-                        distanceMeters = dayRides.sumOf { it.distanceMeters ?: 0.0 },
-                        durationMillis = dayRides.sumOf { it.durationMillis() },
-                    )
+                    activityByDay[day] ?: ActivityBar(day, rideCount = 0, distanceMeters = 0.0, durationMillis = 0L)
                 }
 
             HomeDashboardState(
@@ -91,6 +91,7 @@ class HomeViewModel(
                 totalDurationMillis = finishedRides.sumOf { it.durationMillis() },
                 activityBars = bars,
                 monthlyActivity = monthlyActivity,
+                activityByDay = activityByDay,
             )
         }
 }

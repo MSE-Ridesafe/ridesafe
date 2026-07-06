@@ -13,6 +13,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,12 +46,14 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -73,6 +76,7 @@ import de.uhi.enia.ridesafe.util.formatOdometer
 import de.uhi.enia.ridesafe.util.usesMetric
 import java.text.NumberFormat
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.TextStyle
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -138,8 +142,7 @@ fun HomeScreen(
             }
             item {
                 ActivitySection(
-                    weeklyBars = state.activityBars,
-                    monthlyActivity = state.monthlyActivity,
+                    activityByDay = state.activityByDay,
                     unitSystem = unitSystem,
                 )
             }
@@ -392,23 +395,60 @@ private fun AnimatedPrimaryValue(value: String) {
 
 @Composable
 private fun ActivitySection(
-    weeklyBars: List<ActivityBar>,
-    monthlyActivity: List<ActivityBar>,
+    activityByDay: Map<LocalDate, ActivityBar>,
     unitSystem: UnitSystemSetting,
 ) {
     var selectedTimeRange by rememberSaveable { mutableStateOf(ActivityTimeRange.WEEK) }
     var selectedMetric by rememberSaveable { mutableStateOf(ActivityChartMetric.DISTANCE) }
+    var weekOffset by rememberSaveable { mutableStateOf(0) }
+    var monthOffset by rememberSaveable { mutableStateOf(0) }
+    val today = LocalDate.now()
+    val selectedWeekEnd = today.plusDays(weekOffset * 7L)
+    val selectedMonth = YearMonth.from(today).plusMonths(monthOffset.toLong())
+    val weeklyBars = buildRollingWeekActivity(activityByDay, selectedWeekEnd)
+    val monthlyActivity = buildMonthActivity(activityByDay, selectedMonth)
     val visibleData =
         when (selectedTimeRange) {
             ActivityTimeRange.WEEK -> weeklyBars
             ActivityTimeRange.MONTH -> monthlyActivity
         }
+    val dateRange = formatActivityDateRange(visibleData)
     val maxValue =
         max(
             1.0,
             visibleData.maxOfOrNull { it.valueFor(selectedMetric) } ?: 0.0,
         )
     val hasActivity = visibleData.any { it.distanceMeters > 0.0 || it.durationMillis > 0L }
+    val subtitle =
+        when (selectedTimeRange) {
+            ActivityTimeRange.WEEK -> "${stringResource(selectedMetric.labelRes)} - $dateRange"
+            ActivityTimeRange.MONTH ->
+                "${
+                    stringResource(selectedMetric.labelRes)
+                } - ${formatMonthLabel(selectedMonth)}"
+        }
+    val canNavigateForward =
+        when (selectedTimeRange) {
+            ActivityTimeRange.WEEK -> weekOffset < 0
+            ActivityTimeRange.MONTH -> monthOffset < 0
+        }
+    val onNavigatePeriod: (Int) -> Unit = { direction ->
+        when (selectedTimeRange) {
+            ActivityTimeRange.WEEK -> {
+                val nextOffset = weekOffset + direction
+                if (nextOffset <= 0) {
+                    weekOffset = nextOffset
+                }
+            }
+
+            ActivityTimeRange.MONTH -> {
+                val nextOffset = monthOffset + direction
+                if (nextOffset <= 0) {
+                    monthOffset = nextOffset
+                }
+            }
+        }
+    }
 
     Card(
         shape = MaterialTheme.shapes.extraLarge,
@@ -426,24 +466,7 @@ private fun ActivitySection(
                         style = MaterialTheme.typography.titleLarge,
                     )
                     Text(
-                        text =
-                            stringResource(
-                                when (selectedTimeRange) {
-                                    ActivityTimeRange.WEEK -> {
-                                        when (selectedMetric) {
-                                            ActivityChartMetric.DISTANCE -> R.string.home_activity_distance_week
-                                            ActivityChartMetric.TRAVEL_TIME -> R.string.home_activity_time_week
-                                        }
-                                    }
-
-                                    ActivityTimeRange.MONTH -> {
-                                        when (selectedMetric) {
-                                            ActivityChartMetric.DISTANCE -> R.string.home_activity_distance_month
-                                            ActivityChartMetric.TRAVEL_TIME -> R.string.home_activity_time_month
-                                        }
-                                    }
-                                },
-                            ),
+                        text = subtitle,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -461,29 +484,37 @@ private fun ActivitySection(
             ActivityTimeRangeChips(
                 selected = selectedTimeRange,
                 onSelected = { selectedTimeRange = it },
-                dateRange = formatActivityDateRange(visibleData),
+                dateRange = dateRange,
             )
-            Crossfade(
-                targetState = selectedTimeRange,
-                animationSpec = tween(durationMillis = 250),
-                label = "activity_visualization",
-            ) { timeRange ->
-                when (timeRange) {
-                    ActivityTimeRange.WEEK -> {
-                        WeeklyBarChart(
-                            bars = weeklyBars,
-                            selectedMetric = selectedMetric,
-                            maxValue = maxValue,
-                            unitSystem = unitSystem,
-                        )
-                    }
+            Box(
+                modifier =
+                    Modifier.activitySwipeNavigation(
+                        enabledForward = canNavigateForward,
+                        onNavigate = onNavigatePeriod,
+                    ),
+            ) {
+                Crossfade(
+                    targetState = selectedTimeRange,
+                    animationSpec = tween(durationMillis = 250),
+                    label = "activity_visualization",
+                ) { timeRange ->
+                    when (timeRange) {
+                        ActivityTimeRange.WEEK -> {
+                            WeeklyBarChart(
+                                bars = weeklyBars,
+                                selectedMetric = selectedMetric,
+                                maxValue = maxValue,
+                                unitSystem = unitSystem,
+                            )
+                        }
 
-                    ActivityTimeRange.MONTH -> {
-                        MonthlyHeatMap(
-                            days = monthlyActivity,
-                            selectedMetric = selectedMetric,
-                            maxValue = maxValue,
-                        )
+                        ActivityTimeRange.MONTH -> {
+                            MonthlyHeatMap(
+                                days = monthlyActivity,
+                                selectedMetric = selectedMetric,
+                                maxValue = maxValue,
+                            )
+                        }
                     }
                 }
             }
@@ -521,6 +552,31 @@ private fun ActivityMetricTabs(
                 text = { Text(stringResource(metric.labelRes)) },
             )
         }
+    }
+}
+
+@Composable
+private fun Modifier.activitySwipeNavigation(
+    enabledForward: Boolean,
+    onNavigate: (Int) -> Unit,
+): Modifier {
+    var dragAmount by remember { mutableStateOf(0f) }
+    return pointerInput(enabledForward, onNavigate) {
+        detectHorizontalDragGestures(
+            onDragStart = { dragAmount = 0f },
+            onHorizontalDrag = { _, delta ->
+                dragAmount += delta
+            },
+            onDragEnd = {
+                val threshold = 48f
+                when {
+                    dragAmount <= -threshold && enabledForward -> onNavigate(1)
+                    dragAmount >= threshold -> onNavigate(-1)
+                }
+                dragAmount = 0f
+            },
+            onDragCancel = { dragAmount = 0f },
+        )
     }
 }
 
@@ -929,6 +985,29 @@ private fun formatActivityDateRange(days: List<ActivityBar>): String {
     val formatter = DateTimeFormatter.ofPattern("dd.MM.", Locale.getDefault())
     return "${start.format(formatter)} - ${end.format(formatter)}"
 }
+
+private fun formatMonthLabel(month: YearMonth): String {
+    val formatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
+    return month.atDay(1).format(formatter)
+}
+
+private fun buildRollingWeekActivity(
+    activityByDay: Map<LocalDate, ActivityBar>,
+    endDay: LocalDate,
+): List<ActivityBar> =
+    (6 downTo 0).map { offset ->
+        val day = endDay.minusDays(offset.toLong())
+        activityByDay[day] ?: ActivityBar(day, rideCount = 0, distanceMeters = 0.0, durationMillis = 0L)
+    }
+
+private fun buildMonthActivity(
+    activityByDay: Map<LocalDate, ActivityBar>,
+    month: YearMonth,
+): List<ActivityBar> =
+    (1..month.lengthOfMonth()).map { dayOfMonth ->
+        val day = month.atDay(dayOfMonth)
+        activityByDay[day] ?: ActivityBar(day, rideCount = 0, distanceMeters = 0.0, durationMillis = 0L)
+    }
 
 private fun ActivityBar.valueFor(metric: ActivityChartMetric): Double =
     when (metric) {
