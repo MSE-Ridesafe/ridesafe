@@ -12,7 +12,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +25,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -55,7 +55,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -136,9 +135,8 @@ fun HomeScreen(
             }
             item {
                 MonthlyStats(
-                    distanceMeters = state.monthlyDistanceMeters,
-                    durationMillis = state.monthlyDurationMillis,
-                    trendData = state.monthlyActivity,
+                    distanceMeters = state.totalDistanceMeters,
+                    durationMillis = state.totalDurationMillis,
                     unitSystem = unitSystem,
                 )
             }
@@ -284,25 +282,40 @@ private fun ActiveRideCard(
 private fun MonthlyStats(
     distanceMeters: Double,
     durationMillis: Long,
-    trendData: List<ActivityBar>,
     unitSystem: UnitSystemSetting,
 ) {
     val context = LocalContext.current
-    Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
-        StatCard(
-            icon = "route",
-            label = stringResource(R.string.home_monthly_distance),
-            value = formatDistance(context, distanceMeters, unitSystem),
-            chart = StatMiniChart.Line(trendData.map { it.distanceMeters }),
-            modifier = Modifier.weight(1f),
-        )
-        StatCard(
-            icon = "schedule",
-            label = stringResource(R.string.home_time_in_vehicle),
-            value = formatDuration(durationMillis),
-            chart = StatMiniChart.Bars(trendData.map { it.durationMillis.toDouble() }),
-            modifier = Modifier.weight(1f),
-        )
+    val useColumns = LocalConfiguration.current.screenWidthDp >= 360
+    if (useColumns) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            StatCard(
+                icon = "route",
+                label = stringResource(R.string.home_total_distance),
+                value = formatDistance(context, distanceMeters, unitSystem),
+                modifier = Modifier.weight(1f),
+            )
+            StatCard(
+                icon = "schedule",
+                label = stringResource(R.string.home_total_travel_time),
+                value = formatDuration(durationMillis),
+                modifier = Modifier.weight(1f),
+            )
+        }
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
+            StatCard(
+                icon = "route",
+                label = stringResource(R.string.home_total_distance),
+                value = formatDistance(context, distanceMeters, unitSystem),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            StatCard(
+                icon = "schedule",
+                label = stringResource(R.string.home_total_travel_time),
+                value = formatDuration(durationMillis),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 
@@ -311,36 +324,39 @@ private fun StatCard(
     icon: String,
     label: String,
     value: String,
-    chart: StatMiniChart,
     modifier: Modifier = Modifier,
 ) {
     Card(
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-        modifier = modifier.height(188.dp),
+        modifier = modifier.heightIn(min = 156.dp),
     ) {
         Column(
             modifier =
                 Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            MaterialSymbol(
-                symbolName = icon,
-                contentDescription = null,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(Modifier.weight(1f))
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                MaterialSymbol(
+                    symbolName = icon,
+                    contentDescription = null,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge.copy(lineHeight = 18.sp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    softWrap = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
             AnimatedPrimaryValue(value = value)
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            StatMiniChart(chart = chart, modifier = Modifier.fillMaxWidth().height(28.dp))
         }
     }
 }
@@ -354,105 +370,28 @@ private fun AnimatedPrimaryValue(value: String) {
                 (slideOutVertically(tween(250)) { -it / 3 } + fadeOut(tween(250)))
         },
         label = "dashboard_primary_value",
+        modifier = Modifier.fillMaxWidth(),
     ) { targetValue ->
+        val fontSize =
+            when {
+                targetValue.length >= 14 -> 22.sp
+                targetValue.length >= 11 -> 25.sp
+                targetValue.length >= 9 -> 28.sp
+                else -> 30.sp
+            }
         Text(
             text = targetValue,
             style =
                 MaterialTheme.typography.displaySmall.copy(
-                    fontSize = 32.sp,
-                    lineHeight = 36.sp,
+                    fontSize = fontSize,
+                    lineHeight = fontSize * 1.12f,
                 ),
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            overflow = TextOverflow.Visible,
+            softWrap = false,
         )
     }
-}
-
-@Composable
-private fun StatMiniChart(
-    chart: StatMiniChart,
-    modifier: Modifier = Modifier,
-) {
-    val primary = MaterialTheme.colorScheme.primary
-    val track = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
-
-    Crossfade(
-        targetState = chart.values.takeLast(30),
-        animationSpec = tween(durationMillis = 250),
-        label = "dashboard_stat_chart",
-        modifier = modifier,
-    ) { values ->
-        val maxValue = max(1.0, values.maxOrNull() ?: 0.0)
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            if (values.isEmpty()) return@Canvas
-            when (chart) {
-                is StatMiniChart.Line -> {
-                    if (values.size == 1) {
-                        val y = size.height * (1f - (values.first() / maxValue).toFloat())
-                        drawLine(
-                            color = track,
-                            start =
-                                androidx.compose.ui.geometry
-                                    .Offset(0f, y),
-                            end =
-                                androidx.compose.ui.geometry
-                                    .Offset(size.width, y),
-                            strokeWidth = 4.dp.toPx(),
-                            cap = StrokeCap.Round,
-                        )
-                    } else {
-                        val step = size.width / (values.lastIndex.coerceAtLeast(1))
-                        values.zipWithNext().forEachIndexed { index, pair ->
-                            val startY = size.height * (1f - (pair.first / maxValue).toFloat())
-                            val endY = size.height * (1f - (pair.second / maxValue).toFloat())
-                            drawLine(
-                                color = primary.copy(alpha = 0.42f),
-                                start =
-                                    androidx.compose.ui.geometry
-                                        .Offset(step * index, startY),
-                                end =
-                                    androidx.compose.ui.geometry
-                                        .Offset(step * (index + 1), endY),
-                                strokeWidth = 3.dp.toPx(),
-                                cap = StrokeCap.Round,
-                            )
-                        }
-                    }
-                }
-
-                is StatMiniChart.Bars -> {
-                    val step = size.width / values.size
-                    values.forEachIndexed { index, value ->
-                        val barHeight = (size.height * (value / maxValue).toFloat()).coerceAtLeast(4.dp.toPx())
-                        drawLine(
-                            color = primary.copy(alpha = if (value > 0.0) 0.38f else 0.16f),
-                            start =
-                                androidx.compose.ui.geometry
-                                    .Offset(step * index + step / 2f, size.height),
-                            end =
-                                androidx.compose.ui.geometry
-                                    .Offset(step * index + step / 2f, size.height - barHeight),
-                            strokeWidth = (step * 0.42f).coerceAtMost(6.dp.toPx()),
-                            cap = StrokeCap.Round,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-private sealed class StatMiniChart(
-    val values: List<Double>,
-) {
-    class Line(
-        values: List<Double>,
-    ) : StatMiniChart(values)
-
-    class Bars(
-        values: List<Double>,
-    ) : StatMiniChart(values)
 }
 
 @Composable

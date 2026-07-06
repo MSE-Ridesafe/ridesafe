@@ -16,8 +16,8 @@ import java.time.ZoneId
 data class HomeDashboardState(
     val primaryVehicle: Vehicle? = null,
     val activeRide: ActiveRideSummary? = null,
-    val monthlyDistanceMeters: Double = 0.0,
-    val monthlyDurationMillis: Long = 0L,
+    val totalDistanceMeters: Double = 0.0,
+    val totalDurationMillis: Long = 0L,
     val activityBars: List<ActivityBar> = emptyList(),
     val monthlyActivity: List<ActivityBar> = emptyList(),
 )
@@ -57,11 +57,7 @@ class HomeViewModel(
                                     ?: primaryVehicle?.displayTitle(),
                         )
                     }
-            val finishedThisMonth =
-                rides.filter { ride ->
-                    ride.endedAtEpochMs != null &&
-                        YearMonth.from(ride.startedAtEpochMs.toLocalDate(zone)) == currentMonth
-                }
+            val finishedRides = rides.filter { it.endedAtEpochMs != null }
             val weekDays = (6 downTo 0).map { today.minusDays(it.toLong()) }
             val bars =
                 weekDays.map { day ->
@@ -91,12 +87,8 @@ class HomeViewModel(
             HomeDashboardState(
                 primaryVehicle = primaryVehicle,
                 activeRide = activeRide,
-                monthlyDistanceMeters = finishedThisMonth.sumOf { it.distanceMeters ?: 0.0 },
-                monthlyDurationMillis =
-                    finishedThisMonth.sumOf { ride ->
-                        ((ride.endedAtEpochMs ?: ride.startedAtEpochMs) - ride.startedAtEpochMs)
-                            .coerceAtLeast(0L)
-                    },
+                totalDistanceMeters = finishedRides.sumOf { it.distanceMeters ?: 0.0 },
+                totalDurationMillis = finishedRides.sumOf { it.durationMillis() },
                 activityBars = bars,
                 monthlyActivity = monthlyActivity,
             )
