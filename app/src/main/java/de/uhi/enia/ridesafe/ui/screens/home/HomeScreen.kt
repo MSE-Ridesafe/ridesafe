@@ -418,7 +418,6 @@ private fun ActivitySection(
             1.0,
             visibleData.maxOfOrNull { it.valueFor(selectedMetric) } ?: 0.0,
         )
-    val hasActivity = visibleData.any { it.distanceMeters > 0.0 || it.durationMillis > 0L }
     val subtitle =
         stringResource(
             when (selectedTimeRange) {
@@ -527,19 +526,6 @@ private fun ActivitySection(
                         }
                     }
                 }
-            }
-            if (!hasActivity) {
-                Text(
-                    text =
-                        stringResource(
-                            when (selectedTimeRange) {
-                                ActivityTimeRange.WEEK -> R.string.home_activity_empty_week
-                                ActivityTimeRange.MONTH -> R.string.home_activity_empty_month
-                            },
-                        ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         }
     }
