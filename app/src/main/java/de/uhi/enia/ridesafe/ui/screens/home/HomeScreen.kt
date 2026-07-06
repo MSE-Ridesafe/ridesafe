@@ -13,7 +13,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +20,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,7 +29,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,7 +40,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -59,6 +55,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,7 +72,6 @@ import de.uhi.enia.ridesafe.util.formatDuration
 import de.uhi.enia.ridesafe.util.formatOdometer
 import de.uhi.enia.ridesafe.util.usesMetric
 import java.text.NumberFormat
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.time.format.DateTimeFormatter
@@ -487,7 +483,6 @@ private fun ActivitySection(
                             days = monthlyActivity,
                             selectedMetric = selectedMetric,
                             maxValue = maxValue,
-                            unitSystem = unitSystem,
                         )
                     }
                 }
@@ -666,67 +661,92 @@ private fun MonthlyHeatMap(
     days: List<ActivityBar>,
     selectedMetric: ActivityChartMetric,
     maxValue: Double,
-    unitSystem: UnitSystemSetting,
 ) {
     val locale =
         ConfigurationCompat.getLocales(LocalConfiguration.current).get(0)
-    var selectedDay by rememberSaveable { mutableStateOf<Long?>(null) }
     val firstDay = days.firstOrNull()?.day
-    val weekColumns =
+    val weekRows =
         if (firstDay == null) {
             5
         } else {
             val offset = firstDay.dayOfWeek.value - 1
             ((offset + days.size + 6) / 7).coerceAtLeast(1)
         }
-    val selectedActivity = selectedDay?.let { epochDay -> days.firstOrNull { it.day.toEpochDay() == epochDay } }
-
-    selectedActivity?.let { activity ->
-        ActivityDayDialog(
-            activity = activity,
-            unitSystem = unitSystem,
-            onDismiss = { selectedDay = null },
-        )
-    }
-
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        DayOfWeek.entries.forEach { dayOfWeek ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = dayOfWeek.getDisplayName(TextStyle.SHORT, locale).trimEnd('.').take(2),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.width(24.dp),
-                )
-                repeat(weekColumns) { week ->
-                    val day =
-                        days.firstOrNull { activity ->
-                            activity.day.dayOfWeek == dayOfWeek &&
-                                ((activity.day.dayOfMonth + (firstDay?.dayOfWeek?.value ?: 1) - 2) / 7) == week
-                        }
-                    HeatMapCell(
-                        activity = day,
-                        fraction = ((day?.valueFor(selectedMetric) ?: 0.0) / maxValue).toFloat().coerceIn(0f, 1f),
-                        selectedMetric = selectedMetric,
-                        onClick = { day?.let { selectedDay = it.day.toEpochDay() } },
-                        modifier = Modifier.weight(1f),
-                    )
+    val calendarRows =
+        (0 until weekRows).map { week ->
+            (0..6).map { dayIndex ->
+                days.firstOrNull { activity ->
+                    val offset = firstDay?.dayOfWeek?.value ?: 1
+                    activity.day.dayOfWeek.value == dayIndex + 1 &&
+                        ((activity.day.dayOfMonth + offset - 2) / 7) == week
                 }
             }
         }
+
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(160.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            (1..7).forEach { dayOfWeek ->
+                Text(
+                    text =
+                        java.time.DayOfWeek.of(dayOfWeek)
+                            .getDisplayName(TextStyle.SHORT, locale)
+                            .trimEnd('.')
+                            .take(2),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                )
+            }
+        }
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            calendarRows.forEach { week ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    week.forEach { day ->
+                        if (day == null) {
+                            Spacer(Modifier.weight(1f))
+                        } else {
+                            HeatMapCell(
+                                activity = day,
+                                fraction = (day.valueFor(selectedMetric) / maxValue).toFloat().coerceIn(0f, 1f),
+                                selectedMetric = selectedMetric,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        ActivityHeatMapLegend()
     }
 }
 
 @Composable
 private fun HeatMapCell(
-    activity: ActivityBar?,
+    activity: ActivityBar,
     fraction: Float,
     selectedMetric: ActivityChartMetric,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val intensity =
@@ -734,28 +754,25 @@ private fun HeatMapCell(
             ActivityChartMetric.DISTANCE -> {
                 when {
                     fraction <= 0f -> ActivityIntensity.EMPTY
-                    fraction < 0.34f -> ActivityIntensity.LOW
-                    fraction < 0.67f -> ActivityIntensity.MEDIUM
-                    else -> ActivityIntensity.HIGH
+                    fraction < 0.25f -> ActivityIntensity.LOW
+                    fraction < 0.5f -> ActivityIntensity.MEDIUM
+                    fraction < 0.75f -> ActivityIntensity.HIGH
+                    else -> ActivityIntensity.VERY_HIGH
                 }
             }
 
             ActivityChartMetric.TRAVEL_TIME -> {
                 when {
-                    (activity?.durationMillis ?: 0L) <= 0L -> ActivityIntensity.EMPTY
-                    fraction < 0.34f -> ActivityIntensity.LOW
-                    fraction < 0.67f -> ActivityIntensity.MEDIUM
-                    else -> ActivityIntensity.HIGH
+                    activity.durationMillis <= 0L -> ActivityIntensity.EMPTY
+                    fraction < 0.25f -> ActivityIntensity.LOW
+                    fraction < 0.5f -> ActivityIntensity.MEDIUM
+                    fraction < 0.75f -> ActivityIntensity.HIGH
+                    else -> ActivityIntensity.VERY_HIGH
                 }
             }
         }
     val targetColor =
-        when (intensity) {
-            ActivityIntensity.EMPTY -> MaterialTheme.colorScheme.surfaceContainerHighest
-            ActivityIntensity.LOW -> MaterialTheme.colorScheme.tertiaryContainer
-            ActivityIntensity.MEDIUM -> MaterialTheme.colorScheme.secondaryContainer
-            ActivityIntensity.HIGH -> MaterialTheme.colorScheme.primary
-        }
+        intensity.color()
     val color by animateColorAsState(
         targetValue = targetColor,
         animationSpec = tween(durationMillis = 250),
@@ -763,56 +780,73 @@ private fun HeatMapCell(
     )
 
     Box(
-        modifier =
-            modifier
-                .aspectRatio(1f)
-                .clip(MaterialTheme.shapes.small)
-                .background(color)
-                .clickable(enabled = activity != null, onClick = onClick),
-    )
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(18.dp)
+                    .clip(MaterialTheme.shapes.small)
+                    .background(color),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = activity.day.dayOfMonth.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                color =
+                    if (intensity == ActivityIntensity.HIGH || intensity == ActivityIntensity.VERY_HIGH) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+            )
+        }
+    }
 }
 
 @Composable
-private fun ActivityDayDialog(
-    activity: ActivityBar,
-    unitSystem: UnitSystemSetting,
-    onDismiss: () -> Unit,
-) {
-    val context = LocalContext.current
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_close))
-            }
-        },
-        title = {
-            Text(
-                text =
-                    android.text.format.DateUtils.formatDateTime(
-                        context,
-                        activity.day
-                            .atStartOfDay(java.time.ZoneId.systemDefault())
-                            .toInstant()
-                            .toEpochMilli(),
-                        android.text.format.DateUtils.FORMAT_SHOW_DATE or
-                            android.text.format.DateUtils.FORMAT_SHOW_YEAR,
-                    ),
+private fun ActivityHeatMapLegend() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.home_activity_legend_less),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+        ActivityIntensity.entries.forEach { intensity ->
+            Box(
+                modifier =
+                    Modifier
+                        .size(10.dp)
+                        .clip(MaterialTheme.shapes.extraSmall)
+                        .background(intensity.color()),
             )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    stringResource(
-                        R.string.home_activity_dialog_distance,
-                        formatChartDistance(context, activity.distanceMeters, unitSystem),
-                    ),
-                )
-                Text(stringResource(R.string.home_activity_dialog_time, formatDuration(activity.durationMillis)))
-            }
-        },
-    )
+        }
+        Text(
+            text = stringResource(R.string.home_activity_legend_more),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+    }
 }
+
+@Composable
+private fun ActivityIntensity.color(): Color =
+    when (this) {
+        ActivityIntensity.EMPTY -> MaterialTheme.colorScheme.surfaceContainerHighest
+        ActivityIntensity.LOW -> MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
+        ActivityIntensity.MEDIUM -> MaterialTheme.colorScheme.primary.copy(alpha = 0.42f)
+        ActivityIntensity.HIGH -> MaterialTheme.colorScheme.primary.copy(alpha = 0.68f)
+        ActivityIntensity.VERY_HIGH -> MaterialTheme.colorScheme.primary
+    }
 
 @Composable
 private fun InfoChip(
@@ -872,6 +906,7 @@ private enum class ActivityIntensity {
     LOW,
     MEDIUM,
     HIGH,
+    VERY_HIGH,
 }
 
 private val ActivityTimeRange.labelRes: Int
