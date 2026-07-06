@@ -420,13 +420,23 @@ private fun ActivitySection(
         )
     val hasActivity = visibleData.any { it.distanceMeters > 0.0 || it.durationMillis > 0L }
     val subtitle =
-        when (selectedTimeRange) {
-            ActivityTimeRange.WEEK -> "${stringResource(selectedMetric.labelRes)} - $dateRange"
-            ActivityTimeRange.MONTH ->
-                "${
-                    stringResource(selectedMetric.labelRes)
-                } - ${formatMonthLabel(selectedMonth)}"
-        }
+        stringResource(
+            when (selectedTimeRange) {
+                ActivityTimeRange.WEEK -> {
+                    when (selectedMetric) {
+                        ActivityChartMetric.DISTANCE -> R.string.home_activity_distance_week
+                        ActivityChartMetric.TRAVEL_TIME -> R.string.home_activity_time_week
+                    }
+                }
+
+                ActivityTimeRange.MONTH -> {
+                    when (selectedMetric) {
+                        ActivityChartMetric.DISTANCE -> R.string.home_activity_distance_month
+                        ActivityChartMetric.TRAVEL_TIME -> R.string.home_activity_time_month
+                    }
+                }
+            },
+        )
     val canNavigateForward =
         when (selectedTimeRange) {
             ActivityTimeRange.WEEK -> weekOffset < 0

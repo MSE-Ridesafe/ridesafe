@@ -27,10 +27,10 @@
     <string name="home_total_distance">Total Distance</string>
     <string name="home_total_travel_time">Total Travel Time</string>
     <string name="home_activity_title">Activity</string>
-    <string name="home_activity_distance_week">Distance this week</string>
-    <string name="home_activity_time_week">Travel time this week</string>
-    <string name="home_activity_distance_month">Distance this month</string>
-    <string name="home_activity_time_month">Travel time this month</string>
+    <string name="home_activity_distance_week">Weekly Distance</string>
+    <string name="home_activity_time_week">Weekly Travel Time</string>
+    <string name="home_activity_distance_month">Monthly Distance</string>
+    <string name="home_activity_time_month">Monthly Travel Time</string>
     <string name="home_activity_period_week">Week</string>
     <string name="home_activity_period_month">Month</string>
     <string name="home_activity_metric_distance">Distance</string>

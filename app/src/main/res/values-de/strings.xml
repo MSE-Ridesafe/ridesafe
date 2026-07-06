@@ -27,10 +27,10 @@
     <string name="home_total_distance">Gesamt&#173;strecke</string>
     <string name="home_total_travel_time">Gesamte Fahrzeit</string>
     <string name="home_activity_title">Aktivit&#228;t</string>
-    <string name="home_activity_distance_week">Strecke diese Woche</string>
-    <string name="home_activity_time_week">Fahrzeit diese Woche</string>
-    <string name="home_activity_distance_month">Strecke diesen Monat</string>
-    <string name="home_activity_time_month">Fahrzeit diesen Monat</string>
+    <string name="home_activity_distance_week">Wöchentliche Strecke</string>
+    <string name="home_activity_time_week">Wöchentliche Fahrzeit</string>
+    <string name="home_activity_distance_month">Monatliche Strecke</string>
+    <string name="home_activity_time_month">Monatliche Fahrzeit</string>
     <string name="home_activity_period_week">Woche</string>
     <string name="home_activity_period_month">Monat</string>
     <string name="home_activity_metric_distance">Strecke</string>
