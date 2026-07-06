@@ -8,12 +8,10 @@ import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
-import java.time.temporal.TemporalAdjusters
 
 data class HomeDashboardState(
     val primaryVehicle: Vehicle? = null,
@@ -64,8 +62,7 @@ class HomeViewModel(
                     ride.endedAtEpochMs != null &&
                         YearMonth.from(ride.startedAtEpochMs.toLocalDate(zone)) == currentMonth
                 }
-            val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-            val weekDays = (0..6).map { weekStart.plusDays(it.toLong()) }
+            val weekDays = (6 downTo 0).map { today.minusDays(it.toLong()) }
             val bars =
                 weekDays.map { day ->
                     val dayRides = rides.filter { it.startedAtEpochMs.toLocalDate(zone) == day }

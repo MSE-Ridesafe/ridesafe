@@ -77,7 +77,9 @@ import de.uhi.enia.ridesafe.util.formatOdometer
 import de.uhi.enia.ridesafe.util.usesMetric
 import java.text.NumberFormat
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.format.TextStyle
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.max
 
@@ -524,6 +526,7 @@ private fun ActivitySection(
             ActivityTimeRangeChips(
                 selected = selectedTimeRange,
                 onSelected = { selectedTimeRange = it },
+                dateRange = formatActivityDateRange(visibleData),
             )
             Crossfade(
                 targetState = selectedTimeRange,
@@ -591,31 +594,45 @@ private fun ActivityMetricTabs(
 private fun ActivityTimeRangeChips(
     selected: ActivityTimeRange,
     onSelected: (ActivityTimeRange) -> Unit,
+    dateRange: String,
 ) {
-    FlowRow(
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        ActivityTimeRange.entries.forEach { range ->
-            FilterChip(
-                selected = selected == range,
-                onClick = { onSelected(range) },
-                label = { Text(stringResource(range.labelRes)) },
-                leadingIcon =
-                    if (selected == range) {
-                        {
-                            MaterialSymbol(
-                                symbolName = "check",
-                                contentDescription = null,
-                                size = 18.dp,
-                            )
-                        }
-                    } else {
-                        null
-                    },
-            )
+        FlowRow(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ActivityTimeRange.entries.forEach { range ->
+                FilterChip(
+                    selected = selected == range,
+                    onClick = { onSelected(range) },
+                    label = { Text(stringResource(range.labelRes)) },
+                    leadingIcon =
+                        if (selected == range) {
+                            {
+                                MaterialSymbol(
+                                    symbolName = "check",
+                                    contentDescription = null,
+                                    size = 18.dp,
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                )
+            }
         }
+        Text(
+            text = dateRange,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -931,6 +948,13 @@ private val ActivityChartMetric.labelRes: Int
             ActivityChartMetric.DISTANCE -> R.string.home_activity_metric_distance
             ActivityChartMetric.TRAVEL_TIME -> R.string.home_activity_metric_time
         }
+
+private fun formatActivityDateRange(days: List<ActivityBar>): String {
+    val start = days.firstOrNull()?.day ?: LocalDate.now()
+    val end = days.lastOrNull()?.day ?: start
+    val formatter = DateTimeFormatter.ofPattern("dd.MM.", Locale.getDefault())
+    return "${start.format(formatter)} - ${end.format(formatter)}"
+}
 
 private fun ActivityBar.valueFor(metric: ActivityChartMetric): Double =
     when (metric) {
