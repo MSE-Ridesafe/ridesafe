@@ -27,6 +27,9 @@
     <string name="home_vehicle_fuel_consumption">Fuel consumption</string>
     <string name="home_total_distance">Total Distance</string>
     <string name="home_total_travel_time">Total Travel Time</string>
+    <string name="home_highlight_longest_ride">Longest ride</string>
+    <string name="home_highlight_average_ride">Average ride</string>
+    <string name="home_highlight_most_active_day">Most active day</string>
     <string name="home_activity_title">Activity</string>
     <string name="home_activity_distance_week">Weekly Distance</string>
     <string name="home_activity_time_week">Weekly Travel Time</string>

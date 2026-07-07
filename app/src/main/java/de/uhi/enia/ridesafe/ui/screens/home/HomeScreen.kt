@@ -140,6 +140,12 @@ fun HomeScreen(
                 )
             }
             item {
+                HighlightsCard(
+                    highlights = state.highlights,
+                    unitSystem = unitSystem,
+                )
+            }
+            item {
                 ActivitySection(
                     activityByDay = state.activityByDay,
                     unitSystem = unitSystem,
@@ -315,6 +321,88 @@ private fun MonthlyStats(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+}
+
+@Composable
+private fun HighlightsCard(
+    highlights: HomeHighlights,
+    unitSystem: UnitSystemSetting,
+) {
+    val context = LocalContext.current
+    val locale =
+        ConfigurationCompat.getLocales(LocalConfiguration.current).get(0) ?: Locale.getDefault()
+    Card(
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            HighlightRow(
+                icon = "emoji_events",
+                label = stringResource(R.string.home_highlight_longest_ride),
+                value =
+                    highlights.longestRideMeters?.let {
+                        formatDistance(context, it, unitSystem)
+                    } ?: stringResource(R.string.value_not_set),
+            )
+            HighlightRow(
+                icon = "directions_car",
+                label = stringResource(R.string.home_highlight_average_ride),
+                value =
+                    highlights.averageRideMeters?.let {
+                        formatDistance(context, it, unitSystem)
+                    } ?: stringResource(R.string.value_not_set),
+            )
+            HighlightRow(
+                icon = "calendar_month",
+                label = stringResource(R.string.home_highlight_most_active_day),
+                value =
+                    highlights.mostActiveDay
+                        ?.getDisplayName(TextStyle.FULL, locale)
+                        ?: stringResource(R.string.value_not_set),
+            )
+        }
+    }
+}
+
+@Composable
+private fun HighlightRow(
+    icon: String,
+    label: String,
+    value: String,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        MaterialSymbol(
+            symbolName = icon,
+            contentDescription = null,
+            color = MaterialTheme.colorScheme.primary,
+            size = 24.dp,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.End,
+        )
     }
 }
 

@@ -27,6 +27,9 @@
     <string name="home_vehicle_fuel_consumption">Kraftstoffverbrauch</string>
     <string name="home_total_distance">Gesamte Strecke</string>
     <string name="home_total_travel_time">Gesamte Fahrzeit</string>
+    <string name="home_highlight_longest_ride">Längste Fahrt</string>
+    <string name="home_highlight_average_ride">Durchschnittliche Fahrt</string>
+    <string name="home_highlight_most_active_day">Aktivster Tag</string>
     <string name="home_activity_title">Aktivit&#228;t</string>
     <string name="home_activity_distance_week">Wöchentliche Strecke</string>
     <string name="home_activity_time_week">Wöchentliche Fahrzeit</string>

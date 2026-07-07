@@ -8,6 +8,7 @@ import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -21,6 +22,7 @@ data class HomeDashboardState(
     val activityBars: List<ActivityBar> = emptyList(),
     val monthlyActivity: List<ActivityBar> = emptyList(),
     val activityByDay: Map<LocalDate, ActivityBar> = emptyMap(),
+    val highlights: HomeHighlights = HomeHighlights(),
 )
 
 data class ActiveRideSummary(
@@ -33,6 +35,12 @@ data class ActivityBar(
     val rideCount: Int,
     val distanceMeters: Double,
     val durationMillis: Long,
+)
+
+data class HomeHighlights(
+    val longestRideMeters: Double? = null,
+    val averageRideMeters: Double? = null,
+    val mostActiveDay: DayOfWeek? = null,
 )
 
 class HomeViewModel(
@@ -59,6 +67,13 @@ class HomeViewModel(
                         )
                     }
             val finishedRides = rides.filter { it.endedAtEpochMs != null }
+            val finishedRideDistances = finishedRides.mapNotNull { it.distanceMeters }
+            val mostActiveDay =
+                finishedRides
+                    .groupingBy { it.startedAtEpochMs.toLocalDate(zone).dayOfWeek }
+                    .eachCount()
+                    .maxByOrNull { it.value }
+                    ?.key
             val activityByDay =
                 rides
                     .groupBy { it.startedAtEpochMs.toLocalDate(zone) }
@@ -92,6 +107,12 @@ class HomeViewModel(
                 activityBars = bars,
                 monthlyActivity = monthlyActivity,
                 activityByDay = activityByDay,
+                highlights =
+                    HomeHighlights(
+                        longestRideMeters = finishedRideDistances.maxOrNull(),
+                        averageRideMeters = finishedRideDistances.takeIf { it.isNotEmpty() }?.average(),
+                        mostActiveDay = mostActiveDay,
+                    ),
             )
         }
 }
