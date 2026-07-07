@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -68,7 +67,8 @@ fun MonthlyHeatMap(
             (1..7).forEach { dayOfWeek ->
                 Text(
                     text =
-                        DayOfWeek.of(dayOfWeek)
+                        DayOfWeek
+                            .of(dayOfWeek)
                             .getDisplayName(TextStyle.SHORT, locale)
                             .trimEnd('.')
                             .take(2),

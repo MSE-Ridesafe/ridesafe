@@ -26,7 +26,7 @@ object UnitPrefs {
         val name = prefs.getString(KEY_UNIT_SYSTEM, UnitSystemSetting.AUTOMATIC.name)
         return try {
             UnitSystemSetting.valueOf(name ?: UnitSystemSetting.AUTOMATIC.name)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             UnitSystemSetting.AUTOMATIC
         }
     }
@@ -40,10 +40,7 @@ object UnitPrefs {
     }
 }
 
-fun getFormattingLocale(
-    context: Context,
-    setting: UnitSystemSetting,
-): java.util.Locale =
+fun getFormattingLocale(setting: UnitSystemSetting): java.util.Locale =
     if (setting == UnitSystemSetting.AUTOMATIC) {
         val systemLocales =
             android.content.res.Resources
@@ -77,7 +74,7 @@ fun usesMetric(
     when (setting) {
         UnitSystemSetting.METRIC -> true
         UnitSystemSetting.IMPERIAL -> false
-        UnitSystemSetting.AUTOMATIC -> isMetric(getFormattingLocale(context, setting))
+        UnitSystemSetting.AUTOMATIC -> isMetric(getFormattingLocale(setting))
     }
 
 fun formatDistance(
@@ -85,7 +82,7 @@ fun formatDistance(
     meters: Double,
     setting: UnitSystemSetting,
 ): String {
-    val formatLocale = getFormattingLocale(context, setting)
+    val formatLocale = getFormattingLocale(setting)
     val kilometers = meters / 1000.0
     val number =
         NumberFormat.getNumberInstance(formatLocale).apply {
@@ -106,7 +103,7 @@ fun formatSpeed(
     metersPerSecond: Double,
     setting: UnitSystemSetting,
 ): String {
-    val formatLocale = getFormattingLocale(context, setting)
+    val formatLocale = getFormattingLocale(setting)
     val (value, unit) =
         if (usesMetric(context, setting)) {
             metersPerSecond * 3.6 to MeasureUnit.KILOMETER_PER_HOUR
@@ -126,7 +123,7 @@ fun formatOdometer(
     kilometers: Int,
     setting: UnitSystemSetting,
 ): String {
-    val formatLocale = getFormattingLocale(context, setting)
+    val formatLocale = getFormattingLocale(setting)
     val (value, unit) =
         if (usesMetric(context, setting)) {
             kilometers.toLong() to MeasureUnit.KILOMETER

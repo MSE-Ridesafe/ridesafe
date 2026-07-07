@@ -2,7 +2,6 @@ package de.uhi.enia.ridesafe.ui.screens.home
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
-import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 import kotlinx.coroutines.flow.Flow
