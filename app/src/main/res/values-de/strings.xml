@@ -25,7 +25,7 @@
     <string name="home_active_ride">Aktive Fahrt</string>
     <string name="home_started_at">Gestartet bei %1$s</string>
     <string name="home_vehicle_fuel_consumption">Kraftstoffverbrauch</string>
-    <string name="home_total_distance">Gesamt&#173;strecke</string>
+    <string name="home_total_distance">Gesamte Strecke</string>
     <string name="home_total_travel_time">Gesamte Fahrzeit</string>
     <string name="home_activity_title">Aktivit&#228;t</string>
     <string name="home_activity_distance_week">Wöchentliche Strecke</string>

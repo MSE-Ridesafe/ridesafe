@@ -34,6 +34,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
@@ -164,7 +165,7 @@ private fun VehicleCard(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                VehicleImage(size = 96.dp)
+                VehicleImage(size = 86.dp)
                 Spacer(Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
@@ -244,6 +245,7 @@ private fun ActiveRideCard(
                             symbolName = "radio_button_checked",
                             contentDescription = null,
                             color = MaterialTheme.colorScheme.onPrimary,
+                            size = 24.dp,
                         )
                     }
                 }
@@ -343,6 +345,7 @@ private fun StatCard(
                     symbolName = icon,
                     contentDescription = null,
                     color = MaterialTheme.colorScheme.primary,
+                    size = 24.dp,
                 )
                 Text(
                     text = label,
@@ -382,6 +385,7 @@ private fun AnimatedPrimaryValue(value: String) {
                 MaterialTheme.typography.displaySmall.copy(
                     fontSize = fontSize,
                     lineHeight = fontSize * 1.12f,
+                    fontWeight = FontWeight.SemiBold,
                 ),
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
@@ -464,7 +468,7 @@ private fun ActivitySection(
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -482,6 +486,7 @@ private fun ActivitySection(
                     symbolName = "bar_chart",
                     contentDescription = null,
                     color = MaterialTheme.colorScheme.primary,
+                    size = 24.dp,
                 )
             }
             ActivityMetricTabs(
@@ -594,6 +599,12 @@ private fun ActivityTimeRangeChips(
                 FilterChip(
                     selected = selected == range,
                     onClick = { onSelected(range) },
+                    colors =
+                        FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        ),
                     label = { Text(stringResource(range.labelRes)) },
                     leadingIcon =
                         if (selected == range) {
