@@ -7,6 +7,8 @@ import android.icu.util.Measure
 import android.icu.util.MeasureUnit
 import android.icu.util.ULocale
 import androidx.core.content.edit
+import de.uhi.enia.ridesafe.R
+import java.text.NumberFormat
 import kotlin.math.roundToLong
 
 enum class UnitSystemSetting {
@@ -84,19 +86,18 @@ fun formatDistance(
     setting: UnitSystemSetting,
 ): String {
     val formatLocale = getFormattingLocale(context, setting)
-    val isMetric = usesMetric(context, setting)
-    val (value, unit) =
-        if (isMetric) {
-            val km = meters / 1000.0
-            km to MeasureUnit.KILOMETER
-        } else {
-            val miles = meters * 0.000621371
-            miles to MeasureUnit.MILE
+    val kilometers = meters / 1000.0
+    val number =
+        NumberFormat.getNumberInstance(formatLocale).apply {
+            if (kilometers == 0.0 || kilometers >= 100.0) {
+                minimumFractionDigits = 0
+                maximumFractionDigits = 0
+            } else {
+                minimumFractionDigits = 1
+                maximumFractionDigits = 1
+            }
         }
-
-    val measure = Measure(value, unit)
-    val formatter = MeasureFormat.getInstance(formatLocale, MeasureFormat.FormatWidth.SHORT)
-    return formatter.format(measure)
+    return "${number.format(kilometers)} ${context.getString(R.string.unit_km)}"
 }
 
 /** Speed from canonical [metersPerSecond] in the user's units (km/h or mph), e.g. "92 km/h". */

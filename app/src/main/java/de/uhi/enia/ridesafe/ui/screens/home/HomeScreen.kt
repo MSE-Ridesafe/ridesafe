@@ -1091,21 +1091,5 @@ private fun ActivityBar.labelFor(
 private fun formatChartDistance(
     context: android.content.Context,
     meters: Double,
-    @Suppress("UNUSED_PARAMETER") setting: UnitSystemSetting,
-): String {
-    val locale = Locale.getDefault()
-    val value = meters / 1000.0
-    val unit = context.getString(R.string.unit_km)
-    if (value == 0.0) {
-        return "0 $unit"
-    }
-    if (value < 1.0) {
-        return "< 1 $unit"
-    }
-    val number =
-        NumberFormat.getNumberInstance(locale).apply {
-            minimumFractionDigits = 0
-            maximumFractionDigits = 1
-        }
-    return "${number.format(value)} $unit"
-}
+    setting: UnitSystemSetting,
+): String = formatDistance(context, meters, setting)
