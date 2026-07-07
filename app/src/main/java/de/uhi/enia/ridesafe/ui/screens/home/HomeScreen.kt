@@ -44,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,7 +66,6 @@ import androidx.compose.ui.unit.sp
 import androidx.core.os.ConfigurationCompat
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Vehicle
-import de.uhi.enia.ridesafe.tracking.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.screens.garage.VehicleImage
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
@@ -73,6 +73,7 @@ import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDuration
 import de.uhi.enia.ridesafe.util.formatOdometer
 import de.uhi.enia.ridesafe.util.usesMetric
+import kotlinx.coroutines.delay
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.YearMonth
@@ -124,14 +125,13 @@ fun HomeScreen(
                     unitSystem = unitSystem,
                 )
             }
-            state.activeRide?.let { activeRide ->
-                item {
-                    ActiveRideCard(
-                        activeRide = activeRide,
-                        unitSystem = unitSystem,
-                    )
+                state.activeRide?.let { activeRide ->
+                    item {
+                        ActiveRideCard(
+                            activeRide = activeRide,
+                        )
+                    }
                 }
-            }
             item {
                 MonthlyStats(
                     distanceMeters = state.totalDistanceMeters,
@@ -214,13 +214,16 @@ private fun VehicleCard(
 @Composable
 private fun ActiveRideCard(
     activeRide: ActiveRideSummary,
-    unitSystem: UnitSystemSetting,
 ) {
-    val context = LocalContext.current
     val ride = activeRide.ride
-    val duration = formatDuration(ride.startedAtEpochMs, System.currentTimeMillis()) ?: stringResource(R.string.value_not_set)
-    val distance = formatDistance(context, ride.distanceMeters ?: 0.0, unitSystem)
-    val startPoint = ride.startAddress?.let { shortAddress(it) } ?: stringResource(R.string.ride_address_unknown)
+    var nowMillis by remember(ride.id) { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(ride.id) {
+        while (true) {
+            nowMillis = System.currentTimeMillis()
+            delay(1_000)
+        }
+    }
+    val duration = formatLiveRideDuration(ride.startedAtEpochMs, nowMillis)
 
     Card(
         shape = MaterialTheme.shapes.extraLarge,
@@ -228,8 +231,8 @@ private fun ActiveRideCard(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
@@ -261,16 +264,13 @@ private fun ActiveRideCard(
                     )
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                InfoChip(stringResource(R.string.ride_detail_duration), duration, Modifier.weight(1f))
-                InfoChip(stringResource(R.string.ride_detail_total_distance), distance, Modifier.weight(1f))
-            }
             Text(
-                text = stringResource(R.string.home_started_at, startPoint),
-                style = MaterialTheme.typography.bodyMedium,
+                text = duration,
+                style = MaterialTheme.typography.displaySmall,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                softWrap = false,
             )
         }
     }
@@ -939,6 +939,21 @@ private fun formatDuration(durationMillis: Long): String {
     return when {
         hours > 0 -> "%d h %02d min".format(hours, minutes)
         else -> "%d min".format(minutes)
+    }
+}
+
+private fun formatLiveRideDuration(
+    startedAtEpochMs: Long,
+    nowEpochMs: Long,
+): String {
+    val totalSeconds = ((nowEpochMs - startedAtEpochMs) / 1_000).coerceAtLeast(0)
+    val hours = totalSeconds / 3_600
+    val minutes = (totalSeconds % 3_600) / 60
+    val seconds = totalSeconds % 60
+    return if (hours > 0) {
+        "%d:%02d:%02d".format(hours, minutes, seconds)
+    } else {
+        "%02d:%02d".format(minutes, seconds)
     }
 }
 
