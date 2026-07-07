@@ -30,5 +30,4 @@ fun formatActivityDateRange(days: List<ActivityBar>): String {
     return "${start.format(formatter)} - ${end.format(formatter)}"
 }
 
-private fun emptyActivityBar(day: LocalDate): ActivityBar =
-    ActivityBar(day, rideCount = 0, distanceMeters = 0.0, durationMillis = 0L)
+private fun emptyActivityBar(day: LocalDate): ActivityBar = ActivityBar(day, rideCount = 0, distanceMeters = 0.0, durationMillis = 0L)
