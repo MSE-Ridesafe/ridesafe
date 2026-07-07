@@ -791,7 +791,6 @@ private fun MonthlyHeatMap(
                 }
             }
         }
-        ActivityHeatMapLegend()
     }
 }
 
@@ -802,30 +801,17 @@ private fun HeatMapCell(
     selectedMetric: ActivityChartMetric,
     modifier: Modifier = Modifier,
 ) {
-    val intensity =
+    val hasValue =
         when (selectedMetric) {
-            ActivityChartMetric.DISTANCE -> {
-                when {
-                    fraction <= 0f -> ActivityIntensity.EMPTY
-                    fraction < 0.25f -> ActivityIntensity.LOW
-                    fraction < 0.5f -> ActivityIntensity.MEDIUM
-                    fraction < 0.75f -> ActivityIntensity.HIGH
-                    else -> ActivityIntensity.VERY_HIGH
-                }
-            }
-
-            ActivityChartMetric.TRAVEL_TIME -> {
-                when {
-                    activity.durationMillis <= 0L -> ActivityIntensity.EMPTY
-                    fraction < 0.25f -> ActivityIntensity.LOW
-                    fraction < 0.5f -> ActivityIntensity.MEDIUM
-                    fraction < 0.75f -> ActivityIntensity.HIGH
-                    else -> ActivityIntensity.VERY_HIGH
-                }
-            }
+            ActivityChartMetric.DISTANCE -> activity.distanceMeters > 0.0
+            ActivityChartMetric.TRAVEL_TIME -> activity.durationMillis > 0L
         }
     val targetColor =
-        intensity.color()
+        if (hasValue) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.24f + 0.76f * fraction.coerceIn(0f, 1f))
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHighest
+        }
     val color by animateColorAsState(
         targetValue = targetColor,
         animationSpec = tween(durationMillis = 250),
@@ -848,7 +834,7 @@ private fun HeatMapCell(
                 text = activity.day.dayOfMonth.toString(),
                 style = MaterialTheme.typography.labelSmall,
                 color =
-                    if (intensity == ActivityIntensity.HIGH || intensity == ActivityIntensity.VERY_HIGH) {
+                    if (hasValue && fraction >= 0.72f) {
                         MaterialTheme.colorScheme.onPrimary
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
@@ -859,47 +845,6 @@ private fun HeatMapCell(
         }
     }
 }
-
-@Composable
-private fun ActivityHeatMapLegend() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(R.string.home_activity_legend_less),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-        )
-        ActivityIntensity.entries.forEach { intensity ->
-            Box(
-                modifier =
-                    Modifier
-                        .size(10.dp)
-                        .clip(MaterialTheme.shapes.extraSmall)
-                        .background(intensity.color()),
-            )
-        }
-        Text(
-            text = stringResource(R.string.home_activity_legend_more),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-        )
-    }
-}
-
-@Composable
-private fun ActivityIntensity.color(): Color =
-    when (this) {
-        ActivityIntensity.EMPTY -> MaterialTheme.colorScheme.surfaceContainerHighest
-        ActivityIntensity.LOW -> MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
-        ActivityIntensity.MEDIUM -> MaterialTheme.colorScheme.primary.copy(alpha = 0.42f)
-        ActivityIntensity.HIGH -> MaterialTheme.colorScheme.primary.copy(alpha = 0.68f)
-        ActivityIntensity.VERY_HIGH -> MaterialTheme.colorScheme.primary
-    }
 
 @Composable
 private fun InfoChip(
@@ -982,14 +927,6 @@ private enum class ActivityChartMetric {
 private enum class ActivityTimeRange {
     WEEK,
     MONTH,
-}
-
-private enum class ActivityIntensity {
-    EMPTY,
-    LOW,
-    MEDIUM,
-    HIGH,
-    VERY_HIGH,
 }
 
 private val ActivityTimeRange.labelRes: Int
