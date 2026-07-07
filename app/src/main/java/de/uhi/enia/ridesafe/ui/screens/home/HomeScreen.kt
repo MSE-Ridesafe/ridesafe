@@ -72,7 +72,6 @@ import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDuration
 import de.uhi.enia.ridesafe.util.formatOdometer
-import de.uhi.enia.ridesafe.util.usesMetric
 import kotlinx.coroutines.delay
 import java.text.NumberFormat
 import java.time.LocalDate
@@ -660,6 +659,7 @@ private fun ActivityBarColumn(
 ) {
     val locale =
         ConfigurationCompat.getLocales(LocalConfiguration.current).get(0)
+    val hideZeroLabel = !hasValue && LocalConfiguration.current.screenWidthDp < 360
     val targetHeight = max(if (hasValue) 18f else 8f, 100f * fraction).dp
     val barHeight by animateDpAsState(
         targetValue = targetHeight,
@@ -673,9 +673,11 @@ private fun ActivityBarColumn(
         verticalArrangement = Arrangement.Bottom,
     ) {
         Text(
-            text = valueLabel,
+            text = if (hideZeroLabel) "" else valueLabel,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
             maxLines = 1,
         )
         Spacer(Modifier.height(6.dp))
@@ -1053,15 +1055,21 @@ private fun ActivityBar.labelFor(
 private fun formatChartDistance(
     context: android.content.Context,
     meters: Double,
-    setting: UnitSystemSetting,
+    @Suppress("UNUSED_PARAMETER") setting: UnitSystemSetting,
 ): String {
     val locale = Locale.getDefault()
-    val value = if (usesMetric(context, setting)) meters / 1000.0 else meters * 0.000621371
-    val unit = context.getString(if (usesMetric(context, setting)) R.string.unit_km else R.string.unit_mi)
+    val value = meters / 1000.0
+    val unit = context.getString(R.string.unit_km)
+    if (value == 0.0) {
+        return "0 $unit"
+    }
+    if (value < 1.0) {
+        return "< 1 $unit"
+    }
     val number =
         NumberFormat.getNumberInstance(locale).apply {
-            minimumFractionDigits = 2
-            maximumFractionDigits = 2
+            minimumFractionDigits = 0
+            maximumFractionDigits = 1
         }
     return "${number.format(value)} $unit"
 }
