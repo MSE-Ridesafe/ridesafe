@@ -33,10 +33,10 @@ externally — all analytics and safety scoring happen locally.
 
 ### 3.1 App shell & general UX
 
-| ID     | P | Requirement                                                                                                               | Status | Related                        |
-|--------|---|---------------------------------------------------------------------------------------------------------------------------|--------|--------------------------------|
-| NAV-01 | M | Ridesafe shall provide a navigation bar to move between the primary pages (Dashboard, Logbook, Garage, Settings).         | Draft  | DSH-01, GAR-01, LOG-01, SET-01 |
-| UX-01  | M | Before deleting any user-created item (vehicle, ride, ride group, cost entry), Ridesafe shall show a confirmation prompt. | Draft  | GAR-04, GRP-03, LOG-05, MRG-03 |
+| ID     | P | Requirement                                                                                                               | Status | Related                                |
+|--------|---|---------------------------------------------------------------------------------------------------------------------------|--------|----------------------------------------|
+| NAV-01 | M | Ridesafe shall provide a navigation bar to move between the primary pages (Dashboard, Logbook, Garage, Settings).         | Draft  | DSH-01, GAR-01, LOG-01, SET-01         |
+| UX-01  | M | Before deleting any user-created item (vehicle, ride, ride group, cost entry), Ridesafe shall show a confirmation prompt. | Draft  | ADR-03, GAR-04, GRP-03, LOG-05, MRG-03 |
 
 ### 3.2 Garage (vehicles)
 
@@ -53,19 +53,19 @@ externally — all analytics and safety scoring happen locally.
 
 ### 3.3 Logbook (rides)
 
-| ID     | P | Requirement                                                                                                                                                                                                                                                                                                                                                                      | Status   | Related                                |
-|--------|---|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|----------------------------------------|
-| LOG-01 | M | Ridesafe shall provide a Logbook page.                                                                                                                                                                                                                                                                                                                                           | Draft    | DR-RID, NAV-01                         |
-| LOG-02 | M | The Logbook shall display a list of rides showing key fields (date, distance, vehicle).                                                                                                                                                                                                                                                                                          | Draft    | DR-RID, LOG-06, LOG-07, LOG-08, LOG-11 |
-| LOG-03 | M | The Logbook shall display a detailed view of a single ride.                                                                                                                                                                                                                                                                                                                      | Draft    | DR-RID, LOG-10, MRG-01, MRG-04         |
-| LOG-04 | M | The Logbook shall let the user edit a ride.                                                                                                                                                                                                                                                                                                                                      | Draft    | DR-RID, MRG-01, MRG-03                 |
-| LOG-05 | M | The Logbook shall let the user delete a ride.                                                                                                                                                                                                                                                                                                                                    | Draft    | DR-RID, UX-01                          |
-| LOG-06 | M | The Logbook shall let the user filter rides by date.                                                                                                                                                                                                                                                                                                                             | Draft    | LOG-02, LOG-09                         |
-| LOG-07 | S | The Logbook shall let the user filter rides by vehicle.                                                                                                                                                                                                                                                                                                                          | Proposed | DR-VEH, LOG-02, LOG-09                 |
-| LOG-08 | C | The Logbook shall let the user filter rides by tag.                                                                                                                                                                                                                                                                                                                              | Proposed | DR-RID, LOG-02, LOG-09                 |
-| LOG-09 | M | The Logbook shall let the user export the currently filtered set of rides.                                                                                                                                                                                                                                                                                                       | Draft    | EXP-01, LOG-06, LOG-07, LOG-08         |
-| LOG-10 | S | The ride detail view shall visualize the route on a map and show speed information.                                                                                                                                                                                                                                                                                              | Draft    | DR-RID, LOG-03, MRG-07, NFR-02, TRK-01 |
-| LOG-11 | M | The Logbook shall enter a multi-select mode on long-press of a ride, presenting a contextual top app bar (Material 3) showing the selection count, a close/exit affordance, select-all / deselect-all utilities, and an overflow (⋮) menu of actions on the selection; selected rides shall be marked with a filled circular checkmark per native Android selection conventions. | Draft    | LOG-01, LOG-02, MRG-08, NFR-10         |
+| ID     | P | Requirement                                                                                                                                                                                                                                                                                                                                                                      | Status   | Related                                        |
+|--------|---|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|------------------------------------------------|
+| LOG-01 | M | Ridesafe shall provide a Logbook page.                                                                                                                                                                                                                                                                                                                                           | Draft    | DR-RID, NAV-01                                 |
+| LOG-02 | M | The Logbook shall display a list of rides showing key fields (date, distance, vehicle).                                                                                                                                                                                                                                                                                          | Draft    | ADR-08, DR-RID, LOG-06, LOG-07, LOG-08, LOG-11 |
+| LOG-03 | M | The Logbook shall display a detailed view of a single ride.                                                                                                                                                                                                                                                                                                                      | Draft    | ADR-09, DR-RID, LOG-10, MRG-01, MRG-04         |
+| LOG-04 | M | The Logbook shall let the user edit a ride.                                                                                                                                                                                                                                                                                                                                      | Draft    | DR-RID, MRG-01, MRG-03                         |
+| LOG-05 | M | The Logbook shall let the user delete a ride.                                                                                                                                                                                                                                                                                                                                    | Draft    | DR-RID, UX-01                                  |
+| LOG-06 | M | The Logbook shall let the user filter rides by date.                                                                                                                                                                                                                                                                                                                             | Draft    | LOG-02, LOG-09                                 |
+| LOG-07 | S | The Logbook shall let the user filter rides by vehicle.                                                                                                                                                                                                                                                                                                                          | Proposed | DR-VEH, LOG-02, LOG-09                         |
+| LOG-08 | C | The Logbook shall let the user filter rides by tag.                                                                                                                                                                                                                                                                                                                              | Proposed | DR-RID, LOG-02, LOG-09                         |
+| LOG-09 | M | The Logbook shall let the user export the currently filtered set of rides.                                                                                                                                                                                                                                                                                                       | Draft    | EXP-01, LOG-06, LOG-07, LOG-08                 |
+| LOG-10 | S | The ride detail view shall visualize the route on a map and show speed information.                                                                                                                                                                                                                                                                                              | Draft    | DR-RID, LOG-03, MRG-07, NFR-02, TRK-01         |
+| LOG-11 | M | The Logbook shall enter a multi-select mode on long-press of a ride, presenting a contextual top app bar (Material 3) showing the selection count, a close/exit affordance, select-all / deselect-all utilities, and an overflow (⋮) menu of actions on the selection; selected rides shall be marked with a filled circular checkmark per native Android selection conventions. | Draft    | LOG-01, LOG-02, MRG-08, NFR-10                 |
 
 ### 3.4 Tracking & recording
 
@@ -227,7 +227,7 @@ approach, because fabricating a shared boundary point implies GPS/speed/time tha
 | fuel economy, tank size | optional — needed only for ANL-06 fuel cost / ANL-07 CO₂ |
 
 ### 4.2 Ride — `DR-RID` (M)
-*Related: ANL-01, ANL-02, ANL-04, DSH-02, EXP-01, GAR-07, GRP-01, LOG-01, LOG-02, LOG-03, LOG-04, LOG-05, LOG-08, LOG-10, MRG-01, MRG-02, MRG-04, MRG-05, MRG-06, MRG-07, NFR-03, TRK-01, TRK-04*
+*Related: ADR-07, ADR-09, ANL-01, ANL-02, ANL-04, DSH-02, EXP-01, GAR-07, GRP-01, LOG-01, LOG-02, LOG-03, LOG-04, LOG-05, LOG-08, LOG-10, MRG-01, MRG-02, MRG-04, MRG-05, MRG-06, MRG-07, NFR-03, TRK-01, TRK-04*
 
 | Field                               | Notes                                                                                                                                                                                                                                                                      |
 |-------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -266,6 +266,20 @@ approach, because fabricating a shared boundary point implies GPS/speed/time tha
 | amount     |                                    |
 | notes      |                                    |
 
+### 4.5 Saved address — `DR-ADR` (M)
+*Related: ADR-01, ADR-02, ADR-03, ADR-04, ADR-05, ADR-07, ADR-09, DR-RID, NFR-03*
+
+| Field      | Notes                                                                                                      |
+|------------|------------------------------------------------------------------------------------------------------------|
+| id         |                                                                                                            |
+| label      | "Home", "Work", "School", or a custom name                                                                 |
+| kind       | home / work / school / custom — enforces the three singleton shortcuts and fixed icons                     |
+| latitude   |                                                                                                            |
+| longitude  |                                                                                                            |
+| address    | reverse-geocoded (or entered) address at the point; compared for the ADR-09 exact-match suffix suppression |
+| radius (m) | ≤ 500; default 100                                                                                         |
+| icon       | Material Symbols name; fixed for home/work/school, user-chosen for custom (ADR-06)                         |
+
 ---
 
 ## 5. Non-functional requirements
@@ -297,6 +311,13 @@ approach, because fabricating a shared boundary point implies GPS/speed/time tha
 4. **Group-ride priority** — I set GRP-01/02 to Should; confirm that's right for a "core purpose."
 5. **Safety algorithm** — thresholds/weighting for ANL-01 are design-level, not captured here; flag if you want them as requirements.
 6. **Optional tiers** — Costbook, CO₂, and notifications are all Could; confirm none should be promoted.
+7. **Saved-address matching — live vs. stored** — recommend computing the match at display time (a place edit instantly re-labels past rides; deleting a place needs no orphan cleanup) rather than denormalizing a matched-address id onto `DR-RID`. Confirm.
+8. **Radius default & floor** — proposed default 100 m, adjustable 25–500 m. Confirm the floor (too small never matches given GPS noise) and the default.
+9. **Setting the point** — pin drag + "use current location" + "save from a ride endpoint". Also allow typing an address to forward-geocode (native Geocoder, already an accepted exception)?
+10. **Icon set** — which curated subset of Material Symbols is offered for custom places? The full font is thousands of glyphs; pick a short list.
+11. **Home / Work / School** — confirm each is a singleton with a fixed, non-editable icon (kind drives the icon).
+12. **Export wording** — should exported / PDF / CSV rides use the raw geocoded address (tax-accurate) or the friendly label? Recommend the raw address.
+13. **Exact-match suppression (ADR-09)** — this compares two reverse-geocoded strings, and the Geocoder can return slightly different strings for the same point across runs, so strict equality may rarely fire. Confirm string equality is intended, or suppress the suffix when the endpoint is at the saved point (distance ≈ 0 / below a small threshold) instead.
 
 ## 7. Non-goals (out of scope)
 
