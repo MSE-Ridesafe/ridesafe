@@ -128,7 +128,7 @@ fun RideDetailScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            RouteMapCard(route = route)
+            RouteMapCard(segments = route?.let { listOf(it) })
 
             JourneyCard(
                 stops =
@@ -170,22 +170,47 @@ private val JourneyTimeGap = 12.dp
 private val JourneyGutterWidth = 24.dp
 private val JourneyGutterGap = 16.dp
 
-/** One stop in a ride's journey: an address and the time there. Either may be unknown (null). */
+/**
+ * One stop in a ride's journey: an address and the time there. [note] is an optional extra line under
+ * the address — used by a merged ride's waypoints to show the departure time + parked duration. Any
+ * field may be unknown (null).
+ */
 data class JourneyStop(
     val address: String?,
     val time: String?,
+    val note: String? = null,
 )
 
 /**
- * A ride's journey as a stacked timeline: each stop is an icon + address + time, joined by a
- * continuous line. Takes an arbitrary number of [stops] so a merged ride (multiple segments)
- * can render as one origin -> waypoints -> destination chain — the first stop is the origin, the
- * last the destination (a filled pin), any in between are waypoints.
+ * A ride's journey as a card wrapping a stacked timeline (see [JourneyTimeline]) — the single-ride
+ * detail's origin -> destination view.
  */
 @Composable
-private fun JourneyCard(
+fun JourneyCard(
     stops: List<JourneyStop>,
     duration: String?,
+) {
+    if (stops.isEmpty()) return
+    Card(
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        JourneyTimeline(stops = stops, duration = duration, modifier = Modifier.padding(20.dp))
+    }
+}
+
+/**
+ * A journey as a stacked timeline: each stop is an icon + address + time, joined by a continuous line.
+ * Takes an arbitrary number of [stops] so a merged ride can render as one origin -> waypoints ->
+ * destination chain — the first stop is the origin, the last the destination (a filled pin), any in
+ * between are waypoints. Extracted from its card so a merged ride can embed it under its own header.
+ */
+@Composable
+fun JourneyTimeline(
+    stops: List<JourneyStop>,
+    duration: String?,
+    modifier: Modifier = Modifier,
 ) {
     if (stops.isEmpty()) return
 
@@ -199,43 +224,38 @@ private fun JourneyCard(
             stops.maxOf { measurer.measure(it.time ?: unknownTime, timeStyle).size.width }.toDp() + 2.dp
         }
 
-    Card(
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            stops.forEachIndexed { index, stop ->
-                val isLast = index == stops.lastIndex
-                JourneyStopRow(
-                    icon = if (isLast) "place" else "trip_origin",
-                    iconColor = if (isLast) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    iconFill = isLast,
-                    address = stop.address ?: stringResource(R.string.ride_address_unknown),
-                    time = stop.time ?: unknownTime,
-                    timeWidth = timeWidth,
-                    lineAbove = index > 0,
-                    lineBelow = !isLast,
+    Column(modifier = modifier) {
+        stops.forEachIndexed { index, stop ->
+            val isLast = index == stops.lastIndex
+            JourneyStopRow(
+                icon = if (isLast) "place" else "trip_origin",
+                iconColor = if (isLast) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                iconFill = isLast,
+                address = stop.address ?: stringResource(R.string.ride_address_unknown),
+                time = stop.time ?: unknownTime,
+                note = stop.note,
+                timeWidth = timeWidth,
+                lineAbove = index > 0,
+                lineBelow = !isLast,
+            )
+        }
+        if (duration != null) {
+            Spacer(Modifier.size(4.dp))
+            // Bottom-left total time: schedule icon then duration, not aligned to the timeline columns.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                MaterialSymbol(
+                    symbolName = "schedule",
+                    contentDescription = stringResource(R.string.ride_detail_duration),
+                    size = 16.dp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            }
-            if (duration != null) {
-                Spacer(Modifier.size(4.dp))
-                // Bottom-left total time: schedule icon then duration, not aligned to the timeline columns.
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    MaterialSymbol(
-                        symbolName = "schedule",
-                        contentDescription = stringResource(R.string.ride_detail_duration),
-                        size = 16.dp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = duration,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                }
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = duration,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
             }
         }
     }
@@ -257,6 +277,7 @@ private fun JourneyStopRow(
     lineAbove: Boolean,
     lineBelow: Boolean,
     iconFill: Boolean = false,
+    note: String? = null,
 ) {
     Row(modifier = Modifier.height(IntrinsicSize.Min)) {
         // Timestamp left of the timeline, vertically centered on the icon; left-aligned so it
@@ -311,6 +332,15 @@ private fun JourneyStopRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            if (note != null) {
+                Text(
+                    text = note,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
@@ -331,8 +361,12 @@ private fun Connector(
     )
 }
 
+/**
+ * The route map card. [segments] is a list of disconnected polylines — one for a single ride, one per
+ * stop for a merged ride (MRG-07). Null = still loading; all-empty = the ride(s) recorded no GPS.
+ */
 @Composable
-private fun RouteMapCard(route: List<LatLng>?) {
+fun RouteMapCard(segments: List<List<LatLng>>?) {
     Card(
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
@@ -342,27 +376,27 @@ private fun RouteMapCard(route: List<LatLng>?) {
                 .height(300.dp),
     ) {
         when {
-            route == null -> {
+            segments == null -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             }
 
-            route.isEmpty() -> {
+            segments.all { it.isEmpty() } -> {
                 NoGps()
             }
 
             else -> {
-                RouteMap(route)
+                RouteMap(segments)
             }
         }
     }
 }
 
 @Composable
-private fun RouteMap(points: List<LatLng>) {
+private fun RouteMap(segments: List<List<LatLng>>) {
     var expanded by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
-        RouteMapContent(points = points, liteMode = true)
+        RouteMapContent(segments = segments, liteMode = true)
         // Lite-mode maps open the Google Maps app when tapped; this transparent overlay
         // swallows the tap and opens our own full-screen interactive map instead.
         Box(
@@ -383,7 +417,7 @@ private fun RouteMap(points: List<LatLng>) {
             properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         ) {
             Box(Modifier.fillMaxSize()) {
-                RouteMapContent(points = points, liteMode = false)
+                RouteMapContent(segments = segments, liteMode = false)
                 IconButton(
                     onClick = { expanded = false },
                     modifier =
@@ -404,19 +438,26 @@ private fun RouteMap(points: List<LatLng>) {
 }
 
 /**
- * The route drawn on a Google Map, framed to fit. [liteMode] true renders a static snapshot (the
- * card preview); false is a live, gesture-driven map. Gestures are kept 2D — pan/zoom/rotate on,
- * tilt off — and the toolbar is hidden so taps stay in-app rather than launching the Maps app.
+ * The route(s) drawn on a Google Map, framed to fit. Each of [segments] is drawn as its own polyline
+ * with its own start/end markers and no line joining one segment's end to the next segment's start,
+ * so a merged ride's parked gaps imply no travel (MRG-07). [liteMode] true renders a static snapshot
+ * (the card preview); false is a live, gesture-driven map.
  */
 @Composable
 private fun RouteMapContent(
-    points: List<LatLng>,
+    segments: List<List<LatLng>>,
     liteMode: Boolean,
 ) {
+    val drawn = segments.filter { it.isNotEmpty() }
+    val allPoints = drawn.flatten()
     val cameraPositionState =
-        rememberCameraPositionState { position = CameraPosition.fromLatLngZoom(points.first(), 14f) }
+        rememberCameraPositionState {
+            position = CameraPosition.fromLatLngZoom(allPoints.firstOrNull() ?: LatLng(0.0, 0.0), 14f)
+        }
     var mapLoaded by remember { mutableStateOf(false) }
     val routeColor = MaterialTheme.colorScheme.primary
+    val startTitle = stringResource(R.string.ride_start_marker)
+    val endTitle = stringResource(R.string.ride_end_marker)
 
     GoogleMap(
         modifier = Modifier.fillMaxSize(),
@@ -430,15 +471,17 @@ private fun RouteMapContent(
             ),
         onMapLoaded = { mapLoaded = true },
     ) {
-        Polyline(points = points, color = routeColor, width = 12f)
-        Marker(state = rememberUpdatedMarkerState(position = points.first()), title = stringResource(R.string.ride_start_marker))
-        Marker(state = rememberUpdatedMarkerState(position = points.last()), title = stringResource(R.string.ride_end_marker))
+        drawn.forEach { points ->
+            Polyline(points = points, color = routeColor, width = 12f)
+            Marker(state = rememberUpdatedMarkerState(position = points.first()), title = startTitle)
+            Marker(state = rememberUpdatedMarkerState(position = points.last()), title = endTitle)
+        }
     }
 
-    // Frame the whole route once the map has a laid-out size.
-    LaunchedEffect(mapLoaded, points) {
-        if (mapLoaded && points.size > 1) {
-            val bounds = LatLngBounds.builder().apply { points.forEach(::include) }.build()
+    // Frame all segments once the map has a laid-out size.
+    LaunchedEffect(mapLoaded, segments) {
+        if (mapLoaded && allPoints.size > 1) {
+            val bounds = LatLngBounds.builder().apply { allPoints.forEach(::include) }.build()
             runCatching { cameraPositionState.move(CameraUpdateFactory.newLatLngBounds(bounds, 100)) }
         }
     }

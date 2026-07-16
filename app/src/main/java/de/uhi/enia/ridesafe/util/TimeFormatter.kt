@@ -36,7 +36,12 @@ fun formatDuration(
     endMs: Long?,
 ): String? {
     endMs ?: return null
-    val totalMinutes = ((endMs - startMs) / 60_000).coerceAtLeast(0)
+    return formatDurationMs(endMs - startMs)
+}
+
+/** Same "5 min" / "1 h 05 min" formatting from a raw millisecond span — e.g. a merged ride's summed moving time (MRG-05). */
+fun formatDurationMs(durationMs: Long): String {
+    val totalMinutes = (durationMs / 60_000).coerceAtLeast(0)
     val days = totalMinutes / (24 * 60)
     val hours = (totalMinutes % (24 * 60)) / 60
     val minutes = totalMinutes % 60

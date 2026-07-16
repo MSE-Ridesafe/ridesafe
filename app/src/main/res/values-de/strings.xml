@@ -83,6 +83,8 @@
 
     <string name="unit_km">km</string>
     <string name="unit_mi">mi</string>
+    <string name="unit_kmh">km/h</string>
+    <string name="unit_mph">mph</string>
     <string name="unit_fuel_economy">L/100 km</string>
     <string name="unit_liter">L</string>
     <string name="value_not_set">&#8212;</string>
@@ -110,6 +112,34 @@
     <string name="ride_detail_total_distance">Gesamtstrecke</string>
     <string name="ride_detail_no_gps">Für diese Fahrt wurde kein GPS aufgezeichnet</string>
     <string name="ride_address_unknown">Unbekannter Ort</string>
+
+    <!-- Fahrten zusammenführen (§3.8) -->
+    <string name="ride_merged_label">Zusammengeführt</string>
+    <plurals name="ride_stops_count">
+        <item quantity="one">%1$d Stopp</item>
+        <item quantity="other">%1$d Stopps</item>
+    </plurals>
+    <string name="ride_selection_count">%1$d ausgewählt</string>
+    <string name="action_select_all">Alle auswählen</string>
+    <string name="action_deselect_all">Auswahl aufheben</string>
+    <string name="action_more">Weitere Optionen</string>
+    <string name="action_exit_selection">Auswahl beenden</string>
+    <string name="ride_selected">Ausgewählt</string>
+    <string name="ride_not_selected">Nicht ausgewählt</string>
+    <string name="ride_action_merge">Fahrten zusammenführen</string>
+    <string name="merge_reason_not_enough">Mindestens zwei Fahrten auswählen</string>
+    <string name="merge_reason_mixed_vehicle">Fahrten müssen vom selben Fahrzeug sein</string>
+    <string name="merge_reason_not_contiguous">Keine dazwischenliegende Fahrt überspringen</string>
+    <string name="ride_journey_section">Streckenverlauf</string>
+    <string name="ride_action_manage_stops">Stopps verwalten</string>
+    <string name="action_done">Fertig</string>
+    <string name="ride_merged_parked_note">Abfahrt %1$s · %2$s geparkt</string>
+    <string name="ride_merged_stops_section">Stopps</string>
+    <string name="ride_stop_label">Stopp %1$d</string>
+    <string name="ride_stop_select">Stopp zum Trennen auswählen</string>
+    <string name="ride_merged_unmerge_hint">Nur der erste oder letzte Stopp kann entfernt werden.</string>
+    <string name="ride_action_unmerge_all">Alle trennen</string>
+    <string name="ride_action_unmerge_selected">Trennen (%1$d)</string>
 
     <string name="recording_channel_name">Fahrtaufzeichnung</string>
     <string name="recording_notification_title">Fahrt wird aufgezeichnet</string>

@@ -14,6 +14,21 @@ interface RideDao {
     @Query("SELECT * FROM rides WHERE id = :id")
     fun observe(id: Long): Flow<Ride?>
 
+    /** The stops of a merged ride (MRG-01), in chronological order — the merged detail's source of truth. */
+    @Query("SELECT * FROM rides WHERE mergeGroupId = :groupId ORDER BY startedAtEpochMs ASC")
+    fun observeGroup(groupId: Long): Flow<List<Ride>>
+
+    /** Non-observing read of a group's current stops, for the post-unmerge cleanup. */
+    @Query("SELECT * FROM rides WHERE mergeGroupId = :groupId")
+    suspend fun groupMembers(groupId: Long): List<Ride>
+
+    /** Tag rides with a merge group id (MRG-01), or clear it (null) to un-merge them (MRG-03). */
+    @Query("UPDATE rides SET mergeGroupId = :groupId WHERE id IN (:ids)")
+    suspend fun setMergeGroup(
+        groupId: Long?,
+        ids: List<Long>,
+    )
+
     /** Rides that never got an end timestamp — left open by a crash/kill; recovery finalizes them (NFR-06). */
     @Query("SELECT * FROM rides WHERE endedAtEpochMs IS NULL")
     suspend fun dangling(): List<Ride>

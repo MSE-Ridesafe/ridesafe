@@ -46,7 +46,7 @@ import de.uhi.enia.ridesafe.util.UnitPrefs
 
 // ponytail: animation durations are tuning knobs — bump if a transition feels off.
 private const val SLIDE_MS = 250 // sub-route slide + matching fade-out of the previous screen
-private const val FADE_MS = 100 // quick cross-fade between tabs
+private const val FADE_MS = 250 // quick cross-fade between tabs
 
 /**
  * App shell: adaptive navigation suite (bottom bar / rail / drawer) wrapping a
