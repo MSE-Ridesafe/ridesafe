@@ -2,14 +2,17 @@ package de.uhi.enia.ridesafe.util
 
 import android.content.Context
 import android.icu.text.MeasureFormat
+import android.icu.text.NumberFormat
 import android.icu.util.LocaleData
 import android.icu.util.Measure
 import android.icu.util.MeasureUnit
 import android.icu.util.ULocale
 import androidx.core.content.edit
 import de.uhi.enia.ridesafe.R
-import java.text.NumberFormat
 import kotlin.math.roundToLong
+
+/** Number format capping trip measurements (distance, speed) at one fraction digit for UI legibility. */
+private fun oneDecimal(locale: java.util.Locale): NumberFormat = NumberFormat.getInstance(locale).apply { maximumFractionDigits = 1 }
 
 enum class UnitSystemSetting {
     AUTOMATIC,
@@ -67,10 +70,7 @@ fun isMetric(locale: java.util.Locale): Boolean {
 }
 
 /** Whether the [setting] resolves to metric (km) rather than imperial (mi). */
-fun usesMetric(
-    context: Context,
-    setting: UnitSystemSetting,
-): Boolean =
+fun usesMetric(setting: UnitSystemSetting): Boolean =
     when (setting) {
         UnitSystemSetting.METRIC -> true
         UnitSystemSetting.IMPERIAL -> false
@@ -83,35 +83,38 @@ fun formatDistance(
     setting: UnitSystemSetting,
 ): String {
     val formatLocale = getFormattingLocale(setting)
-    val kilometers = meters / 1000.0
-    val number =
-        NumberFormat.getNumberInstance(formatLocale).apply {
-            if (kilometers == 0.0 || kilometers >= 100.0) {
-                minimumFractionDigits = 0
-                maximumFractionDigits = 0
-            } else {
-                minimumFractionDigits = 1
-                maximumFractionDigits = 1
-            }
+    val isMetric = usesMetric(setting)
+    val (value, unit) =
+        if (isMetric) {
+            val km = meters / 1000.0
+            km to MeasureUnit.KILOMETER
+        } else {
+            val miles = meters * 0.000621371
+            miles to MeasureUnit.MILE
         }
-    return "${number.format(kilometers)} ${context.getString(R.string.unit_km)}"
+
+    val measure = Measure(value, unit)
+    val formatter = MeasureFormat.getInstance(formatLocale, MeasureFormat.FormatWidth.SHORT, oneDecimal(formatLocale))
+    return formatter.format(measure)
 }
 
-/** Speed from canonical [metersPerSecond] in the user's units (km/h or mph), e.g. "92 km/h". */
+/**
+ * Speed from canonical [metersPerSecond] in the user's units, e.g. "92.4 km/h" / "57.3 mph". Uses the
+ * app's own unit strings rather than ICU's speed units, which render mph as the unconventional "mi/h".
+ */
 fun formatSpeed(
     context: Context,
     metersPerSecond: Double,
     setting: UnitSystemSetting,
 ): String {
     val formatLocale = getFormattingLocale(setting)
-    val (value, unit) =
-        if (usesMetric(context, setting)) {
-            metersPerSecond * 3.6 to MeasureUnit.KILOMETER_PER_HOUR
+    val (value, unitRes) =
+        if (usesMetric(setting)) {
+            metersPerSecond * 3.6 to R.string.unit_kmh
         } else {
-            metersPerSecond * 2.2369362920544 to MeasureUnit.MILE_PER_HOUR
+            metersPerSecond * 2.2369362920544 to R.string.unit_mph
         }
-    val formatter = MeasureFormat.getInstance(formatLocale, MeasureFormat.FormatWidth.SHORT)
-    return formatter.format(Measure(value, unit))
+    return "${oneDecimal(formatLocale).format(value)} ${context.getString(unitRes)}"
 }
 
 /**
@@ -125,7 +128,7 @@ fun formatOdometer(
 ): String {
     val formatLocale = getFormattingLocale(setting)
     val (value, unit) =
-        if (usesMetric(context, setting)) {
+        if (usesMetric(setting)) {
             kilometers.toLong() to MeasureUnit.KILOMETER
         } else {
             (kilometers * 0.621371).roundToLong() to MeasureUnit.MILE

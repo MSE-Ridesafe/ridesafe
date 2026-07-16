@@ -15,6 +15,10 @@ import kotlinx.serialization.Serializable
     val id: Long,
 ) : NavKey
 
+@Serializable data class MergedRideDetailRoute(
+    val groupId: Long,
+) : NavKey
+
 /**
  * Rides tab entries: list -> detail. Navigation goes through [onOpen]/[onBack] (the caller
  * mutates the rides back stack and resets the tab-switch flag, so these transitions slide).
@@ -28,10 +32,28 @@ fun EntryProviderScope<NavKey>.ridesEntries(
     onBack: () -> Unit,
 ) {
     entry<RidesRoute> {
-        val rides by viewModel.rides.collectAsState(initial = emptyList())
+        val entries by viewModel.entries.collectAsState(initial = emptyList())
         RidesScreen(
-            rides = rides,
-            onRideClick = { onOpen(RideDetailRoute(it)) },
+            entries = entries,
+            unitSystem = unitSystem,
+            onOpenRide = { onOpen(RideDetailRoute(it)) },
+            onOpenMerged = { onOpen(MergedRideDetailRoute(it)) },
+            onMerge = { viewModel.merge(it) },
+        )
+    }
+    entry<MergedRideDetailRoute> { key ->
+        val stops by viewModel.groupStops(key.groupId).collectAsState(initial = null)
+        // Draw one route per stop, disconnected (MRG-07); null until the stops (and their routes) load.
+        val segments by produceState<List<List<LatLng>>?>(initialValue = null, stops) {
+            value = stops?.takeIf { it.isNotEmpty() }?.let { viewModel.routes(it) }
+        }
+        MergedRideDetailScreen(
+            stops = stops,
+            segments = segments,
+            unitSystem = unitSystem,
+            onBack = onBack,
+            onUnmergeAll = { viewModel.unmergeAll(key.groupId) },
+            onUnmerge = { viewModel.unmerge(key.groupId, it) },
         )
     }
     entry<RideDetailRoute> { key ->

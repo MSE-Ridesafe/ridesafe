@@ -39,8 +39,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.focusOrder
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -69,8 +67,7 @@ fun VehicleFormScreen(
     modifier: Modifier = Modifier,
     onDelete: (() -> Unit)? = null,
 ) {
-    val context = LocalContext.current
-    val metric = usesMetric(context, unitSystem)
+    val metric = usesMetric(unitSystem)
     val editing = existing != null
 
     // Odometer is stored in km; show/edit it in the user's display unit.
