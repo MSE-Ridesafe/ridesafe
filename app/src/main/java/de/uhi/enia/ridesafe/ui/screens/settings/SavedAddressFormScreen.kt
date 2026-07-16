@@ -43,6 +43,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -50,7 +51,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -83,6 +83,7 @@ import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.formatShortDistance
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val RADIUS_MIN = 25f
 private const val RADIUS_MAX = 500f
@@ -95,9 +96,22 @@ private val FALLBACK_CENTER = LatLng(51.1657, 10.4515)
 /** Curated Material Symbols offered for a custom place (ADR-06); the full font is thousands of glyphs. */
 private val CURATED_PLACE_ICONS =
     listOf(
-        "place", "home", "work", "school", "favorite", "star",
-        "fitness_center", "restaurant", "local_cafe", "shopping_cart",
-        "local_hospital", "directions_car", "flight", "park", "sports_soccer", "pets",
+        "place",
+        "home",
+        "work",
+        "school",
+        "favorite",
+        "star",
+        "fitness_center",
+        "restaurant",
+        "local_cafe",
+        "shopping_cart",
+        "local_hospital",
+        "directions_car",
+        "flight",
+        "park",
+        "sports_soccer",
+        "pets",
     )
 
 /**
@@ -120,14 +134,13 @@ fun SavedAddressFormScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
-    val kind = presetKind
-    val isShortcut = kind.isShortcut
+    val isShortcut = presetKind.isShortcut
 
-    val shortcutLabel = stringResource(kind.labelRes())
+    val shortcutLabel = stringResource(presetKind.labelRes())
     var label by rememberSaveable { mutableStateOf(existing?.label ?: if (isShortcut) shortcutLabel else "") }
     var point by remember { mutableStateOf(existing?.let { LatLng(it.latitude, it.longitude) }) }
-    var radius by rememberSaveable { mutableStateOf((existing?.radiusMeters ?: RADIUS_DEFAULT).toFloat()) }
-    var icon by rememberSaveable { mutableStateOf(existing?.icon ?: kind.fixedIcon() ?: DEFAULT_PLACE_ICON) }
+    var radius by rememberSaveable { mutableFloatStateOf((existing?.radiusMeters ?: RADIUS_DEFAULT).toFloat()) }
+    var icon by rememberSaveable { mutableStateOf(existing?.icon ?: presetKind.fixedIcon() ?: DEFAULT_PLACE_ICON) }
     var resolvedAddress by remember { mutableStateOf(existing?.address) }
     var search by rememberSaveable { mutableStateOf("") }
     var searchFailed by remember { mutableStateOf(false) }
@@ -153,11 +166,12 @@ fun SavedAddressFormScreen(
     // Reverse-geocode the point (debounced) to show/store the address for exact-match suppression (ADR-09).
     LaunchedEffect(point) {
         val p = point ?: return@LaunchedEffect
-        delay(500)
+        delay(500.milliseconds)
         resolvedAddress = reverseGeocode(context, p.latitude, p.longitude)
     }
 
     val fused = remember { LocationServices.getFusedLocationProviderClient(context) }
+
     fun locate() {
         locationFailed = false
         val cts = CancellationTokenSource()
@@ -177,12 +191,14 @@ fun SavedAddressFormScreen(
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) locate() else locationFailed = true
         }
+
     fun requestLocate() {
         val granted =
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
                 PackageManager.PERMISSION_GRANTED
         if (granted) locate() else locationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
     }
+
     fun runSearch() {
         keyboard?.hide()
         val query = search.trim()
@@ -201,18 +217,26 @@ fun SavedAddressFormScreen(
     }
 
     val canSave = point != null && label.isNotBlank()
+
     fun save() {
         val p = point ?: return
         val base =
-            existing ?: SavedAddress(label = "", kind = kind, latitude = 0.0, longitude = 0.0, radiusMeters = RADIUS_DEFAULT, icon = icon)
+            existing ?: SavedAddress(
+                label = "",
+                kind = presetKind,
+                latitude = 0.0,
+                longitude = 0.0,
+                radiusMeters = RADIUS_DEFAULT,
+                icon = icon,
+            )
         onSave(
             base.copy(
                 label = if (isShortcut) shortcutLabel else label.trim(),
-                kind = kind,
+                kind = presetKind,
                 latitude = p.latitude,
                 longitude = p.longitude,
                 radiusMeters = radius.toInt(),
-                icon = kind.fixedIcon() ?: icon,
+                icon = presetKind.fixedIcon() ?: icon,
                 address = resolvedAddress,
             ),
         )
@@ -330,7 +354,7 @@ fun SavedAddressFormScreen(
             }
 
             Text(
-                text = "${stringResource(R.string.saved_address_radius)}: ${formatShortDistance(context, radius.toDouble(), unitSystem)}",
+                text = "${stringResource(R.string.saved_address_radius)}: ${formatShortDistance(radius.toDouble(), unitSystem)}",
                 style = MaterialTheme.typography.bodyLarge,
             )
             Slider(

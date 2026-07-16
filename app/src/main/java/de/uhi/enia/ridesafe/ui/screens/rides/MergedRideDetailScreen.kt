@@ -158,7 +158,7 @@ fun MergedRideDetailScreen(
                     listOf(
                         stringResource(R.string.ride_detail_total_distance) to
                             (
-                                summary.distanceMeters?.let { formatDistance(context, it, unitSystem) }
+                                summary.distanceMeters?.let { formatDistance(it, unitSystem) }
                                     ?: stringResource(R.string.value_not_set)
                             ),
                         stringResource(R.string.ride_detail_duration) to formatDurationMs(summary.movingDurationMs),
@@ -264,7 +264,7 @@ private fun MergedJourneyCard(
                         buildString {
                             append(formatTimeOfDay(context, ride.startedAtEpochMs))
                             ride.endedAtEpochMs?.let { append(" – ").append(formatTimeOfDay(context, it)) }
-                            ride.distanceMeters?.let { append("  •  ").append(formatDistance(context, it, unitSystem)) }
+                            ride.distanceMeters?.let { append("  •  ").append(formatDistance(it, unitSystem)) }
                         },
                     showCheckbox = selectable,
                     checked = index in selected,

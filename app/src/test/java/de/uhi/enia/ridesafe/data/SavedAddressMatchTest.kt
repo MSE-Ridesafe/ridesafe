@@ -10,7 +10,15 @@ class SavedAddressMatchTest {
         lat: Double,
         lon: Double,
         radius: Int,
-    ) = SavedAddress(id = id, label = "P$id", kind = SavedPlaceKind.CUSTOM, latitude = lat, longitude = lon, radiusMeters = radius, icon = "place")
+    ) = SavedAddress(
+        id = id,
+        label = "P$id",
+        kind = SavedPlaceKind.CUSTOM,
+        latitude = lat,
+        longitude = lon,
+        radiusMeters = radius,
+        icon = "place",
+    )
 
     // 0.001° of longitude at the equator ≈ 111 m; used to place points a known distance apart.
     @Test

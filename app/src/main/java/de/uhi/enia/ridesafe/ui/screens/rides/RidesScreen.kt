@@ -286,27 +286,37 @@ private fun LogbookRow(
         is LogbookEntry.Single -> {
             val ride = entry.row.ride
             overline = entry.row.vehicleName
-            headline = ride.endAddress?.let { shortAddress(it) } ?: stringResource(R.string.ride_address_unknown)
+            // Prefer a matched saved place's label + icon (ADR-08), else the raw destination address.
+            headline =
+                entry.row.endPlace?.label
+                    ?: ride.endAddress?.let { shortAddress(it) }
+                    ?: stringResource(R.string.ride_address_unknown)
             supporting =
                 listOfNotNull(
                     rideTimeRange(context, ride.startedAtEpochMs, ride.endedAtEpochMs),
                     formatDuration(ride.startedAtEpochMs, ride.endedAtEpochMs),
                 ).joinToString("  •  ")
-            icon = "route"
+            icon = entry.row.endPlace?.icon ?: "route"
         }
 
         is LogbookEntry.Merged -> {
             val s = entry.summary
+            // The merged trip's final destination = the newest stop's end (stops are oldest-first).
+            val destPlace = entry.stops.last().endPlace
             val badge =
                 stringResource(R.string.ride_merged_label) + " · " +
                     pluralStringResource(R.plurals.ride_stops_count, s.stopCount, s.stopCount)
             overline = listOfNotNull(entry.vehicleName, badge).joinToString(" · ")
-            headline = s.endAddress?.let { shortAddress(it) } ?: stringResource(R.string.ride_address_unknown)
+            headline =
+                destPlace?.label
+                    ?: s.endAddress?.let { shortAddress(it) }
+                    ?: stringResource(R.string.ride_address_unknown)
             supporting =
                 listOfNotNull(
-                    s.distanceMeters?.let { formatDistance(context, it, unitSystem) },
+                    s.distanceMeters?.let { formatDistance(it, unitSystem) },
                     formatDurationMs(s.movingDurationMs),
                 ).joinToString("  •  ")
+            // Keep the "merge" icon so a merged trip stays visually distinct in the list.
             icon = "merge"
         }
     }

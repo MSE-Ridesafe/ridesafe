@@ -137,96 +137,31 @@ private val MIGRATION_7_8 =
     }
 
 /**
- * Adds saved addresses (DR-ADR) and the matched-address ids on rides (ADR-07). The new ride columns
- * default to null (unmatched); the re-match pass fills them from the saved addresses on next launch.
+ * Adds saved addresses (DR-ADR) and the matched-address ids on rides (ADR-07), layered on top of the
+ * ride-merging v8 schema (mergeGroupId). Additive only: the new ride columns default to null
+ * (unmatched) and the re-match pass fills them from the saved addresses on next launch. Existing
+ * rides and vehicles are untouched.
  */
-/*
-private val MIGRATION_7_8 =
-    object : Migration(7, 8) {
+private val MIGRATION_8_9 =
+    object : Migration(8, 9) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE rides ADD COLUMN startAddressId INTEGER")
             db.execSQL("ALTER TABLE rides ADD COLUMN endAddressId INTEGER")
             db.execSQL(
                 "CREATE TABLE IF NOT EXISTS saved_addresses (" +
-                        "id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
-                        "label TEXT NOT NULL, " +
-                        "kind TEXT NOT NULL, " +
-                        "latitude REAL NOT NULL, " +
-                        "longitude REAL NOT NULL, " +
-                        "radiusMeters INTEGER NOT NULL, " +
-                        "icon TEXT NOT NULL, " +
-                        "address TEXT)",
+                    "id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+                    "label TEXT NOT NULL, " +
+                    "kind TEXT NOT NULL, " +
+                    "latitude REAL NOT NULL, " +
+                    "longitude REAL NOT NULL, " +
+                    "radiusMeters INTEGER NOT NULL, " +
+                    "icon TEXT NOT NULL, " +
+                    "address TEXT)",
             )
         }
-    }*/
+    }
 
-/**
- * Reconciles devices left on a v8 database with an *earlier, in-progress* v8 schema (an intermediate
- * build had been installed before the saved-address columns/table were finalized, so Room saw a
- * same-version schema-hash mismatch and refused to open). This bumps to v9 to force a migration that
- * normalizes both tables to the current shape **without losing recorded rides**:
- *
- * - `rides` is rebuilt to the exact target schema, copying every long-stable column (all present since
- *   v7) row-for-row; the derived match-id columns start null and are refilled by the re-match pass.
- * - `saved_addresses` is dropped and recreated to the exact target — it holds no data worth keeping
- *   yet (the feature is new), and recreating guarantees the columns match whatever the intermediate
- *   build wrote. Rides and vehicles keep all their data.
- *
- * A normal v7→v8→v9 upgrade also passes through here harmlessly (the copy re-copies; the recreate hits
- * an empty table).
- */
-/*
-private val MIGRATION_8_9 =
-    object : Migration(8, 9) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL(
-                "CREATE TABLE rides_new (" +
-                        "id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
-                        "vehicleId INTEGER, " +
-                        "startedAtEpochMs INTEGER NOT NULL, " +
-                        "startedElapsedNanos INTEGER NOT NULL, " +
-                        "endedAtEpochMs INTEGER, " +
-                        "startLat REAL, " +
-                        "startLon REAL, " +
-                        "endLat REAL, " +
-                        "endLon REAL, " +
-                        "distanceMeters REAL, " +
-                        "avgSpeedMps REAL, " +
-                        "maxSpeedMps REAL NOT NULL, " +
-                        "sampleFile TEXT NOT NULL, " +
-                        "startAddress TEXT, " +
-                        "endAddress TEXT, " +
-                        "startAddressId INTEGER, " +
-                        "endAddressId INTEGER)",
-            )
-            db.execSQL(
-                "INSERT INTO rides_new (id, vehicleId, startedAtEpochMs, startedElapsedNanos, " +
-                        "endedAtEpochMs, startLat, startLon, endLat, endLon, distanceMeters, avgSpeedMps, " +
-                        "maxSpeedMps, sampleFile, startAddress, endAddress) " +
-                        "SELECT id, vehicleId, startedAtEpochMs, startedElapsedNanos, endedAtEpochMs, " +
-                        "startLat, startLon, endLat, endLon, distanceMeters, avgSpeedMps, maxSpeedMps, " +
-                        "sampleFile, startAddress, endAddress FROM rides",
-            )
-            db.execSQL("DROP TABLE rides")
-            db.execSQL("ALTER TABLE rides_new RENAME TO rides")
-
-            db.execSQL("DROP TABLE IF EXISTS saved_addresses")
-            db.execSQL(
-                "CREATE TABLE saved_addresses (" +
-                        "id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
-                        "label TEXT NOT NULL, " +
-                        "kind TEXT NOT NULL, " +
-                        "latitude REAL NOT NULL, " +
-                        "longitude REAL NOT NULL, " +
-                        "radiusMeters INTEGER NOT NULL, " +
-                        "icon TEXT NOT NULL, " +
-                        "address TEXT)",
-            )
-        }
-    }*/
-
-
-@Database(entities = [Vehicle::class, Ride::class, SavedAddress::class], version = 8, exportSchema = false)
+@Database(entities = [Vehicle::class, Ride::class, SavedAddress::class], version = 9, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class RidesafeDatabase : RoomDatabase() {
     abstract fun vehicleDao(): VehicleDao
@@ -253,6 +188,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_5_6,
                         MIGRATION_6_7,
                         MIGRATION_7_8,
+                        MIGRATION_8_9,
                     ).build()
                     .also { instance = it }
             }

@@ -8,8 +8,8 @@ import de.uhi.enia.ridesafe.data.MergedSummary
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.SavedAddress
-import de.uhi.enia.ridesafe.data.rematchRides
 import de.uhi.enia.ridesafe.data.mergeGroupIdFor
+import de.uhi.enia.ridesafe.data.rematchRides
 import de.uhi.enia.ridesafe.data.summarizeMerge
 import de.uhi.enia.ridesafe.tracking.processRide
 import de.uhi.enia.ridesafe.tracking.processedRouteFile

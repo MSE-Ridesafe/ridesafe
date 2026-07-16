@@ -78,7 +78,6 @@ fun usesMetric(setting: UnitSystemSetting): Boolean =
     }
 
 fun formatDistance(
-    context: Context,
     meters: Double,
     setting: UnitSystemSetting,
 ): String {
@@ -104,13 +103,12 @@ fun formatDistance(
  * where [formatDistance]'s km/mi would read "0.12 km".
  */
 fun formatShortDistance(
-    context: Context,
     meters: Double,
     setting: UnitSystemSetting,
 ): String {
-    val formatLocale = getFormattingLocale(context, setting)
+    val formatLocale = getFormattingLocale(setting)
     val (value, unit) =
-        if (usesMetric(context, setting)) {
+        if (usesMetric(setting)) {
             meters.roundToLong() to MeasureUnit.METER
         } else {
             (meters * 3.280839895).roundToLong() to MeasureUnit.FOOT
@@ -143,7 +141,6 @@ fun formatSpeed(
  * is a whole-number reading, unlike a trip distance). Returns e.g. "120,000 mi".
  */
 fun formatOdometer(
-    context: Context,
     kilometers: Int,
     setting: UnitSystemSetting,
 ): String {
