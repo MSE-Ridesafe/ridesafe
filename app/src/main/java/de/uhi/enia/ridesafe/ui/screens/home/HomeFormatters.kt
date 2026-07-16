@@ -44,3 +44,8 @@ fun formatFuelConsumption(
         }
     return "${number.format(fuelEconomy)} ${context.getString(R.string.unit_fuel_economy)}"
 }
+
+fun formatRecordedRideCount(
+    context: Context,
+    count: Int,
+): String = NumberFormat.getIntegerInstance(context.resources.configuration.locales[0]).format(count)

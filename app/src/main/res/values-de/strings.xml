@@ -27,6 +27,14 @@
     <string name="home_vehicle_fuel_consumption">Kraftstoffverbrauch</string>
     <string name="home_total_distance">Gesamte Strecke</string>
     <string name="home_total_travel_time">Gesamte Fahrzeit</string>
+    <string name="home_total_recorded_rides">Aufgezeichnete Fahrten</string>
+    <string name="home_metric_card_content_description">%1$s: %2$s</string>
+    <string name="home_metric_distance_this_month">+%1$s diesen Monat</string>
+    <string name="home_metric_duration_this_month">+%1$s diesen Monat</string>
+    <string name="home_metric_rides_this_month">+%1$s diesen Monat</string>
+    <string name="home_metric_no_distance_this_month">Keine Strecke diesen Monat</string>
+    <string name="home_metric_no_duration_this_month">Keine Fahrzeit diesen Monat</string>
+    <string name="home_metric_no_rides_this_month">Keine Fahrten diesen Monat</string>
     <string name="home_highlight_longest_ride">Längste Fahrt</string>
     <string name="home_highlight_average_ride">Durchschnittliche Fahrt</string>
     <string name="home_highlight_most_active_day">Aktivster Tag</string>

@@ -7,7 +7,9 @@ import de.uhi.enia.ridesafe.domain.JourneyActivity
 import de.uhi.enia.ridesafe.domain.JourneyHighlights
 import de.uhi.enia.ridesafe.domain.calculateJourneyHighlights
 import de.uhi.enia.ridesafe.domain.journeyActivityByDay
+import de.uhi.enia.ridesafe.domain.journeyTotalsForMonth
 import de.uhi.enia.ridesafe.domain.logicalRideJourneys
+import de.uhi.enia.ridesafe.domain.totalJourneyCount
 import de.uhi.enia.ridesafe.domain.totalJourneyDistanceMeters
 import de.uhi.enia.ridesafe.domain.totalJourneyTravelDurationMillis
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
@@ -41,6 +43,7 @@ class HomeViewModel(
                         )
                     }
             val logicalJourneys = logicalRideJourneys(rides)
+            val currentMonthTotals = journeyTotalsForMonth(logicalJourneys, currentMonth, zone)
             val activityByDay =
                 journeyActivityByDay(logicalJourneys, zone)
                     .mapValues { it.value.toActivityBar() }
@@ -63,6 +66,10 @@ class HomeViewModel(
                 activeRide = activeRide,
                 totalDistanceMeters = totalJourneyDistanceMeters(logicalJourneys),
                 totalDurationMillis = totalJourneyTravelDurationMillis(logicalJourneys),
+                totalRecordedRides = totalJourneyCount(logicalJourneys),
+                currentMonthDistanceMeters = currentMonthTotals.distanceMeters,
+                currentMonthDurationMillis = currentMonthTotals.durationMillis,
+                currentMonthRecordedRides = currentMonthTotals.journeyCount,
                 activityBars = bars,
                 monthlyActivity = monthlyActivity,
                 activityByDay = activityByDay,

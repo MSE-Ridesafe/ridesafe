@@ -27,6 +27,14 @@
     <string name="home_vehicle_fuel_consumption">Fuel consumption</string>
     <string name="home_total_distance">Total Distance</string>
     <string name="home_total_travel_time">Total Travel Time</string>
+    <string name="home_total_recorded_rides">Total Recorded Rides</string>
+    <string name="home_metric_card_content_description">%1$s: %2$s</string>
+    <string name="home_metric_distance_this_month">+%1$s this month</string>
+    <string name="home_metric_duration_this_month">+%1$s this month</string>
+    <string name="home_metric_rides_this_month">+%1$s this month</string>
+    <string name="home_metric_no_distance_this_month">No distance this month</string>
+    <string name="home_metric_no_duration_this_month">No travel time this month</string>
+    <string name="home_metric_no_rides_this_month">No rides this month</string>
     <string name="home_highlight_longest_ride">Longest ride</string>
     <string name="home_highlight_average_ride">Average ride</string>
     <string name="home_highlight_most_active_day">Most active day</string>

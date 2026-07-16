@@ -72,9 +72,13 @@ fun HomeScreen(
                 }
             }
             item {
-                MonthlyStats(
+                SummaryMetricCarousel(
                     distanceMeters = state.totalDistanceMeters,
                     durationMillis = state.totalDurationMillis,
+                    rideCount = state.totalRecordedRides,
+                    monthDistanceMeters = state.currentMonthDistanceMeters,
+                    monthDurationMillis = state.currentMonthDurationMillis,
+                    monthRideCount = state.currentMonthRecordedRides,
                     unitSystem = unitSystem,
                 )
             }
