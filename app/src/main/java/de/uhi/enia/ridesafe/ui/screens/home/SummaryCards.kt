@@ -30,19 +30,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.Density
+import androidx.compose.ui.util.lerp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.formatDistance
+import kotlin.math.absoluteValue
 
 data class HomeMetricCardModel(
     val icon: String,
@@ -128,14 +131,25 @@ fun SummaryMetricCarousel(
     Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
         HorizontalPager(
             state = pagerState,
-            pageSize = FractionalPageSize(0.84f),
+            pageSize = FractionalPageSize(0.76f),
             contentPadding = PaddingValues(end = 20.dp),
-            pageSpacing = 12.dp,
+            pageSpacing = 14.dp,
             modifier = Modifier.fillMaxWidth(),
         ) { page ->
+            val pageOffset =
+                ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction)
+                    .absoluteValue
+                    .coerceIn(0f, 1f)
+            val pageScale = lerp(start = 0.98f, stop = 1f, fraction = 1f - pageOffset)
             MetricCard(
                 metric = metrics[page],
-                modifier = Modifier.fillMaxWidth(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer {
+                            scaleX = pageScale
+                            scaleY = pageScale
+                        },
             )
         }
         PageIndicator(
