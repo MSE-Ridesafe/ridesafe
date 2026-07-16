@@ -3,6 +3,13 @@ package de.uhi.enia.ridesafe.ui.screens.home
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
+import de.uhi.enia.ridesafe.domain.JourneyActivity
+import de.uhi.enia.ridesafe.domain.JourneyHighlights
+import de.uhi.enia.ridesafe.domain.calculateJourneyHighlights
+import de.uhi.enia.ridesafe.domain.journeyActivityByDay
+import de.uhi.enia.ridesafe.domain.logicalRideJourneys
+import de.uhi.enia.ridesafe.domain.totalJourneyDistanceMeters
+import de.uhi.enia.ridesafe.domain.totalJourneyTravelDurationMillis
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -33,18 +40,10 @@ class HomeViewModel(
                                     ?: primaryVehicle?.displayTitle(),
                         )
                     }
-            val finishedRides = rides.filter { it.endedAtEpochMs != null }
+            val logicalJourneys = logicalRideJourneys(rides)
             val activityByDay =
-                rides
-                    .groupBy { it.startedAtEpochMs.toLocalDate(zone) }
-                    .mapValues { (day, dayRides) ->
-                        ActivityBar(
-                            day = day,
-                            rideCount = dayRides.count { it.endedAtEpochMs != null },
-                            distanceMeters = dayRides.sumOf { it.distanceMeters ?: 0.0 },
-                            durationMillis = dayRides.sumOf { it.durationMillis() },
-                        )
-                    }
+                journeyActivityByDay(logicalJourneys, zone)
+                    .mapValues { it.value.toActivityBar() }
             val weekDays = (6 downTo 0).map { today.minusDays(it.toLong()) }
             val bars =
                 weekDays.map { day ->
@@ -62,12 +61,27 @@ class HomeViewModel(
             HomeDashboardState(
                 primaryVehicle = primaryVehicle,
                 activeRide = activeRide,
-                totalDistanceMeters = finishedRides.sumOf { it.distanceMeters ?: 0.0 },
-                totalDurationMillis = finishedRides.sumOf { it.durationMillis() },
+                totalDistanceMeters = totalJourneyDistanceMeters(logicalJourneys),
+                totalDurationMillis = totalJourneyTravelDurationMillis(logicalJourneys),
                 activityBars = bars,
                 monthlyActivity = monthlyActivity,
                 activityByDay = activityByDay,
-                highlights = calculateHomeHighlights(finishedRides, zone),
+                highlights = calculateJourneyHighlights(logicalJourneys, zone).toHomeHighlights(),
             )
         }
 }
+
+private fun JourneyActivity.toActivityBar(): ActivityBar =
+    ActivityBar(
+        day = day,
+        rideCount = journeyCount,
+        distanceMeters = distanceMeters,
+        durationMillis = durationMillis,
+    )
+
+private fun JourneyHighlights.toHomeHighlights(): HomeHighlights =
+    HomeHighlights(
+        longestRideMeters = longestRideMeters,
+        averageRideMeters = averageRideMeters,
+        mostActiveDay = mostActiveDay,
+    )
