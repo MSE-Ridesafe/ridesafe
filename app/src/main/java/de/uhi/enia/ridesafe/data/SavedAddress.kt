@@ -1,0 +1,92 @@
+package de.uhi.enia.ridesafe.data
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import kotlin.math.asin
+import kotlin.math.cos
+import kotlin.math.min
+import kotlin.math.sin
+import kotlin.math.sqrt
+
+/**
+ * A user-saved address / "place" (entity DR-ADR). Anchored to an exact GPS point
+ * ([latitude]/[longitude]) with a [radiusMeters] recognition area (ADR-02): a ride endpoint
+ * inside that area is recognized as this place (ADR-07).
+ *
+ * [kind] drives the three singleton shortcuts (Home/Work/School) with fixed labels and icons; a
+ * [CUSTOM][SavedPlaceKind.CUSTOM] place has a user-chosen [label] and [icon] (a Material Symbols
+ * ligature name). [address] is the reverse-geocoded (or searched) address at the point, kept so the
+ * detail view can suppress the distance suffix when a ride endpoint's address matches it exactly
+ * (ADR-09); null when geocoding was unavailable.
+ */
+@Entity(tableName = "saved_addresses")
+data class SavedAddress(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val label: String,
+    val kind: SavedPlaceKind,
+    val latitude: Double,
+    val longitude: Double,
+    val radiusMeters: Int,
+    val icon: String,
+    val address: String? = null,
+)
+
+/** Stored by [name]; user-facing labels are localized in the UI layer. */
+enum class SavedPlaceKind {
+    HOME,
+    WORK,
+    SCHOOL,
+    CUSTOM,
+}
+
+/** The fixed Material Symbol for a shortcut kind, or null for [CUSTOM][SavedPlaceKind.CUSTOM] (user-chosen). */
+fun SavedPlaceKind.fixedIcon(): String? =
+    when (this) {
+        SavedPlaceKind.HOME -> "home"
+        SavedPlaceKind.WORK -> "work"
+        SavedPlaceKind.SCHOOL -> "school"
+        SavedPlaceKind.CUSTOM -> null
+    }
+
+/** Home/Work/School are singletons with fixed label + icon; only CUSTOM is freely edited. */
+val SavedPlaceKind.isShortcut: Boolean get() = this != SavedPlaceKind.CUSTOM
+
+/** Default icon for a fresh custom place. */
+const val DEFAULT_PLACE_ICON = "place"
+
+/**
+ * The saved address a point falls into (ADR-07): the nearest by center distance among those whose
+ * radius contains the point, or null when the point is unset or matches none. On overlap the nearest
+ * center wins, so the result is deterministic.
+ */
+fun matchAddress(
+    lat: Double?,
+    lon: Double?,
+    addresses: List<SavedAddress>,
+): SavedAddress? {
+    if (lat == null || lon == null) return null
+    return addresses
+        .mapNotNull { a ->
+            val d = haversineMeters(lat, lon, a.latitude, a.longitude)
+            if (d <= a.radiusMeters) a to d else null
+        }.minByOrNull { it.second }
+        ?.first
+}
+
+// ponytail: a tiny self-contained haversine keeps the data layer dependency-free (tracking/ has its
+// own private copy for track length). Good enough for ≤500 m radius checks.
+private const val EARTH_RADIUS_M = 6_371_000.0
+
+fun haversineMeters(
+    lat1: Double,
+    lon1: Double,
+    lat2: Double,
+    lon2: Double,
+): Double {
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLon = Math.toRadians(lon2 - lon1)
+    val a =
+        sin(dLat / 2) * sin(dLat / 2) +
+            cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLon / 2) * sin(dLon / 2)
+    return 2 * EARTH_RADIUS_M * asin(min(1.0, sqrt(a)))
+}

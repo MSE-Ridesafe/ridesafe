@@ -99,6 +99,27 @@ fun formatDistance(
 }
 
 /**
+ * Short distance from canonical [meters] in the user's small units (m or ft), rounded to a whole
+ * unit, e.g. "120 m" / "390 ft". For sub-kilometer figures like a saved-address offset (ADR-09),
+ * where [formatDistance]'s km/mi would read "0.12 km".
+ */
+fun formatShortDistance(
+    context: Context,
+    meters: Double,
+    setting: UnitSystemSetting,
+): String {
+    val formatLocale = getFormattingLocale(context, setting)
+    val (value, unit) =
+        if (usesMetric(context, setting)) {
+            meters.roundToLong() to MeasureUnit.METER
+        } else {
+            (meters * 3.280839895).roundToLong() to MeasureUnit.FOOT
+        }
+    val formatter = MeasureFormat.getInstance(formatLocale, MeasureFormat.FormatWidth.SHORT)
+    return formatter.format(Measure(value, unit))
+}
+
+/**
  * Speed from canonical [metersPerSecond] in the user's units, e.g. "92.4 km/h" / "57.3 mph". Uses the
  * app's own unit strings rather than ICU's speed units, which render mph as the unconventional "mi/h".
  */

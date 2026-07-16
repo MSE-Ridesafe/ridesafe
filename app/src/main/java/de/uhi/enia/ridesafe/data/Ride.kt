@@ -29,6 +29,10 @@ import androidx.room.PrimaryKey
  * is no separate merged-ride row and no stored stop order — stops order by [startedAtEpochMs] and the
  * aggregated metrics/addresses are derived on read (MRG-05, MRG-07).
  *
+ * [startAddressId]/[endAddressId] are the saved addresses (DR-ADR) the start/end points fall into,
+ * or null when none matches (ADR-07). Persisted by the re-match pass (rematchRides), which reruns on
+ * any saved-address change and once per launch, so the display just resolves the id to the place.
+ *
  * ponytail: notes/tags/purpose/safety score (DR-RID, ANL-01) are written by later UI/analysis
  * layers, not recording — add the columns via an ALTER-TABLE migration when those land.
  */
@@ -50,4 +54,6 @@ data class Ride(
     val sampleFile: String,
     val startAddress: String? = null,
     val endAddress: String? = null,
+    val startAddressId: Long? = null,
+    val endAddressId: Long? = null,
 )

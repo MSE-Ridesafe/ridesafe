@@ -14,6 +14,10 @@ interface RideDao {
     @Query("SELECT * FROM rides WHERE id = :id")
     fun observe(id: Long): Flow<Ride?>
 
+    /** One-shot read of every ride for the saved-address re-match pass (ADR-07). */
+    @Query("SELECT * FROM rides")
+    suspend fun all(): List<Ride>
+
     /** The stops of a merged ride (MRG-01), in chronological order — the merged detail's source of truth. */
     @Query("SELECT * FROM rides WHERE mergeGroupId = :groupId ORDER BY startedAtEpochMs ASC")
     fun observeGroup(groupId: Long): Flow<List<Ride>>
@@ -83,6 +87,14 @@ interface RideDao {
         id: Long,
         startAddress: String?,
         endAddress: String?,
+    )
+
+    /** Store the saved addresses the start/end points matched (ADR-07); either may be null. */
+    @Query("UPDATE rides SET startAddressId = :startAddressId, endAddressId = :endAddressId WHERE id = :id")
+    suspend fun setMatchedAddresses(
+        id: Long,
+        startAddressId: Long?,
+        endAddressId: Long?,
     )
 
     @Delete

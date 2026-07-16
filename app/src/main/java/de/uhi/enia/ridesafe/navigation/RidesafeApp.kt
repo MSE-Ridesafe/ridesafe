@@ -40,6 +40,7 @@ import de.uhi.enia.ridesafe.ui.screens.home.homeEntries
 import de.uhi.enia.ridesafe.ui.screens.rides.RidesRoute
 import de.uhi.enia.ridesafe.ui.screens.rides.RidesViewModel
 import de.uhi.enia.ridesafe.ui.screens.rides.ridesEntries
+import de.uhi.enia.ridesafe.ui.screens.settings.SavedAddressViewModel
 import de.uhi.enia.ridesafe.ui.screens.settings.SettingsRoute
 import de.uhi.enia.ridesafe.ui.screens.settings.settingsEntries
 import de.uhi.enia.ridesafe.util.UnitPrefs
@@ -96,6 +97,9 @@ fun RidesafeApp() {
 
     // Shared across the rides list/detail screens; Room Flow is the source of truth.
     val ridesViewModel: RidesViewModel = viewModel()
+
+    // Shared across the saved-addresses list/editor screens; Room Flow is the source of truth.
+    val savedAddressViewModel: SavedAddressViewModel = viewModel()
 
     NavigationSuiteScaffold(
         // Native three-tier: navigation bar is the dimmest surface, the screen
@@ -201,6 +205,7 @@ fun RidesafeApp() {
                                 applyAutoTrackMode(context, newMode)
                                 autoTrackMode = newMode
                             },
+                            savedAddressViewModel = savedAddressViewModel,
                             onOpen = {
                                 isTabSwitch = false
                                 settingsStack.add(it)

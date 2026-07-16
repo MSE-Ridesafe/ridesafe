@@ -58,13 +58,19 @@ fun EntryProviderScope<NavKey>.ridesEntries(
     }
     entry<RideDetailRoute> { key ->
         val ride by viewModel.ride(key.id).collectAsState(initial = null)
+        val addresses by viewModel.savedAddresses.collectAsState(initial = emptyList())
         // Load the route once the ride row has loaded; null until then = "loading".
         val route by produceState<List<LatLng>?>(initialValue = null, ride) {
             value = ride?.let { viewModel.route(it) }
         }
+        // Resolve the stored matched-address ids (ADR-07) to the places, for the detail labels (ADR-09).
+        val startPlace = ride?.startAddressId?.let { id -> addresses.firstOrNull { it.id == id } }
+        val endPlace = ride?.endAddressId?.let { id -> addresses.firstOrNull { it.id == id } }
         RideDetailScreen(
             ride = ride,
             route = route,
+            startPlace = startPlace,
+            endPlace = endPlace,
             unitSystem = unitSystem,
             onBack = onBack,
         )

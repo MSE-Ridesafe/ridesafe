@@ -7,6 +7,8 @@ import com.google.android.gms.maps.model.LatLng
 import de.uhi.enia.ridesafe.data.MergedSummary
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
+import de.uhi.enia.ridesafe.data.SavedAddress
+import de.uhi.enia.ridesafe.data.rematchRides
 import de.uhi.enia.ridesafe.data.mergeGroupIdFor
 import de.uhi.enia.ridesafe.data.summarizeMerge
 import de.uhi.enia.ridesafe.tracking.processRide
@@ -28,6 +30,8 @@ import java.io.File
 data class RideRow(
     val ride: Ride,
     val vehicleName: String?,
+    val startPlace: SavedAddress? = null,
+    val endPlace: SavedAddress? = null,
 )
 
 /**
@@ -74,6 +78,7 @@ class RidesViewModel(
     private val db = RidesafeDatabase.getInstance(app)
     private val rideDao = db.rideDao()
     private val vehicleDao = db.vehicleDao()
+    private val savedAddressDao = db.savedAddressDao()
 
     init {
         // One pass per launch: reverse-geocode any ride that has a fix but no stored address yet
@@ -82,13 +87,27 @@ class RidesViewModel(
         // One pass per launch: Kalman-filter + simplify the GPS of any ride not processed yet, and
         // persist its distance/avg speed so the detail view loads from the DB + sidecar, not the raw file.
         viewModelScope.launch { rideDao.needingProcessing().forEach { process(it) } }
+        // One pass per launch: match every ride's endpoints to the saved addresses (ADR-07), so new
+        // recordings pick up existing places (edits while the app is open re-match in SavedAddressViewModel).
+        viewModelScope.launch { rematchRides(rideDao, savedAddressDao) }
     }
 
-    /** Rides (newest first, from the DAO) joined to their vehicle's display name for the list. */
+    /** Saved places (DR-ADR), exposed so the detail screen can resolve a ride's matched endpoints. */
+    val savedAddresses: Flow<List<SavedAddress>> = savedAddressDao.observeAll()
+
+    /** Rides (newest first) joined to their vehicle name and the saved places their endpoints matched. */
     val rides: Flow<List<RideRow>> =
-        combine(rideDao.observeAll(), vehicleDao.observeAll()) { rides, vehicles ->
+        combine(rideDao.observeAll(), vehicleDao.observeAll(), savedAddressDao.observeAll()) { rides, vehicles, addresses ->
             val names = vehicles.associate { it.id to it.displayTitle() }
-            rides.map { RideRow(it, it.vehicleId?.let(names::get)) }
+            val places = addresses.associateBy { it.id }
+            rides.map {
+                RideRow(
+                    ride = it,
+                    vehicleName = it.vehicleId?.let(names::get),
+                    startPlace = it.startAddressId?.let(places::get),
+                    endPlace = it.endAddressId?.let(places::get),
+                )
+            }
         }
 
     /** The list as shown in the Logbook: standalone rides plus merged rides collapsed to one entry (§3.8). */
