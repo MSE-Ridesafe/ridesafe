@@ -20,8 +20,12 @@ import de.uhi.enia.ridesafe.tracking.ridesDir
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -93,10 +97,11 @@ class RidesViewModel(
     }
 
     /** Saved places (DR-ADR), exposed so the detail screen can resolve a ride's matched endpoints. */
-    val savedAddresses: Flow<List<SavedAddress>> = savedAddressDao.observeAll()
+    val savedAddresses: StateFlow<List<SavedAddress>> =
+        savedAddressDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Rides (newest first) joined to their vehicle name and the saved places their endpoints matched. */
-    val rides: Flow<List<RideRow>> =
+    private val rides: Flow<List<RideRow>> =
         combine(rideDao.observeAll(), vehicleDao.observeAll(), savedAddressDao.observeAll()) { rides, vehicles, addresses ->
             val names = vehicles.associate { it.id to it.displayTitle() }
             val places = addresses.associateBy { it.id }
@@ -110,8 +115,17 @@ class RidesViewModel(
             }
         }
 
-    /** The list as shown in the Logbook: standalone rides plus merged rides collapsed to one entry (§3.8). */
-    val entries: Flow<List<LogbookEntry>> = rides.map(::toEntries)
+    /**
+     * The list as shown in the Logbook: standalone rides plus merged rides collapsed to one entry (§3.8).
+     * Hot + prefetched: the combine/fold runs on Default (off the frame thread) and starts at VM creation
+     * (app launch), so the first visit to the Rides tab reads an already-loaded value instead of paying the
+     * cold DB-open + query + fold mid-transition. Eagerly (not WhileSubscribed) keeps it warm app-wide.
+     */
+    val entries: StateFlow<List<LogbookEntry>> =
+        rides
+            .map(::toEntries)
+            .flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun ride(id: Long): Flow<Ride?> = rideDao.observe(id)
 

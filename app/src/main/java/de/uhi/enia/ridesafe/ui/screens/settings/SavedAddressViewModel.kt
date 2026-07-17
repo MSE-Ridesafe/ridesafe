@@ -7,6 +7,9 @@ import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.rematchRides
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -21,7 +24,10 @@ class SavedAddressViewModel(
     private val dao = db.savedAddressDao()
     private val rideDao = db.rideDao()
 
-    val addresses: Flow<List<SavedAddress>> = dao.observeAll()
+    // Prefetched at app launch (Eagerly) so the first visit to the Saved Addresses screen reads an
+    // already-loaded list instead of paying the cold Room query mid-transition.
+    val addresses: StateFlow<List<SavedAddress>> =
+        dao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun address(id: Long): Flow<SavedAddress?> = dao.observe(id)
 

@@ -32,7 +32,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
     onBack: () -> Unit,
 ) {
     entry<RidesRoute> {
-        val entries by viewModel.entries.collectAsState(initial = emptyList())
+        val entries by viewModel.entries.collectAsState()
         RidesScreen(
             entries = entries,
             unitSystem = unitSystem,
@@ -58,7 +58,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
     }
     entry<RideDetailRoute> { key ->
         val ride by viewModel.ride(key.id).collectAsState(initial = null)
-        val addresses by viewModel.savedAddresses.collectAsState(initial = emptyList())
+        val addresses by viewModel.savedAddresses.collectAsState()
         // Load the route once the ride row has loaded; null until then = "loading".
         val route by produceState<List<LatLng>?>(initialValue = null, ride) {
             value = ride?.let { viewModel.route(it) }

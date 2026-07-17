@@ -31,7 +31,7 @@ fun EntryProviderScope<NavKey>.savedAddressEntries(
     onBack: () -> Unit,
 ) {
     entry<SavedAddressesRoute> {
-        val addresses by viewModel.addresses.collectAsState(initial = emptyList())
+        val addresses by viewModel.addresses.collectAsState()
         SavedAddressesScreen(
             addresses = addresses,
             onAdd = { kind -> onOpen(AddSavedAddressRoute(kind.name)) },
