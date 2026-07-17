@@ -23,10 +23,13 @@ fun buildMonthActivity(
         activityByDay[day] ?: emptyActivityBar(day)
     }
 
-fun formatActivityDateRange(days: List<ActivityBar>): String {
+fun formatActivityDateRange(
+    days: List<ActivityBar>,
+    locale: Locale,
+): String {
     val start = days.firstOrNull()?.day ?: LocalDate.now()
     val end = days.lastOrNull()?.day ?: start
-    val formatter = DateTimeFormatter.ofPattern("dd.MM.", Locale.getDefault())
+    val formatter = DateTimeFormatter.ofPattern("dd.MM.", locale)
     return "${start.format(formatter)} - ${end.format(formatter)}"
 }
 

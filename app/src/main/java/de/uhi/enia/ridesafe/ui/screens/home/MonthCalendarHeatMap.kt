@@ -18,10 +18,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.os.ConfigurationCompat
 import java.time.DayOfWeek
 import java.time.format.TextStyle
 
@@ -31,8 +30,7 @@ fun MonthlyHeatMap(
     selectedMetric: ActivityChartMetric,
     maxValue: Double,
 ) {
-    val locale =
-        ConfigurationCompat.getLocales(LocalConfiguration.current).get(0)
+    val locale = LocalLocale.current.platformLocale
     val firstDay = days.firstOrNull()?.day
     val weekRows =
         if (firstDay == null) {

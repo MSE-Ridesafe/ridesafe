@@ -21,12 +21,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.os.ConfigurationCompat
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.formatDistance
 import java.time.format.TextStyle
@@ -69,8 +69,7 @@ private fun ActivityBarColumn(
     fraction: Float,
     modifier: Modifier = Modifier,
 ) {
-    val locale =
-        ConfigurationCompat.getLocales(LocalConfiguration.current).get(0)
+    val locale = LocalLocale.current.platformLocale
     val hideZeroLabel = !hasValue && LocalConfiguration.current.screenWidthDp < 360
     val targetHeight = max(if (hasValue) 18f else 8f, 100f * fraction).dp
     val barHeight by animateDpAsState(

@@ -33,12 +33,13 @@ fun formatLiveRideDuration(
 fun formatFuelConsumption(
     context: Context,
     fuelEconomy: Double?,
+    locale: Locale,
 ): String {
     if (fuelEconomy == null) {
         return context.getString(R.string.value_not_set)
     }
     val number =
-        NumberFormat.getNumberInstance(Locale.getDefault()).apply {
+        NumberFormat.getNumberInstance(locale).apply {
             minimumFractionDigits = 1
             maximumFractionDigits = 1
         }
