@@ -36,6 +36,7 @@ import de.uhi.enia.ridesafe.ui.screens.garage.GarageRoute
 import de.uhi.enia.ridesafe.ui.screens.garage.GarageViewModel
 import de.uhi.enia.ridesafe.ui.screens.garage.garageEntries
 import de.uhi.enia.ridesafe.ui.screens.home.HomeRoute
+import de.uhi.enia.ridesafe.ui.screens.home.HomeViewModel
 import de.uhi.enia.ridesafe.ui.screens.home.homeEntries
 import de.uhi.enia.ridesafe.ui.screens.rides.RidesRoute
 import de.uhi.enia.ridesafe.ui.screens.rides.RidesViewModel
@@ -97,6 +98,9 @@ fun RidesafeApp() {
 
     // Shared across the rides list/detail screens; Room Flow is the source of truth.
     val ridesViewModel: RidesViewModel = viewModel()
+
+    // Shared dashboard state sourced from vehicles and rides.
+    val homeViewModel: HomeViewModel = viewModel()
 
     // Shared across the saved-addresses list/editor screens; Room Flow is the source of truth.
     val savedAddressViewModel: SavedAddressViewModel = viewModel()
@@ -165,7 +169,10 @@ fun RidesafeApp() {
                 },
                 entryProvider =
                     entryProvider {
-                        homeEntries(unitSystem)
+                        homeEntries(
+                            viewModel = homeViewModel,
+                            unitSystem = unitSystem,
+                        )
                         ridesEntries(
                             viewModel = ridesViewModel,
                             unitSystem = unitSystem,
