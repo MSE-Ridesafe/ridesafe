@@ -66,10 +66,10 @@ fun SummaryMetricCarousel(
     unitSystem: UnitSystemSetting,
 ) {
     val context = LocalContext.current
-    val totalDistance = formatDistance(context, distanceMeters, unitSystem)
+    val totalDistance = formatDistance(distanceMeters, unitSystem)
     val totalDuration = formatCompactDuration(durationMillis)
     val totalRides = formatRecordedRideCount(context, rideCount)
-    val monthDistance = formatDistance(context, monthDistanceMeters, unitSystem)
+    val monthDistance = formatDistance(monthDistanceMeters, unitSystem)
     val monthDuration = formatCompactDuration(monthDurationMillis)
     val monthRides = formatRecordedRideCount(context, monthRideCount)
     val metrics =
