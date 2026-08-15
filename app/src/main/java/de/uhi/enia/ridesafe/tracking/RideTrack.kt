@@ -59,16 +59,52 @@ data class RideSamples(
  * truncated/corrupt tail the same way [readRideLocations] does. Prefer [readRideLocations] when
  * only the track is needed — it skips motion, which is ~98% of the lines.
  *
- * ponytail: holds the motion samples as objects, ~25 MB for a 40-minute ride. Fine for typical
- * rides; if a multi-hour ride ever OOMs, subsample the rotation stream to ~1 Hz (a phone in a
- * mount barely rotates) before reaching for primitive arrays.
+ * **Acceleration is kept at every recorded sample.** It is the sensor events are actually detected
+ * from, it feeds a 2 Hz low-pass, and thinning it ahead of that filter would alias road noise
+ * straight into the band the detector reads. Nothing about event sensitivity is traded here.
+ *
+ * The two supporting streams are thinned on the way in, which is what keeps a long ride inside the
+ * heap — at 50 Hz all three, a six-hour drive is 3.2M sample objects and roughly 160 MB, enough to
+ * wedge the app in continuous GC. They carry different requirements, hence separate rates:
+ *
+ * [rotationKeepHz] resolves the device's orientation. Staleness there cannot hide an event: a stale
+ * angle θ shrinks the horizontal magnitude only by cos θ, and 40 ms at even a violent 30°/s of body
+ * motion is 1.2°, or 0.02% of the reading. What it can do is leak a little gravity into the
+ * horizontal plane, g·sin θ ≈ 0.02 g worst case — bounded well under the 0.25 g floor, and 25 Hz
+ * leaves margin over the ~1–2 Hz at which a car body actually pitches and rolls.
+ *
+ * [gyroKeepHz] feeds a phone-handling gate and a yaw rate. Vehicle yaw is well under 1 Hz and
+ * handling a phone lasts seconds, so 10 Hz is an order of magnitude more than either needs.
+ *
+ * All of this is an in-memory decision. The recording still writes every sensor at 50 Hz and the raw
+ * file is untouched, so raising either rate is one parameter and a re-analysis away.
+ *
+ * ponytail: acceleration still scales with ride length, ~8 MB/hour, so this holds to roughly a
+ * 20-hour ride rather than forever. Stream it past the detector instead of materialising it if that
+ * ever becomes the limit.
  */
-suspend fun readRideSamples(file: File): RideSamples =
+suspend fun readRideSamples(
+    file: File,
+    rotationKeepHz: Int = 25,
+    gyroKeepHz: Int = 10,
+): RideSamples =
     withContext(Dispatchers.IO) {
         val locations = ArrayList<LocationSample>()
         val accel = ArrayList<MotionSample>()
         val gyro = ArrayList<MotionSample>()
         val rotation = ArrayList<MotionSample>()
+        // Sentinel rather than arithmetic: timestamps are elapsed-realtime nanos and always
+        // positive, so the short-circuit keeps the first sample without risking an underflow.
+        val rotationIntervalNanos = 1_000_000_000L / rotationKeepHz
+        val gyroIntervalNanos = 1_000_000_000L / gyroKeepHz
+        var lastGyro = Long.MIN_VALUE
+        var lastRotation = Long.MIN_VALUE
+
+        fun due(
+            last: Long,
+            now: Long,
+            interval: Long,
+        ) = last == Long.MIN_VALUE || now - last >= interval
         try {
             GZIPInputStream(FileInputStream(file)).bufferedReader().use { r ->
                 var line = r.readLine()
@@ -78,8 +114,16 @@ suspend fun readRideSamples(file: File): RideSamples =
                         is MotionSample ->
                             when (sample.sensor) {
                                 MotionSensor.ACCEL -> accel.add(sample)
-                                MotionSensor.GYRO -> gyro.add(sample)
-                                MotionSensor.ROTATION -> rotation.add(sample)
+                                MotionSensor.GYRO ->
+                                    if (due(lastGyro, sample.t, gyroIntervalNanos)) {
+                                        gyro.add(sample)
+                                        lastGyro = sample.t
+                                    }
+                                MotionSensor.ROTATION ->
+                                    if (due(lastRotation, sample.t, rotationIntervalNanos)) {
+                                        rotation.add(sample)
+                                        lastRotation = sample.t
+                                    }
                             }
                         null -> Unit // unparseable line; skip it
                     }

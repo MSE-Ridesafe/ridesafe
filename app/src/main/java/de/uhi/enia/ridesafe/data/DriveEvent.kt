@@ -21,9 +21,13 @@ fun DriveEventType.symbol(): String =
  * regenerable: the raw NDJSON sample file stays the source of truth, so re-running detection is
  * "delete this ride's rows, analyze again" — see [Ride.analyzerVersion].
  *
- * Detection runs at a deliberately low [peakG] threshold and stores the magnitude rather than a
- * yes/no verdict, so *how harsh counts as harsh* stays a read-time decision. Re-tuning severity is
- * a query change, never a re-analysis.
+ * Detection stores both magnitudes rather than a yes/no verdict, so *how harsh counts as harsh*
+ * stays a read-time decision. Re-tuning severity is a query change, never a re-analysis.
+ *
+ * [peakJerkGPerS] is the fastest rate the force built, and is what actually separates harsh from
+ * merely forceful: a tight residential corner reaches 0.4 g perfectly smoothly, while a stab at the
+ * brakes is harsh at half that. [peakG] still matters at the top end, where a maneuver is hard
+ * however gently it was started. Scoring should weigh both.
  *
  * [startOffsetMs] is measured from the ride's start rather than on the sample stream's monotonic
  * clock, so an event is readable on its own ("hard brake 4:12 in") without joining to the ride row.
@@ -53,6 +57,7 @@ data class DriveEvent(
     val startOffsetMs: Long,
     val durationMs: Long,
     val peakG: Double,
+    val peakJerkGPerS: Double,
     val avgG: Double,
     val speedMps: Double,
     val lat: Double? = null,

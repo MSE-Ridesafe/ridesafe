@@ -217,9 +217,14 @@ class RidesViewModel(
         for (ride in driveEventDao.needingAnalysis(ANALYZER_VERSION)) {
             val events = analyzeRide(getApplication(), ride) ?: continue
             driveEventDao.replaceForRide(ride.id, ANALYZER_VERSION, events)
-            // Logged because "no events" is otherwise indistinguishable from "detector broken":
-            // a ride reported here with 0 events, at a threshold this low, is a real signal.
-            Log.i("DriveEvents", "ride ${ride.id}: ${events.size} events (peak g ${events.maxOfOrNull { it.peakG } ?: 0.0})")
+            // Both peaks are logged because they're the two numbers detection is tuned on, and
+            // reading them off real rides beats guessing at thresholds. It also keeps "no events"
+            // distinguishable from "detector broken".
+            Log.i(
+                "DriveEvents",
+                "ride ${ride.id}: ${events.size} events, peak ${events.maxOfOrNull { it.peakG } ?: 0.0} g / " +
+                    "${events.maxOfOrNull { it.peakJerkGPerS } ?: 0.0} g/s",
+            )
         }
     }
 

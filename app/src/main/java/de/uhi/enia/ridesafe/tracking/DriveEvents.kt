@@ -22,8 +22,19 @@ private const val G = 9.80665
  *
  * v2: detection threshold dropped from 0.20 g to 0.10 g, where real-world harsh driving actually
  * sits — 0.20 g was high enough that ordinary rides logged nothing at all.
+ * v3: trigger moved from force to rate of force (jerk), with a magnitude path retained for
+ * maneuvers that are hard however smoothly they were started.
+ * v4: both halves of that AND raised to real-driving levels — jerk 0.6 → 1.0 g/s and the peak floor
+ * 0.10 → 0.25 g. At the old values ordinary braking cleared both and nearly every stop was an event.
+ * v5: heading now comes from the phone's orientation and a calibrated vehicle forward axis rather
+ * than per-sample GPS, the speed gate reads Doppler instead of position-derived speed, and poorly
+ * fixed stretches are skipped — all three so a wandering GPS can't manufacture events.
+ * v6: the high-force bypass no longer applies to cornering, where v²/r geometry made every tight
+ * low-speed turn an event regardless of how gently it was driven.
+ * v7: thresholds are per-direction (an engine can't pull what brakes can), and the speed gate now
+ * takes the lower of GPS and an IMU-derived speed so a wandering fix can't fake its way past it.
  */
-const val ANALYZER_VERSION = 2
+const val ANALYZER_VERSION = 7
 
 /**
  * Analyze one recorded ride (ANL-01): read its sample file and detect its driving events, tagged
@@ -61,32 +72,72 @@ suspend fun analyzeRide(
 private const val TAG_EVENTS = "DriveEvents"
 
 /**
- * Detection knobs (NFR-08). [enterG] is deliberately low: detection is meant to over-collect, with
- * [DriveEvent.peakG] carrying the magnitude so *how harsh counts as harsh* stays a read-time
- * decision. Raising the bar on what the UI calls harsh must never require re-analysis.
+ * Thresholds for one direction of travel. They differ per direction because the physics do: brakes
+ * bite harder and faster than an engine pushes, and cornering force is geometry rather than pedal
+ * input, so a single set of numbers is wrong for at least two of the three.
  *
- * 0.10 g is where insurance telematics tends to start flagging, and matches what a real in-car
- * g-meter reads as noticeably harsh — 0.3 g lateral is a genuinely hard corner, not an everyday one.
- * Lowering this much further starts logging ordinary traffic-light stops.
+ * An event opens on [enterJerkGPerS] *and* a peak clearing [minPeakG] — abruptness and force
+ * together, since either alone misjudges real driving. [highPeakG] is the exception that opens on
+ * force alone; null means the direction has no such bypass.
+ */
+data class DirectionThresholds(
+    val enterJerkGPerS: Double,
+    val exitJerkGPerS: Double,
+    val minPeakG: Double,
+    val highPeakG: Double?,
+)
+
+/**
+ * Detection knobs (NFR-08).
  *
- * [exitG] below [enterG] gives hysteresis, so a signal hovering at the threshold produces one event
- * instead of a burst. [mergeGapMs] then folds a brief dip back into the event it interrupted — the
- * wobble in the middle of one long brake is not two brakes. [minDurationMs] drops the leftovers, and
- * carries more weight at this threshold: it is the main thing separating a real event from a bump.
+ * The three directions carry their own thresholds. Braking keeps a 0.5 g force bypass because a stop
+ * that hard is harsh however gently it was applied. Acceleration gets a lower one at 0.35 g and a
+ * lower jerk gate, because torque builds more slowly than brakes bite and an ordinary car simply
+ * cannot pull 0.5 g. Cornering gets no bypass at all: lateral force is v²/r, so a tight radius at
+ * low speed clears any fixed threshold with nothing harsh happening — and jerk handles that case by
+ * itself, since lateral jerk carries a v² factor that keeps low-speed steering under the gate.
  *
- * [minSpeedMps] rejects parking maneuvers and the walk to the car (AutoTrackEngine starts recording
- * before you drive off); [maxGyroRadPerSec] rejects handling the phone, which swamps any real
- * cornering — a hard U-turn is well under 1 rad/s, picking a phone up is several.
+ * Both halves of the AND have to be set in real-driving terms or it means nothing. Reaching 0.25 g
+ * at 1.0 g/s takes a quarter second, a deliberate stab at the pedal; at 0.6 g/s the same maneuver
+ * takes 0.42 s, which is simply how people brake.
+ *
+ * [DirectionThresholds.minPeakG] does double duty. It keeps an event alive through the steady middle
+ * of a maneuver, where jerk is near zero by definition — without it [DriveEvent.durationMs] would
+ * measure how long the maneuver was *abrupt* rather than how long it lasted. And it is the floor an
+ * event's peak must clear to be kept at all. Note that floor is a verdict on the finished event,
+ * never a per-sample gate: jerk peaks at a maneuver's onset while force is still near zero, so
+ * gating per sample would reject the very spike being triggered on.
+ *
+ * [minSpeedMps] rejects parking and the walk to the car (AutoTrackEngine starts recording before you
+ * drive off). Speed for that gate is the lower of the GPS reading and an IMU-derived one — see
+ * [minYawForImuSpeedRadPerS] — so a fix that wanders can't fake its way past it.
+ * [maxGyroRadPerSec] rejects handling the phone, which swamps any real cornering: a hard U-turn is
+ * well under 1 rad/s, picking a phone up is several. [maxFixAccuracyMeters] drops stretches where
+ * the GPS admits it is lost — no events beats events invented from a position that isn't real.
+ *
+ * The alignment* knobs govern estimating the vehicle's forward axis in device coordinates, which is
+ * what frees heading from GPS. Calibration only samples fast, straight, accurately-fixed driving
+ * ([alignmentMinSpeedMps], [alignmentMaxTurnDeg]) because that is where GPS heading is worth
+ * trusting; [alignmentMinSamples] and [alignmentMinCoherence] are the two ways it refuses to answer
+ * rather than answer badly.
  */
 data class DriveEventConfig(
-    val enterG: Double = 0.10,
-    val exitG: Double = 0.075,
+    val braking: DirectionThresholds = DirectionThresholds(1.0, 0.7, 0.25, 0.50),
+    val acceleration: DirectionThresholds = DirectionThresholds(0.8, 0.55, 0.25, 0.35),
+    val cornering: DirectionThresholds = DirectionThresholds(1.0, 0.7, 0.30, null),
+    val jerkBaselineMs: Long = 100,
     val minDurationMs: Long = 250,
     val mergeGapMs: Long = 500,
     val minSpeedMps: Double = 4.0, // ~15 km/h
+    val minYawForImuSpeedRadPerS: Double = 0.15, // below this the IMU speed divides by ~nothing
     val maxGyroRadPerSec: Double = 2.5,
     val lowPassHz: Double = 2.0, // vehicle dynamics live below ~2 Hz; above it is road and mount noise
     val maxSampleAgeNanos: Long = 1_000_000_000, // ignore an orientation/gyro reading staler than this
+    val maxFixAccuracyMeters: Double = 30.0,
+    val alignmentMinSpeedMps: Double = 8.0, // ~29 km/h, fast enough for GPS heading to mean something
+    val alignmentMaxTurnDeg: Double = 5.0, // straight-line only; heading lags through a corner
+    val alignmentMinSamples: Int = 20,
+    val alignmentMinCoherence: Double = 0.95, // ~18° mean scatter; below this the phone likely moved
 )
 
 /**
@@ -101,8 +152,15 @@ data class DriveEventConfig(
  * into longitudinal (braking/acceleration) and lateral (cornering).
  *
  * Direction of travel comes from the Kalman-filtered track, not raw GPS bearing, which is noise
- * below walking pace. Returns empty when the ride lacks the accelerometer, rotation vector or GPS
- * the method needs — a missing sensor means no score, never a guessed one.
+ * below walking pace.
+ *
+ * What counts as harsh is then judged on how fast the force builds rather than how large it gets —
+ * see [DriveEventConfig] — with a magnitude path for maneuvers that are hard however smoothly they
+ * were started. Differentiating is only viable because the low-pass runs first: the derivative of a
+ * raw 50 Hz signal is noise.
+ *
+ * Returns empty when the ride lacks the accelerometer, rotation vector or GPS the method needs — a
+ * missing sensor means no score, never a guessed one.
  */
 fun detectDriveEvents(
     samples: RideSamples,
@@ -111,27 +169,59 @@ fun detectDriveEvents(
 ): List<DriveEvent> {
     if (samples.accel.isEmpty() || samples.rotation.isEmpty() || samples.locations.size < 2) return emptyList()
 
-    val track = TrackInterpolator(kalmanFilterLocations(samples.locations))
+    val fixes = kalmanFilterLocations(samples.locations)
+    val forward = estimateForwardAxis(fixes, samples.rotation, config)
+    val track = TrackInterpolator(fixes, config.maxFixAccuracyMeters)
     val rotations = NearestWalker(samples.rotation, config.maxSampleAgeNanos)
     val gyros = NearestWalker(samples.gyro, config.maxSampleAgeNanos)
-    val braking = EventAccumulator(DriveEventType.BRAKING, config, rideStartElapsedNanos)
-    val accelerating = EventAccumulator(DriveEventType.ACCELERATION, config, rideStartElapsedNanos)
-    val cornering = EventAccumulator(DriveEventType.CORNERING, config, rideStartElapsedNanos)
+    val braking = EventAccumulator(DriveEventType.BRAKING, config, config.braking, rideStartElapsedNanos)
+    val accelerating = EventAccumulator(DriveEventType.ACCELERATION, config, config.acceleration, rideStartElapsedNanos)
+    val cornering = EventAccumulator(DriveEventType.CORNERING, config, config.cornering, rideStartElapsedNanos)
+
+    val baselineNanos = config.jerkBaselineMs * 1_000_000
+    val brakingRate = RateTracker(baselineNanos)
+    val acceleratingRate = RateTracker(baselineNanos)
+    val corneringRate = RateTracker(baselineNanos)
+
+    // Reused every sample instead of reallocated; the loop body runs once per acceleration reading.
+    val matrix = DoubleArray(9)
+    val heading = DoubleArray(2)
 
     val rc = 1.0 / (2 * Math.PI * config.lowPassHz)
     var smoothedLongitudinal = 0.0
     var smoothedLateral = 0.0
+    var smoothedYawRate = 0.0
     var previousNanos = 0L
     var seeded = false
 
     for (accel in samples.accel) {
         val rotation = rotations.at(accel.t) ?: continue
-        val (east, north) = worldHorizontal(accel, rotation)
+        fillRotationMatrix(rotation, matrix)
+        val ax = accel.x.toDouble()
+        val ay = accel.y.toDouble()
+        val az = accel.z.toDouble()
+        val east = matrix[0] * ax + matrix[1] * ay + matrix[2] * az
+        val north = matrix[3] * ax + matrix[4] * ay + matrix[5] * az
         val state = track.at(accel.t)
 
+        // Heading comes from the phone's own orientation whenever the forward axis could be
+        // calibrated: it updates at motion rate rather than 1 Hz, and it doesn't care what the GPS
+        // is doing. The interpolated GPS heading is only the fallback for a ride that never gave
+        // enough clean straight-line driving to calibrate from.
+        val hasHeading =
+            when {
+                forward != null -> headingInto(matrix, forward, heading)
+                state != null -> {
+                    heading[0] = state.headEast
+                    heading[1] = state.headNorth
+                    true
+                }
+                else -> false
+            }
+
         // Longitudinal is along the heading (negative = braking), lateral is perpendicular to it.
-        val longitudinal = if (state == null) 0.0 else east * state.headEast + north * state.headNorth
-        val lateral = if (state == null) 0.0 else east * state.headNorth - north * state.headEast
+        val longitudinal = if (!hasHeading) 0.0 else east * heading[0] + north * heading[1]
+        val lateral = if (!hasHeading) 0.0 else east * heading[1] - north * heading[0]
 
         // One-pole low-pass, dt from the real timestamps — sensor delivery is never truly uniform.
         // Filtering runs even on gated samples so the state stays warm and doesn't jump when the
@@ -144,19 +234,48 @@ fun detectDriveEvents(
         smoothedLateral += alpha * (lateral - smoothedLateral)
 
         val gyro = gyros.at(accel.t)
+        val yawRate =
+            if (gyro == null) 0.0 else verticalComponent(matrix, gyro.x.toDouble(), gyro.y.toDouble(), gyro.z.toDouble())
+        smoothedYawRate += alpha * (yawRate - smoothedYawRate)
+
+        val brakingG = (-smoothedLongitudinal / G).coerceAtLeast(0.0)
+        val acceleratingG = (smoothedLongitudinal / G).coerceAtLeast(0.0)
+        val corneringG = abs(smoothedLateral) / G
+
+        // Rates track the real signal even while gated, so lifting a gate doesn't read as a step
+        // change and fire a phantom event. Only the onset counts: easing off a brake is a negative
+        // rate and isn't harsh, so the accumulators see rises only.
+        val brakingJerk = brakingRate.update(accel.t, brakingG)
+        val acceleratingJerk = acceleratingRate.update(accel.t, acceleratingG)
+        val corneringJerk = corneringRate.update(accel.t, corneringG)
+
         val handling = gyro != null && hypot(hypot(gyro.x, gyro.y), gyro.z) > config.maxGyroRadPerSec
-        if (state == null || state.speedMps < config.minSpeedMps || handling) {
+
+        // Speed for the gate is the lower of GPS and an estimate the IMU derives on its own. In any
+        // turn, lateral acceleration is v·ω (since a = v²/r and ω = v/r), so dividing the two gives
+        // speed with no GPS involved at all — which is the point, because GPS speed is least
+        // trustworthy exactly where parking happens. Only valid while genuinely turning; below
+        // minYawForImuSpeed the division is by ~nothing, so GPS stands alone there.
+        //
+        // ponytail: taken per sample, so a turn-in transient where yaw leads lateral force can read
+        // low for a moment and gate out the start of a genuinely hard corner. Low-passing both
+        // inputs keeps that small; widen to a held estimate if real events start going missing.
+        val imuSpeed =
+            if (abs(smoothedYawRate) >= config.minYawForImuSpeedRadPerS) abs(smoothedLateral) / abs(smoothedYawRate) else null
+        val speed = if (state == null) 0.0 else minOf(state.speedMps, imuSpeed ?: Double.MAX_VALUE)
+
+        if (state == null || !hasHeading || speed < config.minSpeedMps || handling) {
             // Below the speed gate or the phone is being handled: feed zero so any open event
             // closes on its own timing rather than spanning the excluded stretch.
-            braking.feed(accel.t, 0.0, null)
-            accelerating.feed(accel.t, 0.0, null)
-            cornering.feed(accel.t, 0.0, null)
+            braking.feed(accel.t, 0.0, 0.0, null)
+            accelerating.feed(accel.t, 0.0, 0.0, null)
+            cornering.feed(accel.t, 0.0, 0.0, null)
             continue
         }
 
-        braking.feed(accel.t, (-smoothedLongitudinal / G).coerceAtLeast(0.0), state)
-        accelerating.feed(accel.t, (smoothedLongitudinal / G).coerceAtLeast(0.0), state)
-        cornering.feed(accel.t, abs(smoothedLateral) / G, state)
+        braking.feed(accel.t, brakingG, brakingJerk, state)
+        accelerating.feed(accel.t, acceleratingG, acceleratingJerk, state)
+        cornering.feed(accel.t, corneringG, corneringJerk, state)
     }
 
     return (braking.finish() + accelerating.finish() + cornering.finish())
@@ -164,27 +283,131 @@ fun detectDriveEvents(
 }
 
 /**
- * The horizontal (east, north) components of a device-frame acceleration reading, using the
- * rotation vector's quaternion. This is rows 0 and 1 of the device→world matrix Android's
- * `getRotationMatrixFromVector` builds; row 2 (up) is deliberately never computed, since that is
- * where gravity lives and dropping it is exactly how gravity is removed. Reimplemented rather than
- * calling SensorManager so the whole detector stays pure Kotlin and unit-testable off-device.
+ * The device→world rotation matrix Android's `getRotationMatrixFromVector` builds, row-major as
+ * `[r00..r22]`. Reimplemented rather than calling SensorManager so the detector stays pure Kotlin
+ * and testable off-device.
+ *
+ * Acceleration uses only the first two rows: row 2 is the vertical, which is exactly where gravity
+ * lives, and dropping it is both how gravity is removed and what makes the method slope-proof with
+ * no road-plane estimation. Yaw rate is the opposite case — row 2 is the whole point there, since
+ * the vertical component of the gyro *is* the vehicle's rate of turn.
  */
-private fun worldHorizontal(
-    accel: MotionSample,
+private fun fillRotationMatrix(
     rotation: MotionSample,
-): Pair<Double, Double> {
+    into: DoubleArray,
+) {
     val x = rotation.x.toDouble()
     val y = rotation.y.toDouble()
     val z = rotation.z.toDouble()
     // Some devices omit the scalar component; recover it from the unit-quaternion constraint.
     val w = rotation.w?.toDouble() ?: sqrt((1.0 - x * x - y * y - z * z).coerceAtLeast(0.0))
-    val ax = accel.x.toDouble()
-    val ay = accel.y.toDouble()
-    val az = accel.z.toDouble()
-    val east = (1 - 2 * (y * y + z * z)) * ax + 2 * (x * y - z * w) * ay + 2 * (x * z + y * w) * az
-    val north = 2 * (x * y + z * w) * ax + (1 - 2 * (x * x + z * z)) * ay + 2 * (y * z - x * w) * az
-    return east to north
+    // Written into a caller-owned array rather than returned: this runs once per acceleration
+    // sample, millions of times on a long ride, and a fresh array each time is 78 MB of garbage.
+    into[0] = 1 - 2 * (y * y + z * z)
+    into[1] = 2 * (x * y - z * w)
+    into[2] = 2 * (x * z + y * w)
+    into[3] = 2 * (x * y + z * w)
+    into[4] = 1 - 2 * (x * x + z * z)
+    into[5] = 2 * (y * z - x * w)
+    into[6] = 2 * (x * z - y * w)
+    into[7] = 2 * (y * z + x * w)
+    into[8] = 1 - 2 * (x * x + y * y)
+}
+
+/** The world-vertical (up) component of a device-frame vector — for the gyro, the yaw rate. */
+private fun verticalComponent(
+    rows: DoubleArray,
+    x: Double,
+    y: Double,
+    z: Double,
+): Double = rows[6] * x + rows[7] * y + rows[8] * z
+
+/**
+ * The vehicle's forward axis expressed in *device* coordinates — the constant that frees heading
+ * from GPS.
+ *
+ * The phone doesn't move relative to the car, so the car's forward direction is a fixed vector in
+ * the device frame, and the rotation vector already tracks the phone's absolute orientation at
+ * 50 Hz. Recover that fixed vector once from GPS, and afterwards `R(t) · forward` gives the car's
+ * heading at motion-sample rate whatever the GPS is doing — which is the point, since GPS heading is
+ * meaningless at low speed and outright wrong when a fix jumps.
+ *
+ * Only fast, straight, well-fixed stretches are sampled, because that is the only place GPS heading
+ * is worth believing. Each contributes `Rᵀ · heading`, and the average is the estimate.
+ *
+ * Returns null rather than a bad answer in two cases: too few samples to be sure, or samples that
+ * disagree with each other. Disagreement is measured by the summed vector's length — unit vectors
+ * that agree sum to nearly the sample count, ones that scatter fall well short — which catches the
+ * phone having been moved or re-mounted mid-ride.
+ *
+ * ponytail: one estimate for the whole ride. A phone re-seated halfway through fails the coherence
+ * check and falls back to GPS heading, rather than being tracked through the change; make this a
+ * sliding window if that turns out to be common.
+ */
+private fun estimateForwardAxis(
+    fixes: List<LocationSample>,
+    rotations: List<MotionSample>,
+    config: DriveEventConfig,
+): DoubleArray? {
+    if (fixes.size < 2 || rotations.isEmpty()) return null
+    val walker = NearestWalker(rotations, config.maxSampleAgeNanos)
+    val rows = DoubleArray(9)
+    var sumX = 0.0
+    var sumY = 0.0
+    var sumZ = 0.0
+    var used = 0
+
+    for (i in 1 until fixes.size) {
+        val fix = fixes[i]
+        if (fix.speed < config.alignmentMinSpeedMps) continue
+        if (fix.accuracy > config.maxFixAccuracyMeters) continue
+        if (bearingDeltaDeg(fixes[i - 1].bearing, fix.bearing) > config.alignmentMaxTurnDeg) continue
+        fillRotationMatrix(walker.at(fix.t) ?: continue, rows)
+
+        // forward_device = Rᵀ · heading_world. With heading horizontal its up component is zero, so
+        // only the two rows we compute contribute, and Rᵀ reads them down the columns.
+        val headingRad = Math.toRadians(fix.bearing.toDouble())
+        val east = sin(headingRad)
+        val north = cos(headingRad)
+        sumX += rows[0] * east + rows[3] * north
+        sumY += rows[1] * east + rows[4] * north
+        sumZ += rows[2] * east + rows[5] * north
+        used++
+    }
+
+    if (used < config.alignmentMinSamples) return null
+    val length = sqrt(sumX * sumX + sumY * sumY + sumZ * sumZ)
+    if (length / used < config.alignmentMinCoherence) return null
+    return doubleArrayOf(sumX / length, sumY / length, sumZ / length)
+}
+
+/**
+ * Writes the vehicle's heading as a world-frame unit vector into [out], from the phone's current
+ * orientation and the calibrated forward axis. False only if the axis somehow ends up pointing
+ * straight up, which a real vehicle's forward direction never does. Fills a caller-owned array for
+ * the same reason [fillRotationMatrix] does — it runs per acceleration sample.
+ */
+private fun headingInto(
+    rows: DoubleArray,
+    forward: DoubleArray,
+    out: DoubleArray,
+): Boolean {
+    val east = rows[0] * forward[0] + rows[1] * forward[1] + rows[2] * forward[2]
+    val north = rows[3] * forward[0] + rows[4] * forward[1] + rows[5] * forward[2]
+    val length = hypot(east, north)
+    if (length < 1e-6) return false
+    out[0] = east / length
+    out[1] = north / length
+    return true
+}
+
+/** Smallest angle between two compass bearings, in degrees — handles the 359°→1° wrap. */
+private fun bearingDeltaDeg(
+    a: Float,
+    b: Float,
+): Double {
+    val delta = abs(b - a).toDouble() % 360.0
+    return if (delta > 180.0) 360.0 - delta else delta
 }
 
 /** Speed, unit heading vector and position at one instant, interpolated between two GPS fixes. */
@@ -203,6 +426,7 @@ private class TrackState(
  */
 private class TrackInterpolator(
     private val fixes: List<LocationSample>,
+    private val maxAccuracyMeters: Double,
 ) {
     private var index = 0
 
@@ -211,6 +435,9 @@ private class TrackInterpolator(
         while (index < fixes.size - 2 && fixes[index + 1].t <= nanos) index++
         val a = fixes[index]
         val b = fixes[index + 1]
+        // A fix the receiver itself reports as poor is not worth interpolating between. Suppressing
+        // this stretch costs real events; inventing them from a position that isn't real costs more.
+        if (a.accuracy > maxAccuracyMeters || b.accuracy > maxAccuracyMeters) return null
         val span = (b.t - a.t).toDouble()
         val f = if (span > 0) ((nanos - a.t) / span).coerceIn(0.0, 1.0) else 0.0
 
@@ -236,6 +463,53 @@ private class TrackInterpolator(
 }
 
 /**
+ * Rate of rise of a signal, in units per second, measured across a fixed time baseline.
+ *
+ * The baseline is the whole point. Differencing adjacent 50 Hz samples divides by 0.02 s, which
+ * turns even 0.003 g of residual ripple into 0.15 g/s — the same range as the genuine jerk of smooth
+ * driving, so the measurement would be mostly noise. Differencing across ~100 ms cuts that by five
+ * while still resolving events that last several hundred ms.
+ *
+ * Only rises are reported; a falling signal returns zero, since easing off a brake or unwinding a
+ * corner isn't harsh. Returns zero until the buffer spans at least half the baseline, so the first
+ * samples of a ride can't divide a small change by a tiny dt and invent a spike.
+ */
+private class RateTracker(
+    private val baselineNanos: Long,
+) {
+    private val times = LongArray(CAPACITY)
+    private val values = DoubleArray(CAPACITY)
+    private var head = 0 // index of the oldest retained entry
+    private var size = 0
+
+    fun update(
+        nanos: Long,
+        value: Double,
+    ): Double {
+        val tail = (head + size) % CAPACITY
+        times[tail] = nanos
+        values[tail] = value
+        if (size < CAPACITY) size++ else head = (head + 1) % CAPACITY
+
+        // Drop entries older than the baseline, keeping the one that straddles it as the reference.
+        while (size > 2 && nanos - times[(head + 1) % CAPACITY] >= baselineNanos) {
+            head = (head + 1) % CAPACITY
+            size--
+        }
+        if (size < 2) return 0.0
+
+        val dt = (nanos - times[head]) / 1e9
+        if (dt < baselineNanos / 2e9) return 0.0
+        return ((value - values[head]) / dt).coerceAtLeast(0.0)
+    }
+
+    private companion object {
+        // ~1.3 s at 50 Hz — ample for a 100 ms baseline, which evicts long before this fills.
+        const val CAPACITY = 64
+    }
+}
+
+/**
  * Yields the sample nearest a query time from a time-ordered stream, or null when the nearest is
  * staler than [maxAgeNanos] — a sensor that dropped out mid-ride must not silently keep supplying
  * its last reading. Queried in increasing time order, so it walks forward instead of searching.
@@ -256,22 +530,31 @@ private class NearestWalker(
 }
 
 /**
- * Turns a stream of magnitudes into discrete events for one event type: enter above
- * [DriveEventConfig.enterG], stay in while above [DriveEventConfig.exitG], and only truly end once
- * the signal has stayed low for [DriveEventConfig.mergeGapMs] — that grace period is what keeps one
- * sustained brake from being reported as a handful of separate ones.
+ * Turns a stream of (magnitude, rate) pairs into discrete events for one event type.
+ *
+ * An event opens when the force builds fast enough ([DriveEventConfig.enterJerkGPerS]) *or* gets
+ * high enough on its own ([DriveEventConfig.highPeakG]). It stays open while either the rate is
+ * still elevated or the force is still above [DriveEventConfig.minPeakG] — the second term is what
+ * carries it through the steady middle of a maneuver, where jerk is near zero by definition. It only
+ * truly ends once both have stayed low for [DriveEventConfig.mergeGapMs], the grace period that
+ * keeps one sustained brake from being reported as a handful of separate ones.
+ *
+ * On close, an event is kept only if it lasted long enough and its peak force cleared
+ * [DriveEventConfig.minPeakG] — the check that discards a sudden but trivial twitch.
  */
 private class EventAccumulator(
     private val type: DriveEventType,
     private val config: DriveEventConfig,
+    private val thresholds: DirectionThresholds,
     private val rideStartElapsedNanos: Long,
 ) {
     private val collected = mutableListOf<DriveEvent>()
     private var open = false
     private var startNanos = 0L
-    private var endNanos = 0L // last moment the signal was still above exitG
+    private var endNanos = 0L // last moment the maneuver still sustained
     private var closingSince: Long? = null
     private var peak = 0.0
+    private var peakJerk = 0.0
     private var sum = 0.0
     private var count = 0
     private var peakSpeed = 0.0
@@ -281,35 +564,42 @@ private class EventAccumulator(
     fun feed(
         nanos: Long,
         magnitudeG: Double,
+        jerkGPerS: Double,
         state: TrackState?,
     ) {
+        val sustains = jerkGPerS >= thresholds.exitJerkGPerS || magnitudeG >= thresholds.minPeakG
         if (open) {
-            if (magnitudeG >= config.exitG) {
+            if (sustains) {
                 closingSince = null
-                extend(nanos, magnitudeG, state)
+                extend(nanos, magnitudeG, jerkGPerS, state)
             } else {
                 val since = closingSince ?: nanos.also { closingSince = it }
                 if (nanos - since > config.mergeGapMs * 1_000_000) flush()
             }
-        } else if (magnitudeG >= config.enterG) {
+        } else if (jerkGPerS >= thresholds.enterJerkGPerS ||
+            (thresholds.highPeakG != null && magnitudeG >= thresholds.highPeakG)
+        ) {
             open = true
             startNanos = nanos
             closingSince = null
             peak = 0.0
+            peakJerk = 0.0
             sum = 0.0
             count = 0
-            extend(nanos, magnitudeG, state)
+            extend(nanos, magnitudeG, jerkGPerS, state)
         }
     }
 
     private fun extend(
         nanos: Long,
         magnitudeG: Double,
+        jerkGPerS: Double,
         state: TrackState?,
     ) {
         endNanos = nanos
         sum += magnitudeG
         count++
+        if (jerkGPerS > peakJerk) peakJerk = jerkGPerS
         if (magnitudeG > peak) {
             peak = magnitudeG
             peakSpeed = state?.speedMps ?: 0.0
@@ -320,7 +610,10 @@ private class EventAccumulator(
 
     private fun flush() {
         val durationMs = (endNanos - startNanos) / 1_000_000
-        if (durationMs >= config.minDurationMs && count > 0) {
+        // The peak-force floor is applied here, on the finished event, not per sample: jerk peaks at
+        // a maneuver's onset while the force is still near zero, so a per-sample gate would have
+        // thrown away the very spike that opened it.
+        if (durationMs >= config.minDurationMs && count > 0 && peak >= thresholds.minPeakG) {
             collected.add(
                 DriveEvent(
                     type = type,
@@ -329,6 +622,7 @@ private class EventAccumulator(
                     startOffsetMs = (startNanos - rideStartElapsedNanos) / 1_000_000,
                     durationMs = durationMs,
                     peakG = peak,
+                    peakJerkGPerS = peakJerk,
                     avgG = sum / count,
                     speedMps = peakSpeed,
                     lat = peakLat,

@@ -434,16 +434,6 @@ private fun Connector(
     )
 }
 
-/**
- * Peak force a driving event needs before it earns a map marker. Purely a display decision, and the
- * cheap one to change: each event stores its own magnitude, so moving this re-draws the map without
- * re-analyzing a single ride (unlike DriveEventConfig.enterG, which needs an ANALYZER_VERSION bump).
- *
- * Currently equal to the detection threshold, so every detected event is pinned. If a city drive
- * turns the map into a wall of markers, raise this first — it costs nothing.
- */
-private const val MARKER_MIN_PEAK_G = 0.10
-
 /** The pin colour for each event type, resolved outside the map so markers don't re-read the theme. */
 @Composable
 private fun DriveEventType.markerColor(): Color =
@@ -604,11 +594,12 @@ private fun RouteMapContent(
     val endTitle = stringResource(R.string.ride_end_marker)
 
     // Resolved out here rather than inside the map's content lambda: that scope is for map nodes,
-    // not theme and string lookups. Only events at or above the display threshold get a pin, and
-    // only those the GPS could place.
+    // not theme and string lookups. Every detected event is pinned — there is deliberately no
+    // display threshold, so the map is exactly what the detector decided, not a second opinion on
+    // it. The only events dropped are those the GPS couldn't place.
     val markers =
         driveEvents
-            .filter { it.peakG >= MARKER_MIN_PEAK_G && it.lat != null && it.lon != null }
+            .filter { it.lat != null && it.lon != null }
             .map { event ->
                 DriveEventMarker(
                     event = event,

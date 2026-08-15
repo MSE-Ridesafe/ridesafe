@@ -195,9 +195,38 @@ private val MIGRATION_9_10 =
         }
     }
 
+/**
+ * Adds DriveEvent.peakJerkGPerS, which detection now triggers on rather than force alone. The table
+ * is dropped and recreated rather than ALTER-ed: every stored event was produced by a detector that
+ * didn't measure jerk, so all of them are stale by definition, and the ANALYZER_VERSION bump has the
+ * backfill regenerate the lot from the raw sample files. Nothing here is a source of truth.
+ */
+private val MIGRATION_10_11 =
+    object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP TABLE IF EXISTS drive_events")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS drive_events (" +
+                    "id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+                    "rideId INTEGER NOT NULL, " +
+                    "type TEXT NOT NULL, " +
+                    "startOffsetMs INTEGER NOT NULL, " +
+                    "durationMs INTEGER NOT NULL, " +
+                    "peakG REAL NOT NULL, " +
+                    "peakJerkGPerS REAL NOT NULL, " +
+                    "avgG REAL NOT NULL, " +
+                    "speedMps REAL NOT NULL, " +
+                    "lat REAL, " +
+                    "lon REAL, " +
+                    "FOREIGN KEY(rideId) REFERENCES rides(id) ON DELETE CASCADE)",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_drive_events_rideId ON drive_events(rideId)")
+        }
+    }
+
 @Database(
     entities = [Vehicle::class, Ride::class, SavedAddress::class, DriveEvent::class],
-    version = 10,
+    version = 11,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -230,6 +259,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_7_8,
                         MIGRATION_8_9,
                         MIGRATION_9_10,
+                        MIGRATION_10_11,
                     ).build()
                     .also { instance = it }
             }
