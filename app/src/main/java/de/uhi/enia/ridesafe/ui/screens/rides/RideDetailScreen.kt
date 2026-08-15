@@ -3,6 +3,7 @@
 package de.uhi.enia.ridesafe.ui.screens.rides
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,13 +60,17 @@ import com.google.android.gms.maps.model.LatLngBounds
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 import de.uhi.enia.ridesafe.R
+import de.uhi.enia.ridesafe.data.DriveEvent
+import de.uhi.enia.ridesafe.data.DriveEventType
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.haversineMeters
+import de.uhi.enia.ridesafe.data.symbol
 import de.uhi.enia.ridesafe.tracking.addressLines
 import de.uhi.enia.ridesafe.tracking.latLngDistanceMeters
 import de.uhi.enia.ridesafe.ui.components.DetailCard
@@ -89,6 +94,7 @@ import de.uhi.enia.ridesafe.util.formatTimeOfDay
 fun RideDetailScreen(
     ride: Ride?,
     route: List<LatLng>?,
+    driveEvents: List<DriveEvent>,
     startPlace: SavedAddress?,
     endPlace: SavedAddress?,
     unitSystem: UnitSystemSetting,
@@ -133,7 +139,7 @@ fun RideDetailScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            RouteMapCard(segments = route?.let { listOf(it) })
+            RouteMapCard(segments = route?.let { listOf(it) }, driveEvents = driveEvents)
 
             // Build each stop, folding in a matched saved place (ADR-09): show "<address>, <dist> from
             // <label>", or just the label when the endpoint's address matches the place's exactly.
@@ -429,11 +435,76 @@ private fun Connector(
 }
 
 /**
+ * Peak force a driving event needs before it earns a map marker. Purely a display decision, and the
+ * cheap one to change: each event stores its own magnitude, so moving this re-draws the map without
+ * re-analyzing a single ride (unlike DriveEventConfig.enterG, which needs an ANALYZER_VERSION bump).
+ *
+ * Currently equal to the detection threshold, so every detected event is pinned. If a city drive
+ * turns the map into a wall of markers, raise this first — it costs nothing.
+ */
+private const val MARKER_MIN_PEAK_G = 0.10
+
+/** The pin colour for each event type, resolved outside the map so markers don't re-read the theme. */
+@Composable
+private fun DriveEventType.markerColor(): Color =
+    when (this) {
+        DriveEventType.BRAKING -> MaterialTheme.colorScheme.error
+        DriveEventType.ACCELERATION -> MaterialTheme.colorScheme.tertiary
+        DriveEventType.CORNERING -> MaterialTheme.colorScheme.primary
+    }
+
+@Composable
+private fun DriveEventType.label(): String =
+    stringResource(
+        when (this) {
+            DriveEventType.BRAKING -> R.string.ride_event_braking
+            DriveEventType.ACCELERATION -> R.string.ride_event_acceleration
+            DriveEventType.CORNERING -> R.string.ride_event_cornering
+        },
+    )
+
+/** A driving event with everything the map needs already resolved out of the composition. */
+private data class DriveEventMarker(
+    val event: DriveEvent,
+    val position: LatLng,
+    val color: Color,
+    val title: String,
+    val snippet: String,
+)
+
+/** One driving-event pin: the type's Material Symbol on a coloured disc, outlined so it reads on any tile. */
+@Composable
+private fun DriveEventPin(
+    type: DriveEventType,
+    color: Color,
+) {
+    Box(
+        modifier =
+            Modifier
+                .size(32.dp)
+                .background(color, CircleShape)
+                .border(2.dp, Color.White, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        MaterialSymbol(
+            symbolName = type.symbol(),
+            contentDescription = null, // the marker's title carries the meaning
+            size = 18.dp,
+            color = Color.White,
+        )
+    }
+}
+
+/**
  * The route map card. [segments] is a list of disconnected polylines — one for a single ride, one per
  * stop for a merged ride (MRG-07). Null = still loading; all-empty = the ride(s) recorded no GPS.
+ * [driveEvents] are drawn as markers on the full-screen map (ANL-01).
  */
 @Composable
-fun RouteMapCard(segments: List<List<LatLng>>?) {
+fun RouteMapCard(
+    segments: List<List<LatLng>>?,
+    driveEvents: List<DriveEvent> = emptyList(),
+) {
     Card(
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
@@ -452,18 +523,21 @@ fun RouteMapCard(segments: List<List<LatLng>>?) {
             }
 
             else -> {
-                RouteMap(segments)
+                RouteMap(segments, driveEvents)
             }
         }
     }
 }
 
 @Composable
-private fun RouteMap(segments: List<List<LatLng>>) {
+private fun RouteMap(
+    segments: List<List<LatLng>>,
+    driveEvents: List<DriveEvent>,
+) {
     var expanded by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
-        RouteMapContent(segments = segments, liteMode = true)
+        RouteMapContent(segments = segments, driveEvents = emptyList(), liteMode = true)
         // Lite-mode maps open the Google Maps app when tapped; this transparent overlay
         // swallows the tap and opens our own full-screen interactive map instead.
         Box(
@@ -484,7 +558,7 @@ private fun RouteMap(segments: List<List<LatLng>>) {
             properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         ) {
             Box(Modifier.fillMaxSize()) {
-                RouteMapContent(segments = segments, liteMode = false)
+                RouteMapContent(segments = segments, driveEvents = driveEvents, liteMode = false)
                 IconButton(
                     onClick = { expanded = false },
                     modifier =
@@ -508,10 +582,14 @@ private fun RouteMap(segments: List<List<LatLng>>) {
  * The route drawn on a Google Map, framed to fit. [liteMode] true renders a static snapshot (the
  * card preview); false is a live, gesture-driven map. Gestures are kept 2D — pan/zoom/rotate on,
  * tilt off — and the toolbar is hidden so taps stay in-app rather than launching the Maps app.
+ *
+ * [driveEvents] become tappable markers (ANL-01). Callers pass none for the lite preview: a static
+ * snapshot can't render composable markers, and a 300 dp card is the wrong place for thirty pins.
  */
 @Composable
 private fun RouteMapContent(
     segments: List<List<LatLng>>,
+    driveEvents: List<DriveEvent>,
     liteMode: Boolean,
 ) {
     val drawn = segments.filter { it.isNotEmpty() }
@@ -524,6 +602,27 @@ private fun RouteMapContent(
     val routeColor = MaterialTheme.colorScheme.primary
     val startTitle = stringResource(R.string.ride_start_marker)
     val endTitle = stringResource(R.string.ride_end_marker)
+
+    // Resolved out here rather than inside the map's content lambda: that scope is for map nodes,
+    // not theme and string lookups. Only events at or above the display threshold get a pin, and
+    // only those the GPS could place.
+    val markers =
+        driveEvents
+            .filter { it.peakG >= MARKER_MIN_PEAK_G && it.lat != null && it.lon != null }
+            .map { event ->
+                DriveEventMarker(
+                    event = event,
+                    position = LatLng(event.lat!!, event.lon!!),
+                    color = event.type.markerColor(),
+                    title = event.type.label(),
+                    snippet =
+                        stringResource(
+                            R.string.ride_event_detail,
+                            "%.2f".format(event.peakG),
+                            "%.1f".format(event.durationMs / 1000.0),
+                        ),
+                )
+            }
 
     GoogleMap(
         modifier = Modifier.fillMaxSize(),
@@ -541,6 +640,16 @@ private fun RouteMapContent(
             Polyline(points = points, color = routeColor, width = 12f)
             Marker(state = rememberUpdatedMarkerState(position = points.first()), title = startTitle)
             Marker(state = rememberUpdatedMarkerState(position = points.last()), title = endTitle)
+        }
+        markers.forEach { marker ->
+            MarkerComposable(
+                keys = arrayOf(marker.event.id),
+                state = rememberUpdatedMarkerState(position = marker.position),
+                title = marker.title,
+                snippet = marker.snippet,
+            ) {
+                DriveEventPin(marker.event.type, marker.color)
+            }
         }
     }
 

@@ -1,0 +1,60 @@
+package de.uhi.enia.ridesafe.data
+
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
+import androidx.room.PrimaryKey
+
+/** The kinds of harsh driving detected from the vehicle-frame acceleration (ANL-01). */
+enum class DriveEventType { BRAKING, ACCELERATION, CORNERING }
+
+/** The Material Symbol representing an event type on the map and in lists. */
+fun DriveEventType.symbol(): String =
+    when (this) {
+        DriveEventType.BRAKING -> "podiatry"
+        DriveEventType.ACCELERATION -> "motion_blur"
+        DriveEventType.CORNERING -> "turn_sharp_right"
+    }
+
+/**
+ * One detected harsh-driving event (ANL-01), derived from a ride's motion samples. Derived and
+ * regenerable: the raw NDJSON sample file stays the source of truth, so re-running detection is
+ * "delete this ride's rows, analyze again" — see [Ride.analyzerVersion].
+ *
+ * Detection runs at a deliberately low [peakG] threshold and stores the magnitude rather than a
+ * yes/no verdict, so *how harsh counts as harsh* stays a read-time decision. Re-tuning severity is
+ * a query change, never a re-analysis.
+ *
+ * [startOffsetMs] is measured from the ride's start rather than on the sample stream's monotonic
+ * clock, so an event is readable on its own ("hard brake 4:12 in") without joining to the ride row.
+ * [durationMs] is stored rather than derived from an end offset because sustained harshness is a
+ * scoring input in its own right — a 4-second corner is worse than a 0.3-second flick at the same
+ * peak — and it leaves nothing redundant, since the end is just start + duration.
+ *
+ * [speedMps] is the interpolated GPS speed at the peak, and [lat]/[lon] the interpolated position
+ * (null when the event falls outside the ride's GPS coverage).
+ */
+@Entity(
+    tableName = "drive_events",
+    foreignKeys = [
+        ForeignKey(
+            entity = Ride::class,
+            parentColumns = ["id"],
+            childColumns = ["rideId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("rideId")],
+)
+data class DriveEvent(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val rideId: Long = 0,
+    val type: DriveEventType,
+    val startOffsetMs: Long,
+    val durationMs: Long,
+    val peakG: Double,
+    val avgG: Double,
+    val speedMps: Double,
+    val lat: Double? = null,
+    val lon: Double? = null,
+)

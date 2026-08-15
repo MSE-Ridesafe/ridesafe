@@ -14,7 +14,9 @@ import org.apache.commons.math3.linear.ArrayRealVector
 import org.apache.commons.math3.linear.RealMatrix
 import org.apache.commons.math3.linear.RealVector
 import java.io.File
+import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.hypot
 
 /**
  * Off-DB processing of a recorded ride's GPS track (ANL-02): Kalman-smooth the raw fixes (rejecting
@@ -163,7 +165,20 @@ fun kalmanFilterLocations(
             )
         state = newState
         cov = newCov
-        out.add(loc.copy(lat = unprojLat(state.getEntry(1)), lon = unprojLon(state.getEntry(0))))
+        // The filter's velocity state is a far better heading/speed than the raw GPS fields, which
+        // are noise below walking pace — so the smoothed values are written back over them for the
+        // event analysis (ANL-01) to interpolate. vx/vy are east/north in the local meter frame,
+        // hence atan2(east, north) for a compass bearing. The raw file is untouched; this is derived.
+        val vEast = state.getEntry(2)
+        val vNorth = state.getEntry(3)
+        out.add(
+            loc.copy(
+                lat = unprojLat(state.getEntry(1)),
+                lon = unprojLon(state.getEntry(0)),
+                speed = hypot(vEast, vNorth).toFloat(),
+                bearing = ((Math.toDegrees(atan2(vEast, vNorth)) + 360.0) % 360.0).toFloat(),
+            ),
+        )
     }
     return out
 }

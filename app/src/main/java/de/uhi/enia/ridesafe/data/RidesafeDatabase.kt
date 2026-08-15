@@ -30,6 +30,12 @@ class Converters {
 
     @TypeConverter
     fun stringToPlaceKind(value: String): SavedPlaceKind = SavedPlaceKind.valueOf(value)
+
+    @TypeConverter
+    fun driveEventTypeToString(value: DriveEventType): String = value.name
+
+    @TypeConverter
+    fun stringToDriveEventType(value: String): DriveEventType = DriveEventType.valueOf(value)
 }
 
 /** Adds Vehicle.bluetoothAddresses (GAR-08) without dropping existing vehicles (NFR-06). */
@@ -161,7 +167,39 @@ private val MIGRATION_8_9 =
         }
     }
 
-@Database(entities = [Vehicle::class, Ride::class, SavedAddress::class], version = 9, exportSchema = false)
+/**
+ * Adds the driving-event table (ANL-01) and Ride.analyzerVersion. Additive only: existing rides get
+ * a null version, which the backfill pass reads as "never analyzed" and fills from the raw sample
+ * files that have been recorded all along — nothing needs re-recording. The index name has to match
+ * what Room generates for `@Index("rideId")`, or its schema validation rejects the table on open.
+ */
+private val MIGRATION_9_10 =
+    object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE rides ADD COLUMN analyzerVersion INTEGER")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS drive_events (" +
+                    "id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+                    "rideId INTEGER NOT NULL, " +
+                    "type TEXT NOT NULL, " +
+                    "startOffsetMs INTEGER NOT NULL, " +
+                    "durationMs INTEGER NOT NULL, " +
+                    "peakG REAL NOT NULL, " +
+                    "avgG REAL NOT NULL, " +
+                    "speedMps REAL NOT NULL, " +
+                    "lat REAL, " +
+                    "lon REAL, " +
+                    "FOREIGN KEY(rideId) REFERENCES rides(id) ON DELETE CASCADE)",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_drive_events_rideId ON drive_events(rideId)")
+        }
+    }
+
+@Database(
+    entities = [Vehicle::class, Ride::class, SavedAddress::class, DriveEvent::class],
+    version = 10,
+    exportSchema = false,
+)
 @TypeConverters(Converters::class)
 abstract class RidesafeDatabase : RoomDatabase() {
     abstract fun vehicleDao(): VehicleDao
@@ -169,6 +207,8 @@ abstract class RidesafeDatabase : RoomDatabase() {
     abstract fun rideDao(): RideDao
 
     abstract fun savedAddressDao(): SavedAddressDao
+
+    abstract fun driveEventDao(): DriveEventDao
 
     companion object {
         @Volatile private var instance: RidesafeDatabase? = null
@@ -189,6 +229,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_6_7,
                         MIGRATION_7_8,
                         MIGRATION_8_9,
+                        MIGRATION_9_10,
                     ).build()
                     .also { instance = it }
             }

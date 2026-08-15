@@ -47,9 +47,11 @@ fun EntryProviderScope<NavKey>.ridesEntries(
         val segments by produceState<List<List<LatLng>>?>(initialValue = null, stops) {
             value = stops?.takeIf { it.isNotEmpty() }?.let { viewModel.routes(it) }
         }
+        val groupEvents by viewModel.groupDriveEvents(key.groupId).collectAsState(initial = emptyList())
         MergedRideDetailScreen(
             stops = stops,
             segments = segments,
+            driveEvents = groupEvents,
             unitSystem = unitSystem,
             onBack = onBack,
             onUnmergeAll = { viewModel.unmergeAll(key.groupId) },
@@ -59,6 +61,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
     entry<RideDetailRoute> { key ->
         val ride by viewModel.ride(key.id).collectAsState(initial = null)
         val addresses by viewModel.savedAddresses.collectAsState()
+        val driveEvents by viewModel.driveEvents(key.id).collectAsState(initial = emptyList())
         // Load the route once the ride row has loaded; null until then = "loading".
         val route by produceState<List<LatLng>?>(initialValue = null, ride) {
             value = ride?.let { viewModel.route(it) }
@@ -69,6 +72,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
         RideDetailScreen(
             ride = ride,
             route = route,
+            driveEvents = driveEvents,
             startPlace = startPlace,
             endPlace = endPlace,
             unitSystem = unitSystem,

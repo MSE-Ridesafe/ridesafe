@@ -1,9 +1,11 @@
 package de.uhi.enia.ridesafe.ui.screens.rides
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
+import de.uhi.enia.ridesafe.data.DriveEvent
 import de.uhi.enia.ridesafe.data.MergedSummary
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
@@ -11,6 +13,8 @@ import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.mergeGroupIdFor
 import de.uhi.enia.ridesafe.data.rematchRides
 import de.uhi.enia.ridesafe.data.summarizeMerge
+import de.uhi.enia.ridesafe.tracking.ANALYZER_VERSION
+import de.uhi.enia.ridesafe.tracking.analyzeRide
 import de.uhi.enia.ridesafe.tracking.processRide
 import de.uhi.enia.ridesafe.tracking.processedRouteFile
 import de.uhi.enia.ridesafe.tracking.readProcessedRoute
@@ -83,6 +87,7 @@ class RidesViewModel(
     private val rideDao = db.rideDao()
     private val vehicleDao = db.vehicleDao()
     private val savedAddressDao = db.savedAddressDao()
+    private val driveEventDao = db.driveEventDao()
 
     init {
         // One pass per launch: reverse-geocode any ride that has a fix but no stored address yet
@@ -94,6 +99,9 @@ class RidesViewModel(
         // One pass per launch: match every ride's endpoints to the saved addresses (ADR-07), so new
         // recordings pick up existing places (edits while the app is open re-match in SavedAddressViewModel).
         viewModelScope.launch { rematchRides(rideDao, savedAddressDao) }
+        // One pass per launch: detect driving events (ANL-01) for rides never analyzed or analyzed by
+        // an older detector. Bumping ANALYZER_VERSION is therefore all it takes to re-tune every ride.
+        viewModelScope.launch { analyzePending() }
     }
 
     /** Saved places (DR-ADR), exposed so the detail screen can resolve a ride's matched endpoints. */
@@ -131,6 +139,12 @@ class RidesViewModel(
 
     /** The stops of a merged ride (MRG-04), chronological — the merged detail's source of truth. */
     fun groupStops(groupId: Long): Flow<List<Ride>> = rideDao.observeGroup(groupId)
+
+    /** A ride's detected driving events (ANL-01), for the map's marker layer. */
+    fun driveEvents(rideId: Long): Flow<List<DriveEvent>> = driveEventDao.observeForRide(rideId)
+
+    /** Every stop's driving events for a merged ride, so its map covers the whole trip (MRG-07). */
+    fun groupDriveEvents(groupId: Long): Flow<List<DriveEvent>> = driveEventDao.observeForGroup(groupId)
 
     /** Per-stop routes for the merged map, each drawn as its own disconnected polyline (MRG-07). */
     suspend fun routes(stops: List<Ride>): List<List<LatLng>> = stops.map { route(it) }
@@ -193,6 +207,21 @@ class RidesViewModel(
                     if (file.exists()) readRideLocations(file).map { LatLng(it.lat, it.lon) } else emptyList()
                 }
         }
+
+    /**
+     * Detect and store driving events for every ride whose events are missing or stale (ANL-01).
+     * Runs one ride at a time — each pass re-reads a whole sample file, so this deliberately doesn't
+     * fan out and compete with the launch's other backfills for the disk.
+     */
+    private suspend fun analyzePending() {
+        for (ride in driveEventDao.needingAnalysis(ANALYZER_VERSION)) {
+            val events = analyzeRide(getApplication(), ride) ?: continue
+            driveEventDao.replaceForRide(ride.id, ANALYZER_VERSION, events)
+            // Logged because "no events" is otherwise indistinguishable from "detector broken":
+            // a ride reported here with 0 events, at a threshold this low, is a real signal.
+            Log.i("DriveEvents", "ride ${ride.id}: ${events.size} events (peak g ${events.maxOfOrNull { it.peakG } ?: 0.0})")
+        }
+    }
 
     /** Process a ride's GPS (filter + simplify + sidecar) and persist its distance/avg speed; no-op if no fixes. */
     private suspend fun process(ride: Ride) {
