@@ -17,6 +17,7 @@ import de.uhi.enia.ridesafe.tracking.ANALYZER_VERSION
 import de.uhi.enia.ridesafe.tracking.analyzeRide
 import de.uhi.enia.ridesafe.tracking.processRide
 import de.uhi.enia.ridesafe.tracking.processedRouteFile
+import de.uhi.enia.ridesafe.tracking.pruneStaleRoutes
 import de.uhi.enia.ridesafe.tracking.readProcessedRoute
 import de.uhi.enia.ridesafe.tracking.readRideLocations
 import de.uhi.enia.ridesafe.tracking.reverseGeocode
@@ -93,9 +94,15 @@ class RidesViewModel(
         // One pass per launch: reverse-geocode any ride that has a fix but no stored address yet
         // (existing rides, plus anything a previous run couldn't geocode while offline).
         viewModelScope.launch { rideDao.needingAddresses().forEach { fillAddresses(it) } }
-        // One pass per launch: Kalman-filter + simplify the GPS of any ride not processed yet, and
-        // persist its distance/avg speed so the detail view loads from the DB + sidecar, not the raw file.
-        viewModelScope.launch { rideDao.needingProcessing().forEach { process(it) } }
+        // One pass per launch: Kalman-filter + simplify the GPS of any ride without a current-version
+        // route sidecar, and persist its distance/avg speed so the detail view loads from the DB +
+        // sidecar, not the raw file. Bumping ROUTE_VERSION is all it takes to re-filter every ride.
+        viewModelScope.launch {
+            pruneStaleRoutes(getApplication())
+            rideDao.processable()
+                .filterNot { processedRouteFile(getApplication(), it).exists() }
+                .forEach { process(it) }
+        }
         // One pass per launch: match every ride's endpoints to the saved addresses (ADR-07), so new
         // recordings pick up existing places (edits while the app is open re-match in SavedAddressViewModel).
         viewModelScope.launch { rematchRides(rideDao, savedAddressDao) }
