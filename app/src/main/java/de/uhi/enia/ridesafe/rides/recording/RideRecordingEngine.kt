@@ -1,4 +1,4 @@
-package de.uhi.enia.ridesafe.tracking
+package de.uhi.enia.ridesafe.rides.recording
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -42,11 +42,11 @@ private const val TAG = "RideRecording"
 
 /**
  * Records a ride's GPS + motion stream (TRK-01/TRK-04). Implements [RideRecorder] so the
- * auto-tracking trigger can later drive it by setting [AutoTracking.recorder] — that wiring,
+ * auto-tracking trigger can later drive it by setting [de.uhi.enia.ridesafe.rides.trigger.AutoTracking.recorder] — that wiring,
  * the foreground service (TRK-05) and the runtime permission flow (NFR-05) are a later round;
  * this is the standalone capture + persistence engine.
  *
- * Per [de.uhi.enia.ridesafe.data.Ride]: only a summary row lands in the DB; the full sample
+ * Per [Ride]: only a summary row lands in the DB; the full sample
  * stream is appended (gzip'd NDJSON) to a per-ride file so the DB stays lean. start/stop are
  * serialized through a command channel so they apply in call order regardless of caller thread.
  */

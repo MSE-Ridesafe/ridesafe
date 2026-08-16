@@ -2,7 +2,7 @@ package de.uhi.enia.ridesafe.ui.screens.settings
 
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
-import de.uhi.enia.ridesafe.tracking.AutoTrackMode
+import de.uhi.enia.ridesafe.rides.trigger.AutoTrackMode
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import kotlinx.serialization.Serializable
 

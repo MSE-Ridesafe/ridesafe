@@ -34,7 +34,7 @@ import androidx.room.PrimaryKey
  * any saved-address change and once per launch, so the display just resolves the id to the place.
  *
  * [analyzerVersion] records which build of the driving-event detector produced this ride's
- * [DriveEvent] rows; null means never analyzed. Bumping ANALYZER_VERSION marks every ride stale, and
+ * [RideEvent] rows; null means never analyzed. Bumping ANALYZER_VERSION marks every ride stale, and
  * the backfill pass re-analyzes them from the raw sample file — that is the whole re-tuning story.
  *
  * ponytail: notes/tags/purpose/safety score (DR-RID, ANL-01) are written by later UI/analysis

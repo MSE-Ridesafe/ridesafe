@@ -1,4 +1,4 @@
-package de.uhi.enia.ridesafe.tracking
+package de.uhi.enia.ridesafe.rides.processing
 
 import android.content.Context
 import android.location.Address

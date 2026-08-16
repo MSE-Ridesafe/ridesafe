@@ -1,4 +1,4 @@
-package de.uhi.enia.ridesafe.tracking
+package de.uhi.enia.ridesafe.rides.trigger
 
 import android.content.BroadcastReceiver
 import android.content.Context

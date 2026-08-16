@@ -43,12 +43,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.model.LatLng
 import de.uhi.enia.ridesafe.R
-import de.uhi.enia.ridesafe.data.DriveEvent
 import de.uhi.enia.ridesafe.data.Ride
+import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.canToggleStop
 import de.uhi.enia.ridesafe.data.canUnmergeSelection
 import de.uhi.enia.ridesafe.data.summarizeMerge
-import de.uhi.enia.ridesafe.tracking.shortAddress
+import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
@@ -69,7 +69,7 @@ import de.uhi.enia.ridesafe.util.formatTimeOfDay
 fun MergedRideDetailScreen(
     stops: List<Ride>?,
     segments: List<List<LatLng>>?,
-    driveEvents: List<DriveEvent>,
+    rideEvents: List<RideEvent>,
     unitSystem: UnitSystemSetting,
     onBack: () -> Unit,
     onUnmergeAll: () -> Unit,
@@ -145,7 +145,7 @@ fun MergedRideDetailScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            RouteMapCard(segments = segments, driveEvents = driveEvents)
+            RouteMapCard(segments = segments, rideEvents = rideEvents)
 
             MergedJourneyCard(
                 stops = stops,

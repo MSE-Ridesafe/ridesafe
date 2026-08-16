@@ -1,5 +1,6 @@
-package de.uhi.enia.ridesafe.tracking
+package de.uhi.enia.ridesafe.rides.trigger
 
+import de.uhi.enia.ridesafe.rides.recording.RideRecorder
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

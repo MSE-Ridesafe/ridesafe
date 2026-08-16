@@ -1,4 +1,4 @@
-package de.uhi.enia.ridesafe.tracking
+package de.uhi.enia.ridesafe.rides.recording
 
 import android.Manifest
 import android.content.Context
@@ -8,7 +8,7 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 
 /**
- * The [RideRecorder] wired into [AutoTracking.recorder]: turns trip start/end from the
+ * The [RideRecorder] wired into [de.uhi.enia.ridesafe.rides.trigger.AutoTracking.recorder]: turns trip start/end from the
  * auto-tracking trigger into start/stop commands for [RideRecordingService], so recording runs
  * in a foreground service (TRK-05) instead of the trigger's short-lived broadcast process.
  *

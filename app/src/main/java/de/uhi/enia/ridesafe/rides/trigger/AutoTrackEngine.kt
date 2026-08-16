@@ -1,4 +1,7 @@
-package de.uhi.enia.ridesafe.tracking
+package de.uhi.enia.ridesafe.rides.trigger
+
+import de.uhi.enia.ridesafe.rides.recording.LoggingRecorder
+import de.uhi.enia.ridesafe.rides.recording.RideRecorder
 
 /**
  * Turns detector events (Bluetooth connect/disconnect from [BluetoothConnectionReceiver],

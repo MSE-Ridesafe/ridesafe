@@ -65,14 +65,14 @@ import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 import de.uhi.enia.ridesafe.R
-import de.uhi.enia.ridesafe.data.DriveEvent
-import de.uhi.enia.ridesafe.data.DriveEventType
 import de.uhi.enia.ridesafe.data.Ride
+import de.uhi.enia.ridesafe.data.RideEvent
+import de.uhi.enia.ridesafe.data.RideEventType
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.haversineMeters
 import de.uhi.enia.ridesafe.data.symbol
-import de.uhi.enia.ridesafe.tracking.addressLines
-import de.uhi.enia.ridesafe.tracking.latLngDistanceMeters
+import de.uhi.enia.ridesafe.rides.processing.addressLines
+import de.uhi.enia.ridesafe.rides.processing.latLngDistanceMeters
 import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
@@ -94,7 +94,7 @@ import de.uhi.enia.ridesafe.util.formatTimeOfDay
 fun RideDetailScreen(
     ride: Ride?,
     route: List<LatLng>?,
-    driveEvents: List<DriveEvent>,
+    rideEvents: List<RideEvent>,
     startPlace: SavedAddress?,
     endPlace: SavedAddress?,
     unitSystem: UnitSystemSetting,
@@ -139,7 +139,7 @@ fun RideDetailScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            RouteMapCard(segments = route?.let { listOf(it) }, driveEvents = driveEvents)
+            RouteMapCard(segments = route?.let { listOf(it) }, rideEvents = rideEvents)
 
             // Build each stop, folding in a matched saved place (ADR-09): show "<address>, <dist> from
             // <label>", or just the label when the endpoint's address matches the place's exactly.
@@ -436,26 +436,26 @@ private fun Connector(
 
 /** The pin colour for each event type, resolved outside the map so markers don't re-read the theme. */
 @Composable
-private fun DriveEventType.markerColor(): Color =
+private fun RideEventType.markerColor(): Color =
     when (this) {
-        DriveEventType.BRAKING -> MaterialTheme.colorScheme.error
-        DriveEventType.ACCELERATION -> MaterialTheme.colorScheme.tertiary
-        DriveEventType.CORNERING -> MaterialTheme.colorScheme.primary
+        RideEventType.BRAKING -> MaterialTheme.colorScheme.error
+        RideEventType.ACCELERATION -> MaterialTheme.colorScheme.tertiary
+        RideEventType.CORNERING -> MaterialTheme.colorScheme.primary
     }
 
 @Composable
-private fun DriveEventType.label(): String =
+private fun RideEventType.label(): String =
     stringResource(
         when (this) {
-            DriveEventType.BRAKING -> R.string.ride_event_braking
-            DriveEventType.ACCELERATION -> R.string.ride_event_acceleration
-            DriveEventType.CORNERING -> R.string.ride_event_cornering
+            RideEventType.BRAKING -> R.string.ride_event_braking
+            RideEventType.ACCELERATION -> R.string.ride_event_acceleration
+            RideEventType.CORNERING -> R.string.ride_event_cornering
         },
     )
 
 /** A driving event with everything the map needs already resolved out of the composition. */
-private data class DriveEventMarker(
-    val event: DriveEvent,
+private data class RideEventMarker(
+    val event: RideEvent,
     val position: LatLng,
     val color: Color,
     val title: String,
@@ -464,8 +464,8 @@ private data class DriveEventMarker(
 
 /** One driving-event pin: the type's Material Symbol on a coloured disc, outlined so it reads on any tile. */
 @Composable
-private fun DriveEventPin(
-    type: DriveEventType,
+private fun RideEventPin(
+    type: RideEventType,
     color: Color,
 ) {
     Box(
@@ -488,12 +488,12 @@ private fun DriveEventPin(
 /**
  * The route map card. [segments] is a list of disconnected polylines — one for a single ride, one per
  * stop for a merged ride (MRG-07). Null = still loading; all-empty = the ride(s) recorded no GPS.
- * [driveEvents] are drawn as markers on the full-screen map (ANL-01).
+ * [rideEvents] are drawn as markers on the full-screen map (ANL-01).
  */
 @Composable
 fun RouteMapCard(
     segments: List<List<LatLng>>?,
-    driveEvents: List<DriveEvent> = emptyList(),
+    rideEvents: List<RideEvent> = emptyList(),
 ) {
     Card(
         shape = MaterialTheme.shapes.extraLarge,
@@ -513,7 +513,7 @@ fun RouteMapCard(
             }
 
             else -> {
-                RouteMap(segments, driveEvents)
+                RouteMap(segments, rideEvents)
             }
         }
     }
@@ -522,12 +522,12 @@ fun RouteMapCard(
 @Composable
 private fun RouteMap(
     segments: List<List<LatLng>>,
-    driveEvents: List<DriveEvent>,
+    rideEvents: List<RideEvent>,
 ) {
     var expanded by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
-        RouteMapContent(segments = segments, driveEvents = emptyList(), liteMode = true)
+        RouteMapContent(segments = segments, rideEvents = emptyList(), liteMode = true)
         // Lite-mode maps open the Google Maps app when tapped; this transparent overlay
         // swallows the tap and opens our own full-screen interactive map instead.
         Box(
@@ -548,7 +548,7 @@ private fun RouteMap(
             properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         ) {
             Box(Modifier.fillMaxSize()) {
-                RouteMapContent(segments = segments, driveEvents = driveEvents, liteMode = false)
+                RouteMapContent(segments = segments, rideEvents = rideEvents, liteMode = false)
                 IconButton(
                     onClick = { expanded = false },
                     modifier =
@@ -573,13 +573,13 @@ private fun RouteMap(
  * card preview); false is a live, gesture-driven map. Gestures are kept 2D — pan/zoom/rotate on,
  * tilt off — and the toolbar is hidden so taps stay in-app rather than launching the Maps app.
  *
- * [driveEvents] become tappable markers (ANL-01). Callers pass none for the lite preview: a static
+ * [rideEvents] become tappable markers (ANL-01). Callers pass none for the lite preview: a static
  * snapshot can't render composable markers, and a 300 dp card is the wrong place for thirty pins.
  */
 @Composable
 private fun RouteMapContent(
     segments: List<List<LatLng>>,
-    driveEvents: List<DriveEvent>,
+    rideEvents: List<RideEvent>,
     liteMode: Boolean,
 ) {
     val drawn = segments.filter { it.isNotEmpty() }
@@ -598,10 +598,10 @@ private fun RouteMapContent(
     // display threshold, so the map is exactly what the detector decided, not a second opinion on
     // it. The only events dropped are those the GPS couldn't place.
     val markers =
-        driveEvents
+        rideEvents
             .filter { it.lat != null && it.lon != null }
             .map { event ->
-                DriveEventMarker(
+                RideEventMarker(
                     event = event,
                     position = LatLng(event.lat!!, event.lon!!),
                     color = event.type.markerColor(),
@@ -639,7 +639,7 @@ private fun RouteMapContent(
                 title = marker.title,
                 snippet = marker.snippet,
             ) {
-                DriveEventPin(marker.event.type, marker.color)
+                RideEventPin(marker.event.type, marker.color)
             }
         }
     }

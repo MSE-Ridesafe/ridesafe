@@ -1,4 +1,4 @@
-package de.uhi.enia.ridesafe.tracking
+package de.uhi.enia.ridesafe.rides.recording
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

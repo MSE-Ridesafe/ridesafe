@@ -1,4 +1,4 @@
-package de.uhi.enia.ridesafe.tracking
+package de.uhi.enia.ridesafe.rides.processing
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

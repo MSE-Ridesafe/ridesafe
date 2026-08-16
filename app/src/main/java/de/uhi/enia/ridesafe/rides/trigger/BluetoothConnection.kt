@@ -1,4 +1,4 @@
-package de.uhi.enia.ridesafe.tracking
+package de.uhi.enia.ridesafe.rides.trigger
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice

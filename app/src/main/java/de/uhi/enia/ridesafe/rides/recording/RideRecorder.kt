@@ -1,4 +1,4 @@
-package de.uhi.enia.ridesafe.tracking
+package de.uhi.enia.ridesafe.rides.recording
 
 import android.util.Log
 
@@ -7,7 +7,7 @@ import android.util.Log
  * starts/ends and *which* vehicle it belongs to; the recorder decides what to do about it
  * (record GPS, sample sensors, persist a ride — none of that exists yet). [vehicleId] is
  * null when the trip is in an unmapped vehicle (ANY mode); the recording layer assigns it
- * later. The recording layer plugs in by setting [AutoTracking.recorder].
+ * later. The recording layer plugs in by setting [de.uhi.enia.ridesafe.rides.trigger.AutoTracking.recorder].
  */
 interface RideRecorder {
     fun onTripStart(vehicleId: Long?)

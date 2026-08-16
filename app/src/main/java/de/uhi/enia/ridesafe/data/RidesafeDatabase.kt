@@ -32,10 +32,10 @@ class Converters {
     fun stringToPlaceKind(value: String): SavedPlaceKind = SavedPlaceKind.valueOf(value)
 
     @TypeConverter
-    fun driveEventTypeToString(value: DriveEventType): String = value.name
+    fun rideEventTypeToString(value: RideEventType): String = value.name
 
     @TypeConverter
-    fun stringToDriveEventType(value: String): DriveEventType = DriveEventType.valueOf(value)
+    fun stringToRideEventType(value: String): RideEventType = RideEventType.valueOf(value)
 }
 
 /** Adds Vehicle.bluetoothAddresses (GAR-08) without dropping existing vehicles (NFR-06). */
@@ -224,9 +224,31 @@ private val MIGRATION_10_11 =
         }
     }
 
+/**
+ * Renames drive_events to ride_events, following the entity rename. A pure rename rather than a
+ * drop-and-recreate: the events are regenerable, but regenerating them means re-reading every ride's
+ * raw samples, and a long ride is minutes of work for a change that alters no data.
+ *
+ * The index needs recreating even though SQLite carries it across the rename, because it carries the
+ * *old name* with it while Room derives the name it expects from the table. Leaving it would fail
+ * schema validation on open with an index-name mismatch rather than anything obvious.
+ *
+ * Earlier migrations deliberately still say drive_events. They describe the schema as it stood at
+ * their version, and a device coming from v9 walks all of them in order — renaming them there would
+ * leave this one looking for a table that was never created.
+ */
+private val MIGRATION_11_12 =
+    object : Migration(11, 12) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE drive_events RENAME TO ride_events")
+            db.execSQL("DROP INDEX IF EXISTS index_drive_events_rideId")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_ride_events_rideId ON ride_events(rideId)")
+        }
+    }
+
 @Database(
-    entities = [Vehicle::class, Ride::class, SavedAddress::class, DriveEvent::class],
-    version = 11,
+    entities = [Vehicle::class, Ride::class, SavedAddress::class, RideEvent::class],
+    version = 12,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -237,7 +259,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
 
     abstract fun savedAddressDao(): SavedAddressDao
 
-    abstract fun driveEventDao(): DriveEventDao
+    abstract fun rideEventDao(): RideEventDao
 
     companion object {
         @Volatile private var instance: RidesafeDatabase? = null
@@ -260,6 +282,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_8_9,
                         MIGRATION_9_10,
                         MIGRATION_10_11,
+                        MIGRATION_11_12,
                     ).build()
                     .also { instance = it }
             }

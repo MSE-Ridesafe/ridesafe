@@ -75,9 +75,9 @@ import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
 import de.uhi.enia.ridesafe.data.fixedIcon
 import de.uhi.enia.ridesafe.data.isShortcut
-import de.uhi.enia.ridesafe.tracking.forwardGeocode
-import de.uhi.enia.ridesafe.tracking.reverseGeocode
-import de.uhi.enia.ridesafe.tracking.shortAddress
+import de.uhi.enia.ridesafe.rides.processing.forwardGeocode
+import de.uhi.enia.ridesafe.rides.processing.reverseGeocode
+import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.formatShortDistance

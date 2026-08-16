@@ -1,5 +1,7 @@
-package de.uhi.enia.ridesafe.tracking
+package de.uhi.enia.ridesafe.rides.processing
 
+import de.uhi.enia.ridesafe.rides.recording.LocationSample
+import de.uhi.enia.ridesafe.rides.recording.trackDistanceMeters
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

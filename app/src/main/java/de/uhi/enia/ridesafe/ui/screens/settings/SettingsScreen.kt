@@ -49,7 +49,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import de.uhi.enia.ridesafe.R
-import de.uhi.enia.ridesafe.tracking.AutoTrackMode
+import de.uhi.enia.ridesafe.rides.trigger.AutoTrackMode
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 

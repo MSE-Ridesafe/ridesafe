@@ -6,14 +6,14 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /** The kinds of harsh driving detected from the vehicle-frame acceleration (ANL-01). */
-enum class DriveEventType { BRAKING, ACCELERATION, CORNERING }
+enum class RideEventType { BRAKING, ACCELERATION, CORNERING }
 
 /** The Material Symbol representing an event type on the map and in lists. */
-fun DriveEventType.symbol(): String =
+fun RideEventType.symbol(): String =
     when (this) {
-        DriveEventType.BRAKING -> "podiatry"
-        DriveEventType.ACCELERATION -> "motion_blur"
-        DriveEventType.CORNERING -> "turn_sharp_right"
+        RideEventType.BRAKING -> "podiatry"
+        RideEventType.ACCELERATION -> "rocket_launch"
+        RideEventType.CORNERING -> "turn_sharp_right"
     }
 
 /**
@@ -39,7 +39,7 @@ fun DriveEventType.symbol(): String =
  * (null when the event falls outside the ride's GPS coverage).
  */
 @Entity(
-    tableName = "drive_events",
+    tableName = "ride_events",
     foreignKeys = [
         ForeignKey(
             entity = Ride::class,
@@ -50,10 +50,10 @@ fun DriveEventType.symbol(): String =
     ],
     indices = [Index("rideId")],
 )
-data class DriveEvent(
+data class RideEvent(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val rideId: Long = 0,
-    val type: DriveEventType,
+    val type: RideEventType,
     val startOffsetMs: Long,
     val durationMs: Long,
     val peakG: Double,

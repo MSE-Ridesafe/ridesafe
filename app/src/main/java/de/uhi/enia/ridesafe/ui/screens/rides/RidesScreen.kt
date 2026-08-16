@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.MergeCheck
 import de.uhi.enia.ridesafe.data.canMerge
-import de.uhi.enia.ridesafe.tracking.shortAddress
+import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.formatDayHeader

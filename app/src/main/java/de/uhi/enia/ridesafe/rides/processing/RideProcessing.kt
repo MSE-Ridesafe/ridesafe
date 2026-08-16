@@ -1,10 +1,16 @@
-package de.uhi.enia.ridesafe.tracking
+package de.uhi.enia.ridesafe.rides.processing
 
 import android.content.Context
 import android.util.Log
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.PolyUtil
 import de.uhi.enia.ridesafe.data.Ride
+import de.uhi.enia.ridesafe.rides.recording.EARTH_RADIUS_M
+import de.uhi.enia.ridesafe.rides.recording.LocationSample
+import de.uhi.enia.ridesafe.rides.recording.haversineMeters
+import de.uhi.enia.ridesafe.rides.recording.readRideLocations
+import de.uhi.enia.ridesafe.rides.recording.ridesDir
+import de.uhi.enia.ridesafe.rides.recording.trackDistanceMeters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.commons.math3.filter.DefaultMeasurementModel
@@ -23,11 +29,11 @@ private const val TAG = "RideProcessing"
 /**
  * Off-DB processing of a recorded ride's GPS track (ANL-02): Kalman-smooth the raw fixes (rejecting
  * impossible jumps), then store an RDP-simplified route in a small per-ride sidecar file and return
- * the distance/avg-speed metrics for the caller to persist on the [Ride] row. The raw NDJSON sample
+ * the distance/avg-speed metrics for the caller to persist on the [de.uhi.enia.ridesafe.data.Ride] row. The raw NDJSON sample
  * file stays the source of truth — this output is derived and additive, so it can be regenerated.
  *
  * Distance + average speed computed from the filtered track, for the
- * [Ride.distanceMeters]/[Ride.avgSpeedMps] columns. */
+ * [de.uhi.enia.ridesafe.data.Ride.distanceMeters]/[de.uhi.enia.ridesafe.data.Ride.avgSpeedMps] columns. */
 data class RideMetrics(
     val distanceMeters: Double,
     val avgSpeedMps: Double,
@@ -35,7 +41,7 @@ data class RideMetrics(
 
 /**
  * Version of the GPS processing pass, carried in the sidecar's filename so a bump re-processes every
- * ride — the same trick [de.uhi.enia.ridesafe.tracking.ANALYZER_VERSION] plays for driving events,
+ * ride — the same trick [de.uhi.enia.ridesafe.rides.processing.event.ANALYZER_VERSION] plays for driving events,
  * but on a file rather than a column, since the sidecar is already the "has been processed" marker.
  *
  * v2: the filter drops outliers instead of predicting through them, restarts after a GPS gap, and
@@ -48,7 +54,11 @@ const val ROUTE_VERSION = 2
 fun processedRouteFile(
     appContext: Context,
     ride: Ride,
-): File = File(ridesDir(appContext), ride.sampleFile.removeSuffix(".ndjson.gz") + ".route.v" + ROUTE_VERSION)
+): File =
+    File(
+        ridesDir(appContext),
+        ride.sampleFile.removeSuffix(".ndjson.gz") + ".route.v" + ROUTE_VERSION,
+    )
 
 /** Delete sidecars written by an older [ROUTE_VERSION]; their rides are about to be re-processed. */
 fun pruneStaleRoutes(appContext: Context) {
@@ -77,7 +87,10 @@ suspend fun processRide(
         // keeps emitting when GNSS is gone, from Wi-Fi and cell towers, and those fixes land hundreds
         // of meters to kilometers away — but nearly always say so. A large drop count next to a
         // modest worst accuracy is the other case: fixes that were wrong without admitting it.
-        Log.i(TAG, "ride ${ride.id}: kept ${filtered.size}/${raw.size} fixes, worst accuracy ${raw.maxOf { it.accuracy }} m")
+        Log.i(
+            TAG,
+            "ride ${ride.id}: kept ${filtered.size}/${raw.size} fixes, worst accuracy ${raw.maxOf { it.accuracy }} m",
+        )
         // Everything filtered out means no usable track, not a zero-length ride: leave the metrics
         // null (the caller retries later) and write no sidecar, so the map falls back to raw fixes.
         if (filtered.isEmpty()) return@withContext null
@@ -123,92 +136,106 @@ fun latLngDistanceMeters(points: List<LatLng>): Double {
 }
 
 /**
- * Robustly smooth a GPS track: drop the fixes that aren't real, Kalman-smooth the ones that are.
+ * The GPS track filter as an incremental stage: feed it fixes in order, it hands back filtered ones.
+ * State is O(1) — the only buffering is up to [minSegmentFixes] fixes held back while it waits to see
+ * whether their run is long enough to be believed, which is what lets a whole ride stream through
+ * without being materialised. [kalmanFilterLocations] is simply this driven over a list.
  *
- * The filter itself is a constant-velocity model in a local-meter frame (equirectangular around the
- * first fix). State is `[x, y, vx, vy]`; only position is measured; each fix's own
- * [LocationSample.accuracy] sets the measurement noise, so sloppy fixes are pulled in less. dt comes
- * from each sample's real timestamp (never assumed uniform), so the model is rebuilt per step.
+ * Constant-velocity model in a local-meter frame (equirectangular about the first accepted fix).
+ * State is `[x, y, vx, vy]`; only position is measured. Robustness comes from four levers: each
+ * fix's own accuracy sets the measurement noise, a fix implying faster than [maxSpeedMps] is
+ * rejected as an impossible jump, [maxConsecutiveRejects] rejections in a row mean the *estimate* is
+ * the wrong one and the filter restarts, and a gap over [maxGapSeconds] restarts rather than
+ * predicts through stale velocity. A run shorter than [minSegmentFixes] is corroborated by nothing
+ * and is dropped. dt comes from each sample's real timestamp, never assumed uniform.
  *
- * On top of it sit the rejection rules, each aimed at a way a phone produces a position that is
- * hundreds of meters to tens of kilometers wrong:
+ * Single-use and single-threaded: one instance per analysis, driven by one coroutine. Concurrent
+ * rides each get their own, which is what keeps parallel analysis safe.
  *
- * [maxAccuracyMeters] is a hard drop. Whenever GNSS is unavailable — a tunnel, a garage, a ride that
- * ends indoors — the fused provider keeps emitting, now derived from WiFi and cell towers, and a
- * stale access-point entry or a large rural cell puts the fix kilometers from the vehicle. Those
- * fixes almost always admit it in their accuracy, which this filter used to read only as a soft
- * weight. An accuracy of 0 means the fix carried none at all, so it is treated as the worst
- * tolerable rather than, as before, the best possible.
+ * @property accelNoiseStdDev Process noise, in m/s² — how freely the model lets speed wander between
+ * fixes. Raise it and the filter trusts each measurement more, tracking real manoeuvres closely but
+ * passing GPS noise through; lower it and the track smooths harder, lagging genuine changes.
  *
- * [maxSpeedMps] drops a fix implying a faster-than-that move from the current estimate. Dropped, not
- * replaced by the prediction: a predicted point is a position nobody measured, and drawing those is
- * what used to put an invented tail on the map.
+ * @property maxSpeedMps Jump gate (default ~270 km/h). A fix implying a faster move than this from
+ * the current estimate is rejected as impossible rather than believed. Raise it and large teleports
+ * start being accepted, dragging the track off the road; lower it and genuine motorway speed can be
+ * mistaken for a jump.
  *
- * [maxGapSeconds], [maxConsecutiveRejects] and [minSegmentFixes] are the hindsight rules, and they
- * are what fixes the failure this filter had. The speed gate alone allows a jump of
- * `maxSpeedMps * dt`, so it is at its most permissive exactly when fixes deserve it least: right
- * after a GPS outage. A bogus fix 5 km away following a two-minute gap implies only 42 m/s, sails
- * through, and takes both the position and — worse — the velocity estimate with it. Every true fix
- * after that looks like a 5 km jump from an estimate now flying off at 80 m/s, so the gate rejects
- * all of them, permanently. The track ended at the bad point and ran off the map.
+ * @property minAccuracyMeters Floor on a fix's reported accuracy before it sets the measurement
+ * noise, so an over-confident fix claiming near-zero error cannot dominate. Raise it and every fix
+ * is treated as vaguer, smoothing more; lower it and optimistic accuracy claims are taken at face
+ * value.
  *
- * So: a gap longer than [maxGapSeconds] leaves the velocity estimate meaningless, and the filter
- * restarts at the next fix instead of predicting through it. [maxConsecutiveRejects] rejections in a
- * row mean the estimate, not the world, is the thing that is wrong — restart there too. And a run of
- * fewer than [minSegmentFixes] between restarts is a position nothing else corroborates, so it is
- * discarded whole. A lone bogus fix that lies about its accuracy is precisely that: a one-fix island,
- * costing the handful of good fixes spent disproving it rather than the entire rest of the ride.
+ * @property maxAccuracyMeters Ceiling on reported accuracy; worse fixes are discarded outright. The
+ * fused provider keeps emitting when GNSS is gone, from Wi-Fi and cell towers, and those land
+ * hundreds of meters to kilometers away — but nearly always admit it in their accuracy. Raise it and
+ * those guesses re-enter the track; lower it and legitimately weak GNSS fixes are thrown away.
  *
- * Returns the surviving fixes in order, with smoothed lat/lon — fewer than came in, never more, and
- * possibly none at all when no fix was usable. Untouched when there are fewer than two fixes. The
- * constants are calibration knobs; defaults suit road use.
+ * @property maxGapSeconds Longest gap between fixes the filter will predict across; past it the
+ * velocity estimate is stale, so it restarts rather than free-running. Raise it and the filter
+ * coasts on an old velocity through long outages, drifting off the map; lower it and ordinary GPS
+ * hiccups force a restart, losing the smoothing already built up.
+ *
+ * @property maxConsecutiveRejects How many rejections in a row mean the *estimate* is wrong rather
+ * than the fixes. Without it, one bad estimate rejects every subsequent good fix forever and the
+ * track free-runs. Raise it and recovery takes longer; lower it and a short burst of genuinely bad
+ * fixes forces a needless restart.
+ *
+ * @property minSegmentFixes Shortest run of fixes worth believing; a run ending before this length
+ * is discarded, since a couple of fixes after a restart are corroborated by nothing and would leave
+ * isolated specks on the map. Raise it and more short but real fragments are dropped; lower it and
+ * noise survives as stray segments. Also bounds the filter's buffering — it holds at most this many
+ * fixes, which is what keeps it O(1) and streamable.
  */
-fun kalmanFilterLocations(
-    locations: List<LocationSample>,
-    accelNoiseStdDev: Double = 2.0, // m/s^2 process noise — how much the speed is allowed to wander
-    maxSpeedMps: Double = 75.0, // ~270 km/h jump gate — fixes implying more are dropped as outliers
-    minAccuracyMeters: Double = 5.0, // floor on reported accuracy, so an over-confident fix isn't trusted blindly
-    maxAccuracyMeters: Double = 50.0, // ceiling — past this it's a WiFi/cell guess, not a position
-    maxGapSeconds: Double = 20.0, // past this the velocity estimate is stale; restart rather than predict
-    maxConsecutiveRejects: Int = 3, // this many rejections running means the estimate is the wrong one
-    minSegmentFixes: Int = 3, // a run shorter than this is corroborated by nothing; drop it
-): List<LocationSample> {
-    if (locations.size < 2) return locations
+class TrackFilter(
+    private val accelNoiseStdDev: Double = 2.0,
+    private val maxSpeedMps: Double = 75.0,
+    private val minAccuracyMeters: Double = 5.0,
+    private val maxAccuracyMeters: Double = 50.0,
+    private val maxGapSeconds: Double = 20.0,
+    private val maxConsecutiveRejects: Int = 3,
+    private val minSegmentFixes: Int = 3,
+) {
+    private var lat0 = 0.0
+    private var lon0 = 0.0
+    private var cosLat0 = 1.0
+    private var originSet = false
+    private var state: RealVector = ArrayRealVector(4)
+    private var cov: RealMatrix = Array2DRowRealMatrix(4, 4)
+    private var seeded = false
+    private var lastT = 0L
+    private var rejects = 0
+    private val accelVar = accelNoiseStdDev * accelNoiseStdDev
 
-    val first = locations.first()
-    val lat0 = first.lat
-    val lon0 = first.lon
-    val cosLat0 = cos(Math.toRadians(lat0))
+    // Held back until the run they belong to is long enough to believe; never exceeds minSegmentFixes.
+    private val pending = ArrayList<LocationSample>(minSegmentFixes)
+    private var segmentFixes = 0
 
-    fun projX(lon: Double) = Math.toRadians(lon - lon0) * cosLat0 * EARTH_RADIUS_M
+    private fun projX(lon: Double) = Math.toRadians(lon - lon0) * cosLat0 * EARTH_RADIUS_M
 
-    fun projY(lat: Double) = Math.toRadians(lat - lat0) * EARTH_RADIUS_M
+    private fun projY(lat: Double) = Math.toRadians(lat - lat0) * EARTH_RADIUS_M
 
-    fun unprojLat(y: Double) = lat0 + Math.toDegrees(y / EARTH_RADIUS_M)
+    private fun unprojLat(y: Double) = lat0 + Math.toDegrees(y / EARTH_RADIUS_M)
 
-    fun unprojLon(x: Double) = lon0 + Math.toDegrees(x / (EARTH_RADIUS_M * cosLat0))
+    private fun unprojLon(x: Double) = lon0 + Math.toDegrees(x / (EARTH_RADIUS_M * cosLat0))
 
-    fun measVar(accuracy: Float): Double =
+    private fun measVar(accuracy: Float): Double =
         (if (accuracy <= 0f) maxAccuracyMeters else accuracy.toDouble().coerceAtLeast(minAccuracyMeters))
             .let { it * it }
 
-    val accelVar = accelNoiseStdDev * accelNoiseStdDev
-    val out = ArrayList<LocationSample>(locations.size)
-    val segment = ArrayList<LocationSample>() // fixes since the last restart, held until corroborated
-    var state: RealVector = ArrayRealVector(4) // both are overwritten by the first seed below
-    var cov: RealMatrix = Array2DRowRealMatrix(4, 4)
-    var seeded = false
-    var lastT = 0L
-    var rejects = 0
-
-    fun flushSegment() {
-        if (segment.size >= minSegmentFixes) out.addAll(segment)
-        segment.clear()
-    }
-
-    for (loc in locations) {
-        if (loc.accuracy <= 0f || loc.accuracy > maxAccuracyMeters) continue
-        if (seeded && loc.t <= lastT) continue // stale or duplicate delivery; it adds nothing
+    /** Feed one raw fix in time order; [out] receives whatever became confirmed as a result. */
+    fun update(
+        loc: LocationSample,
+        out: (LocationSample) -> Unit,
+    ) {
+        if (loc.accuracy <= 0f || loc.accuracy > maxAccuracyMeters) return
+        if (seeded && loc.t <= lastT) return // stale or duplicate delivery; it adds nothing
+        if (!originSet) {
+            lat0 = loc.lat
+            lon0 = loc.lon
+            cosLat0 = cos(Math.toRadians(lat0))
+            originSet = true
+        }
 
         val dt = if (seeded) (loc.t - lastT) / 1e9 else Double.MAX_VALUE
         var smoothedBearing: Float? = null
@@ -218,7 +245,7 @@ fun kalmanFilterLocations(
             val prevLon = unprojLon(state.getEntry(0))
             if (haversineMeters(prevLat, prevLon, loc.lat, loc.lon) / dt > maxSpeedMps) {
                 rejects++
-                continue
+                return
             }
             val (nextState, nextCov) =
                 kalmanStep(state, cov, dt, projX(loc.lon), projY(loc.lat), measVar(loc.accuracy), accelVar)
@@ -231,7 +258,7 @@ fun kalmanFilterLocations(
             smoothedBearing =
                 ((Math.toDegrees(atan2(state.getEntry(2), state.getEntry(3))) + 360.0) % 360.0).toFloat()
         } else {
-            flushSegment()
+            dropUncorroborated()
             val posVar = measVar(loc.accuracy)
             state = ArrayRealVector(doubleArrayOf(projX(loc.lon), projY(loc.lat), 0.0, 0.0))
             // Large initial velocity covariance (it is genuinely unknown) so the next good fixes pull it in.
@@ -254,20 +281,63 @@ fun kalmanFilterLocations(
         // wanders reads as tens of km/h and sails through the event detector's speed gate. The raw
         // field is GNSS Doppler, computed from carrier frequency shift rather than position, and
         // stays trustworthy even while the position is badly wrong.
-        segment.add(
+        emit(
             loc.copy(
                 lat = unprojLat(state.getEntry(1)),
                 lon = unprojLon(state.getEntry(0)),
                 bearing = smoothedBearing ?: loc.bearing,
             ),
+            out,
         )
     }
-    flushSegment()
+
+    /**
+     * Release a filtered fix, holding it back until its run is long enough to be corroborated. Once
+     * the run clears [minSegmentFixes] the backlog goes out and everything after it flows straight
+     * through, so the buffer never grows past that bound.
+     */
+    private fun emit(
+        filtered: LocationSample,
+        out: (LocationSample) -> Unit,
+    ) {
+        segmentFixes++
+        if (segmentFixes < minSegmentFixes) {
+            pending.add(filtered)
+            return
+        }
+        if (pending.isNotEmpty()) {
+            pending.forEach(out)
+            pending.clear()
+        }
+        out(filtered)
+    }
+
+    /** A run that never reached [minSegmentFixes] is backed by nothing; discard it. */
+    private fun dropUncorroborated() {
+        pending.clear()
+        segmentFixes = 0
+    }
+
+    /** Call once the stream ends, so a trailing run too short to believe is discarded. */
+    fun finish() = dropUncorroborated()
+}
+
+/**
+ * Kalman-smooth a whole GPS track — [TrackFilter] driven over a list. Returns one filtered fix per
+ * accepted input; fixes the filter rejected or could not corroborate are absent, so the result can
+ * be shorter than the input. Untouched when there are fewer than two fixes.
+ */
+fun kalmanFilterLocations(locations: List<LocationSample>): List<LocationSample> {
+    if (locations.size < 2) return locations
+    val filter = TrackFilter()
+    val out = ArrayList<LocationSample>(locations.size)
+    for (loc in locations) filter.update(loc, out::add)
+    filter.finish()
     return out
 }
 
 /**
- * One predict+correct step. commons-math3's [KalmanFilter] fixes its transition/noise matrices at
+ * One predict+correct step. commons-math3's [org.apache.commons.math3.filter.KalmanFilter] fixes its transition/noise matrices at
  * construction, so to honor the per-step dt we build a fresh filter seeded with the previous estimate
  * and covariance.
  */

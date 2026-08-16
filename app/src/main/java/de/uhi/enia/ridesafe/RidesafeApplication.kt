@@ -1,15 +1,15 @@
 package de.uhi.enia.ridesafe
 
 import android.app.Application
-import de.uhi.enia.ridesafe.tracking.AutoTrackPrefs
-import de.uhi.enia.ridesafe.tracking.AutoTracking
-import de.uhi.enia.ridesafe.tracking.RideRecordingEngine
-import de.uhi.enia.ridesafe.tracking.ServiceRideRecorder
-import de.uhi.enia.ridesafe.tracking.applyAutoTrackMode
+import de.uhi.enia.ridesafe.rides.recording.RideRecordingEngine
+import de.uhi.enia.ridesafe.rides.recording.ServiceRideRecorder
+import de.uhi.enia.ridesafe.rides.trigger.AutoTrackPrefs
+import de.uhi.enia.ridesafe.rides.trigger.AutoTracking
+import de.uhi.enia.ridesafe.rides.trigger.applyAutoTrackMode
 
 /**
  * Re-arms activity recognition on process start (the Bluetooth ACL receiver is a manifest
- * receiver and needs no arming). [de.uhi.enia.ridesafe.tracking.BootReceiver] calls the same
+ * receiver and needs no arming). [de.uhi.enia.ridesafe.rides.trigger.BootReceiver] calls the same
  * path after a reboot, and the same path now also wires ride recording to the trigger.
  */
 class RidesafeApplication : Application() {

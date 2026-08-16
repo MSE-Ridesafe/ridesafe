@@ -29,8 +29,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
-import de.uhi.enia.ridesafe.tracking.AutoTrackPrefs
-import de.uhi.enia.ridesafe.tracking.applyAutoTrackMode
+import de.uhi.enia.ridesafe.rides.trigger.AutoTrackPrefs
+import de.uhi.enia.ridesafe.rides.trigger.applyAutoTrackMode
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.screens.garage.GarageRoute
 import de.uhi.enia.ridesafe.ui.screens.garage.GarageViewModel

@@ -1,8 +1,11 @@
-package de.uhi.enia.ridesafe.tracking
+package de.uhi.enia.ridesafe.rides.processing.event
 
-import de.uhi.enia.ridesafe.data.DriveEventType
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import de.uhi.enia.ridesafe.data.RideEventType
+import de.uhi.enia.ridesafe.rides.recording.LocationSample
+import de.uhi.enia.ridesafe.rides.recording.MotionSample
+import de.uhi.enia.ridesafe.rides.recording.MotionSensor
+import de.uhi.enia.ridesafe.rides.recording.RideSamples
+import org.junit.Assert
 import org.junit.Test
 import kotlin.math.cos
 import kotlin.math.sin
@@ -13,7 +16,7 @@ import kotlin.math.sin
  * slope. Both use hand-computed device-frame readings rather than a helper that would just invert
  * the production math and pass regardless. The rest covers the event state machine.
  */
-class DriveEventsTest {
+class RideEventsTest {
     private companion object {
         const val GRAVITY = 9.80665
         const val MOTION_HZ = 50
@@ -69,12 +72,33 @@ class DriveEventsTest {
         for (step in 0..steps) {
             val nanos = step * (1_000_000_000L / MOTION_HZ)
             val (x, y, z) = deviceAccelAt(step.toDouble() / MOTION_HZ)
-            accel.add(MotionSample(nanos, MotionSensor.ACCEL, x.toFloat(), y.toFloat(), z.toFloat()))
+            accel.add(
+                MotionSample(
+                    nanos,
+                    MotionSensor.ACCEL,
+                    x.toFloat(),
+                    y.toFloat(),
+                    z.toFloat(),
+                ),
+            )
             gyro.add(
-                MotionSample(nanos, MotionSensor.GYRO, gyroRadPerSec.toFloat(), 0f, yawRateAt(step.toDouble() / MOTION_HZ).toFloat()),
+                MotionSample(
+                    nanos,
+                    MotionSensor.GYRO,
+                    gyroRadPerSec.toFloat(),
+                    0f,
+                    yawRateAt(step.toDouble() / MOTION_HZ).toFloat(),
+                ),
             )
             rotation.add(
-                MotionSample(nanos, MotionSensor.ROTATION, quaternion[0], quaternion[1], quaternion[2], quaternion[3]),
+                MotionSample(
+                    nanos,
+                    MotionSensor.ROTATION,
+                    quaternion[0],
+                    quaternion[1],
+                    quaternion[2],
+                    quaternion[3],
+                ),
             )
         }
         return RideSamples(locations, accel, gyro, rotation)
@@ -89,7 +113,7 @@ class DriveEventsTest {
     @Test
     fun resolvesBrakingThroughAnArbitraryPhoneOrientation() {
         val events =
-            detectDriveEvents(
+            detectRideEvents(
                 ride(seconds = 20.0, quaternion = YAWED_90) { t ->
                     if (t >= 10.0 && t <= 12.0) {
                         Triple(0.0, 3.43, GRAVITY)
@@ -100,9 +124,9 @@ class DriveEventsTest {
                 rideStartElapsedNanos = 0L,
             )
 
-        assertEquals("expected exactly one event, got $events", 1, events.size)
-        assertEquals(DriveEventType.BRAKING, events[0].type)
-        assertTrue("peak should be ~0.35 g, was ${events[0].peakG}", events[0].peakG > 0.33)
+        Assert.assertEquals("expected exactly one event, got $events", 1, events.size)
+        Assert.assertEquals(RideEventType.BRAKING, events[0].type)
+        Assert.assertTrue("peak should be ~0.35 g, was ${events[0].peakG}", events[0].peakG > 0.33)
     }
 
     /**
@@ -123,23 +147,34 @@ class DriveEventsTest {
         // here silently injects ~0.2 g of real lateral acceleration and the test stops testing gravity.
         val resting = Triple(0.0, GRAVITY * sin(pitch), GRAVITY * cos(pitch))
 
-        val events = detectDriveEvents(ride(seconds = 20.0, quaternion = tilted) { resting }, 0L)
+        val events = detectRideEvents(ride(seconds = 20.0, quaternion = tilted) { resting }, 0L)
 
-        assertTrue("a coasting car on a slope must produce no events, got $events", events.isEmpty())
+        Assert.assertTrue(
+            "a coasting car on a slope must produce no events, got $events",
+            events.isEmpty(),
+        )
     }
 
     /** A pure vertical shock — the pothole case — has no horizontal component and must be invisible. */
     @Test
     fun verticalShockIsIgnored() {
         val events =
-            detectDriveEvents(
+            detectRideEvents(
                 ride(seconds = 20.0) { t ->
-                    if (t >= 10.0 && t <= 10.4) Triple(0.0, 0.0, GRAVITY * 3) else Triple(0.0, 0.0, GRAVITY)
+                    if (t >= 10.0 && t <= 10.4) {
+                        Triple(0.0, 0.0, GRAVITY * 3)
+                    } else {
+                        Triple(
+                            0.0,
+                            0.0,
+                            GRAVITY,
+                        )
+                    }
                 },
                 rideStartElapsedNanos = 0L,
             )
 
-        assertTrue("vertical-only shock must not register, got $events", events.isEmpty())
+        Assert.assertTrue("vertical-only shock must not register, got $events", events.isEmpty())
     }
 
     /**
@@ -150,7 +185,7 @@ class DriveEventsTest {
     @Test
     fun oneSustainedBrakeWithADipStaysOneEvent() {
         val events =
-            detectDriveEvents(
+            detectRideEvents(
                 ride(seconds = 20.0) { t ->
                     // 0.35 g held for three seconds, with the driver lifting off entirely for 200 ms
                     // in the middle — long enough to fall under the sustain level, short enough that
@@ -161,15 +196,25 @@ class DriveEventsTest {
                             t >= 10.0 && t <= 13.0 -> 3.43
                             else -> 0.0
                         }
-                    Triple(-decel, 0.0, GRAVITY) // device is level, so -x is west = braking eastbound
+                    Triple(
+                        -decel,
+                        0.0,
+                        GRAVITY,
+                    ) // device is level, so -x is west = braking eastbound
                 },
                 rideStartElapsedNanos = 0L,
             )
 
-        assertEquals("the dip must not split the brake, got $events", 1, events.size)
-        assertEquals(DriveEventType.BRAKING, events[0].type)
-        assertTrue("duration should be ~3000 ms, was ${events[0].durationMs}", events[0].durationMs in 2900..3200)
-        assertTrue("should start ~10 s in, was ${events[0].startOffsetMs}", events[0].startOffsetMs in 10_000..10_200)
+        Assert.assertEquals("the dip must not split the brake, got $events", 1, events.size)
+        Assert.assertEquals(RideEventType.BRAKING, events[0].type)
+        Assert.assertTrue(
+            "duration should be ~3000 ms, was ${events[0].durationMs}",
+            events[0].durationMs in 2900..3200,
+        )
+        Assert.assertTrue(
+            "should start ~10 s in, was ${events[0].startOffsetMs}",
+            events[0].startOffsetMs in 10_000..10_200,
+        )
     }
 
     /**
@@ -180,7 +225,7 @@ class DriveEventsTest {
     @Test
     fun smoothTightCornerIsNotHarsh() {
         val events =
-            detectDriveEvents(
+            detectRideEvents(
                 ride(seconds = 20.0, speedMps = 5.0) { t ->
                     // Lateral force ramped in linearly over 1.5 s, held, then eased off just as gently.
                     val lateral =
@@ -197,7 +242,10 @@ class DriveEventsTest {
                 rideStartElapsedNanos = 0L,
             )
 
-        assertTrue("a smoothly-driven tight corner must not register, got $events", events.isEmpty())
+        Assert.assertTrue(
+            "a smoothly-driven tight corner must not register, got $events",
+            events.isEmpty(),
+        )
     }
 
     /**
@@ -208,18 +256,25 @@ class DriveEventsTest {
     @Test
     fun abruptBrakeToModestForceIsHarsh() {
         val events =
-            detectDriveEvents(
+            detectRideEvents(
                 ride(seconds = 20.0) { t ->
-                    val decel = if (t >= 10.0 && t < 11.0) 3.14 else 0.0 // 0.32 g, applied as a step
+                    val decel =
+                        if (t >= 10.0 && t < 11.0) 3.14 else 0.0 // 0.32 g, applied as a step
                     Triple(-decel, 0.0, GRAVITY)
                 },
                 rideStartElapsedNanos = 0L,
             )
 
-        assertEquals("expected one event, got $events", 1, events.size)
-        assertEquals(DriveEventType.BRAKING, events[0].type)
-        assertTrue("peak jerk should clear the gate, was ${events[0].peakJerkGPerS}", events[0].peakJerkGPerS > 1.0)
-        assertTrue("peak force should clear the floor, was ${events[0].peakG}", events[0].peakG > 0.25)
+        Assert.assertEquals("expected one event, got $events", 1, events.size)
+        Assert.assertEquals(RideEventType.BRAKING, events[0].type)
+        Assert.assertTrue(
+            "peak jerk should clear the gate, was ${events[0].peakJerkGPerS}",
+            events[0].peakJerkGPerS > 1.0,
+        )
+        Assert.assertTrue(
+            "peak force should clear the floor, was ${events[0].peakG}",
+            events[0].peakG > 0.25,
+        )
     }
 
     /**
@@ -230,20 +285,31 @@ class DriveEventsTest {
     @Test
     fun smoothButHardBrakingIsStillHarsh() {
         val events =
-            detectDriveEvents(
+            detectRideEvents(
                 ride(seconds = 20.0) { t ->
-                    val decel = if (t >= 10.0 && t < 13.0) 5.9 * (t - 10.0) / 3.0 else 0.0 // ramp to 0.6 g
+                    val decel =
+                        if (t >= 10.0 && t < 13.0) 5.9 * (t - 10.0) / 3.0 else 0.0 // ramp to 0.6 g
                     Triple(-decel, 0.0, GRAVITY)
                 },
                 rideStartElapsedNanos = 0L,
             )
 
-        assertEquals("a smooth but hard stop must still register, got $events", 1, events.size)
-        assertEquals(DriveEventType.BRAKING, events[0].type)
-        assertTrue("peak should exceed the high-force path, was ${events[0].peakG}", events[0].peakG >= 0.50)
+        Assert.assertEquals(
+            "a smooth but hard stop must still register, got $events",
+            1,
+            events.size,
+        )
+        Assert.assertEquals(RideEventType.BRAKING, events[0].type)
+        Assert.assertTrue(
+            "peak should exceed the high-force path, was ${events[0].peakG}",
+            events[0].peakG >= 0.50,
+        )
         // Below the jerk gate, so this event can only have come through the high-force bypass. If
         // that bypass were removed this fails rather than quietly passing via the ordinary path.
-        assertTrue("and it should be smooth, was ${events[0].peakJerkGPerS} g/s", events[0].peakJerkGPerS < 1.0)
+        Assert.assertTrue(
+            "and it should be smooth, was ${events[0].peakJerkGPerS} g/s",
+            events[0].peakJerkGPerS < 1.0,
+        )
     }
 
     /**
@@ -254,57 +320,88 @@ class DriveEventsTest {
     @Test
     fun abruptButTrivialTwitchIsRejected() {
         val events =
-            detectDriveEvents(
+            detectRideEvents(
                 ride(seconds = 20.0) { t ->
-                    val decel = if (t >= 10.0 && t < 11.0) 1.77 else 0.0 // 0.18 g, applied instantly
+                    val decel =
+                        if (t >= 10.0 && t < 11.0) 1.77 else 0.0 // 0.18 g, applied instantly
                     Triple(-decel, 0.0, GRAVITY)
                 },
                 rideStartElapsedNanos = 0L,
             )
 
-        assertTrue("abrupt but under the force floor must be discarded, got $events", events.isEmpty())
+        Assert.assertTrue(
+            "abrupt but under the force floor must be discarded, got $events",
+            events.isEmpty(),
+        )
     }
 
     /** A jolt shorter than minDurationMs is road noise, not a driving event. */
     @Test
     fun briefJoltIsNotAnEvent() {
         val events =
-            detectDriveEvents(
+            detectRideEvents(
                 ride(seconds = 20.0) { t ->
-                    if (t >= 10.0 && t <= 10.06) Triple(-9.8, 0.0, GRAVITY) else Triple(0.0, 0.0, GRAVITY)
+                    if (t >= 10.0 && t <= 10.06) {
+                        Triple(-9.8, 0.0, GRAVITY)
+                    } else {
+                        Triple(
+                            0.0,
+                            0.0,
+                            GRAVITY,
+                        )
+                    }
                 },
                 rideStartElapsedNanos = 0L,
             )
 
-        assertTrue("a 60 ms jolt must be rejected, got $events", events.isEmpty())
+        Assert.assertTrue("a 60 ms jolt must be rejected, got $events", events.isEmpty())
     }
 
     /** Hard braking while crawling is a parking maneuver, and is gated out by speed. */
     @Test
     fun harshBrakingBelowTheSpeedGateIsIgnored() {
         val events =
-            detectDriveEvents(
+            detectRideEvents(
                 ride(seconds = 20.0, speedMps = 2.0) { t ->
-                    if (t >= 10.0 && t <= 12.0) Triple(-3.43, 0.0, GRAVITY) else Triple(0.0, 0.0, GRAVITY)
+                    if (t >= 10.0 && t <= 12.0) {
+                        Triple(-3.43, 0.0, GRAVITY)
+                    } else {
+                        Triple(
+                            0.0,
+                            0.0,
+                            GRAVITY,
+                        )
+                    }
                 },
                 rideStartElapsedNanos = 0L,
             )
 
-        assertTrue("below the speed gate nothing should register, got $events", events.isEmpty())
+        Assert.assertTrue(
+            "below the speed gate nothing should register, got $events",
+            events.isEmpty(),
+        )
     }
 
     /** Spinning the phone in your hand produces huge readings; the gyro gate must discard them. */
     @Test
     fun phoneHandlingIsRejected() {
         val events =
-            detectDriveEvents(
+            detectRideEvents(
                 ride(seconds = 20.0, gyroRadPerSec = 6.0) { t ->
-                    if (t >= 10.0 && t <= 12.0) Triple(-3.43, 0.0, GRAVITY) else Triple(0.0, 0.0, GRAVITY)
+                    if (t >= 10.0 && t <= 12.0) {
+                        Triple(-3.43, 0.0, GRAVITY)
+                    } else {
+                        Triple(
+                            0.0,
+                            0.0,
+                            GRAVITY,
+                        )
+                    }
                 },
                 rideStartElapsedNanos = 0L,
             )
 
-        assertTrue("handling the phone must not score, got $events", events.isEmpty())
+        Assert.assertTrue("handling the phone must not score, got $events", events.isEmpty())
     }
 
     /**
@@ -323,16 +420,28 @@ class DriveEventsTest {
             ride(
                 seconds = 55.0,
                 // Clean eastward run to calibrate from, then the fix starts flip-flopping.
-                travelBearingAt = { t -> if (t < 40.0) 90.0 else if (t.toInt() % 2 == 0) 0.0 else 180.0 },
+                travelBearingAt = { t ->
+                    if (t < 40.0) {
+                        90.0
+                    } else if (t.toInt() % 2 == 0) {
+                        0.0
+                    } else {
+                        180.0
+                    }
+                },
             ) { t ->
                 // The car is still travelling east throughout, and brakes at 45 s.
                 val decel = if (t >= 45.0 && t < 47.0) 3.43 else 0.0 // 0.35 g
                 Triple(-decel, 0.0, GRAVITY)
             }
 
-        val events = detectDriveEvents(recorded, rideStartElapsedNanos = 0L)
-        assertEquals("expected exactly one event, got $events", 1, events.size)
-        assertEquals("must stay braking despite the GPS heading, got ${events[0].type}", DriveEventType.BRAKING, events[0].type)
+        val events = detectRideEvents(recorded, rideStartElapsedNanos = 0L)
+        Assert.assertEquals("expected exactly one event, got $events", 1, events.size)
+        Assert.assertEquals(
+            "must stay braking despite the GPS heading, got ${events[0].type}",
+            RideEventType.BRAKING,
+            events[0].type,
+        )
 
         // The contrast that gives this test teeth: starve calibration of samples and the very same
         // ride mis-files the brake as a corner. Without it the assertions above would still pass if
@@ -340,19 +449,39 @@ class DriveEventsTest {
         // Asserted on type rather than count: with the heading swinging, the force lands in whichever
         // bucket the bad axis points at, and can smear across more than one. What matters is that the
         // brake stops being recognised as a brake at all.
-        val gpsOnly = detectDriveEvents(recorded, 0L, DriveEventConfig(alignmentMinSamples = Int.MAX_VALUE))
-        assertTrue("GPS-only heading should mis-file the brake, got $gpsOnly", gpsOnly.none { it.type == DriveEventType.BRAKING })
-        assertTrue("and should still see the force somewhere, got $gpsOnly", gpsOnly.isNotEmpty())
+        val gpsOnly =
+            detectRideEvents(recorded, 0L, RideEventConfig(alignmentMinSamples = Int.MAX_VALUE))
+        Assert.assertTrue(
+            "GPS-only heading should mis-file the brake, got $gpsOnly",
+            gpsOnly.none { it.type == RideEventType.BRAKING },
+        )
+        Assert.assertTrue(
+            "and should still see the force somewhere, got $gpsOnly",
+            gpsOnly.isNotEmpty(),
+        )
     }
 
     /** A poorly-fixed stretch produces no events at all, rather than events built on a bad position. */
     @Test
     fun inaccurateFixesSuppressDetection() {
         val clean = ride(seconds = 20.0) { t -> if (t >= 10.0 && t < 12.0) Triple(-3.43, 0.0, GRAVITY) else Triple(0.0, 0.0, GRAVITY) }
-        assertEquals("control: the same ride with good fixes registers", 1, detectDriveEvents(clean, 0L).size)
+        Assert.assertEquals(
+            "control: the same ride with good fixes registers",
+            1,
+            detectRideEvents(
+                clean,
+                0L,
+            ).size,
+        )
 
         val vague = clean.copy(locations = clean.locations.map { it.copy(accuracy = 80f) })
-        assertTrue("fixes the receiver calls poor must not produce events", detectDriveEvents(vague, 0L).isEmpty())
+        Assert.assertTrue(
+            "fixes the receiver calls poor must not produce events",
+            detectRideEvents(
+                vague,
+                0L,
+            ).isEmpty(),
+        )
     }
 
     /**
@@ -385,24 +514,35 @@ class DriveEventsTest {
         }
 
         // 30 km/h into a side street: 0.59 g, but built over 0.8 s = 0.73 g/s, under the jerk gate.
-        val sideStreet = detectDriveEvents(corner(8.3, 12.0, 0.8), 0L)
-        assertTrue("a smooth turn into a side street must not register, got $sideStreet", sideStreet.isEmpty())
+        val sideStreet = detectRideEvents(corner(8.3, 12.0, 0.8), 0L)
+        Assert.assertTrue(
+            "a smooth turn into a side street must not register, got $sideStreet",
+            sideStreet.isEmpty(),
+        )
 
         // 20 km/h through a tight car-park corner: 0.51 g at a positively lazy 0.43 g/s.
-        val carPark = detectDriveEvents(corner(5.5, 6.0, 1.2), 0L)
-        assertTrue("a smooth tight low-speed corner must not register, got $carPark", carPark.isEmpty())
+        val carPark = detectRideEvents(corner(5.5, 6.0, 1.2), 0L)
+        Assert.assertTrue(
+            "a smooth tight low-speed corner must not register, got $carPark",
+            carPark.isEmpty(),
+        )
 
         // But the bypass must survive for braking, where 0.5 g is a hard stop at any speed.
         val smoothStop =
-            detectDriveEvents(
+            detectRideEvents(
                 ride(seconds = 20.0) { t ->
-                    val decel = if (t >= 10.0 && t < 13.0) 5.9 * (t - 10.0) / 3.0 else 0.0 // ramp to 0.6 g
+                    val decel =
+                        if (t >= 10.0 && t < 13.0) 5.9 * (t - 10.0) / 3.0 else 0.0 // ramp to 0.6 g
                     Triple(-decel, 0.0, GRAVITY)
                 },
                 0L,
             )
-        assertEquals("braking must keep its force bypass, got $smoothStop", 1, smoothStop.size)
-        assertEquals(DriveEventType.BRAKING, smoothStop[0].type)
+        Assert.assertEquals(
+            "braking must keep its force bypass, got $smoothStop",
+            1,
+            smoothStop.size,
+        )
+        Assert.assertEquals(RideEventType.BRAKING, smoothStop[0].type)
     }
 
     /**
@@ -437,12 +577,23 @@ class DriveEventsTest {
                 yawRateAt = { t -> yaw * profile(t) },
             ) { t -> Triple(0.0, lateral * profile(t), GRAVITY) }
 
-        assertTrue("IMU speed should veto the lying GPS, got ${detectDriveEvents(parking, 0L)}", detectDriveEvents(parking, 0L).isEmpty())
+        Assert.assertTrue(
+            "IMU speed should veto the lying GPS, got ${detectRideEvents(parking, 0L)}",
+            detectRideEvents(
+                parking,
+                0L,
+            ).isEmpty(),
+        )
 
         // Starve the IMU estimate by demanding an impossible yaw rate, and the false positive returns.
-        val gpsOnly = detectDriveEvents(parking, 0L, DriveEventConfig(minYawForImuSpeedRadPerS = 1_000.0))
-        assertEquals("without the IMU check the lying GPS lets it through, got $gpsOnly", 1, gpsOnly.size)
-        assertEquals(DriveEventType.CORNERING, gpsOnly[0].type)
+        val gpsOnly =
+            detectRideEvents(parking, 0L, RideEventConfig(minYawForImuSpeedRadPerS = 1_000.0))
+        Assert.assertEquals(
+            "without the IMU check the lying GPS lets it through, got $gpsOnly",
+            1,
+            gpsOnly.size,
+        )
+        Assert.assertEquals(RideEventType.CORNERING, gpsOnly[0].type)
     }
 
     /** The guard against over-suppressing: a genuinely harsh swerve at speed must still register. */
@@ -455,8 +606,12 @@ class DriveEventsTest {
         fun profile(t: Double) =
             when {
                 t < 10.0 -> 0.0
-                t < 10.3 -> (t - 10.0) / 0.3 // wound on fast: ~1.5 g/s
+
+                t < 10.3 -> (t - 10.0) / 0.3
+
+                // wound on fast: ~1.5 g/s
                 t < 12.0 -> 1.0
+
                 else -> 0.0
             }
 
@@ -467,9 +622,13 @@ class DriveEventsTest {
                 yawRateAt = { t -> yaw * profile(t) },
             ) { t -> Triple(0.0, lateral * profile(t), GRAVITY) }
 
-        val events = detectDriveEvents(swerve, 0L)
-        assertEquals("a hard swerve at 54 km/h must still register, got $events", 1, events.size)
-        assertEquals(DriveEventType.CORNERING, events[0].type)
+        val events = detectRideEvents(swerve, 0L)
+        Assert.assertEquals(
+            "a hard swerve at 54 km/h must still register, got $events",
+            1,
+            events.size,
+        )
+        Assert.assertEquals(RideEventType.CORNERING, events[0].type)
     }
 
     /**
@@ -481,6 +640,7 @@ class DriveEventsTest {
     @Test
     fun thinningOrientationAndGyroDoesNotChangeDetection() {
         val yaw = 4.4 / 15.0
+
         fun profile(t: Double) =
             when {
                 t < 10.0 -> 0.0
@@ -499,15 +659,23 @@ class DriveEventsTest {
                 rotation = full.rotation.filterIndexed { i, _ -> i % 5 == 0 },
             )
 
-        val fromFull = detectDriveEvents(full, 0L)
-        val fromThinned = detectDriveEvents(thinned, 0L)
+        val fromFull = detectRideEvents(full, 0L)
+        val fromThinned = detectRideEvents(thinned, 0L)
 
-        assertEquals("control: the full-rate ride must produce an event to compare", 1, fromFull.size)
-        assertEquals(fromFull.size, fromThinned.size)
-        assertEquals(fromFull[0].type, fromThinned[0].type)
-        assertEquals(fromFull[0].startOffsetMs.toDouble(), fromThinned[0].startOffsetMs.toDouble(), 40.0)
-        assertEquals(fromFull[0].peakG, fromThinned[0].peakG, 0.005)
-        assertEquals(fromFull[0].peakJerkGPerS, fromThinned[0].peakJerkGPerS, 0.05)
+        Assert.assertEquals(
+            "control: the full-rate ride must produce an event to compare",
+            1,
+            fromFull.size,
+        )
+        Assert.assertEquals(fromFull.size, fromThinned.size)
+        Assert.assertEquals(fromFull[0].type, fromThinned[0].type)
+        Assert.assertEquals(
+            fromFull[0].startOffsetMs.toDouble(),
+            fromThinned[0].startOffsetMs.toDouble(),
+            40.0,
+        )
+        Assert.assertEquals(fromFull[0].peakG, fromThinned[0].peakG, 0.005)
+        Assert.assertEquals(fromFull[0].peakJerkGPerS, fromThinned[0].peakJerkGPerS, 0.05)
     }
 
     /** A missing sensor means no score, never a guessed one. */
@@ -515,8 +683,8 @@ class DriveEventsTest {
     fun missingRotationVectorYieldsNothing() {
         val full = ride(seconds = 20.0) { Triple(-3.43, 0.0, GRAVITY) }
 
-        assertTrue(detectDriveEvents(full.copy(rotation = emptyList()), 0L).isEmpty())
-        assertTrue(detectDriveEvents(full.copy(accel = emptyList()), 0L).isEmpty())
-        assertTrue(detectDriveEvents(full.copy(locations = emptyList()), 0L).isEmpty())
+        Assert.assertTrue(detectRideEvents(full.copy(rotation = emptyList()), 0L).isEmpty())
+        Assert.assertTrue(detectRideEvents(full.copy(accel = emptyList()), 0L).isEmpty())
+        Assert.assertTrue(detectRideEvents(full.copy(locations = emptyList()), 0L).isEmpty())
     }
 }

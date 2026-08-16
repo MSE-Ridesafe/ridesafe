@@ -5,23 +5,23 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
-import de.uhi.enia.ridesafe.data.DriveEvent
 import de.uhi.enia.ridesafe.data.MergedSummary
 import de.uhi.enia.ridesafe.data.Ride
+import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.mergeGroupIdFor
 import de.uhi.enia.ridesafe.data.rematchRides
 import de.uhi.enia.ridesafe.data.summarizeMerge
-import de.uhi.enia.ridesafe.tracking.ANALYZER_VERSION
-import de.uhi.enia.ridesafe.tracking.analyzeRide
-import de.uhi.enia.ridesafe.tracking.processRide
-import de.uhi.enia.ridesafe.tracking.processedRouteFile
-import de.uhi.enia.ridesafe.tracking.pruneStaleRoutes
-import de.uhi.enia.ridesafe.tracking.readProcessedRoute
-import de.uhi.enia.ridesafe.tracking.readRideLocations
-import de.uhi.enia.ridesafe.tracking.reverseGeocode
-import de.uhi.enia.ridesafe.tracking.ridesDir
+import de.uhi.enia.ridesafe.rides.processing.event.ANALYZER_VERSION
+import de.uhi.enia.ridesafe.rides.processing.event.analyzeRide
+import de.uhi.enia.ridesafe.rides.processing.processRide
+import de.uhi.enia.ridesafe.rides.processing.processedRouteFile
+import de.uhi.enia.ridesafe.rides.processing.pruneStaleRoutes
+import de.uhi.enia.ridesafe.rides.processing.readProcessedRoute
+import de.uhi.enia.ridesafe.rides.processing.reverseGeocode
+import de.uhi.enia.ridesafe.rides.recording.readRideLocations
+import de.uhi.enia.ridesafe.rides.recording.ridesDir
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -88,7 +88,7 @@ class RidesViewModel(
     private val rideDao = db.rideDao()
     private val vehicleDao = db.vehicleDao()
     private val savedAddressDao = db.savedAddressDao()
-    private val driveEventDao = db.driveEventDao()
+    private val rideEventDao = db.rideEventDao()
 
     init {
         // One pass per launch: reverse-geocode any ride that has a fix but no stored address yet
@@ -99,7 +99,8 @@ class RidesViewModel(
         // sidecar, not the raw file. Bumping ROUTE_VERSION is all it takes to re-filter every ride.
         viewModelScope.launch {
             pruneStaleRoutes(getApplication())
-            rideDao.processable()
+            rideDao
+                .processable()
                 .filterNot { processedRouteFile(getApplication(), it).exists() }
                 .forEach { process(it) }
         }
@@ -148,10 +149,10 @@ class RidesViewModel(
     fun groupStops(groupId: Long): Flow<List<Ride>> = rideDao.observeGroup(groupId)
 
     /** A ride's detected driving events (ANL-01), for the map's marker layer. */
-    fun driveEvents(rideId: Long): Flow<List<DriveEvent>> = driveEventDao.observeForRide(rideId)
+    fun rideEvents(rideId: Long): Flow<List<RideEvent>> = rideEventDao.observeForRide(rideId)
 
     /** Every stop's driving events for a merged ride, so its map covers the whole trip (MRG-07). */
-    fun groupDriveEvents(groupId: Long): Flow<List<DriveEvent>> = driveEventDao.observeForGroup(groupId)
+    fun groupRideEvents(groupId: Long): Flow<List<RideEvent>> = rideEventDao.observeForGroup(groupId)
 
     /** Per-stop routes for the merged map, each drawn as its own disconnected polyline (MRG-07). */
     suspend fun routes(stops: List<Ride>): List<List<LatLng>> = stops.map { route(it) }
@@ -221,14 +222,14 @@ class RidesViewModel(
      * fan out and compete with the launch's other backfills for the disk.
      */
     private suspend fun analyzePending() {
-        for (ride in driveEventDao.needingAnalysis(ANALYZER_VERSION)) {
+        for (ride in rideEventDao.needingAnalysis(ANALYZER_VERSION)) {
             val events = analyzeRide(getApplication(), ride) ?: continue
-            driveEventDao.replaceForRide(ride.id, ANALYZER_VERSION, events)
+            rideEventDao.replaceForRide(ride.id, ANALYZER_VERSION, events)
             // Both peaks are logged because they're the two numbers detection is tuned on, and
             // reading them off real rides beats guessing at thresholds. It also keeps "no events"
             // distinguishable from "detector broken".
             Log.i(
-                "DriveEvents",
+                "RideEvents",
                 "ride ${ride.id}: ${events.size} events, peak ${events.maxOfOrNull { it.peakG } ?: 0.0} g / " +
                     "${events.maxOfOrNull { it.peakJerkGPerS } ?: 0.0} g/s",
             )

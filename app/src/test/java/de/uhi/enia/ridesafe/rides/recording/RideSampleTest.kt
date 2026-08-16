@@ -1,4 +1,4 @@
-package de.uhi.enia.ridesafe.tracking
+package de.uhi.enia.ridesafe.rides.recording
 
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
@@ -19,7 +19,15 @@ class RideSampleTest {
         lat: Double,
         lon: Double,
         speed: Float = 0f,
-    ) = LocationSample(t = tNanos, lat = lat, lon = lon, alt = 0.0, speed = speed, bearing = 0f, accuracy = 0f)
+    ) = LocationSample(
+        t = tNanos,
+        lat = lat,
+        lon = lon,
+        alt = 0.0,
+        speed = speed,
+        bearing = 0f,
+        accuracy = 0f,
+    )
 
     @Test
     fun emptyStreamHasNoEndpoints() {
@@ -72,7 +80,14 @@ class RideSampleTest {
             listOf(
                 loc(1, 50.1, 8.2, speed = 12.5f),
                 MotionSample(t = 2, sensor = MotionSensor.ACCEL, x = 0.1f, y = 9.8f, z = 0.2f),
-                MotionSample(t = 3, sensor = MotionSensor.ROTATION, x = 0.1f, y = 0.2f, z = 0.3f, w = 0.9f),
+                MotionSample(
+                    t = 3,
+                    sensor = MotionSensor.ROTATION,
+                    x = 0.1f,
+                    y = 0.2f,
+                    z = 0.3f,
+                    w = 0.9f,
+                ),
             )
         val lines = original.map { json.encodeToString(it) }
         val decoded = lines.map { json.decodeFromString<RideSample>(it) }

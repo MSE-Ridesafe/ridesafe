@@ -42,7 +42,7 @@ import de.uhi.enia.ridesafe.data.DEFAULT_PLACE_ICON
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
 import de.uhi.enia.ridesafe.data.fixedIcon
-import de.uhi.enia.ridesafe.tracking.shortAddress
+import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 
 /** The three shortcut kinds, in display order. */

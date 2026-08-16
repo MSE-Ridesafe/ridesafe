@@ -7,22 +7,22 @@ import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface DriveEventDao {
+interface RideEventDao {
     /** One ride's events, oldest first — the map marker layer and the detail list read this. */
-    @Query("SELECT * FROM drive_events WHERE rideId = :rideId ORDER BY startOffsetMs ASC")
-    fun observeForRide(rideId: Long): Flow<List<DriveEvent>>
+    @Query("SELECT * FROM ride_events WHERE rideId = :rideId ORDER BY startOffsetMs ASC")
+    fun observeForRide(rideId: Long): Flow<List<RideEvent>>
 
     /** Every stop's events for a merged ride (MRG-07), so the merged map shows the whole trip. */
     @Query(
-        "SELECT e.* FROM drive_events e JOIN rides r ON e.rideId = r.id " +
+        "SELECT e.* FROM ride_events e JOIN rides r ON e.rideId = r.id " +
             "WHERE r.mergeGroupId = :groupId ORDER BY r.startedAtEpochMs ASC, e.startOffsetMs ASC",
     )
-    fun observeForGroup(groupId: Long): Flow<List<DriveEvent>>
+    fun observeForGroup(groupId: Long): Flow<List<RideEvent>>
 
     @Insert
-    suspend fun insertAll(events: List<DriveEvent>)
+    suspend fun insertAll(events: List<RideEvent>)
 
-    @Query("DELETE FROM drive_events WHERE rideId = :rideId")
+    @Query("DELETE FROM ride_events WHERE rideId = :rideId")
     suspend fun deleteForRide(rideId: Long)
 
     /**
@@ -33,7 +33,7 @@ interface DriveEventDao {
     suspend fun replaceForRide(
         rideId: Long,
         analyzerVersion: Int,
-        events: List<DriveEvent>,
+        events: List<RideEvent>,
     ) {
         deleteForRide(rideId)
         insertAll(events)
