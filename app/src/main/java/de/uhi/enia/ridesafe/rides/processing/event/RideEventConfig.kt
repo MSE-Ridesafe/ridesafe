@@ -57,8 +57,9 @@ data class DirectionThresholds(
  * Per-direction thresholds live in [DirectionThresholds]; everything here applies to all three
  * directions alike, or governs the signal conditioning and gating that runs before them.
  *
- * Changing any value here invalidates stored events, so bump [ANALYZER_VERSION] alongside it — the
- * backfill then re-analyzes every ride from its raw samples on next launch. That loop is the entire
+ * Changing any value here invalidates stored events, so bump
+ * [de.uhi.enia.ridesafe.rides.processing.RideEventStage.version] alongside it — the pipeline then
+ * re-analyzes every ride from its raw samples on next launch. That loop is the entire
  * tuning workflow, and it is why events store their measured magnitudes rather than a verdict:
  * anything decidable at read time should be, and never costs a re-analysis.
  *

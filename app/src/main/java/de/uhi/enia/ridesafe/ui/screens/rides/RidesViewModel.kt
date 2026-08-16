@@ -13,11 +13,8 @@ import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.mergeGroupIdFor
 import de.uhi.enia.ridesafe.data.rematchRides
 import de.uhi.enia.ridesafe.data.summarizeMerge
-import de.uhi.enia.ridesafe.rides.processing.event.ANALYZER_VERSION
-import de.uhi.enia.ridesafe.rides.processing.event.analyzeRide
-import de.uhi.enia.ridesafe.rides.processing.processRide
+import de.uhi.enia.ridesafe.rides.processing.RideAnalysisPipeline
 import de.uhi.enia.ridesafe.rides.processing.processedRouteFile
-import de.uhi.enia.ridesafe.rides.processing.pruneStaleRoutes
 import de.uhi.enia.ridesafe.rides.processing.readProcessedRoute
 import de.uhi.enia.ridesafe.rides.processing.reverseGeocode
 import de.uhi.enia.ridesafe.rides.recording.readRideLocations
@@ -28,6 +25,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -90,26 +88,27 @@ class RidesViewModel(
     private val savedAddressDao = db.savedAddressDao()
     private val rideEventDao = db.rideEventDao()
 
+    private val pipeline = RideAnalysisPipeline(app, db)
+
     init {
         // One pass per launch: reverse-geocode any ride that has a fix but no stored address yet
         // (existing rides, plus anything a previous run couldn't geocode while offline).
         viewModelScope.launch { rideDao.needingAddresses().forEach { fillAddresses(it) } }
-        // One pass per launch: Kalman-filter + simplify the GPS of any ride without a current-version
-        // route sidecar, and persist its distance/avg speed so the detail view loads from the DB +
-        // sidecar, not the raw file. Bumping ROUTE_VERSION is all it takes to re-filter every ride.
-        viewModelScope.launch {
-            pruneStaleRoutes(getApplication())
-            rideDao
-                .processable()
-                .filterNot { processedRouteFile(getApplication(), it).exists() }
-                .forEach { process(it) }
-        }
         // One pass per launch: match every ride's endpoints to the saved addresses (ADR-07), so new
         // recordings pick up existing places (edits while the app is open re-match in SavedAddressViewModel).
         viewModelScope.launch { rematchRides(rideDao, savedAddressDao) }
-        // One pass per launch: detect driving events (ANL-01) for rides never analyzed or analyzed by
-        // an older detector. Bumping ANALYZER_VERSION is therefore all it takes to re-tune every ride.
-        viewModelScope.launch { analyzePending() }
+        // Everything derived from a ride's sample file — GPS filtering and metrics (ANL-02), then
+        // driving-event detection (ANL-01) — as one ordered pipeline per ride, several rides at a
+        // time. Re-runs whenever the set of finished rides changes, so a ride recorded while the app
+        // is open is analyzed without waiting for a relaunch; writing metrics or events doesn't
+        // change that set, so the pipeline can't re-trigger itself.
+        viewModelScope.launch {
+            rideDao
+                .observeAll()
+                .map { rides -> rides.filter { it.endedAtEpochMs != null }.map(Ride::id).toSet() }
+                .distinctUntilChanged()
+                .collect { pipeline.runPending() }
+        }
     }
 
     /** Saved places (DR-ADR), exposed so the detail screen can resolve a ride's matched endpoints. */
@@ -215,32 +214,6 @@ class RidesViewModel(
                     if (file.exists()) readRideLocations(file).map { LatLng(it.lat, it.lon) } else emptyList()
                 }
         }
-
-    /**
-     * Detect and store driving events for every ride whose events are missing or stale (ANL-01).
-     * Runs one ride at a time — each pass re-reads a whole sample file, so this deliberately doesn't
-     * fan out and compete with the launch's other backfills for the disk.
-     */
-    private suspend fun analyzePending() {
-        for (ride in rideEventDao.needingAnalysis(ANALYZER_VERSION)) {
-            val events = analyzeRide(getApplication(), ride) ?: continue
-            rideEventDao.replaceForRide(ride.id, ANALYZER_VERSION, events)
-            // Both peaks are logged because they're the two numbers detection is tuned on, and
-            // reading them off real rides beats guessing at thresholds. It also keeps "no events"
-            // distinguishable from "detector broken".
-            Log.i(
-                "RideEvents",
-                "ride ${ride.id}: ${events.size} events, peak ${events.maxOfOrNull { it.peakG } ?: 0.0} g / " +
-                    "${events.maxOfOrNull { it.peakJerkGPerS } ?: 0.0} g/s",
-            )
-        }
-    }
-
-    /** Process a ride's GPS (filter + simplify + sidecar) and persist its distance/avg speed; no-op if no fixes. */
-    private suspend fun process(ride: Ride) {
-        val metrics = processRide(getApplication(), ride) ?: return
-        rideDao.setMetrics(ride.id, metrics.distanceMeters, metrics.avgSpeedMps)
-    }
 
     /** Reverse-geocode whichever endpoints lack an address and persist; a no-op if nothing resolves. */
     private suspend fun fillAddresses(ride: Ride) {

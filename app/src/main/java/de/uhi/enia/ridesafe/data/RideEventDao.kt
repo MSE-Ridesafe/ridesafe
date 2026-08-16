@@ -26,33 +26,20 @@ interface RideEventDao {
     suspend fun deleteForRide(rideId: Long)
 
     /**
-     * Replace a ride's events and stamp the detector version that produced them, as one transaction
-     * so a re-analysis can't leave a ride holding a mix of two detectors' output.
+     * Replace a ride's events as one transaction, so a re-analysis can't leave a ride holding a mix
+     * of two detectors' output. Which detector build produced them is stamped separately, by the
+     * pipeline into `ride_analysis`, alongside every other analysis step's version.
      */
     @Transaction
     suspend fun replaceForRide(
         rideId: Long,
-        analyzerVersion: Int,
         events: List<RideEvent>,
     ) {
         deleteForRide(rideId)
         insertAll(events)
-        markAnalyzed(rideId, analyzerVersion)
     }
 
-    @Query("UPDATE rides SET analyzerVersion = :analyzerVersion WHERE id = :rideId")
-    suspend fun markAnalyzed(
-        rideId: Long,
-        analyzerVersion: Int,
-    )
-
-    /**
-     * Finished rides whose events are missing or were produced by an older detector. Rides that
-     * recorded no GPS are skipped so we don't keep re-reading a sample file that can't yield events.
-     */
-    @Query(
-        "SELECT * FROM rides WHERE endedAtEpochMs IS NOT NULL AND startLat IS NOT NULL " +
-            "AND (analyzerVersion IS NULL OR analyzerVersion < :currentVersion)",
-    )
-    suspend fun needingAnalysis(currentVersion: Int): List<Ride>
+    /** One ride's stored events, for an analysis step deriving from them rather than from samples. */
+    @Query("SELECT * FROM ride_events WHERE rideId = :rideId ORDER BY startOffsetMs ASC")
+    suspend fun eventsFor(rideId: Long): List<RideEvent>
 }

@@ -19,7 +19,7 @@ fun RideEventType.symbol(): String =
 /**
  * One detected harsh-driving event (ANL-01), derived from a ride's motion samples. Derived and
  * regenerable: the raw NDJSON sample file stays the source of truth, so re-running detection is
- * "delete this ride's rows, analyze again" — see [Ride.analyzerVersion].
+ * "delete this ride's rows, analyze again" — see [RideAnalysisState].
  *
  * Detection stores both magnitudes rather than a yes/no verdict, so *how harsh counts as harsh*
  * stays a read-time decision. Re-tuning severity is a query change, never a re-analysis.

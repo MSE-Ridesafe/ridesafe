@@ -33,9 +33,8 @@ import androidx.room.PrimaryKey
  * or null when none matches (ADR-07). Persisted by the re-match pass (rematchRides), which reruns on
  * any saved-address change and once per launch, so the display just resolves the id to the place.
  *
- * [analyzerVersion] records which build of the driving-event detector produced this ride's
- * [RideEvent] rows; null means never analyzed. Bumping ANALYZER_VERSION marks every ride stale, and
- * the backfill pass re-analyzes them from the raw sample file — that is the whole re-tuning story.
+ * Which build of which analysis step last ran for this ride is tracked separately, in
+ * [RideAnalysisState] — one row per step, so re-tuning one step doesn't invalidate the others.
  *
  * ponytail: notes/tags/purpose/safety score (DR-RID, ANL-01) are written by later UI/analysis
  * layers, not recording — add the columns via an ALTER-TABLE migration when those land.
@@ -60,5 +59,4 @@ data class Ride(
     val endAddress: String? = null,
     val startAddressId: Long? = null,
     val endAddressId: Long? = null,
-    val analyzerVersion: Int? = null,
 )

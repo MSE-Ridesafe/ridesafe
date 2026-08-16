@@ -1,18 +1,13 @@
 package de.uhi.enia.ridesafe.rides.processing
 
 import android.content.Context
-import android.util.Log
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.PolyUtil
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.rides.recording.EARTH_RADIUS_M
 import de.uhi.enia.ridesafe.rides.recording.LocationSample
 import de.uhi.enia.ridesafe.rides.recording.haversineMeters
-import de.uhi.enia.ridesafe.rides.recording.readRideLocations
 import de.uhi.enia.ridesafe.rides.recording.ridesDir
-import de.uhi.enia.ridesafe.rides.recording.trackDistanceMeters
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.apache.commons.math3.filter.DefaultMeasurementModel
 import org.apache.commons.math3.filter.DefaultProcessModel
 import org.apache.commons.math3.filter.KalmanFilter
@@ -23,8 +18,6 @@ import org.apache.commons.math3.linear.RealVector
 import java.io.File
 import kotlin.math.atan2
 import kotlin.math.cos
-
-private const val TAG = "RideProcessing"
 
 /**
  * Off-DB processing of a recorded ride's GPS track (ANL-02): Kalman-smooth the raw fixes (rejecting
@@ -40,13 +33,10 @@ data class RideMetrics(
 )
 
 /**
- * Version of the GPS processing pass, carried in the sidecar's filename so a bump re-processes every
- * ride — the same trick [de.uhi.enia.ridesafe.rides.processing.event.ANALYZER_VERSION] plays for driving events,
- * but on a file rather than a column, since the sidecar is already the "has been processed" marker.
- *
- * v2: the filter drops outliers instead of predicting through them, restarts after a GPS gap, and
- * discards uncorroborated runs — v1 tracks ended at the first bogus fix following an outage and
- * free-ran off the map from there, taking the distance with them.
+ * Version of the GPS processing pass. Whether a ride is due for it is tracked in `ride_analysis` like
+ * every other step's, but the number is also carried in the sidecar's filename, so a bump can't leave
+ * an older pass's route lying next to a newer one's. [RouteStage] stamps it and documents what
+ * changed between versions.
  */
 const val ROUTE_VERSION = 2
 
@@ -66,43 +56,6 @@ fun pruneStaleRoutes(appContext: Context) {
         .listFiles { f -> f.name.contains(".route") && !f.name.endsWith(".route.v$ROUTE_VERSION") }
         ?.forEach { it.delete() }
 }
-
-/**
- * Process one ride end-to-end: read its raw fixes, Kalman-filter them, write the simplified route to
- * the sidecar, and return distance (great-circle over the filtered track) and average speed (distance
- * over the ride's wall-clock duration, matching the detail view). Null when the ride has no usable
- * fixes — the file is missing/empty/corrupt — so the caller leaves the metrics null and retries later.
- */
-suspend fun processRide(
-    appContext: Context,
-    ride: Ride,
-): RideMetrics? =
-    withContext(Dispatchers.IO) {
-        val rawFile = File(ridesDir(appContext), ride.sampleFile)
-        val raw = if (rawFile.exists()) readRideLocations(rawFile) else emptyList()
-        if (raw.isEmpty()) return@withContext null
-
-        val filtered = kalmanFilterLocations(raw)
-        // Worst reported accuracy is the tell for *why* a ride's track was bad. The fused provider
-        // keeps emitting when GNSS is gone, from Wi-Fi and cell towers, and those fixes land hundreds
-        // of meters to kilometers away — but nearly always say so. A large drop count next to a
-        // modest worst accuracy is the other case: fixes that were wrong without admitting it.
-        Log.i(
-            TAG,
-            "ride ${ride.id}: kept ${filtered.size}/${raw.size} fixes, worst accuracy ${raw.maxOf { it.accuracy }} m",
-        )
-        // Everything filtered out means no usable track, not a zero-length ride: leave the metrics
-        // null (the caller retries later) and write no sidecar, so the map falls back to raw fixes.
-        if (filtered.isEmpty()) return@withContext null
-
-        val distance = trackDistanceMeters(filtered)
-        val durationSec = ride.endedAtEpochMs?.let { (it - ride.startedAtEpochMs) / 1000.0 } ?: 0.0
-        val avgSpeed = if (durationSec > 0) distance / durationSec else 0.0
-
-        val simplified = simplifyRoute(filtered.map { LatLng(it.lat, it.lon) })
-        writeProcessedRoute(processedRouteFile(appContext, ride), simplified)
-        RideMetrics(distance, avgSpeed)
-    }
 
 /** RDP-simplify a route (android-maps-utils, tolerance in meters). A <3-point route can't simplify. */
 fun simplifyRoute(

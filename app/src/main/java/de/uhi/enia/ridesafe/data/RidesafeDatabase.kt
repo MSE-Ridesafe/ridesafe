@@ -246,9 +246,49 @@ private val MIGRATION_11_12 =
         }
     }
 
+/**
+ * Moves analysis bookkeeping out of the rides table and into `ride_analysis`, one row per (ride,
+ * step), so the pipeline can re-derive one step without invalidating the rest.
+ *
+ * The seeds matter more than the table: they carry today's state across, so upgrading re-analyzes
+ * nothing that is already current. Route work is seeded from `distanceMeters`, which only the
+ * processing pass ever set, and the event steps from the `analyzerVersion` being retired — a ride
+ * stamped below the current detector stays stale and is picked up as it would have been anyway.
+ *
+ * The axis step has no stored output, so its seed is purely a marker; it is seeded wherever the
+ * events it feeds are current. A ride seeded route-current whose sidecar has since been pruned is
+ * caught at run time, when restoring it fails and the step is re-derived.
+ *
+ * minSdk 34 means SQLite 3.39+, so the column goes with a plain DROP COLUMN — no table rebuild.
+ */
+private val MIGRATION_12_13 =
+    object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS ride_analysis (" +
+                    "rideId INTEGER NOT NULL, " +
+                    "stage TEXT NOT NULL, " +
+                    "version INTEGER NOT NULL, " +
+                    "PRIMARY KEY(rideId, stage), " +
+                    "FOREIGN KEY(rideId) REFERENCES rides(id) ON DELETE CASCADE)",
+            )
+            db.execSQL(
+                "INSERT INTO ride_analysis SELECT id, 'route', 2 FROM rides WHERE distanceMeters IS NOT NULL",
+            )
+            db.execSQL(
+                "INSERT INTO ride_analysis SELECT id, 'axis', 1 FROM rides WHERE analyzerVersion >= 8",
+            )
+            db.execSQL(
+                "INSERT INTO ride_analysis SELECT id, 'events', analyzerVersion FROM rides " +
+                    "WHERE analyzerVersion IS NOT NULL",
+            )
+            db.execSQL("ALTER TABLE rides DROP COLUMN analyzerVersion")
+        }
+    }
+
 @Database(
-    entities = [Vehicle::class, Ride::class, SavedAddress::class, RideEvent::class],
-    version = 12,
+    entities = [Vehicle::class, Ride::class, SavedAddress::class, RideEvent::class, RideAnalysisState::class],
+    version = 13,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -260,6 +300,8 @@ abstract class RidesafeDatabase : RoomDatabase() {
     abstract fun savedAddressDao(): SavedAddressDao
 
     abstract fun rideEventDao(): RideEventDao
+
+    abstract fun rideAnalysisDao(): RideAnalysisDao
 
     companion object {
         @Volatile private var instance: RidesafeDatabase? = null
@@ -283,6 +325,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_9_10,
                         MIGRATION_10_11,
                         MIGRATION_11_12,
+                        MIGRATION_12_13,
                     ).build()
                     .also { instance = it }
             }
