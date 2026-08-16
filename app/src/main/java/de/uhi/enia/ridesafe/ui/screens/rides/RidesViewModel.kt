@@ -95,12 +95,10 @@ class RidesViewModel(
     val analysisProgress: StateFlow<RideAnalysisProgress> = pipeline.progress
 
     init {
-        // One pass per launch: reverse-geocode any ride that has a fix but no stored address yet
-        // (existing rides, plus anything a previous run couldn't geocode while offline).
-        viewModelScope.launch { rideDao.needingAddresses().forEach { fillAddresses(it) } }
-        // One pass per launch: match every ride's endpoints to the saved addresses (ADR-07), so new
-        // recordings pick up existing places (edits while the app is open re-match in SavedAddressViewModel).
-        viewModelScope.launch { rematchRides(rideDao, savedAddressDao) }
+        // One pass per launch: geocode any ride still missing an address and match every ride's
+        // endpoints to the saved places. Runs on its own rather than waiting for the analysis
+        // pipeline below, which can take a minute on a big backfill.
+        viewModelScope.launch { refreshPlaces() }
         // Everything derived from a ride's sample file — GPS filtering and metrics (ANL-02), then
         // driving-event detection (ANL-01) — as one ordered pipeline per ride, several rides at a
         // time. Re-runs whenever the set of finished rides changes, so a ride recorded while the app
@@ -111,8 +109,21 @@ class RidesViewModel(
                 .observeAll()
                 .map { rides -> rides.filter { it.endedAtEpochMs != null }.map(Ride::id).toSet() }
                 .distinctUntilChanged()
-                .collect { pipeline.runPending() }
+                .collect {
+                    pipeline.runPending()
+                    // Analysis can move a ride's endpoints off a bad first/last fix, which leaves
+                    // its address and saved place describing somewhere it never was; both are
+                    // cleared when that happens, so this fills them back in from the corrected
+                    // position while the user is still in the app.
+                    refreshPlaces()
+                }
         }
+    }
+
+    /** Fill in any missing ride address (DR-RID) and re-match every ride to the saved places (ADR-07). */
+    private suspend fun refreshPlaces() {
+        rideDao.needingAddresses().forEach { fillAddresses(it) }
+        rematchRides(rideDao, savedAddressDao)
     }
 
     /** Saved places (DR-ADR), exposed so the detail screen can resolve a ride's matched endpoints. */

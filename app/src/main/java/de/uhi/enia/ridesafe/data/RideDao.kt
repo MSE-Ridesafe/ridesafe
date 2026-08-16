@@ -68,6 +68,37 @@ interface RideDao {
     @Query("SELECT * FROM rides WHERE endedAtEpochMs IS NOT NULL AND startLat IS NOT NULL")
     suspend fun processable(): List<Ride>
 
+    /**
+     * Replace an endpoint the recording got wrong, and drop everything derived from it.
+     *
+     * Recording stores the raw first/last fix, and those are exactly where the fused provider is
+     * most likely to have been guessing — a ride can start hundreds of meters from where it really
+     * did. The Kalman pass rejects such a fix outright, so the filtered track's first point is the
+     * honest one. Its address and matched saved place were derived from the bad coordinate, so they
+     * are cleared here rather than left to disagree with the position they claim to describe; the
+     * geocode and re-match passes fill them back in.
+     */
+    @Query(
+        "UPDATE rides SET startLat = :lat, startLon = :lon, startAddress = NULL, startAddressId = NULL " +
+            "WHERE id = :id",
+    )
+    suspend fun correctStart(
+        id: Long,
+        lat: Double,
+        lon: Double,
+    )
+
+    /** The end-of-ride counterpart of [correctStart]. */
+    @Query(
+        "UPDATE rides SET endLat = :lat, endLon = :lon, endAddress = NULL, endAddressId = NULL " +
+            "WHERE id = :id",
+    )
+    suspend fun correctEnd(
+        id: Long,
+        lat: Double,
+        lon: Double,
+    )
+
     /** Store the distance + average speed the processing pass computed from the filtered track (ANL-02). */
     @Query("UPDATE rides SET distanceMeters = :distanceMeters, avgSpeedMps = :avgSpeedMps WHERE id = :id")
     suspend fun setMetrics(

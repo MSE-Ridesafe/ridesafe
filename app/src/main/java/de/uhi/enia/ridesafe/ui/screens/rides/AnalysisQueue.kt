@@ -39,7 +39,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -60,6 +59,7 @@ import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.formatRideDateTime
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 // ponytail: presentation timings, tune by feel.
 private const val RING_MS = 400 // catches the ring up to a new progress value
@@ -103,7 +103,7 @@ private fun rememberQueueRows(progress: RideAnalysisProgress): List<QueueRow> {
         lastSeen.values.filterNot { it.rideId in ids }.forEach { job ->
             finished[job.rideId] = QueueRow(job.rideId, job.startedAtEpochMs, 1f, done = true)
             scope.launch {
-                delay(DONE_HOLD_MS)
+                delay(DONE_HOLD_MS.milliseconds)
                 finished.remove(job.rideId)
             }
         }

@@ -7,7 +7,7 @@ import de.uhi.enia.ridesafe.rides.recording.RideSample
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -80,13 +80,24 @@ class RideAnalysisPipelineTest {
             assertEquals(fixes.map { it.fix }, firstPass.filterIsInstance<LocationSample>())
         }
 
-    /** An empty sink list is the "nothing scheduled in this pass" case: no read, fixes untouched. */
+    /** Fixes already in hand and nobody to feed: the pass is a no-op and must not re-read the file. */
     @Test
-    fun `a pass with no sinks reads nothing`() =
+    fun `a pass with no sinks and cached fixes reads nothing`() =
         runBlocking {
             val fixes = listOf(ReleasedFix(0L, LocationSample(0L, 50.0, 8.0, 0.0, 20f, 90f, 5f)))
             assertEquals(fixes, streamSamples(1L, File("does-not-exist"), emptyList(), fixes))
-            assertNull("never filtered stays never filtered", streamSamples(1L, File("nope"), emptyList()))
+        }
+
+    /**
+     * With no fixes cached, a sinkless pass still has to filter: a stage that reads the track
+     * without a per-sample callback — the endpoint correction — would otherwise be handed an empty
+     * track and quietly conclude the ride never moved.
+     */
+    @Test
+    fun `a sinkless pass still filters when no fixes are cached`() =
+        runBlocking {
+            val fixes = streamSamples(1L, rideFile(seconds = 30), emptyList())
+            assertTrue("the track must be filtered for a stage that has no sink", !fixes.isNullOrEmpty())
         }
 
     /**
@@ -107,6 +118,24 @@ class RideAnalysisPipelineTest {
             assertTrue("the motion stream should still flow", reused.isNotEmpty())
             assertTrue("no fix may appear from an empty track", reused.none { it is LocationSample })
         }
+
+    /**
+     * The endpoint correction's whole judgement call: the filter nudges every fix, so a small shift
+     * is smoothing and must not cost a Geocoder call, while the fused-provider glitches this exists
+     * to catch land far away.
+     */
+    @Test
+    fun `only a real endpoint move counts as a correction`() {
+        val lat = 52.15
+        val lon = 9.95
+        // ~11 m north — the filter smoothing a fix, not a mistake.
+        assertFalse(movedFar(lat, lon, lat + 0.0001, lon))
+        // ~333 m north — a fix the ride never visited.
+        assertTrue(movedFar(lat, lon, lat + 0.003, lon))
+        // Nothing recorded to compare against is not evidence of a mistake.
+        assertFalse(movedFar(null, null, lat, lon))
+        assertFalse(movedFar(lat, null, lat + 0.003, lon))
+    }
 
     private class FakeStage(
         override val id: String,

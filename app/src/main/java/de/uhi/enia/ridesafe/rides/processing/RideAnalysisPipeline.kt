@@ -157,7 +157,7 @@ interface RideStage {
  */
 private fun analysisPasses(db: RidesafeDatabase): List<List<RideStage>> =
     listOf(
-        listOf(RouteStage(db), ForwardAxisStage()),
+        listOf(RouteStage(db), RideEndpointStage(db), ForwardAxisStage()),
         listOf(RideEventStage(db)),
     )
 
@@ -372,18 +372,6 @@ internal fun planStages(
 }
 
 /**
- * Read the ride's samples once and push them at [sinks] in time order, with the GPS already
- * Kalman-filtered.
- *
- * The filter runs on the first pass that needs samples and its fixes are kept on the context;
- * later passes drop the file's raw [LocationSample]s and merge those cached fixes back into the
- * motion stream instead. That is what makes this one Kalman run per ride rather than one per
- * pass, and the sinks cannot tell the difference — they see the same fixes at the same points in
- * the stream either way. Cheap to hold, too: fixes arrive about once a second, against motion's
- * 50 Hz across three sensors.
- */
-
-/**
  * Read one ride's samples and push them at [sinks] in time order, with the GPS already
  * Kalman-filtered. Returns the filtered fixes, for the next pass to reuse.
  *
@@ -401,7 +389,11 @@ internal suspend fun streamSamples(
     cachedFixes: List<ReleasedFix>? = null,
     onProgress: ((Float) -> Unit)? = null,
 ): List<ReleasedFix>? {
-    if (sinks.isEmpty()) return cachedFixes
+    // Nothing to do only when there is no one to feed *and* the fixes are already in hand. A pass
+    // can legitimately have no sinks and still need this: a stage that reads the filtered track
+    // without wanting a per-sample callback (see [RideStage.needsSamples]) has nowhere else to get
+    // it from, and returning early would hand it an empty track and a silently wrong answer.
+    if (sinks.isEmpty() && cachedFixes != null) return cachedFixes
     // A long uninterrupted loop over millions of samples, so cancellation is checked by hand — a
     // queued ride the user cancels would otherwise run to completion with nobody waiting for it.
     val coroutineContext = currentCoroutineContext()

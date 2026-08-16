@@ -9,6 +9,7 @@ import de.uhi.enia.ridesafe.rides.processing.event.StreamingDetector
 import de.uhi.enia.ridesafe.rides.recording.LocationSample
 import de.uhi.enia.ridesafe.rides.recording.MotionSample
 import de.uhi.enia.ridesafe.rides.recording.MotionSensor
+import de.uhi.enia.ridesafe.rides.recording.haversineMeters
 import de.uhi.enia.ridesafe.rides.recording.trackDistanceMeters
 
 /**
@@ -71,7 +72,7 @@ class RouteStage(
  * threshold tuning starts feeling slow, and it needs its own staleness rule when it lands.
  */
 class ForwardAxisStage(
-    private val config: RideEventConfig = RideEventConfig(),
+    config: RideEventConfig = RideEventConfig(),
 ) : RideStage {
     override val id = "axis"
     override val version = 1
@@ -193,3 +194,73 @@ class RideEventStage(
 
 private const val TAG_ROUTE = "RideAnalysis"
 private const val TAG_EVENTS = "RideEvents"
+
+/**
+ * How far a ride's recorded endpoint must sit from the filtered one before it is treated as wrong
+ * rather than merely smoothed. The filter nudges every fix by a few meters, so some tolerance is
+ * required; a street address rarely changes below this, while the failure mode being corrected —
+ * a fused-provider fix from Wi-Fi or cell towers — misses by hundreds of meters to kilometers.
+ *
+ * Raise it and endpoints one street over keep their wrong address; lower it and rides are
+ * re-geocoded for a move too small to change the answer, each call a chance to fail offline.
+ */
+private const val ENDPOINT_MOVED_METERS = 50.0
+
+/**
+ * Correct a ride's start/end position from the filtered track (ANL-02).
+ *
+ * Recording stores the raw first and last fix, and those two are the likeliest in the whole ride to
+ * be wrong: GPS is still converging at the start and the phone is often indoors again by the end,
+ * so the fused provider falls back to Wi-Fi and cell towers. The Kalman pass already rejects such a
+ * fix — it simply never reached the columns the rest of the app reads, so the address, the matched
+ * saved place and the map pins were all derived from a point the ride never visited.
+ *
+ * Only writes when an endpoint actually moved [ENDPOINT_MOVED_METERS]; the filter shifts every fix
+ * slightly, and re-geocoding a ride whose start moved three meters costs a network call to be told
+ * the same street.
+ *
+ * A separate stage rather than part of [RouteStage] on purpose: it means a change to *this* logic
+ * re-derives endpoints alone, leaving the detector's stamps — and their two file passes — untouched.
+ */
+class RideEndpointStage(
+    private val db: RidesafeDatabase,
+) : RideStage {
+    override val id = "endpoints"
+    override val version = 1
+
+    // Not for its output — the fixes come from the pass driver — but for its version: a filter that
+    // behaves differently picks different endpoints.
+    override val dependsOn = listOf("route")
+
+    override suspend fun finish(ctx: RideAnalysisContext) {
+        val fixes = ctx.filteredFixes.orEmpty()
+        if (fixes.isEmpty()) return // no usable track; the recorded endpoints are all there is
+        val ride = ctx.ride
+        val dao = db.rideDao()
+
+        val first = fixes.first().fix
+        if (movedFar(ride.startLat, ride.startLon, first.lat, first.lon)) {
+            Log.i(TAG_ROUTE, "ride ${ride.id}: start was off, correcting and re-geocoding")
+            dao.correctStart(ride.id, first.lat, first.lon)
+        }
+        val last = fixes.last().fix
+        if (movedFar(ride.endLat, ride.endLon, last.lat, last.lon)) {
+            Log.i(TAG_ROUTE, "ride ${ride.id}: end was off, correcting and re-geocoding")
+            dao.correctEnd(ride.id, last.lat, last.lon)
+        }
+    }
+}
+
+/**
+ * Whether a filtered endpoint sits far enough from the recorded one to be a correction rather than
+ * smoothing. False when nothing was recorded to compare against — there is no evidence of a mistake.
+ */
+internal fun movedFar(
+    recordedLat: Double?,
+    recordedLon: Double?,
+    filteredLat: Double,
+    filteredLon: Double,
+): Boolean {
+    if (recordedLat == null || recordedLon == null) return false
+    return haversineMeters(recordedLat, recordedLon, filteredLat, filteredLon) > ENDPOINT_MOVED_METERS
+}

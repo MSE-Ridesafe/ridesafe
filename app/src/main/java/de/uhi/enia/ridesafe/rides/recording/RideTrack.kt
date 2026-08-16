@@ -60,54 +60,6 @@ data class RideSamples(
 )
 
 /**
- * Reads a ride's whole sample stream into memory, split per stream, tolerating a truncated or
- * corrupt tail the same way [readRideLocations] does. Every sensor is kept at the recorded rate —
- * nothing is thinned.
- *
- * This materialises the ride, so it costs roughly 25 MB per hour of driving. That is fine for tests
- * and for anything working with a single short ride; the analysis path deliberately does not use it
- * and streams via [forEachSampleInTimeOrder] instead, so that a six-hour ride costs the same as a
- * six-minute one.
- */
-suspend fun readRideSamples(file: File): RideSamples =
-    withContext(Dispatchers.IO) {
-        val locations = ArrayList<LocationSample>()
-        val accel = ArrayList<MotionSample>()
-        val gyro = ArrayList<MotionSample>()
-        val rotation = ArrayList<MotionSample>()
-        try {
-            GZIPInputStream(FileInputStream(file)).bufferedReader().use { r ->
-                var line = r.readLine()
-                while (line != null) {
-                    when (val sample = runCatching { rideSampleJson.decodeFromString<RideSample>(line) }.getOrNull()) {
-                        is LocationSample -> {
-                            locations.add(sample)
-                        }
-
-                        is MotionSample -> {
-                            when (sample.sensor) {
-                                MotionSensor.ACCEL -> accel.add(sample)
-                                MotionSensor.GYRO -> gyro.add(sample)
-                                MotionSensor.ROTATION -> rotation.add(sample)
-                            }
-                        }
-
-                        null -> {
-                            Unit
-                        } // unparseable line; skip it
-                    }
-                    line = r.readLine()
-                }
-            }
-        } catch (e: CancellationException) {
-            throw e // cancellation is not a corrupt file; let it unwind
-        } catch (e: Exception) {
-            Log.w("RideRecording", "truncated sample file ${file.name}; recovered ${accel.size} accel samples", e)
-        }
-        RideSamples(locations, accel, gyro, rotation)
-    }
-
-/**
  * Reads a ride's samples and hands them to [onSample] in true timestamp order, holding only a
  * bounded window in memory rather than the whole ride.
  *
