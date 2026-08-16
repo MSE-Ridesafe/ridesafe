@@ -89,6 +89,10 @@ import de.uhi.enia.ridesafe.util.formatTimeOfDay
  * speed come from the persisted [Ride.distanceMeters]/[Ride.avgSpeedMps] (filled by the processing
  * pass ANL-02); they fall back to computing from [route] only for a ride not processed yet, where
  * [route] is the raw track (the simplified sidecar is only ever loaded once the columns are filled).
+ *
+ * [analysisProgress] is non-null only while this ride is still in the analysis queue (ANL-03), and
+ * puts a notice at the top of the screen — without it, a half-analyzed ride just looks broken:
+ * missing distance, no events, and nothing saying why.
  */
 @Composable
 fun RideDetailScreen(
@@ -98,6 +102,7 @@ fun RideDetailScreen(
     startPlace: SavedAddress?,
     endPlace: SavedAddress?,
     unitSystem: UnitSystemSetting,
+    analysisProgress: Float?,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -139,6 +144,10 @@ fun RideDetailScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            if (analysisProgress != null) {
+                AnalysisNoticeCard(progress = analysisProgress)
+            }
+
             RouteMapCard(segments = route?.let { listOf(it) }, rideEvents = rideEvents)
 
             // Build each stop, folding in a matched saved place (ADR-09): show "<address>, <dist> from

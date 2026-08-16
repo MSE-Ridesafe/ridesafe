@@ -14,6 +14,7 @@ import de.uhi.enia.ridesafe.data.mergeGroupIdFor
 import de.uhi.enia.ridesafe.data.rematchRides
 import de.uhi.enia.ridesafe.data.summarizeMerge
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisPipeline
+import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
 import de.uhi.enia.ridesafe.rides.processing.processedRouteFile
 import de.uhi.enia.ridesafe.rides.processing.readProcessedRoute
 import de.uhi.enia.ridesafe.rides.processing.reverseGeocode
@@ -89,6 +90,9 @@ class RidesViewModel(
     private val rideEventDao = db.rideEventDao()
 
     private val pipeline = RideAnalysisPipeline(app, db)
+
+    /** The analysis queue (ANL-03), for the Rides status bar, the queue screen and the detail notice. */
+    val analysisProgress: StateFlow<RideAnalysisProgress> = pipeline.progress
 
     init {
         // One pass per launch: reverse-geocode any ride that has a fix but no stored address yet

@@ -58,8 +58,7 @@ class RouteStage(
     }
 
     /** The sidecar is the output; metrics are already on the ride row. Missing file ⇒ derive again. */
-    override suspend fun load(ctx: RideAnalysisContext): Boolean =
-        readProcessedRoute(processedRouteFile(ctx.appContext, ctx.ride)) != null
+    override suspend fun load(ctx: RideAnalysisContext): Boolean = readProcessedRoute(processedRouteFile(ctx.appContext, ctx.ride)) != null
 }
 
 /**
@@ -94,7 +93,7 @@ class ForwardAxisStage(
                     estimator.onFix(sample)
                 }
 
-                is MotionSample ->
+                is MotionSample -> {
                     if (sample.sensor == MotionSensor.ACCEL) {
                         accelCount++
                         if (sample.t < firstAccel) firstAccel = sample.t
@@ -102,6 +101,7 @@ class ForwardAxisStage(
                     } else {
                         estimator.onMotion(sample)
                     }
+                }
             }
         }
 

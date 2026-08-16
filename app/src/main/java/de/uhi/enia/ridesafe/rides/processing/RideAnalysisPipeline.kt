@@ -17,7 +17,13 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import java.io.File
 
 private const val TAG = "RideAnalysis"
@@ -156,6 +162,32 @@ private fun analysisPasses(db: RidesafeDatabase): List<List<RideStage>> =
     )
 
 /**
+ * One ride the pipeline is working through. [progress] runs 0..1 across every file pass the ride's
+ * plan calls for, so a ride needing only detection fills as fast as one needing the whole pipeline.
+ */
+data class RideAnalysisJob(
+    val rideId: Long,
+    val startedAtEpochMs: Long,
+    val progress: Float = 0f,
+)
+
+/**
+ * What the pipeline is currently chewing through, for the UI to render. [jobs] shrinks as rides
+ * finish while [total] stays put, which is what makes "32 of 72" countable; both reset to empty
+ * once the run ends. A ride that failed or had nothing to derive still leaves [jobs] — from the
+ * queue's point of view it is dealt with either way.
+ */
+data class RideAnalysisProgress(
+    val jobs: List<RideAnalysisJob> = emptyList(),
+    val total: Int = 0,
+) {
+    val completed: Int get() = total - jobs.size
+
+    /** True while there is anything left to show; the status bar and queue key off this. */
+    val running: Boolean get() = jobs.isNotEmpty()
+}
+
+/**
  * Runs each ride's analysis steps as one ordered pipeline, and separate rides in parallel.
  *
  * The order matters and used to be missing: route filtering and event detection ran as two
@@ -170,9 +202,20 @@ class RideAnalysisPipeline(
 ) {
     private val analysisDao = db.rideAnalysisDao()
 
+    private val _progress = MutableStateFlow(RideAnalysisProgress())
+
+    /** Live view of the queue (ANL-03), for the Rides status bar and the queue screen. */
+    val progress: StateFlow<RideAnalysisProgress> = _progress.asStateFlow()
+
     // Whole rides, not sample batches, are the unit of concurrency; the work is CPU-bound once the
-    // file is in page cache, so Default (bounded to cores) fits better than IO's elastic pool.
-    private val dispatcher = Dispatchers.Default.limitedParallelism(MAX_PARALLEL_RIDES)
+    // file is in page cache, so Default fits better than IO's elastic pool.
+    //
+    // The cap is a permit held for a ride's whole pipeline, not a limitedParallelism dispatcher.
+    // A dispatcher only bounds threads, and a ride releases its thread at every suspending DAO call
+    // — so all of them would start, run pass one, and park between passes, each holding its filtered
+    // fixes. Seventy rides half-done at once is a lot of retained track for no gain; this way three
+    // are genuinely in flight and the rest have not begun.
+    private val slots = Semaphore(MAX_PARALLEL_RIDES)
 
     /**
      * Analyse every ride with a stage that is missing or out of date, up to [MAX_PARALLEL_RIDES] at
@@ -184,16 +227,35 @@ class RideAnalysisPipeline(
         val stages = analysisPasses(db).flatten()
         val stamped = analysisDao.all().groupBy { it.rideId }
         val pending =
-            db.rideDao().processable().filter { ride ->
-                val stored = stamped[ride.id].orEmpty().associate { it.stage to it.version }
-                stages.any { stored[it.id] != it.version }
-            }
+            db
+                .rideDao()
+                .processable()
+                .filter { ride ->
+                    val stored = stamped[ride.id].orEmpty().associate { it.stage to it.version }
+                    stages.any { stored[it.id] != it.version }
+                }
+                // Newest first: the ride a user is most likely to open is the one they just drove,
+                // and it is the top of the Logbook. Row order is otherwise the table's, oldest first.
+                .sortedByDescending { it.startedAtEpochMs }
         if (pending.isEmpty()) return
 
         Log.i(TAG, "backfill: ${pending.size} ride(s), $MAX_PARALLEL_RIDES at a time")
         val startedMs = SystemClock.elapsedRealtime()
-        supervisorScope {
-            pending.map { ride -> async(dispatcher) { runCatchingRide(ride) } }.awaitAll()
+        _progress.value =
+            RideAnalysisProgress(
+                jobs = pending.map { RideAnalysisJob(it.id, it.startedAtEpochMs) },
+                total = pending.size,
+            )
+        try {
+            supervisorScope {
+                pending
+                    .map { ride ->
+                        async(Dispatchers.Default) { slots.withPermit { runCatchingRide(ride) } }
+                    }.awaitAll()
+            }
+        } finally {
+            // Also on cancellation: a queue left standing would tell the UI work is still going on.
+            _progress.value = RideAnalysisProgress()
         }
         Log.i(TAG, "backfill: done in ${(SystemClock.elapsedRealtime() - startedMs) / 1000.0} s")
     }
@@ -206,7 +268,20 @@ class RideAnalysisPipeline(
             throw e
         } catch (e: Exception) {
             Log.w(TAG, "ride ${ride.id}: analysis failed; leaving it stale for a later run", e)
+        } finally {
+            // However it went — done, skipped or failed — this ride is off the queue.
+            _progress.update { it.copy(jobs = it.jobs.filterNot { job -> job.rideId == ride.id }) }
         }
+    }
+
+    /** Publish how far one ride has got, for the queue UI. Called from several workers at once. */
+    private fun report(
+        rideId: Long,
+        fraction: Float,
+    ) = _progress.update { state ->
+        state.copy(
+            jobs = state.jobs.map { if (it.rideId == rideId) it.copy(progress = fraction.coerceIn(0f, 1f)) else it },
+        )
     }
 
     private suspend fun runRide(ride: Ride) {
@@ -233,13 +308,21 @@ class RideAnalysisPipeline(
         // Time spent in the passes, not wall time for the ride: between passes a ride waits for a
         // worker slot while other rides stream, and counting that would report a short ride as slow.
         var passMs = 0L
+        // Progress is measured in file passes, the only part whose cost scales with ride length, so
+        // it has to be known before the first one starts.
+        val plannedReads = passes.count { pass -> pass.any { it in plan.run && it.needsSamples } }
+        var readsDone = 0
         for (pass in passes) {
             val scheduled = pass.filter { it in plan.run }
             if (scheduled.isEmpty()) continue
             if (scheduled.any { it.needsSamples }) {
                 val startedMs = SystemClock.elapsedRealtime()
                 ctx.filteredFixes =
-                    streamSamples(ride.id, file, scheduled.mapNotNull { it.sink(ctx) }, ctx.filteredFixes)
+                    streamSamples(ride.id, file, scheduled.mapNotNull { it.sink(ctx) }, ctx.filteredFixes) {
+                        report(ride.id, (readsDone + it) / plannedReads)
+                    }
+                readsDone++
+                report(ride.id, readsDone.toFloat() / plannedReads)
                 passMs += SystemClock.elapsedRealtime() - startedMs
             }
             for (stage in scheduled) {
@@ -250,7 +333,6 @@ class RideAnalysisPipeline(
         }
         Log.i(TAG, "ride ${ride.id}: ${ran.joinToString(" -> ")} in $passMs ms of passes")
     }
-
 }
 
 /** Stages to derive, and stages whose current output only needs restoring. */
@@ -289,7 +371,6 @@ internal fun planStages(
     return Plan(stages.filter { it.id in run }, stages.filter { it.id in load })
 }
 
-
 /**
  * Read the ride's samples once and push them at [sinks] in time order, with the GPS already
  * Kalman-filtered.
@@ -301,6 +382,7 @@ internal fun planStages(
  * the stream either way. Cheap to hold, too: fixes arrive about once a second, against motion's
  * 50 Hz across three sensors.
  */
+
 /**
  * Read one ride's samples and push them at [sinks] in time order, with the GPS already
  * Kalman-filtered. Returns the filtered fixes, for the next pass to reuse.
@@ -317,6 +399,7 @@ internal suspend fun streamSamples(
     file: File,
     sinks: List<SampleSink>,
     cachedFixes: List<ReleasedFix>? = null,
+    onProgress: ((Float) -> Unit)? = null,
 ): List<ReleasedFix>? {
     if (sinks.isEmpty()) return cachedFixes
     // A long uninterrupted loop over millions of samples, so cancellation is checked by hand — a
@@ -331,7 +414,7 @@ internal suspend fun streamSamples(
     if (cachedFixes != null) {
         var next = 0
         var motionSeen = 0L
-        forEachSampleInTimeOrder(file) { sample ->
+        forEachSampleInTimeOrder(file, onProgress = onProgress) { sample ->
             // The file's raw fixes are superseded by the filtered ones, which slot back in wherever
             // the filtering pass released them — before the motion sample they were released ahead of.
             if (sample !is LocationSample) {
@@ -351,7 +434,7 @@ internal suspend fun streamSamples(
     var raw = 0
     var worstAccuracy = 0f
     var motionSeen = 0L
-    forEachSampleInTimeOrder(file) { sample ->
+    forEachSampleInTimeOrder(file, onProgress = onProgress) { sample ->
         when (sample) {
             is LocationSample -> {
                 raw++
