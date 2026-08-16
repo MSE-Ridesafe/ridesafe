@@ -2,28 +2,40 @@
 
 package de.uhi.enia.ridesafe.ui.screens.rides
 
+import android.text.format.DateUtils
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,6 +46,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,9 +55,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,9 +73,10 @@ import com.google.android.gms.maps.GoogleMapOptions
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
@@ -82,6 +99,11 @@ import de.uhi.enia.ridesafe.util.formatRideDateTime
 import de.uhi.enia.ridesafe.util.formatShortDistance
 import de.uhi.enia.ridesafe.util.formatSpeed
 import de.uhi.enia.ridesafe.util.formatTimeOfDay
+import kotlinx.coroutines.delay
+import kotlin.math.PI
+import kotlin.math.ln
+import kotlin.math.log2
+import kotlin.math.sin
 
 /**
  * Ride detail: the recorded route drawn on a Google Map, plus summary/speed/distance cards.
@@ -443,13 +465,21 @@ private fun Connector(
     )
 }
 
-/** The pin colour for each event type, resolved outside the map so markers don't re-read the theme. */
+/** A pin's disc colour and the matching "on" colour for its symbol, so the two always contrast. */
+private data class PinColors(
+    val container: Color,
+    val content: Color,
+)
+
+/** The pin colours for each event type, resolved outside the map so markers don't re-read the theme. */
 @Composable
-private fun RideEventType.markerColor(): Color =
-    when (this) {
-        RideEventType.BRAKING -> MaterialTheme.colorScheme.error
-        RideEventType.ACCELERATION -> MaterialTheme.colorScheme.tertiary
-        RideEventType.CORNERING -> MaterialTheme.colorScheme.primary
+private fun RideEventType.pinColors(): PinColors =
+    with(MaterialTheme.colorScheme) {
+        when (this@pinColors) {
+            RideEventType.BRAKING -> PinColors(error, onError)
+            RideEventType.ACCELERATION -> PinColors(tertiary, onTertiary)
+            RideEventType.CORNERING -> PinColors(primary, onPrimary)
+        }
     }
 
 @Composable
@@ -462,34 +492,36 @@ private fun RideEventType.label(): String =
         },
     )
 
-/** A driving event with everything the map needs already resolved out of the composition. */
-private data class RideEventMarker(
-    val event: RideEvent,
+/** A map pin with everything already resolved out of the composition — an event or a route endpoint. */
+private data class MapPin(
+    val key: Any,
     val position: LatLng,
-    val color: Color,
+    val symbol: String,
+    val colors: PinColors,
     val title: String,
-    val snippet: String,
+    val snippet: String? = null,
 )
 
-/** One driving-event pin: the type's Material Symbol on a coloured disc, outlined so it reads on any tile. */
+/** One pin: a Material Symbol on a coloured disc, outlined so it reads on any tile. */
 @Composable
-private fun RideEventPin(
-    type: RideEventType,
-    color: Color,
+private fun MapPinIcon(
+    symbol: String,
+    colors: PinColors,
+    outline: Color,
 ) {
     Box(
         modifier =
             Modifier
                 .size(32.dp)
-                .background(color, CircleShape)
-                .border(2.dp, Color.White, CircleShape),
+                .background(colors.container, CircleShape)
+                .border(2.dp, outline, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         MaterialSymbol(
-            symbolName = type.symbol(),
+            symbolName = symbol,
             contentDescription = null, // the marker's title carries the meaning
             size = 18.dp,
-            color = Color.White,
+            color = colors.content,
         )
     }
 }
@@ -536,7 +568,7 @@ private fun RouteMap(
     var expanded by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
-        RouteMapContent(segments = segments, rideEvents = emptyList(), liteMode = true)
+        RouteMapContent(segments = segments, rideEvents = rideEvents, liteMode = true)
         // Lite-mode maps open the Google Maps app when tapped; this transparent overlay
         // swallows the tap and opens our own full-screen interactive map instead.
         Box(
@@ -550,31 +582,229 @@ private fun RouteMap(
     }
 
     if (expanded) {
+        // Closing fades the dialog's own content out first and only then leaves composition.
+        // Dismissing straight away tears the map down while the window is still animating out,
+        // which flashes the backdrop the map sits on.
+        var closing by remember { mutableStateOf(false) }
+        val closeAlpha by animateFloatAsState(
+            targetValue = if (closing) 0f else 1f,
+            animationSpec = tween(200),
+            finishedListener = { if (it == 0f) expanded = false },
+            label = "mapDialogClose",
+        )
+
         Dialog(
-            onDismissRequest = { expanded = false },
+            onDismissRequest = { closing = true },
             // decorFitsSystemWindows = false lets the map fill behind the status/navigation bars
             // (no top/bottom safe-area insets); the close button below re-applies them.
             properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         ) {
-            Box(Modifier.fillMaxSize()) {
-                RouteMapContent(segments = segments, rideEvents = rideEvents, liteMode = false)
-                IconButton(
-                    onClick = { expanded = false },
-                    modifier =
-                        Modifier
-                            .align(Alignment.TopStart)
-                            .windowInsetsPadding(WindowInsets.safeDrawing)
-                            .padding(8.dp)
-                            .background(MaterialTheme.colorScheme.surface, CircleShape),
-                ) {
-                    MaterialSymbol(
-                        symbolName = "close",
-                        contentDescription = stringResource(R.string.ride_map_close),
-                    )
-                }
+            Box(Modifier.fillMaxSize().alpha(closeAlpha)) {
+                FullScreenMap(segments = segments, rideEvents = rideEvents, onClose = { closing = true })
             }
         }
     }
+}
+
+/**
+ * The event the sheet has selected. [tick] counts the taps so re-tapping the same event re-centers
+ * the map on it — without it, a second tap on an already-selected event would change nothing.
+ */
+private data class SelectedEvent(
+    val id: Long,
+    val tick: Int,
+)
+
+/** Peek height of the event sheet, above the navigation bar: drag handle + header + one row. */
+private val EventSheetPeek = 148.dp
+
+/**
+ * The full-screen map, with the ride's events listed in a bottom sheet over it (ANL-01). Tapping a
+ * row selects that event's marker — camera to it, info window open, drawn above its neighbours,
+ * which is the point: two events detected metres apart otherwise sit on top of each other with no
+ * way to tell there are two. No events (or none the GPS could place) means no sheet at all.
+ */
+@Composable
+private fun FullScreenMap(
+    segments: List<List<LatLng>>,
+    rideEvents: List<RideEvent>,
+    onClose: () -> Unit,
+) {
+    val events =
+        remember(rideEvents) {
+            rideEvents.filter { it.lat != null && it.lon != null }.sortedBy { it.startOffsetMs }
+        }
+    var selected by remember { mutableStateOf<SelectedEvent?>(null) }
+
+    if (events.isEmpty()) {
+        Box(Modifier.fillMaxSize()) {
+            RouteMapContent(segments = segments, rideEvents = rideEvents, liteMode = false)
+            CloseMapButton(onClose)
+        }
+        return
+    }
+
+    val scaffoldState = rememberBottomSheetScaffoldState()
+    // The sheet floats over the map rather than shrinking it, so it also covers the navigation bar
+    // and has to keep its own content clear of it.
+    val navigationBar = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val peek = EventSheetPeek + navigationBar
+
+    BottomSheetScaffold(
+        scaffoldState = scaffoldState,
+        sheetPeekHeight = peek,
+        sheetContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        sheetShadowElevation = 6.dp,
+        sheetContent = {
+            RideEventSheet(
+                events = events,
+                selectedId = selected?.id,
+                // The sheet deliberately stays where it is, so a run of events can be stepped
+                // through without reopening it between taps.
+                onSelect = { event -> selected = SelectedEvent(event.id, (selected?.tick ?: 0) + 1) },
+            )
+        },
+    ) {
+        // The scaffold's padding is deliberately ignored: the map draws behind the sheet, and keeps
+        // the route framed in what's left visible via the same peek height.
+        Box(Modifier.fillMaxSize()) {
+            RouteMapContent(
+                segments = segments,
+                rideEvents = rideEvents,
+                liteMode = false,
+                selected = selected,
+                bottomPadding = peek,
+            )
+            CloseMapButton(onClose)
+        }
+    }
+}
+
+/** The full-screen map's back-out control, inset clear of the status bar the map draws behind. */
+@Composable
+private fun BoxScope.CloseMapButton(onClose: () -> Unit) {
+    IconButton(
+        onClick = onClose,
+        modifier =
+            Modifier
+                .align(Alignment.TopStart)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(8.dp)
+                .background(MaterialTheme.colorScheme.surface, CircleShape),
+    ) {
+        MaterialSymbol(
+            symbolName = "close",
+            contentDescription = stringResource(R.string.ride_map_close),
+        )
+    }
+}
+
+/** The events of one ride in the order they happened, as the full-screen map's bottom sheet. */
+@Composable
+private fun RideEventSheet(
+    events: List<RideEvent>,
+    selectedId: Long?,
+    onSelect: (RideEvent) -> Unit,
+) {
+    Text(
+        text = pluralStringResource(R.plurals.ride_events_count, events.size, events.size),
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(horizontal = 24.dp),
+    )
+    Spacer(Modifier.size(8.dp))
+    LazyColumn(contentPadding = WindowInsets.navigationBars.asPaddingValues()) {
+        items(events, key = { it.id }) { event ->
+            RideEventRow(
+                event = event,
+                selected = event.id == selectedId,
+                onClick = { onSelect(event) },
+            )
+        }
+    }
+}
+
+/** One event in the sheet: the same pin the map draws, then what it was and when it happened. */
+@Composable
+private fun RideEventRow(
+    event: RideEvent,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val background = if (selected) MaterialTheme.colorScheme.surfaceContainerHighest else Color.Transparent
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(background)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 24.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        MapPinIcon(event.type.symbol(), event.type.pinColors(), MaterialTheme.colorScheme.surface)
+        Column {
+            Text(text = event.type.label(), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                // Offset into the ride first ("4:12 in"), then the marker's own subtitle, so the row
+                // and the info window it opens read the same.
+                text =
+                    DateUtils.formatElapsedTime(event.startOffsetMs / 1000) + " · " +
+                        stringResource(
+                            R.string.ride_event_detail,
+                            "%.2f".format(event.peakG),
+                            "%.1f".format(event.durationMs / 1000.0),
+                        ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** Zoom the camera goes to for a picked event, unless it's already closer in. */
+private const val SELECTED_EVENT_ZOOM = 17f
+
+/** Map dp per world at zoom 0, and the margin kept between the route and the map's edges. */
+private const val WORLD_DP = 256.0
+private const val MAP_PADDING_DP = 32.0
+
+/**
+ * A lite-mode map shows twice the area an interactive one shows at the same zoom, so its camera
+ * needs one level more to frame the same route. Measured, not derived: fitting one ride both ways
+ * put the two markers 870 px apart in lite mode against 432 px for the same computed camera.
+ */
+private const val LITE_ZOOM_BIAS = 1f
+
+/** Web Mercator's y for a latitude, as used for the zoom that fits a bounding box. */
+private fun mercatorY(latitude: Double): Double {
+    val sin = sin(latitude * PI / 180).coerceIn(-0.9999, 0.9999)
+    return ln((1 + sin) / (1 - sin)) / 2
+}
+
+/**
+ * The camera that frames [points] in a [widthDp] × [heightDp] map, computed before the map exists.
+ * This is what CameraUpdateFactory.newLatLngBounds works out internally, done up front so the
+ * camera can be handed to GoogleMapOptions: a map born at the right place never shows the
+ * world view → initial position → fitted route sequence that moving the camera after load gives.
+ */
+private fun fittingCamera(
+    points: List<LatLng>,
+    widthDp: Float,
+    heightDp: Float,
+    liteMode: Boolean,
+): CameraPosition {
+    val bias = if (liteMode) LITE_ZOOM_BIAS else 0f
+    val bounds = LatLngBounds.builder().apply { points.forEach(::include) }.build()
+    if (points.size < 2) return CameraPosition.fromLatLngZoom(bounds.center, 14f + bias)
+    val latFraction = (mercatorY(bounds.northeast.latitude) - mercatorY(bounds.southwest.latitude)) / (2 * PI)
+    val lngSpan = (bounds.northeast.longitude - bounds.southwest.longitude).let { if (it < 0) it + 360 else it }
+    val zoom =
+        minOf(
+            log2((heightDp - 2 * MAP_PADDING_DP).coerceAtLeast(1.0) / WORLD_DP / latFraction),
+            log2((widthDp - 2 * MAP_PADDING_DP).coerceAtLeast(1.0) / WORLD_DP / (lngSpan / 360)),
+        )
+    // A route with no extent at all divides by zero above; the coercion turns that into street zoom.
+    return CameraPosition.fromLatLngZoom(bounds.center, zoom.coerceIn(2.0, 18.0).toFloat() + bias)
 }
 
 /**
@@ -582,23 +812,38 @@ private fun RouteMap(
  * card preview); false is a live, gesture-driven map. Gestures are kept 2D — pan/zoom/rotate on,
  * tilt off — and the toolbar is hidden so taps stay in-app rather than launching the Maps app.
  *
- * [rideEvents] become tappable markers (ANL-01). Callers pass none for the lite preview: a static
- * snapshot can't render composable markers, and a 300 dp card is the wrong place for thirty pins.
+ * Dark mode is a JSON style rather than GoogleMap's mapColorScheme: lite mode ignores the colour
+ * scheme but does honour JSON styling, and one mechanism keeps both maps looking the same. A style
+ * can only be set after the map is created, so the map stays covered until it reports itself
+ * loaded — otherwise it shows a light frame or two before the style lands.
+ *
+ * [rideEvents] become markers (ANL-01) on both maps; only the live one shows their info windows,
+ * since the preview's taps are swallowed by the overlay that opens it full-screen. [selected] is the
+ * event the bottom sheet picked, which the camera moves to; [bottomPadding] is how much of the map
+ * that sheet covers, kept out of both the framing and the camera's idea of centre.
  */
 @Composable
 private fun RouteMapContent(
     segments: List<List<LatLng>>,
     rideEvents: List<RideEvent>,
     liteMode: Boolean,
+    selected: SelectedEvent? = null,
+    bottomPadding: Dp = 0.dp,
 ) {
     val drawn = segments.filter { it.isNotEmpty() }
     val allPoints = drawn.flatten()
-    val cameraPositionState =
-        rememberCameraPositionState {
-            position = CameraPosition.fromLatLngZoom(allPoints.firstOrNull() ?: LatLng(0.0, 0.0), 14f)
-        }
     var mapLoaded by remember { mutableStateOf(false) }
+    val dark = isSystemInDarkTheme()
+    val context = LocalContext.current
+    val mapStyle =
+        remember(dark) {
+            MapStyleOptions.loadRawResourceStyle(context, if (dark) R.raw.map_style_night else R.raw.map_style_day)
+        }
     val routeColor = MaterialTheme.colorScheme.primary
+    val outline = MaterialTheme.colorScheme.surface
+    val mapBackground = MaterialTheme.colorScheme.surfaceBright.toArgb()
+    val startColors = PinColors(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.onSecondary)
+    val endColors = PinColors(MaterialTheme.colorScheme.inverseSurface, MaterialTheme.colorScheme.inverseOnSurface)
     val startTitle = stringResource(R.string.ride_start_marker)
     val endTitle = stringResource(R.string.ride_end_marker)
 
@@ -606,59 +851,106 @@ private fun RouteMapContent(
     // not theme and string lookups. Every detected event is pinned — there is deliberately no
     // display threshold, so the map is exactly what the detector decided, not a second opinion on
     // it. The only events dropped are those the GPS couldn't place.
-    val markers =
-        rideEvents
-            .filter { it.lat != null && it.lon != null }
-            .map { event ->
-                RideEventMarker(
-                    event = event,
-                    position = LatLng(event.lat!!, event.lon!!),
-                    color = event.type.markerColor(),
-                    title = event.type.label(),
-                    snippet =
-                        stringResource(
-                            R.string.ride_event_detail,
-                            "%.2f".format(event.peakG),
-                            "%.1f".format(event.durationMs / 1000.0),
-                        ),
-                )
-            }
+    val pins =
+        drawn.flatMapIndexed { index, points ->
+            listOf(
+                MapPin("start-$index", points.first(), "flag", startColors, startTitle),
+                MapPin("end-$index", points.last(), "sports_score", endColors, endTitle),
+            )
+        } +
+            rideEvents
+                .filter { it.lat != null && it.lon != null }
+                .map { event ->
+                    MapPin(
+                        key = event.id,
+                        position = LatLng(event.lat!!, event.lon!!),
+                        symbol = event.type.symbol(),
+                        colors = event.type.pinColors(),
+                        title = event.type.label(),
+                        snippet =
+                            stringResource(
+                                R.string.ride_event_detail,
+                                "%.2f".format(event.peakG),
+                                "%.1f".format(event.durationMs / 1000.0),
+                            ),
+                    )
+                }
 
-    GoogleMap(
-        modifier = Modifier.fillMaxSize(),
-        cameraPositionState = cameraPositionState,
-        googleMapOptionsFactory = { GoogleMapOptions().liteMode(liteMode) },
-        uiSettings =
-            MapUiSettings(
-                tiltGesturesEnabled = false,
-                mapToolbarEnabled = false,
-                zoomControlsEnabled = false,
-            ),
-        onMapLoaded = { mapLoaded = true },
-    ) {
-        drawn.forEach { points ->
-            Polyline(points = points, color = routeColor, width = 12f)
-            Marker(state = rememberUpdatedMarkerState(position = points.first()), title = startTitle)
-            Marker(state = rememberUpdatedMarkerState(position = points.last()), title = endTitle)
-        }
-        markers.forEach { marker ->
-            MarkerComposable(
-                keys = arrayOf(marker.event.id),
-                state = rememberUpdatedMarkerState(position = marker.position),
-                title = marker.title,
-                snippet = marker.snippet,
-            ) {
-                RideEventPin(marker.event.type, marker.color)
+    // The map renders into a TextureView, which composites with whatever is drawn behind it in the
+    // same hierarchy. Without an opaque layer there, everything the map draws with alpha — water,
+    // rail, whole frames mid-zoom — blends with the screen behind the map instead. Same colour as
+    // the loading cover above, so the fade between them shows no shift.
+    BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceBright)) {
+        val camera =
+            remember(allPoints, maxWidth, maxHeight, bottomPadding, liteMode) {
+                fittingCamera(allPoints, maxWidth.value, (maxHeight - bottomPadding).value, liteMode)
             }
+        val cameraPositionState = rememberCameraPositionState { position = camera }
+
+        // Move to the sheet's pick, close enough to read it. Zoom only ever goes in: the map opens
+        // framed on the whole route, and a pan alone leaves the pin as one dot among many.
+        LaunchedEffect(selected) {
+            val pin = pins.firstOrNull { it.key == selected?.id } ?: return@LaunchedEffect
+            val zoom = maxOf(cameraPositionState.position.zoom, SELECTED_EVENT_ZOOM)
+            cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(pin.position, zoom), 400)
+        }
+
+        GoogleMap(
+            modifier = Modifier.fillMaxSize(),
+            cameraPositionState = cameraPositionState,
+            googleMapOptionsFactory = { GoogleMapOptions().liteMode(liteMode).camera(camera).backgroundColor(mapBackground) },
+            contentPadding = PaddingValues(bottom = bottomPadding),
+            properties = MapProperties(mapStyleOptions = mapStyle),
+            uiSettings =
+                MapUiSettings(
+                    tiltGesturesEnabled = false,
+                    mapToolbarEnabled = false,
+                    zoomControlsEnabled = false,
+                ),
+            onMapLoaded = { mapLoaded = true },
+        ) {
+            drawn.forEach { points -> Polyline(points = points, color = routeColor, width = 12f) }
+            pins.forEach { pin ->
+                val markerState = rememberUpdatedMarkerState(position = pin.position)
+                val isSelected = pin.key == selected?.id
+                // Events detected metres apart overlap; the selected one comes to the front and
+                // opens its info window, which is the only thing that tells the two of them apart.
+                if (isSelected) {
+                    LaunchedEffect(pin.key) { markerState.showInfoWindow() }
+                }
+                MarkerComposable(
+                    keys = arrayOf(pin.key),
+                    state = markerState,
+                    title = pin.title,
+                    snippet = pin.snippet,
+                    zIndex = if (isSelected) 1f else 0f,
+                ) {
+                    MapPinIcon(pin.symbol, pin.colors, outline)
+                }
+            }
+        }
+
+        // The same placeholder the card shows while the route is still loading, so the two phases
+        // read as one wait rather than a spinner followed by a flashing map. It fades rather than
+        // pops, which also hides the frame or two the map spends applying its style.
+        val coverAlpha by animateFloatAsState(if (mapLoaded) 0f else 1f, tween(400), label = "mapCover")
+        if (coverAlpha > 0f) {
+            Box(
+                modifier =
+                    Modifier
+                        .matchParentSize()
+                        .alpha(coverAlpha)
+                        .background(MaterialTheme.colorScheme.surfaceBright),
+                contentAlignment = Alignment.Center,
+            ) { CircularProgressIndicator() }
         }
     }
 
-    // Frame all segments once the map has a laid-out size.
-    LaunchedEffect(mapLoaded, segments) {
-        if (mapLoaded && allPoints.size > 1) {
-            val bounds = LatLngBounds.builder().apply { allPoints.forEach(::include) }.build()
-            runCatching { cameraPositionState.move(CameraUpdateFactory.newLatLngBounds(bounds, 100)) }
-        }
+    // Reveal the map anyway if it never reports itself loaded, so this can't sit on a spinner.
+    // Long enough not to pre-empt a slow first load, which reveals a half-tiled map.
+    LaunchedEffect(Unit) {
+        delay(6_000)
+        mapLoaded = true
     }
 }
 

@@ -13,7 +13,7 @@ ksp = "2.3.9"
 nav3 = "1.1.3"
 kotlinxSerialization = "1.11.0"
 playServicesLocation = "21.4.0"
-mapsCompose = "8.3.0"
+mapsCompose = "8.4.0"
 mapsUtils = "4.5.0"
 commonsMath3 = "3.6.1"
 

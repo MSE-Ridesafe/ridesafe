@@ -145,6 +145,11 @@
     <string name="ride_event_cornering">Harsh cornering</string>
     <!-- Marker subtitle: peak force in g, then how long it lasted in seconds. -->
     <string name="ride_event_detail">%1$s g peak · %2$s s</string>
+    <!-- Bottom-sheet header on the full-screen map: how many events the ride has. -->
+    <plurals name="ride_events_count">
+        <item quantity="one">%d event</item>
+        <item quantity="other">%d events</item>
+    </plurals>
     <string name="ride_detail_section_summary">Summary</string>
     <string name="ride_detail_section_speed">Speed</string>
     <string name="ride_detail_section_distance">Distance</string>

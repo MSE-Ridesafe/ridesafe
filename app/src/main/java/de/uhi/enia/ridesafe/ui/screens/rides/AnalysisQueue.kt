@@ -94,7 +94,7 @@ private fun rememberQueueRows(progress: RideAnalysisProgress): List<QueueRow> {
     val finished = remember { mutableStateMapOf<Long, QueueRow>() }
     val lastSeen = remember { mutableMapOf<Long, RideAnalysisJob>() }
     // Each hold is its own coroutine on the composition's scope, not on the effect below: the effect
-    // restarts whenever the queue's membership changes, and a shared timer would be cancelled by the
+    // restarts whenever the queue's membership changes, and a shared timer would be canceled by the
     // next ride finishing, stranding the previous row on screen forever.
     val scope = rememberCoroutineScope()
 

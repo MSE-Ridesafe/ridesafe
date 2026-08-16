@@ -144,6 +144,11 @@
     <string name="ride_event_cornering">Scharfes Kurvenfahren</string>
     <!-- Marker subtitle: peak force in g, then how long it lasted in seconds. -->
     <string name="ride_event_detail">%1$s g Spitze · %2$s s</string>
+    <!-- Bottom-sheet header on the full-screen map: how many events the ride has. -->
+    <plurals name="ride_events_count">
+        <item quantity="one">%d Ereignis</item>
+        <item quantity="other">%d Ereignisse</item>
+    </plurals>
     <string name="ride_detail_section_summary">Übersicht</string>
     <string name="ride_detail_section_speed">Geschwindigkeit</string>
     <string name="ride_detail_section_distance">Strecke</string>
