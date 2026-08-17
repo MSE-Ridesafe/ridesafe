@@ -106,7 +106,6 @@ fun MergedRideDetailScreen(
     }
 
     val summary = remember(stops) { summarizeMerge(stops) }
-
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -299,7 +298,7 @@ private fun MergedJourneyCard(
 
 /**
  * The places timeline for a merged ride (N+1 waypoints for N legs): origin, one waypoint per parked
- * boundary, then the destination. A boundary waypoint is labelled with the more reliable next-leg
+ * boundary, then the destination. A boundary waypoint is labeled with the more reliable next-leg
  * start address (falling back to the previous leg's end), its arrival time, and a "left … · parked …"
  * note — collapsing the two "unrelated" fixes into one place for a readable trip (MRG-07).
  */

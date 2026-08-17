@@ -10,6 +10,14 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import de.uhi.enia.ridesafe.ui.screens.rides.FullScreenMap
+import de.uhi.enia.ridesafe.ui.screens.rides.FullScreenMapRequest
+import de.uhi.enia.ridesafe.ui.screens.rides.LocalFullScreenMap
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
@@ -105,6 +113,13 @@ fun RidesafeApp() {
     // Shared across the saved-addresses list/editor screens; Room Flow is the source of truth.
     val savedAddressViewModel: SavedAddressViewModel = viewModel()
 
+    // The full-screen route map is hosted here, above the navigation bar, and inside the
+    // activity's own (opaque) window — see FullScreenMapRequest for why it cannot be a Dialog.
+    val fullScreenMap = remember { mutableStateOf<FullScreenMapRequest?>(null) }
+    LaunchedEffect(current) { fullScreenMap.value = null }
+
+    CompositionLocalProvider(LocalFullScreenMap provides fullScreenMap) {
+    Box(Modifier.fillMaxSize()) {
     NavigationSuiteScaffold(
         // Native three-tier: navigation bar is the dimmest surface, the screen
         // background a lighter tinted surfaceContainer, and cards (surfaceBright) the
@@ -231,5 +246,25 @@ fun RidesafeApp() {
                         .consumeWindowInsets(innerPadding),
             )
         }
+    }
+
+        val request = fullScreenMap.value
+        // The map has to outlive the request itself: reading the state inside the animation would
+        // empty the content the moment it is cleared, and the fade would play over nothing — which
+        // is a hard cut, not a transition. So the last request is kept until the exit finishes.
+        var showing by remember { mutableStateOf<FullScreenMapRequest?>(null) }
+        LaunchedEffect(request) { if (request != null) showing = request }
+        if (request != null) BackHandler { fullScreenMap.value = null }
+
+        AnimatedVisibility(visible = request != null, enter = fadeIn(), exit = fadeOut()) {
+            showing?.let { shown ->
+                FullScreenMap(
+                    segments = shown.segments,
+                    rideEvents = shown.rideEvents,
+                    onClose = { fullScreenMap.value = null },
+                )
+            }
+        }
+    }
     }
 }

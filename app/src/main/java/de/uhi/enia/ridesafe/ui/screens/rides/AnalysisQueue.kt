@@ -365,7 +365,7 @@ private fun QueueCard(
  * A determinate ring that eases towards each new value, so byte-level progress reads as motion
  * rather than a series of jumps.
  *
- * At zero it spins instead, because a ride that hasn't been picked up yet has no progress to report
+ * At zero, it spins instead, because a ride that hasn't been picked up yet has no progress to report
  * and a frozen empty ring reads as broken. Pass [spinAtZero] false where zero is a real measurement
  * rather than an absence — the overall "0 of 69" is genuinely 0%, and known to be.
  */

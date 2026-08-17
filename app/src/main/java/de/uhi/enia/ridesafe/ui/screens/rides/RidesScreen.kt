@@ -88,7 +88,7 @@ fun RidesScreen(
     }
 
     // The status bar overlays the Scaffold rather than sitting in its bottomBar slot: that slot
-    // reserves an opaque strip of the Scaffold's own container colour, so the pill ends up on the
+    // reserves an opaque strip of the Scaffold's own container color, so the pill ends up on the
     // same background as everything else and reads as docked. Floating over the list — which keeps
     // scrolling behind it — is what makes it look like it is hovering.
     Box(modifier = modifier.fillMaxSize()) {
