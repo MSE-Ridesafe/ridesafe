@@ -15,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.GoogleMapComposable
 
 /** The card preview's height — tall enough to read a route, short enough to scroll past. */
 val MapPreviewHeight = 300.dp
@@ -38,9 +37,7 @@ fun MapPreview(
     onExpand: (() -> Unit)? = null,
     expandLabel: String? = null,
     empty: @Composable () -> Unit = {},
-    content:
-        @Composable @GoogleMapComposable
-        () -> Unit,
+    content: MapContent,
 ) {
     Card(
         shape = MaterialTheme.shapes.extraLarge,

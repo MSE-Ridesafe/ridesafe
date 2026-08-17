@@ -23,7 +23,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.GoogleMapComposable
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 
@@ -45,9 +44,7 @@ fun FullScreenMap(
     focus: MapFocus? = null,
     sheetPeek: Dp = 0.dp,
     sheet: (@Composable () -> Unit)? = null,
-    content:
-        @Composable @GoogleMapComposable
-        () -> Unit,
+    content: MapContent,
 ) {
     if (sheet == null) {
         Box(modifier.fillMaxSize()) {

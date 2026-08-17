@@ -37,10 +37,22 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import de.uhi.enia.ridesafe.R
 import kotlinx.coroutines.delay
 import kotlin.math.PI
+import kotlin.math.atan
 import kotlin.math.ln
 import kotlin.math.log2
 import kotlin.math.sin
+import kotlin.math.sinh
 import kotlin.time.Duration.Companion.milliseconds
+
+/**
+ * What a map draws: markers, lines and shapes. Named rather than written inline at each call site
+ * because ktlint's annotation rule and its function-type-modifier-spacing rule disagree about how to
+ * format an annotated function type in a parameter list, and reformat each other's output forever.
+ */
+@Suppress("ktlint:standard:function-type-modifier-spacing")
+typealias MapContent =
+    @Composable @GoogleMapComposable
+    () -> Unit
 
 /**
  * Where a map should move when something outside it takes the camera over — a picked list row, a
@@ -57,17 +69,24 @@ data class MapFocus(
 private const val WORLD_DP = 256.0
 private const val MAP_PADDING_DP = 32.0
 
-/**
- * A lite-mode map shows twice the area an interactive one shows at the same zoom, so its camera
- * needs one level more to frame the same points. Measured, not derived: fitting one ride both ways
- * put the two markers 870 px apart in lite mode against 432 px for the same computed camera.
- */
-private const val LITE_ZOOM_BIAS = 1f
-
 /** Web Mercator's y for a latitude, as used for the zoom that fits a bounding box. */
 private fun mercatorY(latitude: Double): Double {
     val sin = sin(latitude * PI / 180).coerceIn(-0.9999, 0.9999)
     return ln((1 + sin) / (1 - sin)) / 2
+}
+
+/** The latitude at a Web Mercator y — [mercatorY] backwards. */
+private fun latitudeAt(mercator: Double): Double = atan(sinh(mercator)) * 180 / PI
+
+/**
+ * The middle of [bounds] *as the map draws it*. LatLngBounds.center averages the latitudes, but a map
+ * spaces them out by Mercator, so on anything but an east-west box the two differ — and since the fit
+ * below leaves only [MAP_PADDING_DP] of slack, centering on the wrong one crops an edge off the very
+ * points that were supposed to fit. North-south routes suffer most; east-west ones hide the bug.
+ */
+private fun mercatorCenter(bounds: LatLngBounds): LatLng {
+    val y = (mercatorY(bounds.northeast.latitude) + mercatorY(bounds.southwest.latitude)) / 2
+    return LatLng(latitudeAt(y), bounds.center.longitude)
 }
 
 /**
@@ -80,11 +99,10 @@ private fun fittingCamera(
     points: List<LatLng>,
     widthDp: Float,
     heightDp: Float,
-    liteMode: Boolean,
 ): CameraPosition {
-    val bias = if (liteMode) LITE_ZOOM_BIAS else 0f
     val bounds = LatLngBounds.builder().apply { points.forEach(::include) }.build()
-    if (points.size < 2) return CameraPosition.fromLatLngZoom(bounds.center, 14f + bias)
+    if (points.size < 2) return CameraPosition.fromLatLngZoom(bounds.center, 14f)
+    val center = mercatorCenter(bounds)
     val latFraction = (mercatorY(bounds.northeast.latitude) - mercatorY(bounds.southwest.latitude)) / (2 * PI)
     val lngSpan = (bounds.northeast.longitude - bounds.southwest.longitude).let { if (it < 0) it + 360 else it }
     val zoom =
@@ -93,7 +111,7 @@ private fun fittingCamera(
             log2((widthDp - 2 * MAP_PADDING_DP).coerceAtLeast(1.0) / WORLD_DP / (lngSpan / 360)),
         )
     // Points with no extent at all divide by zero above; the coercion turns that into street zoom.
-    return CameraPosition.fromLatLngZoom(bounds.center, zoom.coerceIn(2.0, 18.0).toFloat() + bias)
+    return CameraPosition.fromLatLngZoom(center, zoom.coerceIn(2.0, 18.0).toFloat())
 }
 
 /**
@@ -119,9 +137,7 @@ internal fun MapSurface(
     modifier: Modifier = Modifier,
     bottomPadding: Dp = 0.dp,
     focus: MapFocus? = null,
-    content:
-        @Composable @GoogleMapComposable
-        () -> Unit,
+    content: MapContent,
 ) {
     var mapLoaded by remember { mutableStateOf(false) }
     val dark = isSystemInDarkTheme()
@@ -138,8 +154,8 @@ internal fun MapSurface(
     // the loading cover below, so the fade between them shows no shift.
     BoxWithConstraints(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceBright)) {
         val camera =
-            remember(framing, maxWidth, maxHeight, bottomPadding, liteMode) {
-                fittingCamera(framing, maxWidth.value, (maxHeight - bottomPadding).value, liteMode)
+            remember(framing, maxWidth, maxHeight, bottomPadding) {
+                fittingCamera(framing, maxWidth.value, (maxHeight - bottomPadding).value)
             }
         val cameraPositionState = rememberCameraPositionState { position = camera }
 
