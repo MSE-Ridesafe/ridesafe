@@ -6,23 +6,18 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.layout.Box
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
-import de.uhi.enia.ridesafe.ui.screens.rides.FullScreenMap
-import de.uhi.enia.ridesafe.ui.screens.rides.FullScreenMapRequest
-import de.uhi.enia.ridesafe.ui.screens.rides.LocalFullScreenMap
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +35,9 @@ import androidx.navigation3.ui.NavDisplay
 import de.uhi.enia.ridesafe.rides.trigger.AutoTrackPrefs
 import de.uhi.enia.ridesafe.rides.trigger.applyAutoTrackMode
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.map.FullScreenMapHost
+import de.uhi.enia.ridesafe.ui.components.map.FullScreenMapRequest
+import de.uhi.enia.ridesafe.ui.components.map.LocalFullScreenMap
 import de.uhi.enia.ridesafe.ui.screens.garage.GarageRoute
 import de.uhi.enia.ridesafe.ui.screens.garage.GarageViewModel
 import de.uhi.enia.ridesafe.ui.screens.garage.garageEntries
@@ -119,152 +117,135 @@ fun RidesafeApp() {
     LaunchedEffect(current) { fullScreenMap.value = null }
 
     CompositionLocalProvider(LocalFullScreenMap provides fullScreenMap) {
-    Box(Modifier.fillMaxSize()) {
-    NavigationSuiteScaffold(
-        // Native three-tier: navigation bar is the dimmest surface, the screen
-        // background a lighter tinted surfaceContainer, and cards (surfaceBright) the
-        // brightest on top. The relationship holds in both light and dark themes.
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        navigationSuiteColors =
-            NavigationSuiteDefaults.colors(
-                navigationBarContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            ),
-        navigationSuiteItems = {
-            AppDestinations.entries.forEach { dest ->
-                val isSelected = dest == current
-                item(
-                    icon = {
-                        MaterialSymbol(
-                            symbolName = dest.symbolName,
-                            contentDescription = stringResource(id = dest.labelRes),
-                            fill = isSelected,
+        Box(Modifier.fillMaxSize()) {
+            NavigationSuiteScaffold(
+                // Native three-tier: navigation bar is the dimmest surface, the screen
+                // background a lighter tinted surfaceContainer, and cards (surfaceBright) the
+                // brightest on top. The relationship holds in both light and dark themes.
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                navigationSuiteColors =
+                    NavigationSuiteDefaults.colors(
+                        navigationBarContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    ),
+                navigationSuiteItems = {
+                    AppDestinations.entries.forEach { dest ->
+                        val isSelected = dest == current
+                        item(
+                            icon = {
+                                MaterialSymbol(
+                                    symbolName = dest.symbolName,
+                                    contentDescription = stringResource(id = dest.labelRes),
+                                    fill = isSelected,
+                                )
+                            },
+                            label = { Text(stringResource(id = dest.labelRes)) },
+                            selected = isSelected,
+                            onClick = {
+                                isTabSwitch = true
+                                current = dest
+                            },
                         )
-                    },
-                    label = { Text(stringResource(id = dest.labelRes)) },
-                    selected = isSelected,
-                    onClick = {
-                        isTabSwitch = true
-                        current = dest
-                    },
-                )
-            }
-        },
-    ) {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            // Transparent so the NavigationSuiteScaffold's surfaceContainer shows through
-            // (incl. behind the status bar); the nav bar keeps its own dimmer surfaceDim.
-            containerColor = Color.Transparent,
-        ) { innerPadding ->
-            NavDisplay(
-                backStack = stacks.getValue(current),
-                onBack = {
-                    isTabSwitch = false
-                    stacks.getValue(current).removeLastOrNull()
-                },
-                // Sub-route nav: new screen slides in, previous fades out at the same speed;
-                // back mirrors it (top slides out, revealed screen fades in). Tab switches are
-                // a quick cross-fade. predictivePop is always an in-tab back, so always slides.
-                transitionSpec = {
-                    if (isTabSwitch) {
-                        fadeIn(tween(FADE_MS)) togetherWith fadeOut(tween(FADE_MS))
-                    } else {
-                        slideInHorizontally(tween(SLIDE_MS)) { it } togetherWith fadeOut(tween(SLIDE_MS))
                     }
                 },
-                popTransitionSpec = {
-                    if (isTabSwitch) {
-                        fadeIn(tween(FADE_MS)) togetherWith fadeOut(tween(FADE_MS))
-                    } else {
-                        fadeIn(tween(SLIDE_MS)) togetherWith slideOutHorizontally(tween(SLIDE_MS)) { it }
-                    }
-                },
-                predictivePopTransitionSpec = { _ ->
-                    fadeIn(tween(SLIDE_MS)) togetherWith slideOutHorizontally(tween(SLIDE_MS)) { it }
-                },
-                entryProvider =
-                    entryProvider {
-                        homeEntries(
-                            viewModel = homeViewModel,
-                            unitSystem = unitSystem,
-                        )
-                        ridesEntries(
-                            viewModel = ridesViewModel,
-                            unitSystem = unitSystem,
-                            onOpen = {
-                                isTabSwitch = false
-                                ridesStack.add(it)
+            ) {
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    // Transparent so the NavigationSuiteScaffold's surfaceContainer shows through
+                    // (incl. behind the status bar); the nav bar keeps its own dimmer surfaceDim.
+                    containerColor = Color.Transparent,
+                ) { innerPadding ->
+                    NavDisplay(
+                        backStack = stacks.getValue(current),
+                        onBack = {
+                            isTabSwitch = false
+                            stacks.getValue(current).removeLastOrNull()
+                        },
+                        // Sub-route nav: new screen slides in, previous fades out at the same speed;
+                        // back mirrors it (top slides out, revealed screen fades in). Tab switches are
+                        // a quick cross-fade. predictivePop is always an in-tab back, so always slides.
+                        transitionSpec = {
+                            if (isTabSwitch) {
+                                fadeIn(tween(FADE_MS)) togetherWith fadeOut(tween(FADE_MS))
+                            } else {
+                                slideInHorizontally(tween(SLIDE_MS)) { it } togetherWith fadeOut(tween(SLIDE_MS))
+                            }
+                        },
+                        popTransitionSpec = {
+                            if (isTabSwitch) {
+                                fadeIn(tween(FADE_MS)) togetherWith fadeOut(tween(FADE_MS))
+                            } else {
+                                fadeIn(tween(SLIDE_MS)) togetherWith slideOutHorizontally(tween(SLIDE_MS)) { it }
+                            }
+                        },
+                        predictivePopTransitionSpec = { _ ->
+                            fadeIn(tween(SLIDE_MS)) togetherWith slideOutHorizontally(tween(SLIDE_MS)) { it }
+                        },
+                        entryProvider =
+                            entryProvider {
+                                homeEntries(
+                                    viewModel = homeViewModel,
+                                    unitSystem = unitSystem,
+                                )
+                                ridesEntries(
+                                    viewModel = ridesViewModel,
+                                    unitSystem = unitSystem,
+                                    onOpen = {
+                                        isTabSwitch = false
+                                        ridesStack.add(it)
+                                    },
+                                    onBack = {
+                                        isTabSwitch = false
+                                        ridesStack.removeLastOrNull()
+                                    },
+                                )
+                                garageEntries(
+                                    viewModel = garageViewModel,
+                                    unitSystem = unitSystem,
+                                    onOpen = {
+                                        isTabSwitch = false
+                                        garageStack.add(it)
+                                    },
+                                    onBack = {
+                                        isTabSwitch = false
+                                        garageStack.removeLastOrNull()
+                                    },
+                                    onPopToGarage = {
+                                        isTabSwitch = false
+                                        while (garageStack.size > 1) garageStack.removeLastOrNull()
+                                    },
+                                )
+                                settingsEntries(
+                                    unitSystem = unitSystem,
+                                    onUnitSystemChange = { newSetting ->
+                                        UnitPrefs.set(context, newSetting)
+                                        unitSystem = newSetting
+                                    },
+                                    autoTrackMode = autoTrackMode,
+                                    onAutoTrackModeChange = { newMode ->
+                                        applyAutoTrackMode(context, newMode)
+                                        autoTrackMode = newMode
+                                    },
+                                    savedAddressViewModel = savedAddressViewModel,
+                                    onOpen = {
+                                        isTabSwitch = false
+                                        settingsStack.add(it)
+                                    },
+                                    onBack = {
+                                        isTabSwitch = false
+                                        settingsStack.removeLastOrNull()
+                                    },
+                                )
                             },
-                            onBack = {
-                                isTabSwitch = false
-                                ridesStack.removeLastOrNull()
-                            },
-                        )
-                        garageEntries(
-                            viewModel = garageViewModel,
-                            unitSystem = unitSystem,
-                            onOpen = {
-                                isTabSwitch = false
-                                garageStack.add(it)
-                            },
-                            onBack = {
-                                isTabSwitch = false
-                                garageStack.removeLastOrNull()
-                            },
-                            onPopToGarage = {
-                                isTabSwitch = false
-                                while (garageStack.size > 1) garageStack.removeLastOrNull()
-                            },
-                        )
-                        settingsEntries(
-                            unitSystem = unitSystem,
-                            onUnitSystemChange = { newSetting ->
-                                UnitPrefs.set(context, newSetting)
-                                unitSystem = newSetting
-                            },
-                            autoTrackMode = autoTrackMode,
-                            onAutoTrackModeChange = { newMode ->
-                                applyAutoTrackMode(context, newMode)
-                                autoTrackMode = newMode
-                            },
-                            savedAddressViewModel = savedAddressViewModel,
-                            onOpen = {
-                                isTabSwitch = false
-                                settingsStack.add(it)
-                            },
-                            onBack = {
-                                isTabSwitch = false
-                                settingsStack.removeLastOrNull()
-                            },
-                        )
-                    },
-                // Outer Scaffold already insets for system bars; mark them consumed so a
-                // screen's own TopAppBar/Scaffold doesn't apply the same insets again.
-                modifier =
-                    Modifier
-                        .padding(innerPadding)
-                        .consumeWindowInsets(innerPadding),
-            )
-        }
-    }
-
-        val request = fullScreenMap.value
-        // The map has to outlive the request itself: reading the state inside the animation would
-        // empty the content the moment it is cleared, and the fade would play over nothing — which
-        // is a hard cut, not a transition. So the last request is kept until the exit finishes.
-        var showing by remember { mutableStateOf<FullScreenMapRequest?>(null) }
-        LaunchedEffect(request) { if (request != null) showing = request }
-        if (request != null) BackHandler { fullScreenMap.value = null }
-
-        AnimatedVisibility(visible = request != null, enter = fadeIn(), exit = fadeOut()) {
-            showing?.let { shown ->
-                FullScreenMap(
-                    segments = shown.segments,
-                    rideEvents = shown.rideEvents,
-                    onClose = { fullScreenMap.value = null },
-                )
+                        // Outer Scaffold already insets for system bars; mark them consumed so a
+                        // screen's own TopAppBar/Scaffold doesn't apply the same insets again.
+                        modifier =
+                            Modifier
+                                .padding(innerPadding)
+                                .consumeWindowInsets(innerPadding),
+                    )
+                }
             }
+            FullScreenMapHost(fullScreenMap)
         }
-    }
     }
 }
