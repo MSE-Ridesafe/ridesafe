@@ -14,6 +14,10 @@ interface RideDao {
     @Query("SELECT * FROM rides WHERE id = :id")
     fun observe(id: Long): Flow<Ride?>
 
+    /** One-shot read of every ride for the saved-address re-match pass (ADR-07). */
+    @Query("SELECT * FROM rides")
+    suspend fun all(): List<Ride>
+
     /** The stops of a merged ride (MRG-01), in chronological order — the merged detail's source of truth. */
     @Query("SELECT * FROM rides WHERE mergeGroupId = :groupId ORDER BY startedAtEpochMs ASC")
     fun observeGroup(groupId: Long): Flow<List<Ride>>
@@ -55,12 +59,45 @@ interface RideDao {
     )
 
     /**
-     * Finished rides that recorded a fix but haven't been processed yet (distance still null) — the
-     * GPS-processing backfill targets these. distanceMeters being null is the "not processed" marker;
-     * no-GPS rides (startLat null) are skipped so we don't keep re-reading their sample file.
+     * Finished rides that recorded a fix — every candidate for the GPS-processing backfill. Which of
+     * them actually needs the work is decided by the caller on the presence of a current-version
+     * route sidecar, not by distanceMeters: a ride processed by an older, worse filter has both a
+     * stale route *and* a wrong distance, so "already has a distance" is not the same as "done".
+     * No-GPS rides (startLat null) are skipped so we don't keep re-reading their sample file.
      */
-    @Query("SELECT * FROM rides WHERE endedAtEpochMs IS NOT NULL AND distanceMeters IS NULL AND startLat IS NOT NULL")
-    suspend fun needingProcessing(): List<Ride>
+    @Query("SELECT * FROM rides WHERE endedAtEpochMs IS NOT NULL AND startLat IS NOT NULL")
+    suspend fun processable(): List<Ride>
+
+    /**
+     * Replace an endpoint the recording got wrong, and drop everything derived from it.
+     *
+     * Recording stores the raw first/last fix, and those are exactly where the fused provider is
+     * most likely to have been guessing — a ride can start hundreds of meters from where it really
+     * did. The Kalman pass rejects such a fix outright, so the filtered track's first point is the
+     * honest one. Its address and matched saved place were derived from the bad coordinate, so they
+     * are cleared here rather than left to disagree with the position they claim to describe; the
+     * geocode and re-match passes fill them back in.
+     */
+    @Query(
+        "UPDATE rides SET startLat = :lat, startLon = :lon, startAddress = NULL, startAddressId = NULL " +
+            "WHERE id = :id",
+    )
+    suspend fun correctStart(
+        id: Long,
+        lat: Double,
+        lon: Double,
+    )
+
+    /** The end-of-ride counterpart of [correctStart]. */
+    @Query(
+        "UPDATE rides SET endLat = :lat, endLon = :lon, endAddress = NULL, endAddressId = NULL " +
+            "WHERE id = :id",
+    )
+    suspend fun correctEnd(
+        id: Long,
+        lat: Double,
+        lon: Double,
+    )
 
     /** Store the distance + average speed the processing pass computed from the filtered track (ANL-02). */
     @Query("UPDATE rides SET distanceMeters = :distanceMeters, avgSpeedMps = :avgSpeedMps WHERE id = :id")
@@ -83,6 +120,14 @@ interface RideDao {
         id: Long,
         startAddress: String?,
         endAddress: String?,
+    )
+
+    /** Store the saved addresses the start/end points matched (ADR-07); either may be null. */
+    @Query("UPDATE rides SET startAddressId = :startAddressId, endAddressId = :endAddressId WHERE id = :id")
+    suspend fun setMatchedAddresses(
+        id: Long,
+        startAddressId: Long?,
+        endAddressId: Long?,
     )
 
     @Delete

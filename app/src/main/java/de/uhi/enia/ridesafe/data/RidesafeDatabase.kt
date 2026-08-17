@@ -24,6 +24,18 @@ class Converters {
 
     @TypeConverter
     fun stringToDevices(value: String): List<BtDevice> = if (value.isBlank()) emptyList() else deviceJson.decodeFromString(value)
+
+    @TypeConverter
+    fun placeKindToString(value: SavedPlaceKind): String = value.name
+
+    @TypeConverter
+    fun stringToPlaceKind(value: String): SavedPlaceKind = SavedPlaceKind.valueOf(value)
+
+    @TypeConverter
+    fun rideEventTypeToString(value: RideEventType): String = value.name
+
+    @TypeConverter
+    fun stringToRideEventType(value: String): RideEventType = RideEventType.valueOf(value)
 }
 
 /** Adds Vehicle.bluetoothAddresses (GAR-08) without dropping existing vehicles (NFR-06). */
@@ -130,12 +142,166 @@ private val MIGRATION_7_8 =
         }
     }
 
-@Database(entities = [Vehicle::class, Ride::class], version = 8, exportSchema = false)
+/**
+ * Adds saved addresses (DR-ADR) and the matched-address ids on rides (ADR-07), layered on top of the
+ * ride-merging v8 schema (mergeGroupId). Additive only: the new ride columns default to null
+ * (unmatched) and the re-match pass fills them from the saved addresses on next launch. Existing
+ * rides and vehicles are untouched.
+ */
+private val MIGRATION_8_9 =
+    object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE rides ADD COLUMN startAddressId INTEGER")
+            db.execSQL("ALTER TABLE rides ADD COLUMN endAddressId INTEGER")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS saved_addresses (" +
+                    "id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+                    "label TEXT NOT NULL, " +
+                    "kind TEXT NOT NULL, " +
+                    "latitude REAL NOT NULL, " +
+                    "longitude REAL NOT NULL, " +
+                    "radiusMeters INTEGER NOT NULL, " +
+                    "icon TEXT NOT NULL, " +
+                    "address TEXT)",
+            )
+        }
+    }
+
+/**
+ * Adds the driving-event table (ANL-01) and Ride.analyzerVersion. Additive only: existing rides get
+ * a null version, which the backfill pass reads as "never analyzed" and fills from the raw sample
+ * files that have been recorded all along — nothing needs re-recording. The index name has to match
+ * what Room generates for `@Index("rideId")`, or its schema validation rejects the table on open.
+ */
+private val MIGRATION_9_10 =
+    object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE rides ADD COLUMN analyzerVersion INTEGER")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS drive_events (" +
+                    "id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+                    "rideId INTEGER NOT NULL, " +
+                    "type TEXT NOT NULL, " +
+                    "startOffsetMs INTEGER NOT NULL, " +
+                    "durationMs INTEGER NOT NULL, " +
+                    "peakG REAL NOT NULL, " +
+                    "avgG REAL NOT NULL, " +
+                    "speedMps REAL NOT NULL, " +
+                    "lat REAL, " +
+                    "lon REAL, " +
+                    "FOREIGN KEY(rideId) REFERENCES rides(id) ON DELETE CASCADE)",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_drive_events_rideId ON drive_events(rideId)")
+        }
+    }
+
+/**
+ * Adds DriveEvent.peakJerkGPerS, which detection now triggers on rather than force alone. The table
+ * is dropped and recreated rather than ALTER-ed: every stored event was produced by a detector that
+ * didn't measure jerk, so all of them are stale by definition, and the ANALYZER_VERSION bump has the
+ * backfill regenerate the lot from the raw sample files. Nothing here is a source of truth.
+ */
+private val MIGRATION_10_11 =
+    object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP TABLE IF EXISTS drive_events")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS drive_events (" +
+                    "id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+                    "rideId INTEGER NOT NULL, " +
+                    "type TEXT NOT NULL, " +
+                    "startOffsetMs INTEGER NOT NULL, " +
+                    "durationMs INTEGER NOT NULL, " +
+                    "peakG REAL NOT NULL, " +
+                    "peakJerkGPerS REAL NOT NULL, " +
+                    "avgG REAL NOT NULL, " +
+                    "speedMps REAL NOT NULL, " +
+                    "lat REAL, " +
+                    "lon REAL, " +
+                    "FOREIGN KEY(rideId) REFERENCES rides(id) ON DELETE CASCADE)",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_drive_events_rideId ON drive_events(rideId)")
+        }
+    }
+
+/**
+ * Renames drive_events to ride_events, following the entity rename. A pure rename rather than a
+ * drop-and-recreate: the events are regenerable, but regenerating them means re-reading every ride's
+ * raw samples, and a long ride is minutes of work for a change that alters no data.
+ *
+ * The index needs recreating even though SQLite carries it across the rename, because it carries the
+ * *old name* with it while Room derives the name it expects from the table. Leaving it would fail
+ * schema validation on open with an index-name mismatch rather than anything obvious.
+ *
+ * Earlier migrations deliberately still say drive_events. They describe the schema as it stood at
+ * their version, and a device coming from v9 walks all of them in order — renaming them there would
+ * leave this one looking for a table that was never created.
+ */
+private val MIGRATION_11_12 =
+    object : Migration(11, 12) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE drive_events RENAME TO ride_events")
+            db.execSQL("DROP INDEX IF EXISTS index_drive_events_rideId")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_ride_events_rideId ON ride_events(rideId)")
+        }
+    }
+
+/**
+ * Moves analysis bookkeeping out of the rides table and into `ride_analysis`, one row per (ride,
+ * step), so the pipeline can re-derive one step without invalidating the rest.
+ *
+ * The seeds matter more than the table: they carry today's state across, so upgrading re-analyzes
+ * nothing that is already current. Route work is seeded from `distanceMeters`, which only the
+ * processing pass ever set, and the event steps from the `analyzerVersion` being retired — a ride
+ * stamped below the current detector stays stale and is picked up as it would have been anyway.
+ *
+ * The axis step has no stored output, so its seed is purely a marker; it is seeded wherever the
+ * events it feeds are current. A ride seeded route-current whose sidecar has since been pruned is
+ * caught at run time, when restoring it fails and the step is re-derived.
+ *
+ * minSdk 34 means SQLite 3.39+, so the column goes with a plain DROP COLUMN — no table rebuild.
+ */
+private val MIGRATION_12_13 =
+    object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS ride_analysis (" +
+                    "rideId INTEGER NOT NULL, " +
+                    "stage TEXT NOT NULL, " +
+                    "version INTEGER NOT NULL, " +
+                    "PRIMARY KEY(rideId, stage), " +
+                    "FOREIGN KEY(rideId) REFERENCES rides(id) ON DELETE CASCADE)",
+            )
+            db.execSQL(
+                "INSERT INTO ride_analysis SELECT id, 'route', 2 FROM rides WHERE distanceMeters IS NOT NULL",
+            )
+            db.execSQL(
+                "INSERT INTO ride_analysis SELECT id, 'axis', 1 FROM rides WHERE analyzerVersion >= 8",
+            )
+            db.execSQL(
+                "INSERT INTO ride_analysis SELECT id, 'events', analyzerVersion FROM rides " +
+                    "WHERE analyzerVersion IS NOT NULL",
+            )
+            db.execSQL("ALTER TABLE rides DROP COLUMN analyzerVersion")
+        }
+    }
+
+@Database(
+    entities = [Vehicle::class, Ride::class, SavedAddress::class, RideEvent::class, RideAnalysisState::class],
+    version = 13,
+    exportSchema = false,
+)
 @TypeConverters(Converters::class)
 abstract class RidesafeDatabase : RoomDatabase() {
     abstract fun vehicleDao(): VehicleDao
 
     abstract fun rideDao(): RideDao
+
+    abstract fun savedAddressDao(): SavedAddressDao
+
+    abstract fun rideEventDao(): RideEventDao
+
+    abstract fun rideAnalysisDao(): RideAnalysisDao
 
     companion object {
         @Volatile private var instance: RidesafeDatabase? = null
@@ -155,6 +321,11 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_5_6,
                         MIGRATION_6_7,
                         MIGRATION_7_8,
+                        MIGRATION_8_9,
+                        MIGRATION_9_10,
+                        MIGRATION_10_11,
+                        MIGRATION_11_12,
+                        MIGRATION_12_13,
                     ).build()
                     .also { instance = it }
             }

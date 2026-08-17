@@ -2,7 +2,7 @@ package de.uhi.enia.ridesafe.ui.screens.settings
 
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
-import de.uhi.enia.ridesafe.tracking.AutoTrackMode
+import de.uhi.enia.ridesafe.rides.trigger.AutoTrackMode
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import kotlinx.serialization.Serializable
 
@@ -19,6 +19,7 @@ fun EntryProviderScope<NavKey>.settingsEntries(
     onUnitSystemChange: (UnitSystemSetting) -> Unit,
     autoTrackMode: AutoTrackMode,
     onAutoTrackModeChange: (AutoTrackMode) -> Unit,
+    savedAddressViewModel: SavedAddressViewModel,
     onOpen: (NavKey) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -29,8 +30,15 @@ fun EntryProviderScope<NavKey>.settingsEntries(
             onOpenLanguage = { onOpen(SettingsLanguageRoute) },
             onOpenUnits = { onOpen(SettingsUnitsRoute) },
             onOpenAutoTrack = { onOpen(SettingsAutoTrackRoute) },
+            onOpenSavedAddresses = { onOpen(SavedAddressesRoute) },
         )
     }
+    savedAddressEntries(
+        viewModel = savedAddressViewModel,
+        unitSystem = unitSystem,
+        onOpen = onOpen,
+        onBack = onBack,
+    )
     entry<SettingsLanguageRoute> {
         LanguageSettingsScreen(onBack = onBack)
     }

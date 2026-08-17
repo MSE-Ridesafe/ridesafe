@@ -140,6 +140,16 @@
     <string name="ride_end_marker">End</string>
     <string name="ride_map_expand">Open full-screen map</string>
     <string name="ride_map_close">Close map</string>
+    <string name="ride_event_braking">Harsh braking</string>
+    <string name="ride_event_acceleration">Harsh acceleration</string>
+    <string name="ride_event_cornering">Harsh cornering</string>
+    <!-- Marker subtitle: peak force in g, then how long it lasted in seconds. -->
+    <string name="ride_event_detail">%1$s g peak · %2$s s</string>
+    <!-- Bottom-sheet header on the full-screen map: how many events the ride has. -->
+    <plurals name="ride_events_count">
+        <item quantity="one">%d event</item>
+        <item quantity="other">%d events</item>
+    </plurals>
     <string name="ride_detail_section_summary">Summary</string>
     <string name="ride_detail_section_speed">Speed</string>
     <string name="ride_detail_section_distance">Distance</string>
@@ -182,7 +192,49 @@
     <string name="ride_action_unmerge_all">Unmerge all</string>
     <string name="ride_action_unmerge_selected">Unmerge (%1$d)</string>
 
+    <!-- Saved addresses -->
+    <string name="settings_category_places">Places</string>
+    <string name="settings_saved_addresses_title">Saved addresses</string>
+    <string name="settings_saved_addresses_summary">Label frequent places like Home or Work</string>
+    <string name="saved_addresses_title">Saved addresses</string>
+    <string name="saved_addresses_add">Add saved address</string>
+    <string name="saved_addresses_empty_title">No saved addresses yet</string>
+    <string name="saved_addresses_empty_message">Add places like Home or Work to label them on your rides.</string>
+    <string name="saved_address_add_shortcut">Add %1$s</string>
+    <string name="saved_address_new_title">New place</string>
+    <string name="saved_address_edit_title">Edit place</string>
+    <string name="saved_address_label">Label</string>
+    <string name="saved_address_search">Search address</string>
+    <string name="saved_address_search_failed">No match found</string>
+    <string name="saved_address_use_location">Use my location</string>
+    <string name="saved_address_location_unavailable">Couldn\'t get your location</string>
+    <string name="saved_address_radius">Recognition radius</string>
+    <string name="saved_address_icon">Icon</string>
+    <string name="saved_address_pick_hint">Tap the map, search, or use your location to set the point.</string>
+    <string name="saved_address_marker">Saved place location</string>
+    <string name="saved_address_delete">Delete place</string>
+    <string name="saved_address_delete_confirm_title">Delete place?</string>
+    <string name="saved_address_delete_confirm_message">%1$s will be removed. This can\'t be undone.</string>
+    <!-- e.g. "120 m from \"Home\"" -->
+    <string name="saved_address_distance_from">%1$s from \"%2$s\"</string>
+    <string name="place_kind_home">Home</string>
+    <string name="place_kind_work">Work</string>
+    <string name="place_kind_school">School</string>
+    <string name="place_kind_custom">Custom place</string>
+
     <string name="recording_channel_name">Ride recording</string>
     <string name="recording_notification_title">Recording ride</string>
     <string name="recording_notification_text">Tracking your trip in the background.</string>
+    <!-- Ride analysis queue (ANL-03) -->
+    <string name="analysis_status_title">Analyzing rides…</string>
+    <string name="analysis_status_count">%1$d of %2$d</string>
+    <string name="analysis_status_open">Show analysis queue</string>
+    <string name="analysis_queue_title">Analysis queue</string>
+    <string name="analysis_queue_subtitle">%1$d of %2$d rides analyzed</string>
+    <string name="analysis_queue_done">Done</string>
+    <string name="analysis_queue_waiting">Waiting…</string>
+    <string name="analysis_queue_empty_title">All rides analyzed</string>
+    <string name="analysis_queue_empty_message">Nothing is being processed right now.</string>
+    <string name="analysis_detail_notice_title">Analysis in progress</string>
+    <string name="analysis_detail_notice_message">Distance, route and driving events aren\'t available for this ride yet or may be incomplete.</string>
 </resources>

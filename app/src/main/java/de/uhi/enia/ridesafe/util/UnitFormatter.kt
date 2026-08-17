@@ -78,7 +78,6 @@ fun usesMetric(setting: UnitSystemSetting): Boolean =
     }
 
 fun formatDistance(
-    context: Context,
     meters: Double,
     setting: UnitSystemSetting,
 ): String {
@@ -96,6 +95,26 @@ fun formatDistance(
     val measure = Measure(value, unit)
     val formatter = MeasureFormat.getInstance(formatLocale, MeasureFormat.FormatWidth.SHORT, oneDecimal(formatLocale))
     return formatter.format(measure)
+}
+
+/**
+ * Short distance from canonical [meters] in the user's small units (m or ft), rounded to a whole
+ * unit, e.g. "120 m" / "390 ft". For sub-kilometer figures like a saved-address offset (ADR-09),
+ * where [formatDistance]'s km/mi would read "0.12 km".
+ */
+fun formatShortDistance(
+    meters: Double,
+    setting: UnitSystemSetting,
+): String {
+    val formatLocale = getFormattingLocale(setting)
+    val (value, unit) =
+        if (usesMetric(setting)) {
+            meters.roundToLong() to MeasureUnit.METER
+        } else {
+            (meters * 3.280839895).roundToLong() to MeasureUnit.FOOT
+        }
+    val formatter = MeasureFormat.getInstance(formatLocale, MeasureFormat.FormatWidth.SHORT)
+    return formatter.format(Measure(value, unit))
 }
 
 /**
@@ -122,7 +141,6 @@ fun formatSpeed(
  * is a whole-number reading, unlike a trip distance). Returns e.g. "120,000 mi".
  */
 fun formatOdometer(
-    context: Context,
     kilometers: Int,
     setting: UnitSystemSetting,
 ): String {

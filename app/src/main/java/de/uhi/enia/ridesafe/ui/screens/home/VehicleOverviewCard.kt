@@ -75,7 +75,7 @@ fun VehicleCard(
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
                     InfoChip(
                         label = stringResource(R.string.vehicle_mileage),
-                        value = formatOdometer(context, vehicle.mileageKm, unitSystem),
+                        value = formatOdometer(vehicle.mileageKm, unitSystem),
                         modifier = Modifier.weight(1f),
                     )
                     InfoChip(

@@ -45,6 +45,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    // The pipeline and the sample reader log; without this, android.util.Log throws in JVM tests.
+    testOptions { unitTests.isReturnDefaultValues = true }
+
     buildFeatures {
         compose = true
     }
@@ -72,7 +75,6 @@ dependencies {
     implementation(libs.maps.utils)
     implementation(libs.commons.math3)
     testImplementation(libs.junit)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)

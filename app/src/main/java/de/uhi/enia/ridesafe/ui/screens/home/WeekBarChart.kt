@@ -1,6 +1,5 @@
 package de.uhi.enia.ridesafe.ui.screens.home
 
-import android.content.Context
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -20,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -39,7 +37,6 @@ fun WeeklyBarChart(
     maxValue: Double,
     unitSystem: UnitSystemSetting,
 ) {
-    val context = LocalContext.current
     Row(
         modifier =
             Modifier
@@ -52,7 +49,7 @@ fun WeeklyBarChart(
             val value = bar.valueFor(selectedMetric)
             ActivityBarColumn(
                 bar = bar,
-                valueLabel = bar.labelFor(context, selectedMetric, unitSystem),
+                valueLabel = bar.labelFor(selectedMetric, unitSystem),
                 hasValue = value > 0.0,
                 fraction = (value / maxValue).toFloat().coerceIn(0f, 1f),
                 modifier = Modifier.weight(1f),
@@ -122,11 +119,10 @@ private fun ActivityBarColumn(
 }
 
 private fun ActivityBar.labelFor(
-    context: Context,
     metric: ActivityChartMetric,
     unitSystem: UnitSystemSetting,
 ): String =
     when (metric) {
-        ActivityChartMetric.DISTANCE -> formatDistance(context, distanceMeters, unitSystem)
+        ActivityChartMetric.DISTANCE -> formatDistance(distanceMeters, unitSystem)
         ActivityChartMetric.TRAVEL_TIME -> formatCompactDuration(durationMillis)
     }

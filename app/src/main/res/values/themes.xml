@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.Ridesafe" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+        Compose paints the whole UI, so this theme only supplies the window background that shows
+        before the first frame. It is the system's dynamic background colour (minSdk 34), which is
+        what dynamicLightColorScheme resolves to, so the launch shows no flash of a different shade.
+        See values-night for the dark counterpart.
+    -->
+    <style name="Theme.Ridesafe" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/system_background_light</item>
+    </style>
 </resources>

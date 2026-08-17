@@ -44,10 +44,11 @@ import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.model.LatLng
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Ride
+import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.canToggleStop
 import de.uhi.enia.ridesafe.data.canUnmergeSelection
 import de.uhi.enia.ridesafe.data.summarizeMerge
-import de.uhi.enia.ridesafe.tracking.shortAddress
+import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
@@ -68,6 +69,7 @@ import de.uhi.enia.ridesafe.util.formatTimeOfDay
 fun MergedRideDetailScreen(
     stops: List<Ride>?,
     segments: List<List<LatLng>>?,
+    rideEvents: List<RideEvent>,
     unitSystem: UnitSystemSetting,
     onBack: () -> Unit,
     onUnmergeAll: () -> Unit,
@@ -104,7 +106,6 @@ fun MergedRideDetailScreen(
     }
 
     val summary = remember(stops) { summarizeMerge(stops) }
-
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -143,7 +144,7 @@ fun MergedRideDetailScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            RouteMapCard(segments = segments)
+            RouteMapCard(segments = segments, rideEvents = rideEvents)
 
             MergedJourneyCard(
                 stops = stops,
@@ -158,7 +159,7 @@ fun MergedRideDetailScreen(
                     listOf(
                         stringResource(R.string.ride_detail_total_distance) to
                             (
-                                summary.distanceMeters?.let { formatDistance(context, it, unitSystem) }
+                                summary.distanceMeters?.let { formatDistance(it, unitSystem) }
                                     ?: stringResource(R.string.value_not_set)
                             ),
                         stringResource(R.string.ride_detail_duration) to formatDurationMs(summary.movingDurationMs),
@@ -264,7 +265,7 @@ private fun MergedJourneyCard(
                         buildString {
                             append(formatTimeOfDay(context, ride.startedAtEpochMs))
                             ride.endedAtEpochMs?.let { append(" – ").append(formatTimeOfDay(context, it)) }
-                            ride.distanceMeters?.let { append("  •  ").append(formatDistance(context, it, unitSystem)) }
+                            ride.distanceMeters?.let { append("  •  ").append(formatDistance(it, unitSystem)) }
                         },
                     showCheckbox = selectable,
                     checked = index in selected,
@@ -297,7 +298,7 @@ private fun MergedJourneyCard(
 
 /**
  * The places timeline for a merged ride (N+1 waypoints for N legs): origin, one waypoint per parked
- * boundary, then the destination. A boundary waypoint is labelled with the more reliable next-leg
+ * boundary, then the destination. A boundary waypoint is labeled with the more reliable next-leg
  * start address (falling back to the previous leg's end), its arrival time, and a "left … · parked …"
  * note — collapsing the two "unrelated" fixes into one place for a readable trip (MRG-07).
  */
