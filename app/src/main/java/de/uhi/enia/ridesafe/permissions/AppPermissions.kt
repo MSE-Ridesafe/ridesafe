@@ -79,8 +79,7 @@ enum class AppPermission(
     ),
     ;
 
-    fun isGranted(context: Context): Boolean =
-        ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+    fun isGranted(context: Context): Boolean = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 }
 
 /**
@@ -90,16 +89,20 @@ enum class AppPermission(
  */
 fun requiredFor(mode: AutoTrackMode): List<AppPermission> =
     when (mode) {
-        AutoTrackMode.OFF -> emptyList()
-        AutoTrackMode.PAIRED_ONLY ->
+        AutoTrackMode.OFF -> {
+            emptyList()
+        }
+
+        AutoTrackMode.PAIRED_ONLY -> {
             listOf(
                 AppPermission.LOCATION,
                 AppPermission.BACKGROUND_LOCATION,
                 AppPermission.BLUETOOTH,
                 AppPermission.NOTIFICATIONS,
             )
+        }
 
-        AutoTrackMode.ANY ->
+        AutoTrackMode.ANY -> {
             listOf(
                 AppPermission.LOCATION,
                 AppPermission.BACKGROUND_LOCATION,
@@ -107,6 +110,7 @@ fun requiredFor(mode: AutoTrackMode): List<AppPermission> =
                 AppPermission.ACTIVITY,
                 AppPermission.NOTIFICATIONS,
             )
+        }
     }
 
 /**

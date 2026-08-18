@@ -27,9 +27,7 @@ import de.uhi.enia.ridesafe.util.formatDistance
 import java.time.format.TextStyle
 
 @Composable
-fun HighlightsCard(
-    highlights: HomeHighlights,
-) {
+fun HighlightsCard(highlights: HomeHighlights) {
     val unitSystem = currentUnitSystem()
     val context = LocalContext.current
     val locale = LocalLocale.current.platformLocale

@@ -27,9 +27,7 @@ import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatOdometer
 
 @Composable
-fun VehicleCard(
-    vehicle: Vehicle?,
-) {
+fun VehicleCard(vehicle: Vehicle?) {
     val unitSystem = currentUnitSystem()
     val context = LocalContext.current
     val locale = LocalLocale.current.platformLocale

@@ -32,9 +32,7 @@ import java.time.YearMonth
 import kotlin.math.max
 
 @Composable
-fun ActivitySection(
-    activityByDay: Map<LocalDate, ActivityBar>,
-) {
+fun ActivitySection(activityByDay: Map<LocalDate, ActivityBar>) {
     var selectedTimeRange by rememberSaveable { mutableStateOf(ActivityTimeRange.WEEK) }
     var selectedMetric by rememberSaveable { mutableStateOf(ActivityChartMetric.DISTANCE) }
     var weekOffset by rememberSaveable { mutableStateOf(0) }

@@ -8,7 +8,6 @@
     <string name="greeting_hello">Hallo %1$s!</string>
     
     <string name="settings_language_title">App-Sprache</string>
-    <string name="settings_language_summary">Wählen Sie Ihre bevorzugte Sprache</string>
     
     <string name="language_system">Systemstandard</string>
     <string name="language_english">Englisch</string>
@@ -61,7 +60,6 @@
     <string name="settings_category_preferences">Präferenzen</string>
     <string name="settings_category_ride_recording">Fahrtaufzeichnung</string>
     <string name="settings_units_title">Entfernungseinheit</string>
-    <string name="settings_units_summary">Wählen Sie Ihr bevorzugtes Einheitensystem</string>
     <string name="settings_units_detail_description">Wählen Sie, wie Strecken und Fahrtdaten in Ridesafe angezeigt werden.</string>
     <string name="unit_system_automatic">Automatisch (Basierend auf Sprache)</string>
     <string name="unit_system_metric">Metrisch (Kilometer)</string>
@@ -69,7 +67,6 @@
     <string name="sample_distance_label">Beispielentfernung: %1$s</string>
 
     <string name="settings_auto_track_title">Automatische Fahrtaufzeichnung</string>
-    <string name="settings_auto_track_summary">Fahrten automatisch erkennen und aufzeichnen</string>
     <string name="settings_auto_track_detail_description">Wählen Sie, wann Ridesafe Fahrten im Hintergrund aufzeichnen darf.</string>
     <string name="settings_language_detail_description">Wählen Sie die Sprache für App-Beschriftungen, Einstellungen und Meldungen.</string>
     <string name="auto_track_off">Aus</string>

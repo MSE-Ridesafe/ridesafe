@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -105,16 +104,14 @@ fun SettingsScreen(
                     SettingsListItem(
                         iconName = "language",
                         title = stringResource(R.string.settings_language_title),
-                        description = stringResource(R.string.settings_language_summary),
-                        value = currentLanguageLabel(),
+                        subtitle = currentLanguageLabel(),
                         onClick = onOpenLanguage,
                     )
                     SettingsDivider()
                     SettingsListItem(
                         iconName = "straighten",
                         title = stringResource(R.string.settings_units_title),
-                        description = stringResource(R.string.settings_units_summary),
-                        value = unitSystemLabel(unitSystem),
+                        subtitle = unitSystemLabel(unitSystem),
                         onClick = onOpenUnits,
                     )
                 }
@@ -127,8 +124,7 @@ fun SettingsScreen(
                     SettingsListItem(
                         iconName = "location_on",
                         title = stringResource(R.string.settings_saved_addresses_title),
-                        description = stringResource(R.string.settings_saved_addresses_summary),
-                        value = "",
+                        subtitle = stringResource(R.string.settings_saved_addresses_summary),
                         onClick = onOpenSavedAddresses,
                     )
                 }
@@ -141,8 +137,7 @@ fun SettingsScreen(
                     SettingsListItem(
                         iconName = "route",
                         title = stringResource(R.string.settings_auto_track_title),
-                        description = stringResource(R.string.settings_auto_track_summary),
-                        value = autoTrackModeLabel(autoTrackMode),
+                        subtitle = autoTrackModeLabel(autoTrackMode),
                         onClick = onOpenAutoTrack,
                     )
                 }
@@ -335,8 +330,7 @@ private fun SettingsSelectionScreen(
 private fun SettingsListItem(
     iconName: String,
     title: String,
-    description: String,
-    value: String,
+    subtitle: String,
     onClick: () -> Unit,
 ) {
     Row(
@@ -360,32 +354,21 @@ private fun SettingsListItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            // The current value, the way the system Settings app summarises a row. Rows without
+            // one fall back to describing what they do.
             Text(
-                text = description,
+                text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.widthIn(max = 136.dp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            MaterialSymbol(
-                symbolName = "chevron_right",
-                contentDescription = null,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        MaterialSymbol(
+            symbolName = "chevron_right",
+            contentDescription = null,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
