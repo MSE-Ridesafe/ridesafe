@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
 import java.time.format.TextStyle
 import kotlin.math.max
@@ -35,8 +36,8 @@ fun WeeklyBarChart(
     bars: List<ActivityBar>,
     selectedMetric: ActivityChartMetric,
     maxValue: Double,
-    unitSystem: UnitSystemSetting,
 ) {
+    val unitSystem = currentUnitSystem()
     Row(
         modifier =
             Modifier

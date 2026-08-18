@@ -48,7 +48,7 @@ import de.uhi.enia.ridesafe.rides.processing.addressLines
 import de.uhi.enia.ridesafe.rides.processing.latLngDistanceMeters
 import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDuration
 import de.uhi.enia.ridesafe.util.formatRideDateTime
@@ -74,11 +74,11 @@ fun RideDetailScreen(
     rideEvents: List<RideEvent>,
     startPlace: SavedAddress?,
     endPlace: SavedAddress?,
-    unitSystem: UnitSystemSetting,
     analysisProgress: Float?,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val unitSystem = currentUnitSystem()
     val context = LocalContext.current
     Scaffold(
         modifier = modifier,

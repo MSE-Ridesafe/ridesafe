@@ -76,6 +76,21 @@
     <string name="auto_track_paired">Nur gekoppelte Fahrzeuge</string>
     <string name="auto_track_any">Beliebiges Fahrzeug</string>
 
+    <!-- Laufzeitberechtigungen (NFR-05) -->
+    <string name="permissions_card_title">Berechtigungen erforderlich</string>
+    <string name="permissions_card_message">Einige Funktionen arbeiten erst, wenn diese erteilt sind. Zum Erlauben antippen.</string>
+    <string name="permissions_missing_badge">Berechtigungen fehlen</string>
+    <string name="permission_location_title">Standort</string>
+    <string name="permission_location_rationale">Zeichnet die GPS-Route Ihrer Fahrten auf.</string>
+    <string name="permission_background_location_title">Standort im Hintergrund</string>
+    <string name="permission_background_location_rationale">Zeichnet weiter auf, wenn die App geschlossen oder der Bildschirm aus ist. W\u00e4hlen Sie \u201eImmer zulassen\u201c.</string>
+    <string name="permission_bluetooth_title">Bluetooth-Ger\u00e4te in der N\u00e4he</string>
+    <string name="permission_bluetooth_rationale">Erkennt das Bluetooth Ihres Autos, um Fahrten automatisch zu starten und zu beenden.</string>
+    <string name="permission_activity_title">K\u00f6rperliche Aktivit\u00e4t</string>
+    <string name="permission_activity_rationale">Erkennt Autofahrten in Fahrzeugen ohne Bluetooth-Kopplung.</string>
+    <string name="permission_notifications_title">Benachrichtigungen</string>
+    <string name="permission_notifications_rationale">Zeigt die Aufzeichnungs-Benachrichtigung w\u00e4hrend einer Fahrt.</string>
+
     <!-- Garage -->
     <string name="action_back">Zurück</string>
     <string name="action_save">Speichern</string>

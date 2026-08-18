@@ -79,7 +79,7 @@ import de.uhi.enia.ridesafe.rides.processing.forwardGeocode
 import de.uhi.enia.ridesafe.rides.processing.reverseGeocode
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatShortDistance
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -125,12 +125,12 @@ private val CURATED_PLACE_ICONS =
 fun SavedAddressFormScreen(
     existing: SavedAddress?,
     presetKind: SavedPlaceKind,
-    unitSystem: UnitSystemSetting,
     onSave: (SavedAddress) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onDelete: (() -> Unit)? = null,
 ) {
+    val unitSystem = currentUnitSystem()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current

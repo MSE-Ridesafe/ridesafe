@@ -76,6 +76,21 @@
     <string name="auto_track_paired">Paired vehicles only</string>
     <string name="auto_track_any">Any vehicle</string>
 
+    <!-- Runtime permissions (NFR-05) -->
+    <string name="permissions_card_title">Permissions needed</string>
+    <string name="permissions_card_message">Some features can\'t work until these are granted. Tap one to allow it.</string>
+    <string name="permissions_missing_badge">Permissions missing</string>
+    <string name="permission_location_title">Location</string>
+    <string name="permission_location_rationale">Records the GPS route of your rides.</string>
+    <string name="permission_background_location_title">Location in the background</string>
+    <string name="permission_background_location_rationale">Keeps recording while the app is closed or the screen is off. Choose \u201cAllow all the time\u201d.</string>
+    <string name="permission_bluetooth_title">Nearby Bluetooth devices</string>
+    <string name="permission_bluetooth_rationale">Detects your car\'s Bluetooth to start and end rides automatically.</string>
+    <string name="permission_activity_title">Physical activity</string>
+    <string name="permission_activity_rationale">Recognizes car trips in vehicles without a Bluetooth pairing.</string>
+    <string name="permission_notifications_title">Notifications</string>
+    <string name="permission_notifications_rationale">Shows the recording notification while a ride is in progress.</string>
+
     <!-- Garage -->
     <string name="action_back">Back</string>
     <string name="action_save">Save</string>

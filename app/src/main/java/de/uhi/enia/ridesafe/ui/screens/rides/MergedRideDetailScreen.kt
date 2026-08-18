@@ -51,7 +51,7 @@ import de.uhi.enia.ridesafe.data.summarizeMerge
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDurationMs
 import de.uhi.enia.ridesafe.util.formatRideDateTime
@@ -70,12 +70,12 @@ fun MergedRideDetailScreen(
     stops: List<Ride>?,
     segments: List<List<LatLng>>?,
     rideEvents: List<RideEvent>,
-    unitSystem: UnitSystemSetting,
     onBack: () -> Unit,
     onUnmergeAll: () -> Unit,
     onUnmerge: (stopIds: List<Long>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val unitSystem = currentUnitSystem()
     val context = LocalContext.current
 
     // Group gone (fully un-merged, here or elsewhere, down to one stop): leave the now-defunct merged
@@ -148,7 +148,6 @@ fun MergedRideDetailScreen(
 
             MergedJourneyCard(
                 stops = stops,
-                unitSystem = unitSystem,
                 onUnmergeAll = onUnmergeAll,
                 onUnmerge = onUnmerge,
             )
@@ -191,10 +190,10 @@ fun MergedRideDetailScreen(
 @Composable
 private fun MergedJourneyCard(
     stops: List<Ride>,
-    unitSystem: UnitSystemSetting,
     onUnmergeAll: () -> Unit,
     onUnmerge: (stopIds: List<Long>) -> Unit,
 ) {
+    val unitSystem = currentUnitSystem()
     val context = LocalContext.current
     val n = stops.size
     val selectable = n >= 3 // for two stops, peeling one == unmerging both, so offer only "Unmerge all"

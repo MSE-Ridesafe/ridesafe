@@ -49,7 +49,7 @@ import de.uhi.enia.ridesafe.data.canMerge
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDayHeader
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDuration
@@ -61,7 +61,6 @@ import java.time.LocalDate
 @Composable
 fun RidesScreen(
     entries: List<LogbookEntry>,
-    unitSystem: UnitSystemSetting,
     analysis: RideAnalysisProgress,
     onOpenRide: (Long) -> Unit,
     onOpenMerged: (Long) -> Unit,
@@ -179,7 +178,6 @@ fun RidesScreen(
                                     }
                                     LogbookRow(
                                         entry = entry,
-                                        unitSystem = unitSystem,
                                         selectionMode = selectionMode,
                                         selected = entry.key in selected,
                                         onClick = {
@@ -295,12 +293,12 @@ private fun DayHeader(text: String) {
 @Composable
 private fun LogbookRow(
     entry: LogbookEntry,
-    unitSystem: UnitSystemSetting,
     selectionMode: Boolean,
     selected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
+    val unitSystem = currentUnitSystem()
     val context = LocalContext.current
 
     val overline: String?

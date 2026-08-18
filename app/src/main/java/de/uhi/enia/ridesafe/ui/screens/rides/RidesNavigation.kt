@@ -7,7 +7,6 @@ import androidx.compose.runtime.remember
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.google.android.gms.maps.model.LatLng
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import kotlinx.serialization.Serializable
 
 @Serializable data object RidesRoute : NavKey
@@ -30,7 +29,6 @@ import kotlinx.serialization.Serializable
  */
 fun EntryProviderScope<NavKey>.ridesEntries(
     viewModel: RidesViewModel,
-    unitSystem: UnitSystemSetting,
     onOpen: (NavKey) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -39,7 +37,6 @@ fun EntryProviderScope<NavKey>.ridesEntries(
         val analysis by viewModel.analysisProgress.collectAsState()
         RidesScreen(
             entries = entries,
-            unitSystem = unitSystem,
             analysis = analysis,
             onOpenRide = { onOpen(RideDetailRoute(it)) },
             onOpenMerged = { onOpen(MergedRideDetailRoute(it)) },
@@ -65,7 +62,6 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             stops = stops,
             segments = segments,
             rideEvents = groupEvents,
-            unitSystem = unitSystem,
             onBack = onBack,
             onUnmergeAll = { viewModel.unmergeAll(key.groupId) },
             onUnmerge = { viewModel.unmerge(key.groupId, it) },
@@ -91,7 +87,6 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             rideEvents = rideEvents,
             startPlace = startPlace,
             endPlace = endPlace,
-            unitSystem = unitSystem,
             analysisProgress = analysisProgress,
             onBack = onBack,
         )

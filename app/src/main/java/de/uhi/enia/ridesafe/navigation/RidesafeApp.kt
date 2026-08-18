@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Badge
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -27,13 +28,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import de.uhi.enia.ridesafe.R
+import de.uhi.enia.ridesafe.permissions.PermissionState
 import de.uhi.enia.ridesafe.rides.trigger.AutoTrackPrefs
-import de.uhi.enia.ridesafe.rides.trigger.applyAutoTrackMode
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.map.FullScreenMapHost
 import de.uhi.enia.ridesafe.ui.components.map.FullScreenMapRequest
@@ -50,7 +55,6 @@ import de.uhi.enia.ridesafe.ui.screens.rides.ridesEntries
 import de.uhi.enia.ridesafe.ui.screens.settings.SavedAddressViewModel
 import de.uhi.enia.ridesafe.ui.screens.settings.SettingsRoute
 import de.uhi.enia.ridesafe.ui.screens.settings.settingsEntries
-import de.uhi.enia.ridesafe.util.UnitPrefs
 
 // ponytail: animation durations are tuning knobs — bump if a transition feels off.
 private const val SLIDE_MS = 250 // sub-route slide + matching fade-out of the previous screen
@@ -62,7 +66,8 @@ private const val FADE_MS = 250 // quick cross-fade between tabs
  * stack [NavDisplay] renders, so switching tabs preserves each tab's in-tab navigation.
  * NavDisplay supplies the native default transitions and predictive-back animation.
  *
- * App-level state (e.g. [UnitPrefs]) is hoisted above the display so it persists across
+ * Preferences are read where they are used ([UnitPrefs], [AutoTrackPrefs]) rather than passed
+ * down; back stacks are hoisted above the display so they persist across
  * every route. The garage flow's [GarageViewModel] is hoisted here too (one app-scoped
  * instance shared by its three screens), since Nav3 has no graph scope.
  *
@@ -74,8 +79,13 @@ private const val FADE_MS = 250 // quick cross-fade between tabs
 @Composable
 fun RidesafeApp() {
     val context = LocalContext.current
-    var unitSystem by rememberSaveable { mutableStateOf(UnitPrefs.get(context)) }
-    var autoTrackMode by rememberSaveable { mutableStateOf(AutoTrackPrefs.get(context)) }
+
+    // NFR-05: re-read on every resume — grants can land in the system settings app, well
+    // outside any launcher of ours. Keyed on the mode because that changes what is required.
+    LifecycleResumeEffect(AutoTrackPrefs.get(context)) {
+        PermissionState.refresh(context)
+        onPauseOrDispose { }
+    }
 
     // One back stack per tab; the active tab selects which one NavDisplay renders.
     val homeStack = rememberNavBackStack(HomeRoute)
@@ -139,6 +149,17 @@ fun RidesafeApp() {
                                 )
                             },
                             label = { Text(stringResource(id = dest.labelRes)) },
+                            // Missing permissions are only fixable in Settings, so that is the
+                            // only tab that carries the dot.
+                            badge =
+                                if (dest == AppDestinations.SETTINGS && PermissionState.missing.isNotEmpty()) {
+                                    {
+                                        val label = stringResource(R.string.permissions_missing_badge)
+                                        Badge(modifier = Modifier.semantics { contentDescription = label })
+                                    }
+                                } else {
+                                    null
+                                },
                             selected = isSelected,
                             onClick = {
                                 isTabSwitch = true
@@ -184,11 +205,9 @@ fun RidesafeApp() {
                             entryProvider {
                                 homeEntries(
                                     viewModel = homeViewModel,
-                                    unitSystem = unitSystem,
                                 )
                                 ridesEntries(
                                     viewModel = ridesViewModel,
-                                    unitSystem = unitSystem,
                                     onOpen = {
                                         isTabSwitch = false
                                         ridesStack.add(it)
@@ -200,7 +219,6 @@ fun RidesafeApp() {
                                 )
                                 garageEntries(
                                     viewModel = garageViewModel,
-                                    unitSystem = unitSystem,
                                     onOpen = {
                                         isTabSwitch = false
                                         garageStack.add(it)
@@ -215,16 +233,6 @@ fun RidesafeApp() {
                                     },
                                 )
                                 settingsEntries(
-                                    unitSystem = unitSystem,
-                                    onUnitSystemChange = { newSetting ->
-                                        UnitPrefs.set(context, newSetting)
-                                        unitSystem = newSetting
-                                    },
-                                    autoTrackMode = autoTrackMode,
-                                    onAutoTrackModeChange = { newMode ->
-                                        applyAutoTrackMode(context, newMode)
-                                        autoTrackMode = newMode
-                                    },
                                     savedAddressViewModel = savedAddressViewModel,
                                     onOpen = {
                                         isTabSwitch = false

@@ -27,7 +27,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlin.math.max
@@ -35,7 +34,6 @@ import kotlin.math.max
 @Composable
 fun ActivitySection(
     activityByDay: Map<LocalDate, ActivityBar>,
-    unitSystem: UnitSystemSetting,
 ) {
     var selectedTimeRange by rememberSaveable { mutableStateOf(ActivityTimeRange.WEEK) }
     var selectedMetric by rememberSaveable { mutableStateOf(ActivityChartMetric.DISTANCE) }
@@ -154,7 +152,6 @@ fun ActivitySection(
                                 bars = weeklyBars,
                                 selectedMetric = selectedMetric,
                                 maxValue = maxValue,
-                                unitSystem = unitSystem,
                             )
                         }
 

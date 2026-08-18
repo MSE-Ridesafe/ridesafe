@@ -22,15 +22,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
 import java.time.format.TextStyle
 
 @Composable
 fun HighlightsCard(
     highlights: HomeHighlights,
-    unitSystem: UnitSystemSetting,
 ) {
+    val unitSystem = currentUnitSystem()
     val context = LocalContext.current
     val locale = LocalLocale.current.platformLocale
     Card(

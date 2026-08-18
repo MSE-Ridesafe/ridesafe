@@ -4,7 +4,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import kotlinx.serialization.Serializable
 
 @Serializable data object GarageRoute : NavKey
@@ -29,7 +28,6 @@ import kotlinx.serialization.Serializable
  */
 fun EntryProviderScope<NavKey>.garageEntries(
     viewModel: GarageViewModel,
-    unitSystem: UnitSystemSetting,
     onOpen: (NavKey) -> Unit,
     onBack: () -> Unit,
     onPopToGarage: () -> Unit,
@@ -46,7 +44,6 @@ fun EntryProviderScope<NavKey>.garageEntries(
         val vehicle by viewModel.vehicle(key.id).collectAsState(initial = null)
         VehicleDetailScreen(
             vehicle = vehicle,
-            unitSystem = unitSystem,
             onBack = onBack,
             onEdit = { onOpen(EditVehicleRoute(key.id)) },
             onDelete = {
@@ -60,7 +57,6 @@ fun EntryProviderScope<NavKey>.garageEntries(
     entry<AddVehicleRoute> {
         VehicleFormScreen(
             existing = null,
-            unitSystem = unitSystem,
             onSave = { vehicle, makePrimary ->
                 viewModel.addVehicle(vehicle, makePrimary)
                 onBack()
@@ -74,7 +70,6 @@ fun EntryProviderScope<NavKey>.garageEntries(
         vehicle?.let { loaded ->
             VehicleFormScreen(
                 existing = loaded,
-                unitSystem = unitSystem,
                 onSave = { updated, makePrimary ->
                     viewModel.updateVehicle(updated, makePrimary)
                     onBack()
