@@ -38,8 +38,9 @@ class AutoTrackEngine(
     @Synchronized
     fun deviceDisconnected(address: String) {
         present -= address
-        // ponytail: stop when the last mapped device drops; a momentary BT blip therefore
-        // stops+restarts a trip — debounce belongs in the recording layer (TRK-06), not here.
+        // Stop when the last mapped device drops. A momentary BT blip still reaches the
+        // recording layer, which absorbs it: the ride keeps recording for a grace period and a
+        // reconnect of the same vehicle continues it rather than starting a second ride (TRK-09).
         if (present.isEmpty()) stop()
     }
 

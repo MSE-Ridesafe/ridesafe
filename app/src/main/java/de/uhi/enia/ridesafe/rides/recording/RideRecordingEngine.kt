@@ -27,6 +27,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -57,6 +58,7 @@ class RideRecordingEngine(
     private val locationIntervalMs: Long = 1_000, // ~1 Hz GPS; calibration knob (NFR-08)
     private val motionSamplingPeriodUs: Int = 20_000, // ~50 Hz motion; calibration knob (NFR-08)
     private val motionBatchLatencyUs: Int = 5_000_000, // batch motion in the sensor FIFO to save power (NFR-08)
+    private val reconnectGraceMs: Long = 60_000, // how long a car may drop out mid-ride (TRK-09); calibration knob
 ) : RideRecorder {
     private val json =
         Json {
@@ -76,15 +78,25 @@ class RideRecordingEngine(
         val vehicleId: Long?,
     ) : Cmd
 
-    private data class Stop(
-        val done: CompletableDeferred<Unit>? = null,
+    /**
+     * The trip ended — provisionally. The ride keeps recording through the reconnect grace
+     * (TRK-09); [done] completes with true once it is really finalized, false if the car came
+     * back first and the service must stay alive.
+     */
+    private data class End(
+        val done: CompletableDeferred<Boolean>? = null,
     ) : Cmd
+
+    /** The reconnect grace ran out: no car came back, so finalize and drop the tail. */
+    private data object Expire : Cmd
 
     private data object Recover : Cmd
 
     // Single consumer => start/stop/recover run sequentially, in order, off the caller thread.
     private val commands = Channel<Cmd>(Channel.UNLIMITED)
     private var session: Session? = null
+    private var graceJob: Job? = null
+    private var pendingEnd: CompletableDeferred<Boolean>? = null
 
     init {
         scope.launch {
@@ -92,11 +104,15 @@ class RideRecordingEngine(
                 runCatching {
                     when (cmd) {
                         is Start -> startSession(cmd.vehicleId)
-                        is Stop -> stopSession()
+                        is End -> endSession(cmd.done)
+                        Expire -> expireGrace()
                         Recover -> recover()
                     }
-                }.onFailure { Log.e(TAG, "command $cmd failed", it) }
-                if (cmd is Stop) cmd.done?.complete(Unit)
+                }.onFailure {
+                    Log.e(TAG, "command $cmd failed", it)
+                    // Never leave the service waiting on a failed end: it would stay foreground forever.
+                    if (cmd is End || cmd is Expire) finishEnd(stopped = true)
+                }
             }
         }
     }
@@ -106,14 +122,18 @@ class RideRecordingEngine(
     }
 
     override fun onTripEnd() {
-        commands.trySend(Stop())
+        commands.trySend(End())
     }
 
-    /** Stop recording and suspend until the ride is finalized — used by [RideRecordingService]. */
-    suspend fun stopAndAwait() {
-        val done = CompletableDeferred<Unit>()
-        commands.send(Stop(done))
-        done.await()
+    /**
+     * End the trip and suspend until its fate is settled — used by [RideRecordingService].
+     * Returns true once the ride is finalized, false if the same car reconnected within the
+     * grace and recording continues, in which case the caller must keep the service running.
+     */
+    suspend fun endAndAwait(): Boolean {
+        val done = CompletableDeferred<Boolean>()
+        commands.send(End(done))
+        return done.await()
     }
 
     /** Dispose the engine's command consumer; call when the owner is done with it. */
@@ -127,11 +147,54 @@ class RideRecordingEngine(
     }
 
     private suspend fun startSession(vehicleId: Long?) {
-        if (session != null) {
-            Log.w(TAG, "start ignored: already recording")
-            return
+        val open = session
+        if (open != null) {
+            if (!open.isEnding) {
+                Log.w(TAG, "start ignored: already recording")
+                return
+            }
+            // The provisionally-ended ride is still recording (TRK-09). Same car back in time =>
+            // one uninterrupted ride; a different car => close that one at its mark and start fresh.
+            graceJob?.cancel()
+            graceJob = null
+            if (open.vehicleId == vehicleId) {
+                open.rejoin()
+                Log.i(TAG, "vehicle $vehicleId reconnected within the grace; continuing the ride")
+                finishEnd(stopped = false)
+                return
+            }
+            stopSession()
+            finishEnd(stopped = false)
         }
         session = Session(vehicleId).also { it.start() }
+    }
+
+    /** The trip ended: keep recording into the tail buffer and give the car [reconnectGraceMs] to return. */
+    private fun endSession(done: CompletableDeferred<Boolean>?) {
+        pendingEnd?.complete(false) // superseded: this waiter now owns the stop decision
+        pendingEnd = done
+        val s = session
+        if (s == null) {
+            Log.w(TAG, "end ignored: not recording")
+            finishEnd(stopped = true)
+            return
+        }
+        if (s.isEnding) return // duplicate end: keep the original mark and timer
+        s.beginEnding()
+        graceJob = scope.launch { delay(reconnectGraceMs); commands.send(Expire) }
+    }
+
+    /** Nobody reconnected: finalize the ride at its mark, dropping everything recorded after it. */
+    private suspend fun expireGrace() {
+        val s = session
+        if (s == null || !s.isEnding) return // a reconnect won the race with the timer
+        stopSession()
+        finishEnd(stopped = true)
+    }
+
+    private fun finishEnd(stopped: Boolean) {
+        pendingEnd?.complete(stopped)
+        pendingEnd = null
     }
 
     private suspend fun stopSession() {
@@ -141,6 +204,8 @@ class RideRecordingEngine(
             return
         }
         session = null
+        graceJob?.cancel()
+        graceJob = null
         s.stop()
     }
 
@@ -173,19 +238,37 @@ class RideRecordingEngine(
     }
 
     private inner class Session(
-        private val vehicleId: Long?,
+        val vehicleId: Long?,
     ) {
         private val startedAtEpochMs = System.currentTimeMillis()
         private val startedElapsedNanos = SystemClock.elapsedRealtimeNanos()
         private val fileName = "ride_$startedElapsedNanos.ndjson.gz"
         private val channel = Channel<RideSample>(Channel.UNLIMITED)
         private val stats = RideStats()
+        private val tail = RideTail()
+        private var endedAtEpochMs: Long? = null
         private var rideId = 0L
         private lateinit var writerJob: Job
         private var handlerThread: HandlerThread? = null
         private var locationCallback: LocationCallback? = null
         private var sensorListener: SensorEventListener2? = null
         private var flushDone: CompletableDeferred<Unit>? = null
+
+        /** True while the trip has provisionally ended and the ride is recording into its tail. */
+        val isEnding: Boolean
+            get() = tail.isHolding
+
+        /** Mark where the ride ends if nobody reconnects; recording carries on into [tail]. */
+        fun beginEnding() {
+            endedAtEpochMs = System.currentTimeMillis()
+            tail.begin(SystemClock.elapsedRealtimeNanos())
+        }
+
+        /** The same car came back: the tail is part of the ride and the end mark is void. */
+        fun rejoin() {
+            endedAtEpochMs = null
+            tail.rejoin()
+        }
 
         suspend fun start() {
             val dir = ridesDir(appContext).apply { mkdirs() }
@@ -222,7 +305,8 @@ class RideRecordingEngine(
             if (rideId != 0L) {
                 dao.finalize(
                     rideId,
-                    System.currentTimeMillis(),
+                    // The mark, not now: the tail was dropped, so the ride ends where it stopped.
+                    endedAtEpochMs ?: System.currentTimeMillis(),
                     stats.startFix?.lat,
                     stats.startFix?.lon,
                     stats.endFix?.lat,
@@ -255,14 +339,20 @@ class RideRecordingEngine(
                 BufferedWriter(
                     OutputStreamWriter(GZIPOutputStream(FileOutputStream(file), true), Charsets.UTF_8),
                 ).use { w ->
-                    for (sample in channel) {
+                    val write = { sample: RideSample ->
                         w.write(json.encodeToString<RideSample>(sample))
                         w.newLine()
                         if (sample is LocationSample) {
+                            // Only what is written counts, so a dropped tail leaves the endpoints
+                            // and top speed as they were at the mark.
                             stats.add(sample)
                             w.flush()
                         }
                     }
+                    for (sample in channel) {
+                        tail.accept(sample, write)
+                    }
+                    tail.drain(write) // held samples stay unwritten if the grace never reopened
                     w.flush()
                 }
             }

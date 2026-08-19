@@ -96,4 +96,47 @@ class RideSampleTest {
         assertTrue(lines[1].contains("\"ty\":\"mot\""))
         assertTrue(!lines[1].contains("\"w\""))
     }
+
+    private fun motion(tNanos: Long) = MotionSample(t = tNanos, sensor = MotionSensor.ACCEL, x = 0f, y = 0f, z = 0f)
+
+    /** Feeds [samples] through a [RideTail], collecting what it lets through. */
+    private fun writtenBy(
+        tail: RideTail,
+        samples: List<RideSample>,
+    ): List<RideSample> {
+        val out = ArrayList<RideSample>()
+        samples.forEach { tail.accept(it, out::add) }
+        tail.drain(out::add)
+        return out
+    }
+
+    @Test
+    fun tailPassesEverythingThroughBeforeTheRideEnds() {
+        val tail = RideTail()
+        val samples = listOf(loc(1, 50.0, 8.0), motion(2), loc(3, 50.1, 8.0))
+        assertEquals(samples, writtenBy(tail, samples))
+    }
+
+    @Test
+    fun tailDropsWhatWasRecordedAfterTheMark() {
+        val tail = RideTail()
+        tail.begin(markNanos = 100)
+        // A batched motion sample from before the mark lands late — it still belongs to the ride.
+        val written = writtenBy(tail, listOf(loc(150, 50.0, 8.0), motion(90), loc(200, 50.1, 8.0)))
+        assertEquals(listOf(motion(90)), written)
+    }
+
+    @Test
+    fun tailReleasesHeldSamplesInOrderWhenTheCarReconnects() {
+        val tail = RideTail()
+        val out = ArrayList<RideSample>()
+        val write: (RideSample) -> Unit = out::add
+        tail.begin(markNanos = 100)
+        listOf(loc(150, 50.0, 8.0), loc(160, 50.1, 8.0)).forEach { tail.accept(it, write) }
+        assertTrue(out.isEmpty()) // held while the grace is open
+        tail.rejoin()
+        tail.accept(loc(170, 50.2, 8.0), write)
+        tail.drain(write)
+        assertEquals(listOf(loc(150, 50.0, 8.0), loc(160, 50.1, 8.0), loc(170, 50.2, 8.0)), out)
+    }
 }

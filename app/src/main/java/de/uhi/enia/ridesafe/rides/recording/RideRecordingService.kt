@@ -19,7 +19,9 @@ import kotlinx.coroutines.launch
 /**
  * Hosts ride recording in the foreground (TRK-05) so capture survives the app being backgrounded
  * and the launching Bluetooth-receiver process going cold. Driven by [ServiceRideRecorder]: a
- * mapped-device connect starts it, a disconnect stops it. One service lifecycle == one ride.
+ * mapped-device connect starts it, a disconnect stops it. One service lifecycle == one ride —
+ * including across a short dropout: a disconnect only ends the ride once the reconnect grace
+ * expires without the car coming back (TRK-09), so the service stays up in between.
  */
 class RideRecordingService : Service() {
     private lateinit var engine: RideRecordingEngine
@@ -47,9 +49,13 @@ class RideRecordingService : Service() {
 
             ACTION_STOP -> {
                 scope.launch {
-                    engine.stopAndAwait() // finalize the ride before the process can die
-                    ServiceCompat.stopForeground(this@RideRecordingService, ServiceCompat.STOP_FOREGROUND_REMOVE)
-                    stopSelf()
+                    // Suspends through the reconnect grace and finalizes the ride before the
+                    // process can die; false means the car came back, so keep recording.
+                    // stopSelfResult guards the last gap: a start delivered while we waited
+                    // wins, and the recording it began keeps its foreground service.
+                    if (engine.endAndAwait() && stopSelfResult(startId)) {
+                        ServiceCompat.stopForeground(this@RideRecordingService, ServiceCompat.STOP_FOREGROUND_REMOVE)
+                    }
                 }
             }
 
