@@ -78,7 +78,8 @@ externally — all analytics and safety scoring happen locally.
 | TRK-06 | S | Ridesafe shall tolerate temporary GPS signal loss (e.g. tunnels) without ending a ride prematurely.                                                                                                   | Proposed    | TRK-01                                                                 |
 | TRK-07 | M | Ridesafe shall provide the ability to start ride recording manually when automatic ride detection is not available, failed, or disabled by the user                                                   | Proposed    | SET-06, TRK-02                                                         |
 | TRK-08 | M | Ridesafe shall identify the current vehicle from its mapped Bluetooth device(s) to assign rides correctly and avoid recording rides taken as a passenger in foreign vehicles.                         | Proposed    | DR-VEH, GAR-07, GAR-08, SET-06, TRK-02, TRK-03                         |
-| TRK-09 | S | Ridesafe shall continue an ongoing ride when the same vehicle reconnects within a short grace period after its Bluetooth disconnect, rather than ending the ride and starting a new one.              | Implemented | SET-10, TRK-01, TRK-02, TRK-05, TRK-06, TRK-08                         |
+| TRK-09 | S | Ridesafe shall continue an ongoing ride when the same vehicle reconnects within a short grace period after its Bluetooth disconnect, rather than ending the ride and starting a new one.              | Implemented | SET-10, TRK-01, TRK-02, TRK-05, TRK-06, TRK-08, TRK-10                 |
+| TRK-10 | S | Ridesafe shall discard a recorded ride shorter than a minimum length (30 s by default) instead of logging it, so a Bluetooth blip or a move within the driveway leaves no trace.                      | Implemented | LOG-02, TRK-01, TRK-02, TRK-09, SET-11                                 |
 
 #### Auto-tracking trigger — implementation notes
 
@@ -106,12 +107,18 @@ end-to-end until recording (TRK-01, DR-RID) exists.
   gets out and brings it back seconds later, until the car is finally locked — which would otherwise
   file every exit as a ride end plus a fresh ride. The trigger still reports the disconnect
   immediately; the **recording layer** absorbs it: the ride keeps recording for a grace period
-  (`RideRecordingEngine.reconnectGraceMs`, set by the user under SET-10: off, 30 s, 1 min
-  (default), 2 min or 5 min) into a hold-back buffer. The same vehicle
+  (`RideRecordingEngine.reconnectGraceMs`, SET-10: off, 30 s, 1 min (default), 2 min or 5 min)
+  into a hold-back buffer. The same vehicle
   reconnecting releases the buffer and the ride carries on uninterrupted; the grace expiring drops
   it, so the ride's end timestamp, end position, top speed and samples are exactly those of the
   moment the car first disconnected. A *different* vehicle connecting closes the held ride at that
   mark and starts a new one. The same buffering covers plain Bluetooth glitches mid-drive.
+- **Minimum length (TRK-10):** a ride shorter than `RideRecordingEngine.minRideMs` (SET-11: off,
+  15 s, 30 s (default), 1 min or 2 min) is deleted outright — row and sample file — rather than
+  finalized, so a Bluetooth blip, a move within the driveway or a passenger's phone catching a
+  connect never reaches the logbook. Length is measured to the TRK-09 mark, so the grace period
+  never pads a short ride over the threshold. Rides left dangling by a kill (NFR-06) are held to
+  the same rule when recovery finalizes them.
 - **On-device (NFR-01):** activity recognition runs on-device; no trip or location data leaves the phone.
 
 ### 3.5 Dashboard
@@ -183,6 +190,7 @@ end-to-end until recording (TRK-01, DR-RID) exists.
 | SET-08 | C | Settings shall let the user choose distance and fuel-economy units, applied consistently across the app.               | Proposed    | ANL-03, ANL-06, SET-07 |
 | SET-09 | C | Settings shall let the user turn grouping reminders on or off.                                                         | Proposed    | NOT-01                 |
 | SET-10 | S | Settings shall let the user set how long a ride keeps recording after the vehicle disconnects.                         | Implemented | SET-01, TRK-09         |
+| SET-11 | S | Settings shall let the user set the minimum length a recording must reach to be kept as a ride.                        | Implemented | SET-01, TRK-10         |
 
 ### 3.12 Saved addresses
 

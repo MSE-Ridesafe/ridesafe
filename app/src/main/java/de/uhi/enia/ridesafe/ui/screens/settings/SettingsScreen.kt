@@ -50,6 +50,8 @@ import de.uhi.enia.ridesafe.permissions.PermissionAlertCard
 import de.uhi.enia.ridesafe.permissions.PermissionState
 import de.uhi.enia.ridesafe.permissions.bundleRequest
 import de.uhi.enia.ridesafe.permissions.missingPermissionsFor
+import de.uhi.enia.ridesafe.rides.recording.MinRideLength
+import de.uhi.enia.ridesafe.rides.recording.MinRideLengthPrefs
 import de.uhi.enia.ridesafe.rides.recording.ReconnectGrace
 import de.uhi.enia.ridesafe.rides.recording.ReconnectGracePrefs
 import de.uhi.enia.ridesafe.rides.trigger.AutoTrackMode
@@ -68,12 +70,14 @@ fun SettingsScreen(
     onOpenUnits: () -> Unit,
     onOpenAutoTrack: () -> Unit,
     onOpenReconnectGrace: () -> Unit,
+    onOpenMinRideLength: () -> Unit,
     onOpenSavedAddresses: () -> Unit,
 ) {
     val context = LocalContext.current
     val unitSystem = currentUnitSystem()
     val autoTrackMode = AutoTrackPrefs.get(context)
     val reconnectGrace = ReconnectGracePrefs.get(context)
+    val minRideLength = MinRideLengthPrefs.get(context)
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -150,6 +154,13 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_reconnect_grace_title),
                         subtitle = stringResource(reconnectGraceLabelRes(reconnectGrace)),
                         onClick = onOpenReconnectGrace,
+                    )
+                    SettingsDivider()
+                    SettingsListItem(
+                        iconName = "timer",
+                        title = stringResource(R.string.settings_min_ride_length_title),
+                        subtitle = stringResource(minRideLengthLabelRes(minRideLength)),
+                        onClick = onOpenMinRideLength,
                     )
                 }
             }
@@ -301,6 +312,30 @@ fun ReconnectGraceSettingsScreen(
                 title = stringResource(reconnectGraceLabelRes(option)),
                 selected = option == grace,
                 onClick = { ReconnectGracePrefs.set(context, option) },
+            )
+        }
+    }
+}
+
+@Composable
+fun MinRideLengthSettingsScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val minRideLength = MinRideLengthPrefs.get(context)
+
+    SettingsSelectionScreen(
+        title = stringResource(R.string.settings_min_ride_length_title),
+        description = stringResource(R.string.settings_min_ride_length_detail_description),
+        onBack = onBack,
+        modifier = modifier,
+    ) {
+        MinRideLength.entries.forEach { option ->
+            SelectableSettingRow(
+                title = stringResource(minRideLengthLabelRes(option)),
+                selected = option == minRideLength,
+                onClick = { MinRideLengthPrefs.set(context, option) },
             )
         }
     }
@@ -503,6 +538,15 @@ private fun unitSystemLabel(unitSystem: UnitSystemSetting): String =
             UnitSystemSetting.IMPERIAL -> R.string.unit_system_imperial
         },
     )
+
+private fun minRideLengthLabelRes(length: MinRideLength): Int =
+    when (length) {
+        MinRideLength.OFF -> R.string.min_ride_length_off
+        MinRideLength.SEC_15 -> R.string.min_ride_length_15s
+        MinRideLength.SEC_30 -> R.string.min_ride_length_30s
+        MinRideLength.SEC_60 -> R.string.min_ride_length_60s
+        MinRideLength.MIN_2 -> R.string.min_ride_length_2m
+    }
 
 private fun reconnectGraceLabelRes(grace: ReconnectGrace): Int =
     when (grace) {

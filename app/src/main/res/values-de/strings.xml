@@ -79,6 +79,13 @@
     <string name="reconnect_grace_1m">1 Minute</string>
     <string name="reconnect_grace_2m">2 Minuten</string>
     <string name="reconnect_grace_5m">5 Minuten</string>
+    <string name="settings_min_ride_length_title">Mindestdauer einer Fahrt</string>
+    <string name="settings_min_ride_length_detail_description">Aufzeichnungen, die kürzer sind, werden verworfen statt ins Fahrtenbuch aufgenommen — eine kurze Bluetooth-Verbindung oder das Umparken in der Einfahrt hinterlässt so keine Fahrt. Gemessen wird bis zum Verbindungsabbruch des Fahrzeugs; die Wartezeit danach zählt nicht mit.</string>
+    <string name="min_ride_length_off">Aus (jede Fahrt behalten)</string>
+    <string name="min_ride_length_15s">15 Sekunden</string>
+    <string name="min_ride_length_30s">30 Sekunden</string>
+    <string name="min_ride_length_60s">1 Minute</string>
+    <string name="min_ride_length_2m">2 Minuten</string>
 
     <!-- Laufzeitberechtigungen (NFR-05) -->
     <string name="permissions_card_title">Berechtigungen erforderlich</string>

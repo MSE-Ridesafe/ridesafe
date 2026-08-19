@@ -25,6 +25,21 @@ enum class ReconnectGrace(
     MIN_5(300_000),
 }
 
+/**
+ * SET-11: how long a recording has to be before it counts as a ride (TRK-10). Anything shorter is
+ * deleted instead of logged — a Bluetooth blip, moving the car inside the driveway, a connect
+ * caught as a passenger. [OFF] keeps every recording, however brief.
+ */
+enum class MinRideLength(
+    val millis: Long,
+) {
+    OFF(0),
+    SEC_15(15_000),
+    SEC_30(30_000),
+    SEC_60(60_000),
+    MIN_2(120_000),
+}
+
 /** Persists [ReconnectGrace] in the shared prefs file used across the app (cf. [de.uhi.enia.ridesafe.util.UnitPrefs]). */
 object ReconnectGracePrefs {
     private const val PREFS_NAME = "ridesafe_prefs"
@@ -51,6 +66,37 @@ object ReconnectGracePrefs {
         val name = prefs.getString(KEY_GRACE, DEFAULT.name)
         return try {
             ReconnectGrace.valueOf(name ?: DEFAULT.name)
+        } catch (_: Exception) {
+            DEFAULT
+        }
+    }
+}
+
+/** Persists [MinRideLength]; see [ReconnectGracePrefs] for the shared idiom. */
+object MinRideLengthPrefs {
+    private const val PREFS_NAME = "ridesafe_prefs"
+    private const val KEY_MIN_LENGTH = "min_ride_length"
+    private val DEFAULT = MinRideLength.SEC_30
+
+    private var cached by mutableStateOf<MinRideLength?>(null)
+
+    fun get(context: Context): MinRideLength = cached ?: read(context).also { cached = it }
+
+    fun set(
+        context: Context,
+        value: MinRideLength,
+    ) {
+        context
+            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit { putString(KEY_MIN_LENGTH, value.name) }
+        cached = value
+    }
+
+    private fun read(context: Context): MinRideLength {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val name = prefs.getString(KEY_MIN_LENGTH, DEFAULT.name)
+        return try {
+            MinRideLength.valueOf(name ?: DEFAULT.name)
         } catch (_: Exception) {
             DEFAULT
         }

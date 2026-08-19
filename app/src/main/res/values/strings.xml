@@ -79,6 +79,13 @@
     <string name="reconnect_grace_1m">1 minute</string>
     <string name="reconnect_grace_2m">2 minutes</string>
     <string name="reconnect_grace_5m">5 minutes</string>
+    <string name="settings_min_ride_length_title">Minimum ride length</string>
+    <string name="settings_min_ride_length_detail_description">Recordings shorter than this are discarded instead of added to the logbook, so a brief Bluetooth connection or a move within the driveway leaves no ride behind. The length is measured up to the moment the vehicle disconnected, so the reconnect grace never counts towards it.</string>
+    <string name="min_ride_length_off">Off (keep every ride)</string>
+    <string name="min_ride_length_15s">15 seconds</string>
+    <string name="min_ride_length_30s">30 seconds</string>
+    <string name="min_ride_length_60s">1 minute</string>
+    <string name="min_ride_length_2m">2 minutes</string>
 
     <!-- Runtime permissions (NFR-05) -->
     <string name="permissions_card_title">Permissions needed</string>

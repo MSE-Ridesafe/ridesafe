@@ -58,9 +58,10 @@ class RideRecordingEngine(
     private val locationIntervalMs: Long = 1_000, // ~1 Hz GPS; calibration knob (NFR-08)
     private val motionSamplingPeriodUs: Int = 20_000, // ~50 Hz motion; calibration knob (NFR-08)
     private val motionBatchLatencyUs: Int = 5_000_000, // batch motion in the sensor FIFO to save power (NFR-08)
-    // How long a car may drop out mid-ride before the ride really ends (TRK-09). The user's
-    // setting (SET-10) is passed in by RideRecordingService; 0 disables the grace.
-    private val reconnectGraceMs: Long = ReconnectGrace.MIN_1.millis,
+    // Both default to the user's settings, read at construction — one engine is built per ride, so
+    // a change applies from the next ride on. 0 disables either rule.
+    private val reconnectGraceMs: Long = ReconnectGracePrefs.get(appContext).millis, // TRK-09/SET-10
+    private val minRideMs: Long = MinRideLengthPrefs.get(appContext).millis, // TRK-10/SET-11
 ) : RideRecorder {
     private val json =
         Json {
@@ -189,7 +190,11 @@ class RideRecordingEngine(
         }
         if (s.isEnding) return // duplicate end: keep the original mark and timer
         s.beginEnding()
-        graceJob = scope.launch { delay(reconnectGraceMs); commands.send(Expire) }
+        graceJob =
+            scope.launch {
+                delay(reconnectGraceMs)
+                commands.send(Expire)
+            }
     }
 
     /** Nobody reconnected: finalize the ride at its mark, dropping everything recorded after it. */
@@ -231,6 +236,14 @@ class RideRecordingEngine(
                     } else {
                         ride.startedAtEpochMs
                     }
+                if (minRideMs > 0 && endedMs - ride.startedAtEpochMs < minRideMs) {
+                    // Same rule as a clean stop (TRK-10): a killed ride that never got going is
+                    // not worth a logbook row either.
+                    dao.deleteById(ride.id)
+                    file.delete()
+                    Log.i(TAG, "discarded dangling ride ${ride.id}: too short")
+                    return@runCatching
+                }
                 dao.finalize(
                     ride.id,
                     endedMs,
@@ -309,20 +322,33 @@ class RideRecordingEngine(
             writerJob.join()
             handlerThread?.quitSafely()
 
-            // safe to read stats: writeLoop finished (join above)
-            if (rideId != 0L) {
-                dao.finalize(
-                    rideId,
-                    // The mark, not now: the tail was dropped, so the ride ends where it stopped.
-                    endedAtEpochMs ?: System.currentTimeMillis(),
-                    stats.startFix?.lat,
-                    stats.startFix?.lon,
-                    stats.endFix?.lat,
-                    stats.endFix?.lon,
-                    stats.maxSpeedMps,
-                )
+            if (rideId == 0L) return
+            // The mark, not now: the tail was dropped, so the ride ends where it stopped — which
+            // is also what makes the length a real one, unpadded by the reconnect grace.
+            val endedAt = endedAtEpochMs ?: System.currentTimeMillis()
+            val lengthMs = endedAt - startedAtEpochMs
+            if (minRideMs > 0 && lengthMs < minRideMs) {
+                discard(lengthMs)
+                return
             }
+            // safe to read stats: writeLoop finished (join above)
+            dao.finalize(
+                rideId,
+                endedAt,
+                stats.startFix?.lat,
+                stats.startFix?.lon,
+                stats.endFix?.lat,
+                stats.endFix?.lon,
+                stats.maxSpeedMps,
+            )
             Log.i(TAG, "stopped ride $rideId: maxSpeed=${stats.maxSpeedMps} mps")
+        }
+
+        /** Too short to be a trip (TRK-10): drop the row and its samples instead of logging it. */
+        private suspend fun discard(lengthMs: Long) {
+            dao.deleteById(rideId)
+            File(ridesDir(appContext), fileName).delete()
+            Log.i(TAG, "discarded ride $rideId: only ${lengthMs}ms long")
         }
 
         // Flush the hardware FIFO so any batched motion still buffered is delivered into the channel
