@@ -50,6 +50,8 @@ import de.uhi.enia.ridesafe.permissions.PermissionAlertCard
 import de.uhi.enia.ridesafe.permissions.PermissionState
 import de.uhi.enia.ridesafe.permissions.bundleRequest
 import de.uhi.enia.ridesafe.permissions.missingPermissionsFor
+import de.uhi.enia.ridesafe.rides.recording.ReconnectGrace
+import de.uhi.enia.ridesafe.rides.recording.ReconnectGracePrefs
 import de.uhi.enia.ridesafe.rides.trigger.AutoTrackMode
 import de.uhi.enia.ridesafe.rides.trigger.AutoTrackPrefs
 import de.uhi.enia.ridesafe.rides.trigger.applyAutoTrackMode
@@ -65,11 +67,13 @@ fun SettingsScreen(
     onOpenLanguage: () -> Unit,
     onOpenUnits: () -> Unit,
     onOpenAutoTrack: () -> Unit,
+    onOpenReconnectGrace: () -> Unit,
     onOpenSavedAddresses: () -> Unit,
 ) {
     val context = LocalContext.current
     val unitSystem = currentUnitSystem()
     val autoTrackMode = AutoTrackPrefs.get(context)
+    val reconnectGrace = ReconnectGracePrefs.get(context)
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -139,6 +143,13 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_auto_track_title),
                         subtitle = autoTrackModeLabel(autoTrackMode),
                         onClick = onOpenAutoTrack,
+                    )
+                    SettingsDivider()
+                    SettingsListItem(
+                        iconName = "bluetooth_searching",
+                        title = stringResource(R.string.settings_reconnect_grace_title),
+                        subtitle = stringResource(reconnectGraceLabelRes(reconnectGrace)),
+                        onClick = onOpenReconnectGrace,
                     )
                 }
             }
@@ -266,6 +277,30 @@ fun AutoTrackSettingsScreen(
                     val request = bundleRequest(missingPermissionsFor(context, option))
                     if (request.isNotEmpty()) permissionLauncher.launch(request)
                 },
+            )
+        }
+    }
+}
+
+@Composable
+fun ReconnectGraceSettingsScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val grace = ReconnectGracePrefs.get(context)
+
+    SettingsSelectionScreen(
+        title = stringResource(R.string.settings_reconnect_grace_title),
+        description = stringResource(R.string.settings_reconnect_grace_detail_description),
+        onBack = onBack,
+        modifier = modifier,
+    ) {
+        ReconnectGrace.entries.forEach { option ->
+            SelectableSettingRow(
+                title = stringResource(reconnectGraceLabelRes(option)),
+                selected = option == grace,
+                onClick = { ReconnectGracePrefs.set(context, option) },
             )
         }
     }
@@ -468,6 +503,15 @@ private fun unitSystemLabel(unitSystem: UnitSystemSetting): String =
             UnitSystemSetting.IMPERIAL -> R.string.unit_system_imperial
         },
     )
+
+private fun reconnectGraceLabelRes(grace: ReconnectGrace): Int =
+    when (grace) {
+        ReconnectGrace.OFF -> R.string.reconnect_grace_off
+        ReconnectGrace.SEC_30 -> R.string.reconnect_grace_30s
+        ReconnectGrace.MIN_1 -> R.string.reconnect_grace_1m
+        ReconnectGrace.MIN_2 -> R.string.reconnect_grace_2m
+        ReconnectGrace.MIN_5 -> R.string.reconnect_grace_5m
+    }
 
 @Composable
 private fun autoTrackModeLabel(autoTrackMode: AutoTrackMode): String =

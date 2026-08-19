@@ -72,6 +72,13 @@
     <string name="auto_track_off">Aus</string>
     <string name="auto_track_paired">Nur gekoppelte Fahrzeuge</string>
     <string name="auto_track_any">Beliebiges Fahrzeug</string>
+    <string name="settings_reconnect_grace_title">Wartezeit bei Verbindungsabbruch</string>
+    <string name="settings_reconnect_grace_detail_description">Viele Autos schalten Bluetooth beim Aussteigen kurz aus und gleich wieder ein. Nach einem Verbindungsabbruch wird noch eine Weile weiter aufgezeichnet; verbindet sich dasselbe Fahrzeug erneut, wird dieselbe Fahrt fortgesetzt statt eine neue zu beginnen. Kommt das Fahrzeug nicht zurück, wird das in der Zwischenzeit Aufgezeichnete verworfen.</string>
+    <string name="reconnect_grace_off">Aus (Fahrt sofort beenden)</string>
+    <string name="reconnect_grace_30s">30 Sekunden</string>
+    <string name="reconnect_grace_1m">1 Minute</string>
+    <string name="reconnect_grace_2m">2 Minuten</string>
+    <string name="reconnect_grace_5m">5 Minuten</string>
 
     <!-- Laufzeitberechtigungen (NFR-05) -->
     <string name="permissions_card_title">Berechtigungen erforderlich</string>

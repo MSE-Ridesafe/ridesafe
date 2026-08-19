@@ -29,7 +29,8 @@ class RideRecordingService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        engine = RideRecordingEngine(applicationContext)
+        // The grace is read once per ride: changing it mid-ride applies to the next one.
+        engine = RideRecordingEngine(applicationContext, reconnectGraceMs = ReconnectGracePrefs.get(this).millis)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

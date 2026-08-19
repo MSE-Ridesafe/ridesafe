@@ -68,17 +68,17 @@ externally — all analytics and safety scoring happen locally.
 
 ### 3.4 Tracking & recording
 
-| ID     | P | Requirement                                                                                                                                                                                           | Status   | Related                                                                |
-|--------|---|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|------------------------------------------------------------------------|
-| TRK-01 | M | Ridesafe shall record rides using GPS location.                                                                                                                                                       | Draft    | ANL-01, DR-RID, LOG-10, NFR-05, NFR-06, NFR-08, TRK-02, TRK-05, TRK-06 |
-| TRK-02 | M | Ridesafe shall automatically detect the start and end of a ride from the connection and disconnection of a Bluetooth device mapped to a vehicle.                                                      | Draft    | GAR-07, GAR-08, NFR-05, SET-06, TRK-01, TRK-03, TRK-07, TRK-08, TRK-09 |
-| TRK-03 | M | Ridesafe shall record only car trips by gating automatic recording on a vehicle's Bluetooth mapping, so walking, cycling, and other vehicles do not trigger recording.                                | Proposed | GAR-08, NFR-05, SET-06, TRK-02, TRK-08                                 |
-| TRK-04 | M | During recording, Ridesafe shall sample motion sensors (accelerometer/gyroscope) alongside GPS to support safety scoring.                                                                             | Proposed | ANL-01, ANL-03, DR-RID                                                 |
-| TRK-05 | S | Ridesafe shall keep recording reliably while the app is in the background or the screen is off.                                                                                                       | Proposed | NFR-05, NFR-06, NFR-08, TRK-01                                         |
-| TRK-06 | S | Ridesafe shall tolerate temporary GPS signal loss (e.g. tunnels) without ending a ride prematurely.                                                                                                   | Proposed | TRK-01                                                                 |
-| TRK-07 | M | Ridesafe shall provide the ability to start ride recording manually when automatic ride detection is not available, failed, or disabled by the user                                                   | Proposed | SET-06, TRK-02                                                         |
-| TRK-08 | M | Ridesafe shall identify the current vehicle from its mapped Bluetooth device(s) to assign rides correctly and avoid recording rides taken as a passenger in foreign vehicles.                         | Proposed | DR-VEH, GAR-07, GAR-08, SET-06, TRK-02, TRK-03                         |
-| TRK-09 | S | Ridesafe shall continue an ongoing ride when the same vehicle reconnects within a short grace period after its Bluetooth disconnect, rather than ending the ride and starting a new one.              | Draft    | TRK-01, TRK-02, TRK-05, TRK-06, TRK-08                                 |
+| ID     | P | Requirement                                                                                                                                                                                           | Status      | Related                                                                |
+|--------|---|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------|------------------------------------------------------------------------|
+| TRK-01 | M | Ridesafe shall record rides using GPS location.                                                                                                                                                       | Draft       | ANL-01, DR-RID, LOG-10, NFR-05, NFR-06, NFR-08, TRK-02, TRK-05, TRK-06 |
+| TRK-02 | M | Ridesafe shall automatically detect the start and end of a ride from the connection and disconnection of a Bluetooth device mapped to a vehicle.                                                      | Draft       | GAR-07, GAR-08, NFR-05, SET-06, TRK-01, TRK-03, TRK-07, TRK-08, TRK-09 |
+| TRK-03 | M | Ridesafe shall record only car trips by gating automatic recording on a vehicle's Bluetooth mapping, so walking, cycling, and other vehicles do not trigger recording.                                | Proposed    | GAR-08, NFR-05, SET-06, TRK-02, TRK-08                                 |
+| TRK-04 | M | During recording, Ridesafe shall sample motion sensors (accelerometer/gyroscope) alongside GPS to support safety scoring.                                                                             | Proposed    | ANL-01, ANL-03, DR-RID                                                 |
+| TRK-05 | S | Ridesafe shall keep recording reliably while the app is in the background or the screen is off.                                                                                                       | Proposed    | NFR-05, NFR-06, NFR-08, TRK-01                                         |
+| TRK-06 | S | Ridesafe shall tolerate temporary GPS signal loss (e.g. tunnels) without ending a ride prematurely.                                                                                                   | Proposed    | TRK-01                                                                 |
+| TRK-07 | M | Ridesafe shall provide the ability to start ride recording manually when automatic ride detection is not available, failed, or disabled by the user                                                   | Proposed    | SET-06, TRK-02                                                         |
+| TRK-08 | M | Ridesafe shall identify the current vehicle from its mapped Bluetooth device(s) to assign rides correctly and avoid recording rides taken as a passenger in foreign vehicles.                         | Proposed    | DR-VEH, GAR-07, GAR-08, SET-06, TRK-02, TRK-03                         |
+| TRK-09 | S | Ridesafe shall continue an ongoing ride when the same vehicle reconnects within a short grace period after its Bluetooth disconnect, rather than ending the ride and starting a new one.              | Implemented | SET-10, TRK-01, TRK-02, TRK-05, TRK-06, TRK-08                         |
 
 #### Auto-tracking trigger — implementation notes
 
@@ -106,7 +106,8 @@ end-to-end until recording (TRK-01, DR-RID) exists.
   gets out and brings it back seconds later, until the car is finally locked — which would otherwise
   file every exit as a ride end plus a fresh ride. The trigger still reports the disconnect
   immediately; the **recording layer** absorbs it: the ride keeps recording for a grace period
-  (60 s, `RideRecordingEngine.reconnectGraceMs`) into a hold-back buffer. The same vehicle
+  (`RideRecordingEngine.reconnectGraceMs`, set by the user under SET-10: off, 30 s, 1 min
+  (default), 2 min or 5 min) into a hold-back buffer. The same vehicle
   reconnecting releases the buffer and the ride carries on uninterrupted; the grace expiring drops
   it, so the ride's end timestamp, end position, top speed and samples are exactly those of the
   moment the car first disconnected. A *different* vehicle connecting closes the held ride at that
@@ -181,6 +182,7 @@ end-to-end until recording (TRK-01, DR-RID) exists.
 | SET-07 | S | Settings shall let the user choose speed units (mph / km/h).                                                           | Draft       | ANL-02, SET-08         |
 | SET-08 | C | Settings shall let the user choose distance and fuel-economy units, applied consistently across the app.               | Proposed    | ANL-03, ANL-06, SET-07 |
 | SET-09 | C | Settings shall let the user turn grouping reminders on or off.                                                         | Proposed    | NOT-01                 |
+| SET-10 | S | Settings shall let the user set how long a ride keeps recording after the vehicle disconnects.                         | Implemented | SET-01, TRK-09         |
 
 ### 3.12 Saved addresses
 

@@ -12,6 +12,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object SettingsAutoTrackRoute : NavKey
 
+@Serializable data object SettingsReconnectGraceRoute : NavKey
+
 fun EntryProviderScope<NavKey>.settingsEntries(
     savedAddressViewModel: SavedAddressViewModel,
     onOpen: (NavKey) -> Unit,
@@ -22,6 +24,7 @@ fun EntryProviderScope<NavKey>.settingsEntries(
             onOpenLanguage = { onOpen(SettingsLanguageRoute) },
             onOpenUnits = { onOpen(SettingsUnitsRoute) },
             onOpenAutoTrack = { onOpen(SettingsAutoTrackRoute) },
+            onOpenReconnectGrace = { onOpen(SettingsReconnectGraceRoute) },
             onOpenSavedAddresses = { onOpen(SavedAddressesRoute) },
         )
     }
@@ -40,6 +43,11 @@ fun EntryProviderScope<NavKey>.settingsEntries(
     }
     entry<SettingsAutoTrackRoute> {
         AutoTrackSettingsScreen(
+            onBack = onBack,
+        )
+    }
+    entry<SettingsReconnectGraceRoute> {
+        ReconnectGraceSettingsScreen(
             onBack = onBack,
         )
     }

@@ -72,6 +72,13 @@
     <string name="auto_track_off">Off</string>
     <string name="auto_track_paired">Paired vehicles only</string>
     <string name="auto_track_any">Any vehicle</string>
+    <string name="settings_reconnect_grace_title">Reconnect grace</string>
+    <string name="settings_reconnect_grace_detail_description">Many cars switch Bluetooth off and straight back on while you get out. Keep recording for a while after the connection drops, and reconnecting to the same vehicle continues the same ride instead of starting a new one. Whatever was recorded in between is discarded if the car does not come back.</string>
+    <string name="reconnect_grace_off">Off (end the ride immediately)</string>
+    <string name="reconnect_grace_30s">30 seconds</string>
+    <string name="reconnect_grace_1m">1 minute</string>
+    <string name="reconnect_grace_2m">2 minutes</string>
+    <string name="reconnect_grace_5m">5 minutes</string>
 
     <!-- Runtime permissions (NFR-05) -->
     <string name="permissions_card_title">Permissions needed</string>

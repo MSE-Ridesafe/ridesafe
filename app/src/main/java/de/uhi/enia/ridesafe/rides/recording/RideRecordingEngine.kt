@@ -58,7 +58,9 @@ class RideRecordingEngine(
     private val locationIntervalMs: Long = 1_000, // ~1 Hz GPS; calibration knob (NFR-08)
     private val motionSamplingPeriodUs: Int = 20_000, // ~50 Hz motion; calibration knob (NFR-08)
     private val motionBatchLatencyUs: Int = 5_000_000, // batch motion in the sensor FIFO to save power (NFR-08)
-    private val reconnectGraceMs: Long = 60_000, // how long a car may drop out mid-ride (TRK-09); calibration knob
+    // How long a car may drop out mid-ride before the ride really ends (TRK-09). The user's
+    // setting (SET-10) is passed in by RideRecordingService; 0 disables the grace.
+    private val reconnectGraceMs: Long = ReconnectGrace.MIN_1.millis,
 ) : RideRecorder {
     private val json =
         Json {
@@ -170,12 +172,18 @@ class RideRecordingEngine(
     }
 
     /** The trip ended: keep recording into the tail buffer and give the car [reconnectGraceMs] to return. */
-    private fun endSession(done: CompletableDeferred<Boolean>?) {
+    private suspend fun endSession(done: CompletableDeferred<Boolean>?) {
         pendingEnd?.complete(false) // superseded: this waiter now owns the stop decision
         pendingEnd = done
         val s = session
         if (s == null) {
             Log.w(TAG, "end ignored: not recording")
+            finishEnd(stopped = true)
+            return
+        }
+        if (reconnectGraceMs <= 0) {
+            // Grace turned off (SET-10): the disconnect is the end of the ride, full stop.
+            stopSession()
             finishEnd(stopped = true)
             return
         }
