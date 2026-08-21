@@ -3,29 +3,23 @@
 package de.uhi.enia.ridesafe.ui.screens.rides
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,11 +28,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,28 +38,17 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMapOptions
-import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.LatLngBounds
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.Polyline
-import com.google.maps.android.compose.rememberCameraPositionState
-import com.google.maps.android.compose.rememberUpdatedMarkerState
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Ride
+import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.haversineMeters
-import de.uhi.enia.ridesafe.tracking.addressLines
-import de.uhi.enia.ridesafe.tracking.latLngDistanceMeters
+import de.uhi.enia.ridesafe.rides.processing.addressLines
+import de.uhi.enia.ridesafe.rides.processing.latLngDistanceMeters
 import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDuration
 import de.uhi.enia.ridesafe.util.formatRideDateTime
@@ -84,17 +62,23 @@ import de.uhi.enia.ridesafe.util.formatTimeOfDay
  * speed come from the persisted [Ride.distanceMeters]/[Ride.avgSpeedMps] (filled by the processing
  * pass ANL-02); they fall back to computing from [route] only for a ride not processed yet, where
  * [route] is the raw track (the simplified sidecar is only ever loaded once the columns are filled).
+ *
+ * [analysisProgress] is non-null only while this ride is still in the analysis queue (ANL-03), and
+ * puts a notice at the top of the screen — without it, a half-analyzed ride just looks broken:
+ * missing distance, no events, and nothing saying why.
  */
 @Composable
 fun RideDetailScreen(
     ride: Ride?,
     route: List<LatLng>?,
+    rideEvents: List<RideEvent>,
     startPlace: SavedAddress?,
     endPlace: SavedAddress?,
-    unitSystem: UnitSystemSetting,
+    analysisProgress: Float?,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val unitSystem = currentUnitSystem()
     val context = LocalContext.current
     Scaffold(
         modifier = modifier,
@@ -133,7 +117,11 @@ fun RideDetailScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            RouteMapCard(segments = route?.let { listOf(it) })
+            if (analysisProgress != null) {
+                AnalysisNoticeCard(progress = analysisProgress)
+            }
+
+            RouteMapCard(segments = route?.let { listOf(it) }, rideEvents = rideEvents)
 
             // Build each stop, folding in a matched saved place (ADR-09): show "<address>, <dist> from
             // <label>", or just the label when the endpoint's address matches the place's exactly.
@@ -426,151 +414,4 @@ private fun Connector(
                     if (visible) Modifier.background(MaterialTheme.colorScheme.outlineVariant) else Modifier,
                 ),
     )
-}
-
-/**
- * The route map card. [segments] is a list of disconnected polylines — one for a single ride, one per
- * stop for a merged ride (MRG-07). Null = still loading; all-empty = the ride(s) recorded no GPS.
- */
-@Composable
-fun RouteMapCard(segments: List<List<LatLng>>?) {
-    Card(
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(300.dp),
-    ) {
-        when {
-            segments == null -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            }
-
-            segments.all { it.isEmpty() } -> {
-                NoGps()
-            }
-
-            else -> {
-                RouteMap(segments)
-            }
-        }
-    }
-}
-
-@Composable
-private fun RouteMap(segments: List<List<LatLng>>) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Box(Modifier.fillMaxSize()) {
-        RouteMapContent(segments = segments, liteMode = true)
-        // Lite-mode maps open the Google Maps app when tapped; this transparent overlay
-        // swallows the tap and opens our own full-screen interactive map instead.
-        Box(
-            Modifier
-                .matchParentSize()
-                .clickable(
-                    onClickLabel = stringResource(R.string.ride_map_expand),
-                    onClick = { expanded = true },
-                ),
-        )
-    }
-
-    if (expanded) {
-        Dialog(
-            onDismissRequest = { expanded = false },
-            // decorFitsSystemWindows = false lets the map fill behind the status/navigation bars
-            // (no top/bottom safe-area insets); the close button below re-applies them.
-            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-        ) {
-            Box(Modifier.fillMaxSize()) {
-                RouteMapContent(segments = segments, liteMode = false)
-                IconButton(
-                    onClick = { expanded = false },
-                    modifier =
-                        Modifier
-                            .align(Alignment.TopStart)
-                            .windowInsetsPadding(WindowInsets.safeDrawing)
-                            .padding(8.dp)
-                            .background(MaterialTheme.colorScheme.surface, CircleShape),
-                ) {
-                    MaterialSymbol(
-                        symbolName = "close",
-                        contentDescription = stringResource(R.string.ride_map_close),
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * The route drawn on a Google Map, framed to fit. [liteMode] true renders a static snapshot (the
- * card preview); false is a live, gesture-driven map. Gestures are kept 2D — pan/zoom/rotate on,
- * tilt off — and the toolbar is hidden so taps stay in-app rather than launching the Maps app.
- */
-@Composable
-private fun RouteMapContent(
-    segments: List<List<LatLng>>,
-    liteMode: Boolean,
-) {
-    val drawn = segments.filter { it.isNotEmpty() }
-    val allPoints = drawn.flatten()
-    val cameraPositionState =
-        rememberCameraPositionState {
-            position = CameraPosition.fromLatLngZoom(allPoints.firstOrNull() ?: LatLng(0.0, 0.0), 14f)
-        }
-    var mapLoaded by remember { mutableStateOf(false) }
-    val routeColor = MaterialTheme.colorScheme.primary
-    val startTitle = stringResource(R.string.ride_start_marker)
-    val endTitle = stringResource(R.string.ride_end_marker)
-
-    GoogleMap(
-        modifier = Modifier.fillMaxSize(),
-        cameraPositionState = cameraPositionState,
-        googleMapOptionsFactory = { GoogleMapOptions().liteMode(liteMode) },
-        uiSettings =
-            MapUiSettings(
-                tiltGesturesEnabled = false,
-                mapToolbarEnabled = false,
-                zoomControlsEnabled = false,
-            ),
-        onMapLoaded = { mapLoaded = true },
-    ) {
-        drawn.forEach { points ->
-            Polyline(points = points, color = routeColor, width = 12f)
-            Marker(state = rememberUpdatedMarkerState(position = points.first()), title = startTitle)
-            Marker(state = rememberUpdatedMarkerState(position = points.last()), title = endTitle)
-        }
-    }
-
-    // Frame all segments once the map has a laid-out size.
-    LaunchedEffect(mapLoaded, segments) {
-        if (mapLoaded && allPoints.size > 1) {
-            val bounds = LatLngBounds.builder().apply { allPoints.forEach(::include) }.build()
-            runCatching { cameraPositionState.move(CameraUpdateFactory.newLatLngBounds(bounds, 100)) }
-        }
-    }
-}
-
-@Composable
-private fun NoGps() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        MaterialSymbol(
-            symbolName = "location_off",
-            contentDescription = null,
-            size = 40.dp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.size(8.dp))
-        Text(
-            text = stringResource(R.string.ride_detail_no_gps),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
 }

@@ -43,7 +43,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
 import kotlin.math.absoluteValue
 
@@ -63,8 +63,8 @@ fun SummaryMetricCarousel(
     monthDistanceMeters: Double,
     monthDurationMillis: Long,
     monthRideCount: Int,
-    unitSystem: UnitSystemSetting,
 ) {
+    val unitSystem = currentUnitSystem()
     val context = LocalContext.current
     val totalDistance = formatDistance(distanceMeters, unitSystem)
     val totalDuration = formatCompactDuration(durationMillis)

@@ -1,28 +1,32 @@
 package de.uhi.enia.ridesafe.ui.screens.rides
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
 import de.uhi.enia.ridesafe.data.MergedSummary
 import de.uhi.enia.ridesafe.data.Ride
+import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.mergeGroupIdFor
 import de.uhi.enia.ridesafe.data.rematchRides
 import de.uhi.enia.ridesafe.data.summarizeMerge
-import de.uhi.enia.ridesafe.tracking.processRide
-import de.uhi.enia.ridesafe.tracking.processedRouteFile
-import de.uhi.enia.ridesafe.tracking.readProcessedRoute
-import de.uhi.enia.ridesafe.tracking.readRideLocations
-import de.uhi.enia.ridesafe.tracking.reverseGeocode
-import de.uhi.enia.ridesafe.tracking.ridesDir
+import de.uhi.enia.ridesafe.rides.processing.RideAnalysisPipeline
+import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
+import de.uhi.enia.ridesafe.rides.processing.processedRouteFile
+import de.uhi.enia.ridesafe.rides.processing.readProcessedRoute
+import de.uhi.enia.ridesafe.rides.processing.reverseGeocode
+import de.uhi.enia.ridesafe.rides.recording.readRideLocations
+import de.uhi.enia.ridesafe.rides.recording.ridesDir
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -83,17 +87,43 @@ class RidesViewModel(
     private val rideDao = db.rideDao()
     private val vehicleDao = db.vehicleDao()
     private val savedAddressDao = db.savedAddressDao()
+    private val rideEventDao = db.rideEventDao()
+
+    private val pipeline = RideAnalysisPipeline(app, db)
+
+    /** The analysis queue (ANL-03), for the Rides status bar, the queue screen and the detail notice. */
+    val analysisProgress: StateFlow<RideAnalysisProgress> = pipeline.progress
 
     init {
-        // One pass per launch: reverse-geocode any ride that has a fix but no stored address yet
-        // (existing rides, plus anything a previous run couldn't geocode while offline).
-        viewModelScope.launch { rideDao.needingAddresses().forEach { fillAddresses(it) } }
-        // One pass per launch: Kalman-filter + simplify the GPS of any ride not processed yet, and
-        // persist its distance/avg speed so the detail view loads from the DB + sidecar, not the raw file.
-        viewModelScope.launch { rideDao.needingProcessing().forEach { process(it) } }
-        // One pass per launch: match every ride's endpoints to the saved addresses (ADR-07), so new
-        // recordings pick up existing places (edits while the app is open re-match in SavedAddressViewModel).
-        viewModelScope.launch { rematchRides(rideDao, savedAddressDao) }
+        // One pass per launch: geocode any ride still missing an address and match every ride's
+        // endpoints to the saved places. Runs on its own rather than waiting for the analysis
+        // pipeline below, which can take a minute on a big backfill.
+        viewModelScope.launch { refreshPlaces() }
+        // Everything derived from a ride's sample file — GPS filtering and metrics (ANL-02), then
+        // driving-event detection (ANL-01) — as one ordered pipeline per ride, several rides at a
+        // time. Re-runs whenever the set of finished rides changes, so a ride recorded while the app
+        // is open is analyzed without waiting for a relaunch; writing metrics or events doesn't
+        // change that set, so the pipeline can't re-trigger itself.
+        viewModelScope.launch {
+            rideDao
+                .observeAll()
+                .map { rides -> rides.filter { it.endedAtEpochMs != null }.map(Ride::id).toSet() }
+                .distinctUntilChanged()
+                .collect {
+                    pipeline.runPending()
+                    // Analysis can move a ride's endpoints off a bad first/last fix, which leaves
+                    // its address and saved place describing somewhere it never was; both are
+                    // cleared when that happens, so this fills them back in from the corrected
+                    // position while the user is still in the app.
+                    refreshPlaces()
+                }
+        }
+    }
+
+    /** Fill in any missing ride address (DR-RID) and re-match every ride to the saved places (ADR-07). */
+    private suspend fun refreshPlaces() {
+        rideDao.needingAddresses().forEach { fillAddresses(it) }
+        rematchRides(rideDao, savedAddressDao)
     }
 
     /** Saved places (DR-ADR), exposed so the detail screen can resolve a ride's matched endpoints. */
@@ -131,6 +161,12 @@ class RidesViewModel(
 
     /** The stops of a merged ride (MRG-04), chronological — the merged detail's source of truth. */
     fun groupStops(groupId: Long): Flow<List<Ride>> = rideDao.observeGroup(groupId)
+
+    /** A ride's detected driving events (ANL-01), for the map's marker layer. */
+    fun rideEvents(rideId: Long): Flow<List<RideEvent>> = rideEventDao.observeForRide(rideId)
+
+    /** Every stop's driving events for a merged ride, so its map covers the whole trip (MRG-07). */
+    fun groupRideEvents(groupId: Long): Flow<List<RideEvent>> = rideEventDao.observeForGroup(groupId)
 
     /** Per-stop routes for the merged map, each drawn as its own disconnected polyline (MRG-07). */
     suspend fun routes(stops: List<Ride>): List<List<LatLng>> = stops.map { route(it) }
@@ -193,12 +229,6 @@ class RidesViewModel(
                     if (file.exists()) readRideLocations(file).map { LatLng(it.lat, it.lon) } else emptyList()
                 }
         }
-
-    /** Process a ride's GPS (filter + simplify + sidecar) and persist its distance/avg speed; no-op if no fixes. */
-    private suspend fun process(ride: Ride) {
-        val metrics = processRide(getApplication(), ride) ?: return
-        rideDao.setMetrics(ride.id, metrics.distanceMeters, metrics.avgSpeedMps)
-    }
 
     /** Reverse-geocode whichever endpoints lack an address and persist; a no-op if nothing resolves. */
     private suspend fun fillAddresses(ride: Ride) {

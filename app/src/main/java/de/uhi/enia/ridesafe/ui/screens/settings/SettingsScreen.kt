@@ -2,9 +2,7 @@
 
 package de.uhi.enia.ridesafe.ui.screens.settings
 
-import android.Manifest
 import android.app.LocaleManager
-import android.content.pm.PackageManager
 import android.os.LocaleList
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -39,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,22 +45,39 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import de.uhi.enia.ridesafe.R
-import de.uhi.enia.ridesafe.tracking.AutoTrackMode
+import de.uhi.enia.ridesafe.permissions.PermissionAlertCard
+import de.uhi.enia.ridesafe.permissions.PermissionState
+import de.uhi.enia.ridesafe.permissions.bundleRequest
+import de.uhi.enia.ridesafe.permissions.missingPermissionsFor
+import de.uhi.enia.ridesafe.rides.recording.MinRideLength
+import de.uhi.enia.ridesafe.rides.recording.MinRideLengthPrefs
+import de.uhi.enia.ridesafe.rides.recording.ReconnectGrace
+import de.uhi.enia.ridesafe.rides.recording.ReconnectGracePrefs
+import de.uhi.enia.ridesafe.rides.trigger.AutoTrackMode
+import de.uhi.enia.ridesafe.rides.trigger.AutoTrackPrefs
+import de.uhi.enia.ridesafe.rides.trigger.applyAutoTrackMode
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.util.UnitPrefs
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import de.uhi.enia.ridesafe.util.currentUnitSystem
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
-    unitSystem: UnitSystemSetting,
-    autoTrackMode: AutoTrackMode,
     onOpenLanguage: () -> Unit,
     onOpenUnits: () -> Unit,
     onOpenAutoTrack: () -> Unit,
+    onOpenReconnectGrace: () -> Unit,
+    onOpenMinRideLength: () -> Unit,
     onOpenSavedAddresses: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val unitSystem = currentUnitSystem()
+    val autoTrackMode = AutoTrackPrefs.get(context)
+    val reconnectGrace = ReconnectGracePrefs.get(context)
+    val minRideLength = MinRideLengthPrefs.get(context)
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -85,6 +100,10 @@ fun SettingsScreen(
                     .fillMaxSize(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
         ) {
+            // NFR-05: whatever the enabled features still need, above everything else.
+            item {
+                PermissionAlertCard(modifier = Modifier.padding(top = 8.dp))
+            }
             item {
                 SettingsCategoryHeader(text = stringResource(R.string.settings_category_preferences))
             }
@@ -93,16 +112,14 @@ fun SettingsScreen(
                     SettingsListItem(
                         iconName = "language",
                         title = stringResource(R.string.settings_language_title),
-                        description = stringResource(R.string.settings_language_summary),
-                        value = currentLanguageLabel(),
+                        subtitle = currentLanguageLabel(),
                         onClick = onOpenLanguage,
                     )
                     SettingsDivider()
                     SettingsListItem(
                         iconName = "straighten",
                         title = stringResource(R.string.settings_units_title),
-                        description = stringResource(R.string.settings_units_summary),
-                        value = unitSystemLabel(unitSystem),
+                        subtitle = unitSystemLabel(unitSystem),
                         onClick = onOpenUnits,
                     )
                 }
@@ -115,8 +132,7 @@ fun SettingsScreen(
                     SettingsListItem(
                         iconName = "location_on",
                         title = stringResource(R.string.settings_saved_addresses_title),
-                        description = stringResource(R.string.settings_saved_addresses_summary),
-                        value = "",
+                        subtitle = stringResource(R.string.settings_saved_addresses_summary),
                         onClick = onOpenSavedAddresses,
                     )
                 }
@@ -129,9 +145,22 @@ fun SettingsScreen(
                     SettingsListItem(
                         iconName = "route",
                         title = stringResource(R.string.settings_auto_track_title),
-                        description = stringResource(R.string.settings_auto_track_summary),
-                        value = autoTrackModeLabel(autoTrackMode),
+                        subtitle = autoTrackModeLabel(autoTrackMode),
                         onClick = onOpenAutoTrack,
+                    )
+                    SettingsDivider()
+                    SettingsListItem(
+                        iconName = "bluetooth_searching",
+                        title = stringResource(R.string.settings_reconnect_grace_title),
+                        subtitle = stringResource(reconnectGraceLabelRes(reconnectGrace)),
+                        onClick = onOpenReconnectGrace,
+                    )
+                    SettingsDivider()
+                    SettingsListItem(
+                        iconName = "timer",
+                        title = stringResource(R.string.settings_min_ride_length_title),
+                        subtitle = stringResource(minRideLengthLabelRes(minRideLength)),
+                        onClick = onOpenMinRideLength,
                     )
                 }
             }
@@ -145,6 +174,7 @@ fun LanguageSettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val localeManager = context.getSystemService(LocaleManager::class.java)
     val currentLocales = localeManager.applicationLocales
     val currentLang =
@@ -178,7 +208,9 @@ fun LanguageSettingsScreen(
                         } else {
                             LocaleList.forLanguageTags(tag)
                         }
-                    localeManager.applicationLocales = locales
+                    scope.launch {
+                        SettingsFade.applyAcrossRestart { localeManager.applicationLocales = locales }
+                    }
                 },
             )
         }
@@ -187,11 +219,12 @@ fun LanguageSettingsScreen(
 
 @Composable
 fun UnitSettingsScreen(
-    unitSystem: UnitSystemSetting,
-    onUnitSystemChange: (UnitSystemSetting) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val unitSystem = currentUnitSystem()
     val options =
         listOf(
             UnitSystemSetting.AUTOMATIC to R.string.unit_system_automatic,
@@ -209,7 +242,9 @@ fun UnitSettingsScreen(
             SelectableSettingRow(
                 title = stringResource(labelRes),
                 selected = option == unitSystem,
-                onClick = { onUnitSystemChange(option) },
+                onClick = {
+                    scope.launch { SettingsFade.applyWhileHidden { UnitPrefs.set(context, option) } }
+                },
             )
         }
     }
@@ -217,15 +252,18 @@ fun UnitSettingsScreen(
 
 @Composable
 fun AutoTrackSettingsScreen(
-    autoTrackMode: AutoTrackMode,
-    onAutoTrackModeChange: (AutoTrackMode) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val activityPermissionLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) onAutoTrackModeChange(AutoTrackMode.ANY)
+    // Turning a mode on is where its permissions are first asked for (NFR-05). The mode is
+    // applied either way — a denial isn't a reason to override the user's choice; the Settings
+    // alert card then lists whatever is still missing. Reporting the result clears the card and
+    // the tab badge as the dialog closes, rather than on the next resume.
+    val autoTrackMode = AutoTrackPrefs.get(context)
+    val permissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            PermissionState.refresh(context)
         }
 
     val options =
@@ -246,18 +284,58 @@ fun AutoTrackSettingsScreen(
                 title = stringResource(labelRes),
                 selected = option == autoTrackMode,
                 onClick = {
-                    val needsPermission =
-                        option == AutoTrackMode.ANY &&
-                            ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.ACTIVITY_RECOGNITION,
-                            ) != PackageManager.PERMISSION_GRANTED
-                    if (needsPermission) {
-                        activityPermissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
-                    } else {
-                        onAutoTrackModeChange(option)
-                    }
+                    applyAutoTrackMode(context, option)
+                    val request = bundleRequest(missingPermissionsFor(context, option))
+                    if (request.isNotEmpty()) permissionLauncher.launch(request)
                 },
+            )
+        }
+    }
+}
+
+@Composable
+fun ReconnectGraceSettingsScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val grace = ReconnectGracePrefs.get(context)
+
+    SettingsSelectionScreen(
+        title = stringResource(R.string.settings_reconnect_grace_title),
+        description = stringResource(R.string.settings_reconnect_grace_detail_description),
+        onBack = onBack,
+        modifier = modifier,
+    ) {
+        ReconnectGrace.entries.forEach { option ->
+            SelectableSettingRow(
+                title = stringResource(reconnectGraceLabelRes(option)),
+                selected = option == grace,
+                onClick = { ReconnectGracePrefs.set(context, option) },
+            )
+        }
+    }
+}
+
+@Composable
+fun MinRideLengthSettingsScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val minRideLength = MinRideLengthPrefs.get(context)
+
+    SettingsSelectionScreen(
+        title = stringResource(R.string.settings_min_ride_length_title),
+        description = stringResource(R.string.settings_min_ride_length_detail_description),
+        onBack = onBack,
+        modifier = modifier,
+    ) {
+        MinRideLength.entries.forEach { option ->
+            SelectableSettingRow(
+                title = stringResource(minRideLengthLabelRes(option)),
+                selected = option == minRideLength,
+                onClick = { MinRideLengthPrefs.set(context, option) },
             )
         }
     }
@@ -322,8 +400,7 @@ private fun SettingsSelectionScreen(
 private fun SettingsListItem(
     iconName: String,
     title: String,
-    description: String,
-    value: String,
+    subtitle: String,
     onClick: () -> Unit,
 ) {
     Row(
@@ -347,32 +424,21 @@ private fun SettingsListItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            // The current value, the way the system Settings app summarises a row. Rows without
+            // one fall back to describing what they do.
             Text(
-                text = description,
+                text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.widthIn(max = 136.dp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            MaterialSymbol(
-                symbolName = "chevron_right",
-                contentDescription = null,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        MaterialSymbol(
+            symbolName = "chevron_right",
+            contentDescription = null,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -472,6 +538,24 @@ private fun unitSystemLabel(unitSystem: UnitSystemSetting): String =
             UnitSystemSetting.IMPERIAL -> R.string.unit_system_imperial
         },
     )
+
+private fun minRideLengthLabelRes(length: MinRideLength): Int =
+    when (length) {
+        MinRideLength.OFF -> R.string.min_ride_length_off
+        MinRideLength.SEC_15 -> R.string.min_ride_length_15s
+        MinRideLength.SEC_30 -> R.string.min_ride_length_30s
+        MinRideLength.SEC_60 -> R.string.min_ride_length_60s
+        MinRideLength.MIN_2 -> R.string.min_ride_length_2m
+    }
+
+private fun reconnectGraceLabelRes(grace: ReconnectGrace): Int =
+    when (grace) {
+        ReconnectGrace.OFF -> R.string.reconnect_grace_off
+        ReconnectGrace.SEC_30 -> R.string.reconnect_grace_30s
+        ReconnectGrace.MIN_1 -> R.string.reconnect_grace_1m
+        ReconnectGrace.MIN_2 -> R.string.reconnect_grace_2m
+        ReconnectGrace.MIN_5 -> R.string.reconnect_grace_5m
+    }
 
 @Composable
 private fun autoTrackModeLabel(autoTrackMode: AutoTrackMode): String =

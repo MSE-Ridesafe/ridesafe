@@ -23,14 +23,12 @@ import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.ui.screens.garage.VehicleImage
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatOdometer
 
 @Composable
-fun VehicleCard(
-    vehicle: Vehicle?,
-    unitSystem: UnitSystemSetting,
-) {
+fun VehicleCard(vehicle: Vehicle?) {
+    val unitSystem = currentUnitSystem()
     val context = LocalContext.current
     val locale = LocalLocale.current.platformLocale
     Card(

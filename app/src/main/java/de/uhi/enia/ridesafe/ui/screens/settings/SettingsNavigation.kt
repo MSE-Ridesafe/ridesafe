@@ -2,8 +2,6 @@ package de.uhi.enia.ridesafe.ui.screens.settings
 
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
-import de.uhi.enia.ridesafe.tracking.AutoTrackMode
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import kotlinx.serialization.Serializable
 
 @Serializable data object SettingsRoute : NavKey
@@ -14,28 +12,27 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object SettingsAutoTrackRoute : NavKey
 
+@Serializable data object SettingsReconnectGraceRoute : NavKey
+
+@Serializable data object SettingsMinRideLengthRoute : NavKey
+
 fun EntryProviderScope<NavKey>.settingsEntries(
-    unitSystem: UnitSystemSetting,
-    onUnitSystemChange: (UnitSystemSetting) -> Unit,
-    autoTrackMode: AutoTrackMode,
-    onAutoTrackModeChange: (AutoTrackMode) -> Unit,
     savedAddressViewModel: SavedAddressViewModel,
     onOpen: (NavKey) -> Unit,
     onBack: () -> Unit,
 ) {
     entry<SettingsRoute> {
         SettingsScreen(
-            unitSystem = unitSystem,
-            autoTrackMode = autoTrackMode,
             onOpenLanguage = { onOpen(SettingsLanguageRoute) },
             onOpenUnits = { onOpen(SettingsUnitsRoute) },
             onOpenAutoTrack = { onOpen(SettingsAutoTrackRoute) },
+            onOpenReconnectGrace = { onOpen(SettingsReconnectGraceRoute) },
+            onOpenMinRideLength = { onOpen(SettingsMinRideLengthRoute) },
             onOpenSavedAddresses = { onOpen(SavedAddressesRoute) },
         )
     }
     savedAddressEntries(
         viewModel = savedAddressViewModel,
-        unitSystem = unitSystem,
         onOpen = onOpen,
         onBack = onBack,
     )
@@ -44,15 +41,21 @@ fun EntryProviderScope<NavKey>.settingsEntries(
     }
     entry<SettingsUnitsRoute> {
         UnitSettingsScreen(
-            unitSystem = unitSystem,
-            onUnitSystemChange = onUnitSystemChange,
             onBack = onBack,
         )
     }
     entry<SettingsAutoTrackRoute> {
         AutoTrackSettingsScreen(
-            autoTrackMode = autoTrackMode,
-            onAutoTrackModeChange = onAutoTrackModeChange,
+            onBack = onBack,
+        )
+    }
+    entry<SettingsReconnectGraceRoute> {
+        ReconnectGraceSettingsScreen(
+            onBack = onBack,
+        )
+    }
+    entry<SettingsMinRideLengthRoute> {
+        MinRideLengthSettingsScreen(
             onBack = onBack,
         )
     }

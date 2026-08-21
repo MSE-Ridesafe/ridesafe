@@ -5,6 +5,7 @@ package de.uhi.enia.ridesafe.ui.screens.rides
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -45,9 +46,10 @@ import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.MergeCheck
 import de.uhi.enia.ridesafe.data.canMerge
-import de.uhi.enia.ridesafe.tracking.shortAddress
+import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
+import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDayHeader
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDuration
@@ -59,9 +61,10 @@ import java.time.LocalDate
 @Composable
 fun RidesScreen(
     entries: List<LogbookEntry>,
-    unitSystem: UnitSystemSetting,
+    analysis: RideAnalysisProgress,
     onOpenRide: (Long) -> Unit,
     onOpenMerged: (Long) -> Unit,
+    onOpenAnalysisQueue: () -> Unit,
     onMerge: (List<Long>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -83,110 +86,130 @@ fun RidesScreen(
         selectedKeys = if (key in selected) selected - key else selected + key
     }
 
-    Scaffold(
-        modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        topBar = {
-            if (selectionMode) {
-                SelectionTopBar(
-                    count = selected.size,
-                    allSelected = entries.isNotEmpty() && selected.size == entries.size,
-                    mergeCheck =
-                        if (selected.isEmpty()) {
-                            MergeCheck.NOT_ENOUGH
-                        } else {
-                            canMerge(
-                                selectedIds = entries.filter { it.key in selected }.flatMap { it.rideIds }.toSet(),
-                                allRides = entries.flatMap { it.rides },
+    // The status bar overlays the Scaffold rather than sitting in its bottomBar slot: that slot
+    // reserves an opaque strip of the Scaffold's own container color, so the pill ends up on the
+    // same background as everything else and reads as docked. Floating over the list — which keeps
+    // scrolling behind it — is what makes it look like it is hovering.
+    Box(modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            topBar = {
+                if (selectionMode) {
+                    SelectionTopBar(
+                        count = selected.size,
+                        allSelected = entries.isNotEmpty() && selected.size == entries.size,
+                        mergeCheck =
+                            if (selected.isEmpty()) {
+                                MergeCheck.NOT_ENOUGH
+                            } else {
+                                canMerge(
+                                    selectedIds = entries.filter { it.key in selected }.flatMap { it.rideIds }.toSet(),
+                                    allRides = entries.flatMap { it.rides },
+                                )
+                            },
+                        onExit = ::exitSelection,
+                        onSelectAll = { selectedKeys = liveKeys },
+                        onDeselectAll = { selectedKeys = emptySet() },
+                        onMerge = {
+                            onMerge(entries.filter { it.key in selected }.flatMap { it.rideIds })
+                            exitSelection()
+                        },
+                    )
+                } else {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                stringResource(R.string.screen_rides_title),
+                                style = MaterialTheme.typography.headlineMedium,
                             )
                         },
-                    onExit = ::exitSelection,
-                    onSelectAll = { selectedKeys = liveKeys },
-                    onDeselectAll = { selectedKeys = emptySet() },
-                    onMerge = {
-                        onMerge(entries.filter { it.key in selected }.flatMap { it.rideIds })
-                        exitSelection()
-                    },
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                    )
+                }
+            },
+        ) { innerPadding ->
+            if (entries.isEmpty()) {
+                EmptyRides(
+                    modifier =
+                        Modifier
+                            .padding(innerPadding)
+                            .fillMaxSize()
+                            .padding(32.dp),
                 )
-            } else {
-                TopAppBar(
-                    title = {
-                        Text(
-                            stringResource(R.string.screen_rides_title),
-                            style = MaterialTheme.typography.headlineMedium,
-                        )
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                )
+                return@Scaffold
             }
-        },
-    ) { innerPadding ->
-        if (entries.isEmpty()) {
-            EmptyRides(
+
+            // One card per calendar day; entries arrive newest-first, so insertion order gives newest day
+            // first, newest entry first within each day.
+            val groups =
+                remember(entries) { entries.groupByTo(LinkedHashMap()) { rideDay(it.sortEpochMs) } }
+            val today = LocalDate.now()
+
+            LazyColumn(
                 modifier =
                     Modifier
                         .padding(innerPadding)
-                        .fillMaxSize()
-                        .padding(32.dp),
-            )
-            return@Scaffold
-        }
-
-        // One card per calendar day; entries arrive newest-first, so insertion order gives newest day
-        // first, newest entry first within each day.
-        val groups =
-            remember(entries) { entries.groupByTo(LinkedHashMap()) { rideDay(it.sortEpochMs) } }
-        val today = LocalDate.now()
-
-        LazyColumn(
-            modifier =
-                Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            groups.forEach { (day, dayEntries) ->
-                item(key = "h$day") {
-                    DayHeader(text = formatDayHeader(context, day, today))
-                }
-                item(key = "c$day") {
-                    Card(
-                        shape = MaterialTheme.shapes.extraLarge,
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column {
-                            dayEntries.forEachIndexed { index, entry ->
-                                if (index > 0) {
-                                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-                                }
-                                LogbookRow(
-                                    entry = entry,
-                                    unitSystem = unitSystem,
-                                    selectionMode = selectionMode,
-                                    selected = entry.key in selected,
-                                    onClick = {
-                                        if (selectionMode) {
-                                            toggle(entry.key)
-                                        } else {
-                                            when (entry) {
-                                                is LogbookEntry.Single -> onOpenRide(entry.row.ride.id)
-                                                is LogbookEntry.Merged -> onOpenMerged(entry.groupId)
+                        .fillMaxSize(),
+                // Nothing reserves space for the floating status bar, so the list leaves room for it
+                // itself — otherwise the last ride of the logbook can never be scrolled out from under it.
+                contentPadding =
+                    PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 16.dp,
+                        bottom = if (analysis.running) 88.dp else 16.dp,
+                    ),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                groups.forEach { (day, dayEntries) ->
+                    item(key = "h$day") {
+                        DayHeader(text = formatDayHeader(context, day, today))
+                    }
+                    item(key = "c$day") {
+                        Card(
+                            shape = MaterialTheme.shapes.extraLarge,
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column {
+                                dayEntries.forEachIndexed { index, entry ->
+                                    if (index > 0) {
+                                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
+                                    }
+                                    LogbookRow(
+                                        entry = entry,
+                                        selectionMode = selectionMode,
+                                        selected = entry.key in selected,
+                                        onClick = {
+                                            if (selectionMode) {
+                                                toggle(entry.key)
+                                            } else {
+                                                when (entry) {
+                                                    is LogbookEntry.Single -> onOpenRide(entry.row.ride.id)
+                                                    is LogbookEntry.Merged -> onOpenMerged(entry.groupId)
+                                                }
                                             }
-                                        }
-                                    },
-                                    onLongClick = {
-                                        selectionMode = true
-                                        toggle(entry.key)
-                                    },
-                                )
+                                        },
+                                        onLongClick = {
+                                            selectionMode = true
+                                            toggle(entry.key)
+                                        },
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
         }
+        AnalysisStatusBar(
+            progress = analysis,
+            onOpen = onOpenAnalysisQueue,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp),
+        )
     }
 }
 
@@ -270,12 +293,12 @@ private fun DayHeader(text: String) {
 @Composable
 private fun LogbookRow(
     entry: LogbookEntry,
-    unitSystem: UnitSystemSetting,
     selectionMode: Boolean,
     selected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
+    val unitSystem = currentUnitSystem()
     val context = LocalContext.current
 
     val overline: String?

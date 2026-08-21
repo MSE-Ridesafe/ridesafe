@@ -5,7 +5,6 @@ import androidx.compose.runtime.getValue
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import kotlinx.serialization.Serializable
 
 @Serializable data object SavedAddressesRoute : NavKey
@@ -26,7 +25,6 @@ import kotlinx.serialization.Serializable
  */
 fun EntryProviderScope<NavKey>.savedAddressEntries(
     viewModel: SavedAddressViewModel,
-    unitSystem: UnitSystemSetting,
     onOpen: (NavKey) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -43,7 +41,6 @@ fun EntryProviderScope<NavKey>.savedAddressEntries(
         SavedAddressFormScreen(
             existing = null,
             presetKind = SavedPlaceKind.valueOf(key.kind),
-            unitSystem = unitSystem,
             onSave = {
                 viewModel.add(it)
                 onBack()
@@ -58,7 +55,6 @@ fun EntryProviderScope<NavKey>.savedAddressEntries(
             SavedAddressFormScreen(
                 existing = loaded,
                 presetKind = loaded.kind,
-                unitSystem = unitSystem,
                 onSave = {
                     viewModel.update(it)
                     onBack()

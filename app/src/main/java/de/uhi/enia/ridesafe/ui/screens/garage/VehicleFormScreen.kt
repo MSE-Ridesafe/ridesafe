@@ -48,7 +48,7 @@ import de.uhi.enia.ridesafe.data.FuelType
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.theme.RidesafeTheme
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.usesMetric
 import kotlin.math.roundToInt
 
@@ -61,12 +61,12 @@ private const val KM_PER_MILE = 1.609344
 @Composable
 fun VehicleFormScreen(
     existing: Vehicle?,
-    unitSystem: UnitSystemSetting,
     onSave: (vehicle: Vehicle, makePrimary: Boolean) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onDelete: (() -> Unit)? = null,
 ) {
+    val unitSystem = currentUnitSystem()
     val metric = usesMetric(unitSystem)
     val editing = existing != null
 
@@ -333,7 +333,7 @@ private fun FuelTypeDropdown(
 @Composable
 private fun AddVehiclePreview() {
     RidesafeTheme {
-        VehicleFormScreen(existing = null, unitSystem = UnitSystemSetting.METRIC, onSave = { _, _ -> }, onBack = {})
+        VehicleFormScreen(existing = null, onSave = { _, _ -> }, onBack = {})
     }
 }
 
@@ -343,7 +343,6 @@ private fun EditVehiclePreview() {
     RidesafeTheme {
         VehicleFormScreen(
             existing = previewVehicles.first(),
-            unitSystem = UnitSystemSetting.METRIC,
             onSave = { _, _ -> },
             onBack = {},
             onDelete = {},

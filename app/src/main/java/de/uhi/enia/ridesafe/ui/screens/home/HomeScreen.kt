@@ -21,13 +21,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
 
 @Composable
 fun HomeScreen(
     state: HomeDashboardState,
     modifier: Modifier = Modifier,
-    unitSystem: UnitSystemSetting = UnitSystemSetting.AUTOMATIC,
 ) {
     Scaffold(
         modifier = modifier,
@@ -63,7 +61,6 @@ fun HomeScreen(
             item {
                 VehicleCard(
                     vehicle = state.primaryVehicle,
-                    unitSystem = unitSystem,
                 )
             }
             state.activeRide?.let { activeRide ->
@@ -79,19 +76,16 @@ fun HomeScreen(
                     monthDistanceMeters = state.currentMonthDistanceMeters,
                     monthDurationMillis = state.currentMonthDurationMillis,
                     monthRideCount = state.currentMonthRecordedRides,
-                    unitSystem = unitSystem,
                 )
             }
             item {
                 HighlightsCard(
                     highlights = state.highlights,
-                    unitSystem = unitSystem,
                 )
             }
             item {
                 ActivitySection(
                     activityByDay = state.activityByDay,
-                    unitSystem = unitSystem,
                 )
             }
         }

@@ -44,13 +44,14 @@ import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.model.LatLng
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Ride
+import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.canToggleStop
 import de.uhi.enia.ridesafe.data.canUnmergeSelection
 import de.uhi.enia.ridesafe.data.summarizeMerge
-import de.uhi.enia.ridesafe.tracking.shortAddress
+import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDurationMs
 import de.uhi.enia.ridesafe.util.formatRideDateTime
@@ -68,12 +69,13 @@ import de.uhi.enia.ridesafe.util.formatTimeOfDay
 fun MergedRideDetailScreen(
     stops: List<Ride>?,
     segments: List<List<LatLng>>?,
-    unitSystem: UnitSystemSetting,
+    rideEvents: List<RideEvent>,
     onBack: () -> Unit,
     onUnmergeAll: () -> Unit,
     onUnmerge: (stopIds: List<Long>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val unitSystem = currentUnitSystem()
     val context = LocalContext.current
 
     // Group gone (fully un-merged, here or elsewhere, down to one stop): leave the now-defunct merged
@@ -104,7 +106,6 @@ fun MergedRideDetailScreen(
     }
 
     val summary = remember(stops) { summarizeMerge(stops) }
-
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -143,11 +144,10 @@ fun MergedRideDetailScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            RouteMapCard(segments = segments)
+            RouteMapCard(segments = segments, rideEvents = rideEvents)
 
             MergedJourneyCard(
                 stops = stops,
-                unitSystem = unitSystem,
                 onUnmergeAll = onUnmergeAll,
                 onUnmerge = onUnmerge,
             )
@@ -190,10 +190,10 @@ fun MergedRideDetailScreen(
 @Composable
 private fun MergedJourneyCard(
     stops: List<Ride>,
-    unitSystem: UnitSystemSetting,
     onUnmergeAll: () -> Unit,
     onUnmerge: (stopIds: List<Long>) -> Unit,
 ) {
+    val unitSystem = currentUnitSystem()
     val context = LocalContext.current
     val n = stops.size
     val selectable = n >= 3 // for two stops, peeling one == unmerging both, so offer only "Unmerge all"
@@ -297,7 +297,7 @@ private fun MergedJourneyCard(
 
 /**
  * The places timeline for a merged ride (N+1 waypoints for N legs): origin, one waypoint per parked
- * boundary, then the destination. A boundary waypoint is labelled with the more reliable next-leg
+ * boundary, then the destination. A boundary waypoint is labeled with the more reliable next-leg
  * start address (falling back to the previous leg's end), its arrival time, and a "left … · parked …"
  * note — collapsing the two "unrelated" fixes into one place for a readable trip (MRG-07).
  */

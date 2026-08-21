@@ -8,7 +8,6 @@
     <string name="greeting_hello">Hello %1$s!</string>
     
     <string name="settings_language_title">App Language</string>
-    <string name="settings_language_summary">Choose your preferred language</string>
     
     <string name="language_system">System Default</string>
     <string name="language_english">English</string>
@@ -61,7 +60,6 @@
     <string name="settings_category_preferences">Preferences</string>
     <string name="settings_category_ride_recording">Ride recording</string>
     <string name="settings_units_title">Distance Units</string>
-    <string name="settings_units_summary">Choose your preferred unit system</string>
     <string name="settings_units_detail_description">Choose how distances and ride measurements are shown throughout Ridesafe.</string>
     <string name="unit_system_automatic">Automatic (Based on language)</string>
     <string name="unit_system_metric">Metric (Kilometers)</string>
@@ -69,12 +67,40 @@
     <string name="sample_distance_label">Sample Distance: %1$s</string>
 
     <string name="settings_auto_track_title">Automatic ride recording</string>
-    <string name="settings_auto_track_summary">Detect and record trips automatically</string>
     <string name="settings_auto_track_detail_description">Choose when Ridesafe may start recording rides in the background.</string>
     <string name="settings_language_detail_description">Choose the language used for app labels, settings, and messages.</string>
     <string name="auto_track_off">Off</string>
     <string name="auto_track_paired">Paired vehicles only</string>
     <string name="auto_track_any">Any vehicle</string>
+    <string name="settings_reconnect_grace_title">Reconnect grace</string>
+    <string name="settings_reconnect_grace_detail_description">Many cars switch Bluetooth off and straight back on while you get out. Keep recording for a while after the connection drops, and reconnecting to the same vehicle continues the same ride instead of starting a new one. Whatever was recorded in between is discarded if the car does not come back.</string>
+    <string name="reconnect_grace_off">Off (end the ride immediately)</string>
+    <string name="reconnect_grace_30s">30 seconds</string>
+    <string name="reconnect_grace_1m">1 minute</string>
+    <string name="reconnect_grace_2m">2 minutes</string>
+    <string name="reconnect_grace_5m">5 minutes</string>
+    <string name="settings_min_ride_length_title">Minimum ride length</string>
+    <string name="settings_min_ride_length_detail_description">Recordings shorter than this are discarded instead of added to the logbook, so a brief Bluetooth connection or a move within the driveway leaves no ride behind. The length is measured up to the moment the vehicle disconnected, so the reconnect grace never counts towards it.</string>
+    <string name="min_ride_length_off">Off (keep every ride)</string>
+    <string name="min_ride_length_15s">15 seconds</string>
+    <string name="min_ride_length_30s">30 seconds</string>
+    <string name="min_ride_length_60s">1 minute</string>
+    <string name="min_ride_length_2m">2 minutes</string>
+
+    <!-- Runtime permissions (NFR-05) -->
+    <string name="permissions_card_title">Permissions needed</string>
+    <string name="permissions_card_message">Some features can\'t work until these are granted. Tap one to allow it.</string>
+    <string name="permissions_missing_badge">Permissions missing</string>
+    <string name="permission_location_title">Location</string>
+    <string name="permission_location_rationale">Records the GPS route of your rides.</string>
+    <string name="permission_background_location_title">Location in the background</string>
+    <string name="permission_background_location_rationale">Keeps recording while the app is closed or the screen is off. Choose \u201cAllow all the time\u201d.</string>
+    <string name="permission_bluetooth_title">Nearby Bluetooth devices</string>
+    <string name="permission_bluetooth_rationale">Detects your car\'s Bluetooth to start and end rides automatically.</string>
+    <string name="permission_activity_title">Physical activity</string>
+    <string name="permission_activity_rationale">Recognizes car trips in vehicles without a Bluetooth pairing.</string>
+    <string name="permission_notifications_title">Notifications</string>
+    <string name="permission_notifications_rationale">Shows the recording notification while a ride is in progress.</string>
 
     <!-- Garage -->
     <string name="action_back">Back</string>
@@ -140,6 +166,16 @@
     <string name="ride_end_marker">End</string>
     <string name="ride_map_expand">Open full-screen map</string>
     <string name="ride_map_close">Close map</string>
+    <string name="ride_event_braking">Harsh braking</string>
+    <string name="ride_event_acceleration">Harsh acceleration</string>
+    <string name="ride_event_cornering">Harsh cornering</string>
+    <!-- Marker subtitle: peak force in g, then how long it lasted in seconds. -->
+    <string name="ride_event_detail">%1$s g peak · %2$s s</string>
+    <!-- Bottom-sheet header on the full-screen map: how many events the ride has. -->
+    <plurals name="ride_events_count">
+        <item quantity="one">%d event</item>
+        <item quantity="other">%d events</item>
+    </plurals>
     <string name="ride_detail_section_summary">Summary</string>
     <string name="ride_detail_section_speed">Speed</string>
     <string name="ride_detail_section_distance">Distance</string>
@@ -215,4 +251,16 @@
     <string name="recording_channel_name">Ride recording</string>
     <string name="recording_notification_title">Recording ride</string>
     <string name="recording_notification_text">Tracking your trip in the background.</string>
+    <!-- Ride analysis queue (ANL-03) -->
+    <string name="analysis_status_title">Analyzing rides…</string>
+    <string name="analysis_status_count">%1$d of %2$d</string>
+    <string name="analysis_status_open">Show analysis queue</string>
+    <string name="analysis_queue_title">Analysis queue</string>
+    <string name="analysis_queue_subtitle">%1$d of %2$d rides analyzed</string>
+    <string name="analysis_queue_done">Done</string>
+    <string name="analysis_queue_waiting">Waiting…</string>
+    <string name="analysis_queue_empty_title">All rides analyzed</string>
+    <string name="analysis_queue_empty_message">Nothing is being processed right now.</string>
+    <string name="analysis_detail_notice_title">Analysis in progress</string>
+    <string name="analysis_detail_notice_message">Distance, route and driving events aren\'t available for this ride yet or may be incomplete.</string>
 </resources>

@@ -49,17 +49,16 @@ import androidx.core.content.ContextCompat
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.BtDevice
 import de.uhi.enia.ridesafe.data.Vehicle
-import de.uhi.enia.ridesafe.tracking.BluetoothDevices
+import de.uhi.enia.ridesafe.rides.trigger.BluetoothDevices
 import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.theme.RidesafeTheme
-import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatOdometer
 
 @Composable
 fun VehicleDetailScreen(
     vehicle: Vehicle?,
-    unitSystem: UnitSystemSetting,
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -67,6 +66,7 @@ fun VehicleDetailScreen(
     onLinkBluetooth: (BtDevice) -> Unit = {},
     onUnlinkBluetooth: (String) -> Unit = {},
 ) {
+    val unitSystem = currentUnitSystem()
     val context = LocalContext.current
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
     var showBluetoothPicker by rememberSaveable { mutableStateOf(false) }
@@ -405,7 +405,6 @@ private fun VehicleDetailPreview() {
     RidesafeTheme {
         VehicleDetailScreen(
             vehicle = previewVehicles.first(),
-            unitSystem = UnitSystemSetting.METRIC,
             onBack = {},
             onEdit = {},
             onDelete = {},
