@@ -33,10 +33,10 @@ externally — all analytics and safety scoring happen locally.
 
 ### 3.1 App shell & general UX
 
-| ID     | P | Requirement                                                                                                               | Status | Related                        |
-|--------|---|---------------------------------------------------------------------------------------------------------------------------|--------|--------------------------------|
-| NAV-01 | M | Ridesafe shall provide a navigation bar to move between the primary pages (Dashboard, Logbook, Garage, Settings).         | Draft  | DSH-01, GAR-01, LOG-01, SET-01 |
-| UX-01  | M | Before deleting any user-created item (vehicle, ride, ride group, cost entry), Ridesafe shall show a confirmation prompt. | Draft  | GAR-04, GRP-03, LOG-05, MRG-03 |
+| ID     | P | Requirement                                                                                                               | Status | Related                                |
+|--------|---|---------------------------------------------------------------------------------------------------------------------------|--------|----------------------------------------|
+| NAV-01 | M | Ridesafe shall provide a navigation bar to move between the primary pages (Dashboard, Logbook, Garage, Settings).         | Draft  | DSH-01, GAR-01, LOG-01, SET-01         |
+| UX-01  | M | Before deleting any user-created item (vehicle, ride, ride group, cost entry), Ridesafe shall show a confirmation prompt. | Draft  | ADR-03, GAR-04, GRP-03, LOG-05, MRG-03 |
 
 ### 3.2 Garage (vehicles)
 
@@ -53,34 +53,31 @@ externally — all analytics and safety scoring happen locally.
 
 ### 3.3 Logbook (rides)
 
-| ID     | P | Requirement                                                                                                                                                                                                                                                                                                                                                                      | Status   | Related                                |
-|--------|---|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|----------------------------------------|
-| LOG-01 | M | Ridesafe shall provide a Logbook page.                                                                                                                                                                                                                                                                                                                                           | Draft    | DR-RID, NAV-01                         |
-| LOG-02 | M | The Logbook shall display a list of rides showing key fields (date, distance, vehicle).                                                                                                                                                                                                                                                                                          | Draft    | DR-RID, LOG-06, LOG-07, LOG-08, LOG-11 |
-| LOG-03 | M | The Logbook shall display a detailed view of a single ride.                                                                                                                                                                                                                                                                                                                      | Draft    | DR-RID, LOG-10, MRG-01, MRG-04         |
-| LOG-04 | M | The Logbook shall let the user edit a ride.                                                                                                                                                                                                                                                                                                                                      | Draft    | DR-RID, MRG-01, MRG-03                 |
-| LOG-05 | M | The Logbook shall let the user delete a ride.                                                                                                                                                                                                                                                                                                                                    | Draft    | DR-RID, UX-01                          |
-| LOG-06 | M | The Logbook shall let the user filter rides by date.                                                                                                                                                                                                                                                                                                                             | Draft    | LOG-02, LOG-09                         |
-| LOG-07 | S | The Logbook shall let the user filter rides by vehicle.                                                                                                                                                                                                                                                                                                                          | Proposed | DR-VEH, LOG-02, LOG-09                 |
-| LOG-08 | C | The Logbook shall let the user filter rides by tag.                                                                                                                                                                                                                                                                                                                              | Proposed | DR-RID, LOG-02, LOG-09                 |
-| LOG-09 | M | The Logbook shall let the user export the currently filtered set of rides.                                                                                                                                                                                                                                                                                                       | Draft    | EXP-01, LOG-06, LOG-07, LOG-08         |
-| LOG-10 | S | The ride detail view shall visualize the route on a map and show speed information.                                                                                                                                                                                                                                                                                              | Draft    | DR-RID, LOG-03, MRG-07, NFR-02, TRK-01 |
-| LOG-11 | M | The Logbook shall enter a multi-select mode on long-press of a ride, presenting a contextual top app bar (Material 3) showing the selection count, a close/exit affordance, select-all / deselect-all utilities, and an overflow (⋮) menu of actions on the selection; selected rides shall be marked with a filled circular checkmark per native Android selection conventions. | Draft    | LOG-01, LOG-02, MRG-08, NFR-10         |
+| ID     | P | Requirement                                                                             | Status   | Related                        |
+|--------|---|-----------------------------------------------------------------------------------------|----------|--------------------------------|
+| LOG-01 | M | Ridesafe shall provide a Logbook page.                                                  | Draft    | DR-RID, NAV-01                 |
+| LOG-02 | M | The Logbook shall display a list of rides showing key fields (date, distance, vehicle). | Draft    | ADR-08, DR-RID, LOG-06, LOG-07, LOG-08 |
+| LOG-03 | M | The Logbook shall display a detailed view of a single ride.                             | Draft    | ADR-09, DR-RID, LOG-10         |
+| LOG-04 | M | The Logbook shall let the user edit a ride.                                             | Draft    | DR-RID                         |
+| LOG-05 | M | The Logbook shall let the user delete a ride.                                           | Draft    | DR-RID, UX-01                  |
+| LOG-06 | M | The Logbook shall let the user filter rides by date.                                    | Draft    | LOG-02, LOG-09                 |
+| LOG-07 | S | The Logbook shall let the user filter rides by vehicle.                                 | Proposed | DR-VEH, LOG-02, LOG-09         |
+| LOG-08 | C | The Logbook shall let the user filter rides by tag.                                     | Proposed | DR-RID, LOG-02, LOG-09         |
+| LOG-09 | M | The Logbook shall let the user export the currently filtered set of rides.              | Draft    | EXP-01, LOG-06, LOG-07, LOG-08 |
+| LOG-10 | S | The ride detail view shall visualize the route on a map and show speed information.     | Draft    | DR-RID, LOG-03, NFR-02, TRK-01 |
 
 ### 3.4 Tracking & recording
 
-| ID     | P | Requirement                                                                                                                                                                                                                                                                   | Status   | Related                                                                        |
-|--------|---|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|--------------------------------------------------------------------------------|
-| TRK-01 | M | Ridesafe shall record rides using GPS location.                                                                                                                                                                                                                               | Draft    | ANL-01, DR-RID, LOG-10, NFR-05, NFR-06, NFR-08, TRK-02, TRK-05, TRK-06         |
-| TRK-02 | M | Ridesafe shall automatically detect the start and end of a ride from the connection and disconnection of a Bluetooth device mapped to a vehicle.                                                                                                                              | Draft    | GAR-07, GAR-08, NFR-05, SET-06, TRK-01, TRK-03, TRK-07, TRK-08, TRK-09, TRK-10 |
-| TRK-03 | M | Ridesafe shall record only car trips by gating automatic recording on a vehicle's Bluetooth mapping, so walking, cycling, and other vehicles do not trigger recording.                                                                                                        | Proposed | GAR-08, NFR-05, SET-06, TRK-02, TRK-08, TRK-10                                 |
-| TRK-04 | M | During recording, Ridesafe shall sample motion sensors (accelerometer/gyroscope) alongside GPS to support safety scoring.                                                                                                                                                     | Proposed | ANL-01, ANL-03, DR-RID                                                         |
-| TRK-05 | S | Ridesafe shall keep recording reliably while the app is in the background or the screen is off.                                                                                                                                                                               | Proposed | NFR-05, NFR-06, NFR-08, TRK-01                                                 |
-| TRK-06 | S | Ridesafe shall tolerate temporary GPS signal loss (e.g. tunnels) without ending a ride prematurely.                                                                                                                                                                           | Proposed | TRK-01                                                                         |
-| TRK-07 | M | Ridesafe shall provide the ability to start ride recording manually when automatic ride detection is not available, failed, or disabled by the user                                                                                                                           | Proposed | SET-06, TRK-02                                                                 |
-| TRK-08 | M | Ridesafe shall identify the current vehicle from its mapped Bluetooth device(s) to assign rides correctly and avoid recording rides taken as a passenger in foreign vehicles.                                                                                                 | Proposed | DR-VEH, GAR-07, GAR-08, SET-06, TRK-02, TRK-03                                 |
-| TRK-09 | M | Ridesafe shall not end an in-progress ride recording when the Bluetooth connection to the mapped vehicle is briefly interrupted; recording shall continue and end only when the disconnection is sustained beyond a configurable timeout, or when the user stops it manually. | Proposed | NFR-06, NFR-08, SET-06, TRK-01, TRK-02, TRK-06, TRK-07                         |
-| TRK-10 | M | After a ride recording ends, Ridesafe shall suppress automatic-start triggers for a cooldown period, preventing a brief reconnect, a nearby walk, or a cycling leg immediately after a car trip from starting a new recording.                                                | Proposed | SET-06, TRK-02, TRK-03, TRK-08                                                 |
+| ID     | P | Requirement                                                                                                                                                                                           | Status   | Related                                                                |
+|--------|---|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|------------------------------------------------------------------------|
+| TRK-01 | M | Ridesafe shall record rides using GPS location.                                                                                                                                                       | Draft    | ANL-01, DR-RID, LOG-10, NFR-05, NFR-06, NFR-08, TRK-02, TRK-05, TRK-06 |
+| TRK-02 | M | Ridesafe shall automatically detect the start and end of a ride from the connection and disconnection of a Bluetooth device mapped to a vehicle.                                                      | Draft    | GAR-07, GAR-08, NFR-05, SET-06, TRK-01, TRK-03, TRK-07, TRK-08         |
+| TRK-03 | M | Ridesafe shall record only car trips by gating automatic recording on a vehicle's Bluetooth mapping, so walking, cycling, and other vehicles do not trigger recording.                                | Proposed | GAR-08, NFR-05, SET-06, TRK-02, TRK-08                                 |
+| TRK-04 | M | During recording, Ridesafe shall sample motion sensors (accelerometer/gyroscope) alongside GPS to support safety scoring.                                                                             | Proposed | ANL-01, ANL-03, DR-RID                                                 |
+| TRK-05 | S | Ridesafe shall keep recording reliably while the app is in the background or the screen is off.                                                                                                       | Proposed | NFR-05, NFR-06, NFR-08, TRK-01                                         |
+| TRK-06 | S | Ridesafe shall tolerate temporary GPS signal loss (e.g. tunnels) without ending a ride prematurely.                                                                                                   | Proposed | TRK-01                                                                 |
+| TRK-07 | M | Ridesafe shall provide the ability to start ride recording manually when automatic ride detection is not available, failed, or disabled by the user                                                   | Proposed | SET-06, TRK-02                                                         |
+| TRK-08 | M | Ridesafe shall identify the current vehicle from its mapped Bluetooth device(s) to assign rides correctly and avoid recording rides taken as a passenger in foreign vehicles.                         | Proposed | DR-VEH, GAR-07, GAR-08, SET-06, TRK-02, TRK-03                         |
 
 #### Auto-tracking trigger — implementation notes
 
@@ -105,8 +102,6 @@ end-to-end until recording (TRK-01, DR-RID) exists.
   were chosen instead. Background delivery is reliable on most devices and will be hardened via
   the recording foreground service (TRK-05) once recording exists.
 - **On-device (NFR-01):** activity recognition runs on-device; no trip or location data leaves the phone.
-- **BT drop tolerance (TRK-09):** a brief disconnection mid-ride (phone call, interference, momentary range loss) must not end the recording. The implementation should hold a "disconnection pending" timer — configurable, default TBD — and only finalize the ride if the device has been gone for the full duration. A reconnect within the window resets the timer and the ride continues.
-- **Post-ride cooldown (TRK-10):** once a ride ends, the trigger must ignore BT connect events and activity signals for a cooldown window (configurable, default TBD) before it will start a new recording. This prevents the common false-positive of the phone reconnecting briefly while the user walks away from their parked car, or a subsequent cycling leg being recorded as a car trip.
 
 ### 3.5 Dashboard
 
@@ -139,35 +134,7 @@ end-to-end until recording (TRK-01, DR-RID) exists.
 | GRP-02 | S | Ridesafe shall display aggregated statistics (total distance, average safety score, …) for a ride group.                             | Proposed | ANL-01, ANL-02, DR-GRP, GRP-01         |
 | GRP-03 | C | Ridesafe shall let the user add/remove rides from a group and delete a group.                                                        | Proposed | DR-GRP, GRP-01, UX-01                  |
 
-### 3.8 Ride merging (merge subsequent rides into one trip)
-
-Distinct from ride *groups* (§3.7): a group is a named, unordered label over otherwise-independent
-rides for shared stats. A merge instead collapses a contiguous run of **one vehicle's** subsequent
-rides into a single merged ride whose constituent rides become its "stops", replacing them with one
-entry in the Logbook until un-merged. Merges are physically honest: each stop keeps its own recorded
-route, and the parked gap between two stops implies no travel — so no aggregated metric spans a gap
-(MRG-05, MRG-07). Merging is initiated from the Logbook's multi-select mode (LOG-11); un-merging from
-the merged ride's detail view (MRG-11).
-
-*(Note: MRG-07 was reworked — the map now keeps each stop's own start and end and draws them
-disconnected, replacing the earlier "collapse to N+1 points / use the subsequent ride's start"
-approach, because fabricating a shared boundary point implies GPS/speed/time that never happened.)*
-
-| ID     | P | Requirement                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Status   | Related                                                        |
-|--------|---|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|----------------------------------------------------------------|
-| MRG-01 | M | Ridesafe shall let the user merge two or more subsequent rides of the same vehicle, with no upper limit on how many, into a single merged ride, retaining each original ride as a "stop" within it.                                                                                                                                                                                                                                                                       | Draft    | DR-RID, LOG-03, LOG-04, MRG-02, MRG-03, MRG-05, MRG-07, MRG-09 |
-| MRG-02 | M | Ridesafe shall only allow merging a contiguous run of the selected vehicle's rides: the user shall not skip one of that vehicle's rides lying chronologically between two selected ones. Rides of other vehicles that fall within that span do not break the run and are not part of the merge (MRG-09).                                                                                                                                                                  | Draft    | MRG-01, MRG-04, MRG-08, MRG-09                                 |
-| MRG-03 | M | Ridesafe shall let the user un-merge a merged ride, restoring its stops to independent rides.                                                                                                                                                                                                                                                                                                                                                                             | Draft    | MRG-01, MRG-04, MRG-11, UX-01                                  |
-| MRG-04 | M | The detail view of a merged ride shall list its stops individually and indicate which ones can be un-merged on their own — only a stop at either end of the sequence, since removing an interior one would break the contiguity rule (MRG-02).                                                                                                                                                                                                                            | Draft    | LOG-03, MRG-01, MRG-02, MRG-03, MRG-11                         |
-| MRG-05 | M | When rides are merged or un-merged, Ridesafe shall recompute the merged ride's distance and duration as the sum of its stops' (excluding the parked gaps between stops), its average speed as total distance over total moving duration (not an average of per-stop speeds), and its top speed as the maximum among its stops. No metric shall span the gap between two stops (MRG-07).                                                                                   | Draft    | ANL-02, DR-RID, MRG-01, MRG-07                                 |
-| MRG-06 | S | Ridesafe shall recompute any other derived per-ride metric (e.g. safety score) for a merged ride from its stops using the same mathematically-valid aggregation as MRG-05, rather than a naive average.                                                                                                                                                                                                                                                                   | Proposed | ANL-01, MRG-05                                                 |
-| MRG-07 | M | On the map, Ridesafe shall render each stop's route as its own polyline with its own start and end marker, with no line connecting one stop's end to the next stop's start; the boundary between consecutive stops shall be treated as unrelated (the car was parked) so no distance, speed, or elapsed time is implied across it.                                                                                                                                        | Draft    | LOG-10, MRG-01, MRG-05                                         |
-| MRG-08 | M | In the Logbook's multi-select mode (LOG-11), Ridesafe shall offer "Merge rides" in the selection's overflow (⋮) menu, enabled only when the selection is a valid merge set (two or more subsequent same-vehicle rides per MRG-02/MRG-09); otherwise it shall appear disabled with a short message explaining why (e.g. rides are not subsequent, or belong to different vehicles).                                                                                        | Draft    | LOG-11, MRG-01, MRG-02, MRG-09                                 |
-| MRG-09 | M | Ridesafe shall permit merging only rides that share the same assigned vehicle; rides of different vehicles shall not be mergeable together, and rides with no assigned vehicle shall not be mergeable at all. When another vehicle's rides fall chronologically between two rides of the selected vehicle, those same-vehicle rides still count as subsequent to each other, so the merge stays possible without including the other vehicle's rides.                     | Draft    | DR-VEH, MRG-01, MRG-02, MRG-08                                 |
-| MRG-10 | S | Ridesafe shall let the user select an existing merged ride together with one or more further same-vehicle rides (or another merged ride) and merge them, inserting each added ride at its correct chronological position within the merged ride rather than nesting merges.                                                                                                                                                                                               | Draft    | MRG-01, MRG-02, MRG-09                                         |
-| MRG-11 | M | In the merged ride's detail view (LOG-03), Ridesafe shall let the user un-merge stops only from the start or end of the sequence, and un-merge several at once as long as they form a contiguous run inward from the start and/or the end. An "Unmerge All" action shall always be available. When a merged ride has only two stops, Ridesafe shall offer only "Unmerge All" (no individual-stop selection), since either single un-merge would dissolve the pair anyway. | Draft    | LOG-03, MRG-03, MRG-04, UX-01                                  |
-
-### 3.9 Costbook
+### 3.8 Costbook
 
 | ID     | P | Requirement                                                   | Status | Related                 |
 |--------|---|---------------------------------------------------------------|--------|-------------------------|
@@ -175,7 +142,7 @@ approach, because fabricating a shared boundary point implies GPS/speed/time tha
 | CST-02 | C | The Costbook shall calculate operating costs per vehicle.     | Draft  | ANL-06, DR-COST, DR-VEH |
 | CST-03 | C | The Costbook shall provide expense summaries.                 | Draft  | CST-01, DR-COST         |
 
-### 3.10 Export & reporting
+### 3.9 Export & reporting
 
 | ID     | P | Requirement                                                                                       | Status   | Related                                |
 |--------|---|---------------------------------------------------------------------------------------------------|----------|----------------------------------------|
@@ -184,18 +151,18 @@ approach, because fabricating a shared boundary point implies GPS/speed/time tha
 | EXP-03 | S | Ridesafe shall export rides as CSV (spreadsheet / tax-logbook use).                               | Proposed | EXP-01, NOT-02                         |
 | EXP-04 | C | Ridesafe shall let the user back up and restore the full local dataset to/from an on-device file. | Proposed | NFR-01, NFR-03                         |
 
-### 3.11 Notifications
+### 3.10 Notifications
 
 | ID     | P | Requirement                                                               | Status | Related                        |
 |--------|---|---------------------------------------------------------------------------|--------|--------------------------------|
 | NOT-01 | C | Ridesafe shall remind the user to assign ungrouped rides to a ride group. | Draft  | GRP-01, SET-09                 |
 | NOT-02 | C | Ridesafe shall notify the user when an export completes.                  | Draft  | EXP-01, EXP-02, EXP-03, NFR-05 |
 
-### 3.12 Settings
+### 3.11 Settings
 
 | ID     | P | Requirement                                                                                                            | Status      | Related                |
 |--------|---|------------------------------------------------------------------------------------------------------------------------|-------------|------------------------|
-| SET-01 | M | Ridesafe shall provide a Settings page.                                                                                | Draft       | NAV-01                 |
+| SET-01 | M | Ridesafe shall provide a Settings page.                                                                                | Draft       | ADR-01, ADR-03, NAV-01 |
 | SET-02 | M | Ridesafe shall follow the system theme (light/dark) by default.                                                        | Draft       | NFR-10, NFR-12, SET-03 |
 | SET-03 | S | Settings shall let the user override the theme (light / dark / follow system).                                         | Draft       | SET-02                 |
 | SET-04 | M | Ridesafe shall follow the system language by default, falling back to English when the system language is unsupported. | Draft       | NFR-11, SET-05         |
@@ -204,6 +171,35 @@ approach, because fabricating a shared boundary point implies GPS/speed/time tha
 | SET-07 | S | Settings shall let the user choose speed units (mph / km/h).                                                           | Draft       | ANL-02, SET-08         |
 | SET-08 | C | Settings shall let the user choose distance and fuel-economy units, applied consistently across the app.               | Proposed    | ANL-03, ANL-06, SET-07 |
 | SET-09 | C | Settings shall let the user turn grouping reminders on or off.                                                         | Proposed    | NOT-01                 |
+
+### 3.12 Saved addresses
+
+| ID     | P | Requirement                                                                                                                                                                                                                                                                                           | Status   | Related                                |
+|--------|---|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|----------------------------------------|
+| ADR-01 | M | Ridesafe shall let the user save named addresses ("places"), each anchored to an exact GPS point.                                                                                                                                                                                                     | Proposed | ADR-03, DR-ADR, SET-01                 |
+| ADR-02 | M | Each saved address shall have a recognition radius around its GPS point (default 100 m, maximum 500 m) defining its parking/arrival area.                                                                                                                                                             | Proposed | ADR-07, DR-ADR                         |
+| ADR-03 | M | Ridesafe shall provide a screen to add, edit, and delete saved addresses.                                                                                                                                                                                                                             | Proposed | DR-ADR, SET-01, UX-01                  |
+| ADR-04 | M | The address editor shall let the user set the GPS point (drag a map pin, use current location, or take a ride endpoint) and adjust the radius.                                                                                                                                                        | Proposed | ADR-02, DR-ADR, LOG-10, NFR-02         |
+| ADR-05 | M | Ridesafe shall provide shortcuts to create a Home, Work, and School address with fixed icons, each of which may exist at most once.                                                                                                                                                                   | Proposed | ADR-01, DR-ADR                         |
+| ADR-06 | S | For custom addresses, Ridesafe shall let the user assign an icon from a curated set of Material Symbols.                                                                                                                                                                                              | Proposed | ADR-01, NFR-10                         |
+| ADR-07 | M | When a ride's start or end point lies within a saved address's radius, Ridesafe shall recognize that endpoint as that address; on overlap, the nearest center wins.                                                                                                                                   | Proposed | ADR-02, DR-ADR, DR-RID, LOG-02, LOG-03 |
+| ADR-08 | M | In the Logbook list, Ridesafe shall show the matched address's label in place of the raw address for a recognized ride endpoint.                                                                                                                                                                      | Proposed | ADR-07, LOG-02                         |
+| ADR-09 | M | In the ride detail view, Ridesafe shall show a recognized endpoint as `<address>, <distance> from "<label>"` (user's distance units); when the endpoint's reverse-geocoded address exactly matches the saved address's stored address, the distance suffix shall be omitted and only the label shown. | Proposed | ADR-07, DR-RID, LOG-03, SET-08         |
+
+#### Saved addresses — UX / entry points
+
+- **Primary entry:** Settings → **"Saved addresses"** opens the management screen (ADR-03). No new
+  nav destination — the bar already carries four, and this is low-frequency configuration.
+- **Management screen:** Home / Work / School shortcut cards at the top (tap an empty one to create
+  it pre-filled, ADR-05); a list of custom addresses below; a "+" FAB to add a custom one. Delete
+  from the row or the editor, behind the UX-01 confirmation.
+- **Editor:** label (locked for the three shortcuts), a map with a draggable pin + radius circle, a
+  radius slider (…–500 m), a "use current location" button, and — for custom addresses — the icon
+  picker (ADR-06).
+- **Secondary entry:** ride detail → a **"Save as place"** action on the start/end endpoint opens
+  the editor pre-filled with that GPS point (ADR-04).
+- **Matching is computed live** at display time (recommended): editing or deleting a place instantly
+  re-labels past rides with no stored back-reference to clean up — see open question 7.
 
 ---
 
@@ -227,22 +223,21 @@ approach, because fabricating a shared boundary point implies GPS/speed/time tha
 | fuel economy, tank size | optional — needed only for ANL-06 fuel cost / ANL-07 CO₂ |
 
 ### 4.2 Ride — `DR-RID` (M)
-*Related: ANL-01, ANL-02, ANL-04, DSH-02, EXP-01, GAR-07, GRP-01, LOG-01, LOG-02, LOG-03, LOG-04, LOG-05, LOG-08, LOG-10, MRG-01, MRG-02, MRG-04, MRG-05, MRG-06, MRG-07, NFR-03, TRK-01, TRK-04*
+*Related: ADR-07, ADR-09, ANL-01, ANL-02, ANL-04, DSH-02, EXP-01, GAR-07, GRP-01, LOG-01, LOG-02, LOG-03, LOG-04, LOG-05, LOG-08, LOG-10, NFR-03, TRK-01, TRK-04*
 
-| Field                               | Notes                                                                                                                                                                                                                                                                      |
-|-------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| identifier                          |                                                                                                                                                                                                                                                                            |
-| start timestamp                     |                                                                                                                                                                                                                                                                            |
-| end timestamp                       |                                                                                                                                                                                                                                                                            |
-| distance                            |                                                                                                                                                                                                                                                                            |
-| route (track points)                |                                                                                                                                                                                                                                                                            |
-| assigned vehicle                    |                                                                                                                                                                                                                                                                            |
-| purpose description                 |                                                                                                                                                                                                                                                                            |
-| notes                               |                                                                                                                                                                                                                                                                            |
-| tags                                |                                                                                                                                                                                                                                                                            |
-| safety score + safety-event summary | **NEW** — required by ANL-01; was missing despite being the core feature                                                                                                                                                                                                   |
-| average & max speed                 | **NEW** — supports analytics                                                                                                                                                                                                                                               |
-| merge group id                      | **NEW** — non-null tags this ride as a stop in a merged ride; all stops of one merged ride share it, null = standalone (MRG-01). No separate merged-ride row and no stored stop-order: stops order by start timestamp, metrics/addresses derived on read (MRG-05, MRG-07). |
+| Field                               | Notes                                                                    |
+|-------------------------------------|--------------------------------------------------------------------------|
+| identifier                          |                                                                          |
+| start timestamp                     |                                                                          |
+| end timestamp                       |                                                                          |
+| distance                            |                                                                          |
+| route (track points)                |                                                                          |
+| assigned vehicle                    |                                                                          |
+| purpose description                 |                                                                          |
+| notes                               |                                                                          |
+| tags                                |                                                                          |
+| safety score + safety-event summary | **NEW** — required by ANL-01; was missing despite being the core feature |
+| average & max speed                 | **NEW** — supports analytics                                             |
 
 ### 4.3 Ride group — `DR-GRP` (S)
 *Related: GRP-01, GRP-02, GRP-03, NFR-03*
@@ -265,6 +260,20 @@ approach, because fabricating a shared boundary point implies GPS/speed/time tha
 | category   | fuel / maintenance / insurance / … |
 | amount     |                                    |
 | notes      |                                    |
+
+### 4.5 Saved address — `DR-ADR` (M)
+*Related: ADR-01, ADR-02, ADR-03, ADR-04, ADR-05, ADR-07, ADR-09, DR-RID, NFR-03*
+
+| Field      | Notes                                                                                                      |
+|------------|------------------------------------------------------------------------------------------------------------|
+| id         |                                                                                                            |
+| label      | "Home", "Work", "School", or a custom name                                                                 |
+| kind       | home / work / school / custom — enforces the three singleton shortcuts and fixed icons                     |
+| latitude   |                                                                                                            |
+| longitude  |                                                                                                            |
+| address    | reverse-geocoded (or entered) address at the point; compared for the ADR-09 exact-match suffix suppression |
+| radius (m) | ≤ 500; default 100                                                                                         |
+| icon       | Material Symbols name; fixed for home/work/school, user-chosen for custom (ADR-06)                         |
 
 ---
 
@@ -297,6 +306,13 @@ approach, because fabricating a shared boundary point implies GPS/speed/time tha
 4. **Group-ride priority** — I set GRP-01/02 to Should; confirm that's right for a "core purpose."
 5. **Safety algorithm** — thresholds/weighting for ANL-01 are design-level, not captured here; flag if you want them as requirements.
 6. **Optional tiers** — Costbook, CO₂, and notifications are all Could; confirm none should be promoted.
+7. **Saved-address matching — live vs. stored** — recommend computing the match at display time (a place edit instantly re-labels past rides; deleting a place needs no orphan cleanup) rather than denormalizing a matched-address id onto `DR-RID`. Confirm.
+8. **Radius default & floor** — proposed default 100 m, adjustable 25–500 m. Confirm the floor (too small never matches given GPS noise) and the default.
+9. **Setting the point** — pin drag + "use current location" + "save from a ride endpoint". Also allow typing an address to forward-geocode (native Geocoder, already an accepted exception)?
+10. **Icon set** — which curated subset of Material Symbols is offered for custom places? The full font is thousands of glyphs; pick a short list.
+11. **Home / Work / School** — confirm each is a singleton with a fixed, non-editable icon (kind drives the icon).
+12. **Export wording** — should exported / PDF / CSV rides use the raw geocoded address (tax-accurate) or the friendly label? Recommend the raw address.
+13. **Exact-match suppression (ADR-09)** — this compares two reverse-geocoded strings, and the Geocoder can return slightly different strings for the same point across runs, so strict equality may rarely fire. Confirm string equality is intended, or suppress the suffix when the endpoint is at the saved point (distance ≈ 0 / below a small threshold) instead.
 
 ## 7. Non-goals (out of scope)
 

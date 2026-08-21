@@ -64,6 +64,8 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Ride
+import de.uhi.enia.ridesafe.data.SavedAddress
+import de.uhi.enia.ridesafe.data.haversineMeters
 import de.uhi.enia.ridesafe.tracking.addressLines
 import de.uhi.enia.ridesafe.tracking.latLngDistanceMeters
 import de.uhi.enia.ridesafe.ui.components.DetailCard
@@ -72,6 +74,7 @@ import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDuration
 import de.uhi.enia.ridesafe.util.formatRideDateTime
+import de.uhi.enia.ridesafe.util.formatShortDistance
 import de.uhi.enia.ridesafe.util.formatSpeed
 import de.uhi.enia.ridesafe.util.formatTimeOfDay
 
@@ -86,6 +89,8 @@ import de.uhi.enia.ridesafe.util.formatTimeOfDay
 fun RideDetailScreen(
     ride: Ride?,
     route: List<LatLng>?,
+    startPlace: SavedAddress?,
+    endPlace: SavedAddress?,
     unitSystem: UnitSystemSetting,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -130,11 +135,42 @@ fun RideDetailScreen(
         ) {
             RouteMapCard(segments = route?.let { listOf(it) })
 
+            // Build each stop, folding in a matched saved place (ADR-09): show "<address>, <dist> from
+            // <label>", or just the label when the endpoint's address matches the place's exactly.
+            fun stopFor(
+                address: String?,
+                time: String?,
+                lat: Double?,
+                lon: Double?,
+                place: SavedAddress?,
+            ): JourneyStop {
+                val exact = place != null && address != null && address == place.address
+                val distanceLabel =
+                    if (place != null && !exact && lat != null && lon != null) {
+                        formatShortDistance(haversineMeters(lat, lon, place.latitude, place.longitude), unitSystem)
+                    } else {
+                        null
+                    }
+                return JourneyStop(address, time, place = place, distanceLabel = distanceLabel, exactMatch = exact)
+            }
+
             JourneyCard(
                 stops =
                     listOf(
-                        JourneyStop(ride.startAddress, formatTimeOfDay(context, ride.startedAtEpochMs)),
-                        JourneyStop(ride.endAddress, ride.endedAtEpochMs?.let { formatTimeOfDay(context, it) }),
+                        stopFor(
+                            ride.startAddress,
+                            formatTimeOfDay(context, ride.startedAtEpochMs),
+                            ride.startLat,
+                            ride.startLon,
+                            startPlace,
+                        ),
+                        stopFor(
+                            ride.endAddress,
+                            ride.endedAtEpochMs?.let { formatTimeOfDay(context, it) },
+                            ride.endLat,
+                            ride.endLon,
+                            endPlace,
+                        ),
                     ),
                 duration = formatDuration(ride.startedAtEpochMs, ride.endedAtEpochMs),
             )
@@ -156,7 +192,7 @@ fun RideDetailScreen(
                     listOf(
                         stringResource(R.string.ride_detail_total_distance) to
                             (
-                                distanceMeters?.let { formatDistance(context, it, unitSystem) }
+                                distanceMeters?.let { formatDistance(it, unitSystem) }
                                     ?: stringResource(R.string.value_not_set)
                             ),
                     ),
@@ -171,14 +207,19 @@ private val JourneyGutterWidth = 24.dp
 private val JourneyGutterGap = 16.dp
 
 /**
- * One stop in a ride's journey: an address and the time there. [note] is an optional extra line under
- * the address — used by a merged ride's waypoints to show the departure time + parked duration. Any
- * field may be unknown (null).
+ * One stop in a ride's journey: an address and the time there (either may be null/unknown). [note] is
+ * an optional extra line under the address — used by a merged ride's waypoints to show the departure
+ * time + parked duration. [place] is the matched saved place (ADR-09) when the endpoint falls in one;
+ * [distanceLabel] is the pre-formatted offset from its center (null when there's no place or it's an
+ * [exactMatch] of the place's stored address).
  */
 data class JourneyStop(
     val address: String?,
     val time: String?,
     val note: String? = null,
+    val place: SavedAddress? = null,
+    val distanceLabel: String? = null,
+    val exactMatch: Boolean = false,
 )
 
 /**
@@ -228,7 +269,9 @@ fun JourneyTimeline(
         stops.forEachIndexed { index, stop ->
             val isLast = index == stops.lastIndex
             JourneyStopRow(
-                icon = if (isLast) "place" else "trip_origin",
+                // A matched saved place shows its own icon in the timeline; otherwise the generic
+                // origin ring / destination pin.
+                icon = stop.place?.icon ?: if (isLast) "place" else "trip_origin",
                 iconColor = if (isLast) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 iconFill = isLast,
                 address = stop.address ?: stringResource(R.string.ride_address_unknown),
@@ -237,6 +280,9 @@ fun JourneyTimeline(
                 timeWidth = timeWidth,
                 lineAbove = index > 0,
                 lineBelow = !isLast,
+                place = stop.place,
+                distanceLabel = stop.distanceLabel,
+                exactMatch = stop.exactMatch,
             )
         }
         if (duration != null) {
@@ -278,6 +324,9 @@ private fun JourneyStopRow(
     lineBelow: Boolean,
     iconFill: Boolean = false,
     note: String? = null,
+    place: SavedAddress? = null,
+    distanceLabel: String? = null,
+    exactMatch: Boolean = false,
 ) {
     Row(modifier = Modifier.height(IntrinsicSize.Min)) {
         // Timestamp left of the timeline, vertically centered on the icon; left-aligned so it
@@ -316,21 +365,39 @@ private fun JourneyStopRow(
         }
         Spacer(Modifier.width(JourneyGutterGap))
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            val (street, locality) = addressLines(address)
-            Text(
-                text = street,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (locality != null) {
+            if (place != null && exactMatch) {
+                // Address equals the saved place's exactly — the timeline icon already shows the place,
+                // so just its label (ADR-09).
                 Text(
-                    text = locality,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    text = place.label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            } else {
+                val (street, locality) = addressLines(address)
+                Text(
+                    text = street,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (locality != null) {
+                    Text(
+                        text = locality,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (place != null && distanceLabel != null) {
+                    Spacer(Modifier.size(4.dp))
+                    Text(
+                        text = stringResource(R.string.saved_address_distance_from, distanceLabel, place.label),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
             if (note != null) {
                 Text(
@@ -438,10 +505,9 @@ private fun RouteMap(segments: List<List<LatLng>>) {
 }
 
 /**
- * The route(s) drawn on a Google Map, framed to fit. Each of [segments] is drawn as its own polyline
- * with its own start/end markers and no line joining one segment's end to the next segment's start,
- * so a merged ride's parked gaps imply no travel (MRG-07). [liteMode] true renders a static snapshot
- * (the card preview); false is a live, gesture-driven map.
+ * The route drawn on a Google Map, framed to fit. [liteMode] true renders a static snapshot (the
+ * card preview); false is a live, gesture-driven map. Gestures are kept 2D — pan/zoom/rotate on,
+ * tilt off — and the toolbar is hidden so taps stay in-app rather than launching the Maps app.
  */
 @Composable
 private fun RouteMapContent(

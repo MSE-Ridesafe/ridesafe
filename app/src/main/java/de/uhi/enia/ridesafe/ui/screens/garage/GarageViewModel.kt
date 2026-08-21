@@ -7,6 +7,9 @@ import de.uhi.enia.ridesafe.data.BtDevice
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.Vehicle
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -19,7 +22,10 @@ class GarageViewModel(
 ) : AndroidViewModel(app) {
     private val dao = RidesafeDatabase.getInstance(app).vehicleDao()
 
-    val vehicles: Flow<List<Vehicle>> = dao.observeAll()
+    // Prefetched at app launch (Eagerly) so the first visit to the Garage tab reads an already-loaded list
+    // instead of paying the cold Room query mid-transition.
+    val vehicles: StateFlow<List<Vehicle>> =
+        dao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun vehicle(id: Long): Flow<Vehicle?> = dao.observe(id)
 

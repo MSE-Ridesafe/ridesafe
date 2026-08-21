@@ -35,7 +35,7 @@ fun EntryProviderScope<NavKey>.garageEntries(
     onPopToGarage: () -> Unit,
 ) {
     entry<GarageRoute> {
-        val vehicles by viewModel.vehicles.collectAsState(initial = emptyList())
+        val vehicles by viewModel.vehicles.collectAsState()
         GarageScreen(
             vehicles = vehicles,
             onVehicleClick = { onOpen(VehicleDetailRoute(it)) },

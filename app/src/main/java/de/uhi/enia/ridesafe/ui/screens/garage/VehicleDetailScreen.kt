@@ -120,7 +120,7 @@ fun VehicleDetailScreen(
         ) {
             VehicleHeader(vehicle)
 
-            OdometerCard(value = formatOdometer(context, vehicle.mileageKm, unitSystem))
+            OdometerCard(value = formatOdometer(vehicle.mileageKm, unitSystem))
 
             DetailCard(
                 title = stringResource(R.string.vehicle_section_overview),

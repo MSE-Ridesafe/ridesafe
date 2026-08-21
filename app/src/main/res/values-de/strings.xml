@@ -185,4 +185,34 @@
     <string name="recording_notification_title">Fahrt wird aufgezeichnet</string>
     <string name="recording_notification_text">Deine Fahrt wird im Hintergrund aufgezeichnet.</string>
     <string name="ride_map_expand">Vollbild-Karte öffnen</string>
+
+    <!-- Saved addresses -->
+    <string name="settings_category_places">Orte</string>
+    <string name="settings_saved_addresses_title">Gespeicherte Adressen</string>
+    <string name="settings_saved_addresses_summary">Häufige Orte wie Zuhause oder Arbeit benennen</string>
+    <string name="saved_addresses_title">Gespeicherte Adressen</string>
+    <string name="saved_addresses_add">Adresse hinzufügen</string>
+    <string name="saved_addresses_empty_title">Noch keine Adressen</string>
+    <string name="saved_addresses_empty_message">Füge Orte wie Zuhause oder Arbeit hinzu, um sie in deinen Fahrten zu benennen.</string>
+    <string name="saved_address_add_shortcut">%1$s hinzufügen</string>
+    <string name="saved_address_new_title">Neuer Ort</string>
+    <string name="saved_address_edit_title">Ort bearbeiten</string>
+    <string name="saved_address_label">Bezeichnung</string>
+    <string name="saved_address_search">Adresse suchen</string>
+    <string name="saved_address_search_failed">Keine Adresse gefunden</string>
+    <string name="saved_address_use_location">Meinen Standort verwenden</string>
+    <string name="saved_address_location_unavailable">Standort konnte nicht ermittelt werden</string>
+    <string name="saved_address_radius">Erkennungsradius</string>
+    <string name="saved_address_icon">Symbol</string>
+    <string name="saved_address_pick_hint">Tippe auf die Karte, suche eine Adresse oder verwende deinen Standort.</string>
+    <string name="saved_address_marker">Standort des gespeicherten Ortes</string>
+    <string name="saved_address_delete">Ort löschen</string>
+    <string name="saved_address_delete_confirm_title">Ort löschen?</string>
+    <string name="saved_address_delete_confirm_message">%1$s wird entfernt. Das kann nicht rückgängig gemacht werden.</string>
+    <!-- z. B. "120 m von \"Zuhause\"" -->
+    <string name="saved_address_distance_from">%1$s von \"%2$s\"</string>
+    <string name="place_kind_home">Zuhause</string>
+    <string name="place_kind_work">Arbeit</string>
+    <string name="place_kind_school">Schule</string>
+    <string name="place_kind_custom">Eigener Ort</string>
 </resources>

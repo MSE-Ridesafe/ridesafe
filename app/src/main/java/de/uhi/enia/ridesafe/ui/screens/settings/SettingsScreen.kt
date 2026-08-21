@@ -61,6 +61,7 @@ fun SettingsScreen(
     onOpenLanguage: () -> Unit,
     onOpenUnits: () -> Unit,
     onOpenAutoTrack: () -> Unit,
+    onOpenSavedAddresses: () -> Unit,
 ) {
     Scaffold(
         modifier = modifier,
@@ -103,6 +104,20 @@ fun SettingsScreen(
                         description = stringResource(R.string.settings_units_summary),
                         value = unitSystemLabel(unitSystem),
                         onClick = onOpenUnits,
+                    )
+                }
+            }
+            item {
+                SettingsCategoryHeader(text = stringResource(R.string.settings_category_places))
+            }
+            item {
+                SettingsGroupCard {
+                    SettingsListItem(
+                        iconName = "location_on",
+                        title = stringResource(R.string.settings_saved_addresses_title),
+                        description = stringResource(R.string.settings_saved_addresses_summary),
+                        value = "",
+                        onClick = onOpenSavedAddresses,
                     )
                 }
             }

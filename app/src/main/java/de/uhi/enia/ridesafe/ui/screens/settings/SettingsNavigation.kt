@@ -19,6 +19,7 @@ fun EntryProviderScope<NavKey>.settingsEntries(
     onUnitSystemChange: (UnitSystemSetting) -> Unit,
     autoTrackMode: AutoTrackMode,
     onAutoTrackModeChange: (AutoTrackMode) -> Unit,
+    savedAddressViewModel: SavedAddressViewModel,
     onOpen: (NavKey) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -29,8 +30,15 @@ fun EntryProviderScope<NavKey>.settingsEntries(
             onOpenLanguage = { onOpen(SettingsLanguageRoute) },
             onOpenUnits = { onOpen(SettingsUnitsRoute) },
             onOpenAutoTrack = { onOpen(SettingsAutoTrackRoute) },
+            onOpenSavedAddresses = { onOpen(SavedAddressesRoute) },
         )
     }
+    savedAddressEntries(
+        viewModel = savedAddressViewModel,
+        unitSystem = unitSystem,
+        onOpen = onOpen,
+        onBack = onBack,
+    )
     entry<SettingsLanguageRoute> {
         LanguageSettingsScreen(onBack = onBack)
     }

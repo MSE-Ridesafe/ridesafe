@@ -24,6 +24,12 @@ class Converters {
 
     @TypeConverter
     fun stringToDevices(value: String): List<BtDevice> = if (value.isBlank()) emptyList() else deviceJson.decodeFromString(value)
+
+    @TypeConverter
+    fun placeKindToString(value: SavedPlaceKind): String = value.name
+
+    @TypeConverter
+    fun stringToPlaceKind(value: String): SavedPlaceKind = SavedPlaceKind.valueOf(value)
 }
 
 /** Adds Vehicle.bluetoothAddresses (GAR-08) without dropping existing vehicles (NFR-06). */
@@ -130,12 +136,39 @@ private val MIGRATION_7_8 =
         }
     }
 
-@Database(entities = [Vehicle::class, Ride::class], version = 8, exportSchema = false)
+/**
+ * Adds saved addresses (DR-ADR) and the matched-address ids on rides (ADR-07), layered on top of the
+ * ride-merging v8 schema (mergeGroupId). Additive only: the new ride columns default to null
+ * (unmatched) and the re-match pass fills them from the saved addresses on next launch. Existing
+ * rides and vehicles are untouched.
+ */
+private val MIGRATION_8_9 =
+    object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE rides ADD COLUMN startAddressId INTEGER")
+            db.execSQL("ALTER TABLE rides ADD COLUMN endAddressId INTEGER")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS saved_addresses (" +
+                    "id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+                    "label TEXT NOT NULL, " +
+                    "kind TEXT NOT NULL, " +
+                    "latitude REAL NOT NULL, " +
+                    "longitude REAL NOT NULL, " +
+                    "radiusMeters INTEGER NOT NULL, " +
+                    "icon TEXT NOT NULL, " +
+                    "address TEXT)",
+            )
+        }
+    }
+
+@Database(entities = [Vehicle::class, Ride::class, SavedAddress::class], version = 9, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class RidesafeDatabase : RoomDatabase() {
     abstract fun vehicleDao(): VehicleDao
 
     abstract fun rideDao(): RideDao
+
+    abstract fun savedAddressDao(): SavedAddressDao
 
     companion object {
         @Volatile private var instance: RidesafeDatabase? = null
@@ -155,6 +188,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_5_6,
                         MIGRATION_6_7,
                         MIGRATION_7_8,
+                        MIGRATION_8_9,
                     ).build()
                     .also { instance = it }
             }

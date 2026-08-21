@@ -47,7 +47,7 @@ fun HighlightsCard(
                 label = stringResource(R.string.home_highlight_longest_ride),
                 value =
                     highlights.longestRideMeters?.let {
-                        formatDistance(context, it, unitSystem)
+                        formatDistance(it, unitSystem)
                     } ?: stringResource(R.string.value_not_set),
             )
             HighlightRow(
@@ -55,7 +55,7 @@ fun HighlightsCard(
                 label = stringResource(R.string.home_highlight_average_ride),
                 value =
                     highlights.averageRideMeters?.let {
-                        formatDistance(context, it, unitSystem)
+                        formatDistance(it, unitSystem)
                     } ?: stringResource(R.string.value_not_set),
             )
             HighlightRow(
