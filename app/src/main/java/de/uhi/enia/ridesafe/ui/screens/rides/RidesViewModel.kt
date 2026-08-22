@@ -90,6 +90,15 @@ class RidesViewModel(
     private val rideEventDao = db.rideEventDao()
 
     private val pipeline = RideAnalysisPipeline(app, db)
+    private val pdfExporter = RidePdfExporter(app)
+
+    private val exportController =
+        RideExportController(
+            scope = viewModelScope,
+            operation = pdfExporter::export,
+            onFailure = { Log.e("RidePdfExport", "Could not export selected rides", it) },
+        )
+    val exportState: StateFlow<RideExportState> = exportController.state
 
     /** The analysis queue (ANL-03), for the Rides status bar, the queue screen and the detail notice. */
     val analysisProgress: StateFlow<RideAnalysisProgress> = pipeline.progress
@@ -175,6 +184,15 @@ class RidesViewModel(
     fun merge(rideIds: List<Long>) {
         if (rideIds.size < 2) return
         viewModelScope.launch { rideDao.setMergeGroup(mergeGroupIdFor(rideIds), rideIds) }
+    }
+
+    /** Export one immutable logical-selection snapshot; repeated taps while busy are ignored. */
+    fun export(requests: List<RideExportRequest>) {
+        exportController.start(requests)
+    }
+
+    fun consumeExportResult() {
+        exportController.consumeResult()
     }
 
     /** Peel the given stops off a merged ride (MRG-11); if ≤1 stop is left, dissolve the group entirely. */

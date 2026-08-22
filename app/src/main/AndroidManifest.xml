@@ -19,6 +19,15 @@
     <!-- Google Maps tiles for the ride route view. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Lets RideSafe detect PDF viewers before offering Open file in export feedback. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <data android:mimeType="application/pdf" />
+        </intent>
+    </queries>
+
     <application
         android:name=".RidesafeApplication"
         android:allowBackup="true"

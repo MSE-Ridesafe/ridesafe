@@ -35,13 +35,17 @@ fun EntryProviderScope<NavKey>.ridesEntries(
     entry<RidesRoute> {
         val entries by viewModel.entries.collectAsState()
         val analysis by viewModel.analysisProgress.collectAsState()
+        val exportState by viewModel.exportState.collectAsState()
         RidesScreen(
             entries = entries,
             analysis = analysis,
+            exportState = exportState,
             onOpenRide = { onOpen(RideDetailRoute(it)) },
             onOpenMerged = { onOpen(MergedRideDetailRoute(it)) },
             onOpenAnalysisQueue = { onOpen(AnalysisQueueRoute) },
             onMerge = { viewModel.merge(it) },
+            onExport = { viewModel.export(it) },
+            onExportResultConsumed = viewModel::consumeExportResult,
         )
     }
     entry<AnalysisQueueRoute> {

@@ -95,12 +95,9 @@ private fun formatAddress(a: Address): String? {
     val number = a.subThoroughfare
     val primary =
         when {
-            a.featureName != null && a.featureName != number -> a.featureName
-
-            // named place / POI
             a.thoroughfare != null -> listOfNotNull(a.thoroughfare, number).joinToString(" ")
 
-            // "Hauptstraße 5"
+            // Named place / POI, used only when no street was returned.
             else -> a.featureName
         }?.trim()?.ifBlank { null }
     val secondary = listOfNotNull(a.postalCode, a.locality).joinToString(" ").trim().ifBlank { null }

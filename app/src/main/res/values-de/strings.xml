@@ -100,7 +100,7 @@
     <string name="permission_activity_title">K\u00f6rperliche Aktivit\u00e4t</string>
     <string name="permission_activity_rationale">Erkennt Autofahrten in Fahrzeugen ohne Bluetooth-Kopplung.</string>
     <string name="permission_notifications_title">Benachrichtigungen</string>
-    <string name="permission_notifications_rationale">Zeigt die Aufzeichnungs-Benachrichtigung w\u00e4hrend einer Fahrt.</string>
+    <string name="permission_notifications_rationale">Zeigt den Aufzeichnungsstatus und abgeschlossene Fahrtenexporte.</string>
 
     <!-- Garage -->
     <string name="action_back">Zurück</string>
@@ -203,6 +203,14 @@
     <string name="ride_selected">Ausgewählt</string>
     <string name="ride_not_selected">Nicht ausgewählt</string>
     <string name="ride_action_merge">Fahrten zusammenführen</string>
+    <string name="ride_action_export">Exportieren</string>
+    <string name="ride_exporting">Fahrten werden exportiert…</string>
+    <string name="ride_export_success">Export unter Downloads/RideSafe gespeichert.</string>
+    <string name="ride_export_error">Fahrten konnten nicht exportiert werden. Bitte erneut versuchen.</string>
+    <string name="ride_export_channel_name">Fahrtenexporte</string>
+    <string name="ride_export_notification_title">Fahrtenexport abgeschlossen</string>
+    <string name="ride_export_notification_body">%1$s wurde unter Downloads/RideSafe gespeichert.</string>
+    <string name="ride_export_notification_open">Datei öffnen</string>
     <string name="merge_reason_not_enough">Mindestens zwei Fahrten auswählen</string>
     <string name="merge_reason_mixed_vehicle">Fahrten müssen vom selben Fahrzeug sein</string>
     <string name="merge_reason_not_contiguous">Keine dazwischenliegende Fahrt überspringen</string>

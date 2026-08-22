@@ -2,6 +2,8 @@
 
 package de.uhi.enia.ridesafe.ui.screens.rides
 
+import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,9 +15,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,13 +29,20 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,17 +73,27 @@ import java.time.LocalDate
 fun RidesScreen(
     entries: List<LogbookEntry>,
     analysis: RideAnalysisProgress,
+    exportState: RideExportState,
     onOpenRide: (Long) -> Unit,
     onOpenMerged: (Long) -> Unit,
     onOpenAnalysisQueue: () -> Unit,
     onMerge: (List<Long>) -> Unit,
+    onExport: (List<RideExportRequest>) -> Unit,
+    onExportResultConsumed: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val exportSuccessMessage = stringResource(R.string.ride_export_success)
+    val exportErrorMessage = stringResource(R.string.ride_export_error)
+    val openFileLabel = stringResource(R.string.ride_export_notification_open)
 
     var selectionMode by rememberSaveable { mutableStateOf(false) }
     // Selection is by entry key; keys that no longer exist (data changed) are ignored below.
-    var selectedKeys by remember { mutableStateOf(emptySet<String>()) }
+    var selectedKeys by
+        rememberSaveable(
+            stateSaver = listSaver(save = { it.toList() }, restore = { it.toSet() }),
+        ) { mutableStateOf(emptySet<String>()) }
 
     val liveKeys = remember(entries) { entries.map { it.key }.toSet() }
     val selected = selectedKeys.intersect(liveKeys)
@@ -86,6 +107,36 @@ fun RidesScreen(
         selectedKeys = if (key in selected) selected - key else selected + key
     }
 
+    LaunchedEffect(exportState) {
+        when (exportState) {
+            is RideExportState.Success -> {
+                val saved =
+                    SavedRideExport(
+                        fileName = exportState.export.fileName,
+                        uri = Uri.parse(exportState.export.contentUri),
+                    )
+                val openIntent = buildOpenPdfIntent(saved)
+                val canOpen = openIntent.resolveActivity(context.packageManager) != null
+                val result =
+                    snackbarHostState.showSnackbar(
+                        message = exportSuccessMessage,
+                        actionLabel = openFileLabel.takeIf { canOpen },
+                        duration = SnackbarDuration.Long,
+                    )
+                if (result == SnackbarResult.ActionPerformed) {
+                    runCatching { context.startActivity(openIntent) }
+                        .onFailure { Log.w("RidePdfExport", "Could not open exported PDF", it) }
+                }
+                onExportResultConsumed()
+            }
+            RideExportState.Error -> {
+                snackbarHostState.showSnackbar(exportErrorMessage)
+                onExportResultConsumed()
+            }
+            RideExportState.Idle, RideExportState.Exporting -> Unit
+        }
+    }
+
     // The status bar overlays the Scaffold rather than sitting in its bottomBar slot: that slot
     // reserves an opaque strip of the Scaffold's own container color, so the pill ends up on the
     // same background as everything else and reads as docked. Floating over the list — which keeps
@@ -93,6 +144,7 @@ fun RidesScreen(
     Box(modifier = modifier.fillMaxSize()) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            snackbarHost = { RideSnackbarHost(snackbarHostState) },
             topBar = {
                 if (selectionMode) {
                     SelectionTopBar(
@@ -114,6 +166,8 @@ fun RidesScreen(
                             onMerge(entries.filter { it.key in selected }.flatMap { it.rideIds })
                             exitSelection()
                         },
+                        exportEnabled = selected.isNotEmpty() && exportState != RideExportState.Exporting,
+                        onExport = { onExport(exportRequests(entries, selected)) },
                     )
                 } else {
                     TopAppBar(
@@ -210,6 +264,43 @@ fun RidesScreen(
                     .align(Alignment.BottomCenter)
                     .padding(16.dp),
         )
+        if (exportState == RideExportState.Exporting) {
+            Box(
+                modifier =
+                    Modifier
+                        .matchParentSize()
+                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Card(shape = MaterialTheme.shapes.extraLarge) {
+                    Column(
+                        modifier = Modifier.padding(28.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        CircularProgressIndicator()
+                        Text(stringResource(R.string.ride_exporting))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RideSnackbarHost(hostState: SnackbarHostState) {
+    SnackbarHost(
+        hostState = hostState,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+    ) { data ->
+        Snackbar(
+            snackbarData = data,
+            shape = MaterialTheme.shapes.medium,
+            containerColor = MaterialTheme.colorScheme.inverseSurface,
+            contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+            actionColor = MaterialTheme.colorScheme.inversePrimary,
+            dismissActionContentColor = MaterialTheme.colorScheme.inverseOnSurface,
+        )
     }
 }
 
@@ -222,6 +313,8 @@ private fun SelectionTopBar(
     onSelectAll: () -> Unit,
     onDeselectAll: () -> Unit,
     onMerge: () -> Unit,
+    exportEnabled: Boolean,
+    onExport: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
 
@@ -265,6 +358,15 @@ private fun SelectionTopBar(
                         }
                     },
                     leadingIcon = { MaterialSymbol(symbolName = "merge", contentDescription = null) },
+                )
+                DropdownMenuItem(
+                    enabled = exportEnabled,
+                    onClick = {
+                        menuOpen = false
+                        onExport()
+                    },
+                    text = { Text(stringResource(R.string.ride_action_export)) },
+                    leadingIcon = { MaterialSymbol(symbolName = "picture_as_pdf", contentDescription = null) },
                 )
             }
         },

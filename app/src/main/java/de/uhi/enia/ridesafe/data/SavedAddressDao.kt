@@ -25,6 +25,10 @@ interface SavedAddressDao {
     @Query("SELECT * FROM saved_addresses")
     suspend fun all(): List<SavedAddress>
 
+    /** Focused batch read for resolving actual endpoint addresses during ride export. */
+    @Query("SELECT * FROM saved_addresses WHERE id IN (:ids)")
+    suspend fun byIds(ids: List<Long>): List<SavedAddress>
+
     @Insert
     suspend fun insert(address: SavedAddress): Long
 

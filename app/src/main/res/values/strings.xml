@@ -100,7 +100,7 @@
     <string name="permission_activity_title">Physical activity</string>
     <string name="permission_activity_rationale">Recognizes car trips in vehicles without a Bluetooth pairing.</string>
     <string name="permission_notifications_title">Notifications</string>
-    <string name="permission_notifications_rationale">Shows the recording notification while a ride is in progress.</string>
+    <string name="permission_notifications_rationale">Shows recording status and completed ride exports.</string>
 
     <!-- Garage -->
     <string name="action_back">Back</string>
@@ -204,6 +204,14 @@
     <string name="ride_selected">Selected</string>
     <string name="ride_not_selected">Not selected</string>
     <string name="ride_action_merge">Merge rides</string>
+    <string name="ride_action_export">Export</string>
+    <string name="ride_exporting">Exporting rides…</string>
+    <string name="ride_export_success">Export saved to Downloads/RideSafe.</string>
+    <string name="ride_export_error">Could not export rides. Please try again.</string>
+    <string name="ride_export_channel_name">Ride exports</string>
+    <string name="ride_export_notification_title">Ride export complete</string>
+    <string name="ride_export_notification_body">%1$s was saved to Downloads/RideSafe.</string>
+    <string name="ride_export_notification_open">Open file</string>
     <string name="merge_reason_not_enough">Select at least two rides</string>
     <string name="merge_reason_mixed_vehicle">Rides must be from the same vehicle</string>
     <string name="merge_reason_not_contiguous">Don\'t skip any ride in between</string>

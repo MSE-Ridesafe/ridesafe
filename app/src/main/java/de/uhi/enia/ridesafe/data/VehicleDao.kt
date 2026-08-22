@@ -24,6 +24,10 @@ abstract class VehicleDao {
     @Query("SELECT * FROM vehicles")
     abstract suspend fun all(): List<Vehicle>
 
+    /** Batch relation lookup for ride exports, avoiding one query per selected journey. */
+    @Query("SELECT * FROM vehicles WHERE id IN (:ids)")
+    abstract suspend fun byIds(ids: List<Long>): List<Vehicle>
+
     @Insert
     abstract suspend fun insert(vehicle: Vehicle): Long
 

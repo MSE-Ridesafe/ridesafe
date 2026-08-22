@@ -18,6 +18,10 @@ interface RideDao {
     @Query("SELECT * FROM rides")
     suspend fun all(): List<Ride>
 
+    /** Targeted snapshot read for exports; callers restore their own logical order after this query. */
+    @Query("SELECT * FROM rides WHERE id IN (:ids)")
+    suspend fun byIds(ids: List<Long>): List<Ride>
+
     /** The stops of a merged ride (MRG-01), in chronological order — the merged detail's source of truth. */
     @Query("SELECT * FROM rides WHERE mergeGroupId = :groupId ORDER BY startedAtEpochMs ASC")
     fun observeGroup(groupId: Long): Flow<List<Ride>>
