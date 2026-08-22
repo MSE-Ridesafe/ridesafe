@@ -44,7 +44,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             onOpenMerged = { onOpen(MergedRideDetailRoute(it)) },
             onOpenAnalysisQueue = { onOpen(AnalysisQueueRoute) },
             onMerge = { viewModel.merge(it) },
-            onExport = { viewModel.export(it) },
+            onExport = viewModel::export,
             onExportResultConsumed = viewModel::consumeExportResult,
         )
     }

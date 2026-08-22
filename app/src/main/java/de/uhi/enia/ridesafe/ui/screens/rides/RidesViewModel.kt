@@ -90,13 +90,13 @@ class RidesViewModel(
     private val rideEventDao = db.rideEventDao()
 
     private val pipeline = RideAnalysisPipeline(app, db)
-    private val pdfExporter = RidePdfExporter(app)
+    private val rideExporter = RideExporter(app)
 
     private val exportController =
         RideExportController(
             scope = viewModelScope,
-            operation = pdfExporter::export,
-            onFailure = { Log.e("RidePdfExport", "Could not export selected rides", it) },
+            operation = rideExporter::export,
+            onFailure = { Log.e("RideExport", "Could not export selected rides", it) },
         )
     val exportState: StateFlow<RideExportState> = exportController.state
 
@@ -187,8 +187,11 @@ class RidesViewModel(
     }
 
     /** Export one immutable logical-selection snapshot; repeated taps while busy are ignored. */
-    fun export(requests: List<RideExportRequest>) {
-        exportController.start(requests)
+    fun export(
+        requests: List<RideExportRequest>,
+        format: RideExportFormat,
+    ) {
+        exportController.start(requests, format)
     }
 
     fun consumeExportResult() {

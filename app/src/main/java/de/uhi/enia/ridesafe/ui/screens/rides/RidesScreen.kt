@@ -5,6 +5,7 @@ package de.uhi.enia.ridesafe.ui.screens.rides
 import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
@@ -37,11 +39,13 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -51,6 +55,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -68,6 +73,7 @@ import de.uhi.enia.ridesafe.util.formatDurationMs
 import de.uhi.enia.ridesafe.util.formatTimeOfDay
 import de.uhi.enia.ridesafe.util.rideDay
 import java.time.LocalDate
+import kotlinx.coroutines.launch
 
 @Composable
 fun RidesScreen(
@@ -78,7 +84,7 @@ fun RidesScreen(
     onOpenMerged: (Long) -> Unit,
     onOpenAnalysisQueue: () -> Unit,
     onMerge: (List<Long>) -> Unit,
-    onExport: (List<RideExportRequest>) -> Unit,
+    onExport: (List<RideExportRequest>, RideExportFormat) -> Unit,
     onExportResultConsumed: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -89,6 +95,7 @@ fun RidesScreen(
     val openFileLabel = stringResource(R.string.ride_export_notification_open)
 
     var selectionMode by rememberSaveable { mutableStateOf(false) }
+    var pendingExportRequests by remember { mutableStateOf<List<RideExportRequest>?>(null) }
     // Selection is by entry key; keys that no longer exist (data changed) are ignored below.
     var selectedKeys by
         rememberSaveable(
@@ -114,8 +121,9 @@ fun RidesScreen(
                     SavedRideExport(
                         fileName = exportState.export.fileName,
                         uri = Uri.parse(exportState.export.contentUri),
+                        format = exportState.export.format,
                     )
-                val openIntent = buildOpenPdfIntent(saved)
+                val openIntent = buildOpenExportIntent(saved)
                 val canOpen = openIntent.resolveActivity(context.packageManager) != null
                 val result =
                     snackbarHostState.showSnackbar(
@@ -125,7 +133,7 @@ fun RidesScreen(
                     )
                 if (result == SnackbarResult.ActionPerformed) {
                     runCatching { context.startActivity(openIntent) }
-                        .onFailure { Log.w("RidePdfExport", "Could not open exported PDF", it) }
+                        .onFailure { Log.w("RideExport", "Could not open exported file", it) }
                 }
                 onExportResultConsumed()
             }
@@ -167,7 +175,7 @@ fun RidesScreen(
                             exitSelection()
                         },
                         exportEnabled = selected.isNotEmpty() && exportState != RideExportState.Exporting,
-                        onExport = { onExport(exportRequests(entries, selected)) },
+                        onExport = { pendingExportRequests = exportRequests(entries, selected) },
                     )
                 } else {
                     TopAppBar(
@@ -285,6 +293,116 @@ fun RidesScreen(
             }
         }
     }
+    pendingExportRequests?.let { requests ->
+        ExportFormatSheet(
+            onFormatSelected = { format ->
+                pendingExportRequests = null
+                onExport(requests, format)
+            },
+            onDismiss = { pendingExportRequests = null },
+        )
+    }
+}
+
+@Composable
+private fun ExportFormatSheet(
+    onFormatSelected: (RideExportFormat) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    var selectionInProgress by remember { mutableStateOf(false) }
+
+    fun select(format: RideExportFormat) {
+        if (selectionInProgress) return
+        selectionInProgress = true
+        scope.launch {
+            sheetState.hide()
+            onFormatSelected(format)
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = { if (!selectionInProgress) onDismiss() },
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.ride_action_export),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(horizontal = 24.dp),
+            )
+            Text(
+                text = stringResource(R.string.ride_export_format_title),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 24.dp, top = 4.dp, end = 24.dp, bottom = 8.dp),
+            )
+            ExportFormatOption(
+                title = stringResource(R.string.ride_export_format_pdf),
+                description = stringResource(R.string.ride_export_format_pdf_description),
+                symbolName = "picture_as_pdf",
+                enabled = !selectionInProgress,
+                onClick = { select(RideExportFormat.PDF) },
+            )
+            HorizontalDivider(modifier = Modifier.padding(start = 72.dp, end = 16.dp))
+            ExportFormatOption(
+                title = stringResource(R.string.ride_export_format_csv),
+                description = stringResource(R.string.ride_export_format_csv_description),
+                symbolName = "table_view",
+                enabled = !selectionInProgress,
+                onClick = { select(RideExportFormat.CSV) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExportFormatOption(
+    title: String,
+    description: String,
+    symbolName: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    ListItem(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+        headlineContent = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+            )
+        },
+        supportingContent = {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        leadingContent = {
+            MaterialSymbol(
+                symbolName = symbolName,
+                contentDescription = null,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        trailingContent = {
+            MaterialSymbol(
+                symbolName = "chevron_right",
+                contentDescription = null,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+    )
 }
 
 @Composable
@@ -366,7 +484,7 @@ private fun SelectionTopBar(
                         onExport()
                     },
                     text = { Text(stringResource(R.string.ride_action_export)) },
-                    leadingIcon = { MaterialSymbol(symbolName = "picture_as_pdf", contentDescription = null) },
+                    leadingIcon = { MaterialSymbol(symbolName = "download", contentDescription = null) },
                 )
             }
         },
