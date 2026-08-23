@@ -286,9 +286,39 @@ private val MIGRATION_12_13 =
         }
     }
 
+/** Adds independently persisted refueling history without modifying any existing table or row. */
+val MIGRATION_13_14 =
+    object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS refuels (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "vehicleId INTEGER NOT NULL, " +
+                    "timestampEpochMs INTEGER NOT NULL, " +
+                    "fuelAmountMilliliters INTEGER NOT NULL, " +
+                    "totalPriceMinor INTEGER NOT NULL, " +
+                    "currencyCode TEXT NOT NULL, " +
+                    "odometerMeters INTEGER NOT NULL, " +
+                    "stationAddress TEXT, " +
+                    "isFullTank INTEGER NOT NULL DEFAULT 0)",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_refuels_timestampEpochMs ON refuels(timestampEpochMs)",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_refuels_vehicleId ON refuels(vehicleId)")
+        }
+    }
+
 @Database(
-    entities = [Vehicle::class, Ride::class, SavedAddress::class, RideEvent::class, RideAnalysisState::class],
-    version = 13,
+    entities = [
+        Vehicle::class,
+        Ride::class,
+        SavedAddress::class,
+        RideEvent::class,
+        RideAnalysisState::class,
+        Refuel::class,
+    ],
+    version = 14,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -302,6 +332,8 @@ abstract class RidesafeDatabase : RoomDatabase() {
     abstract fun rideEventDao(): RideEventDao
 
     abstract fun rideAnalysisDao(): RideAnalysisDao
+
+    abstract fun refuelDao(): RefuelDao
 
     companion object {
         @Volatile private var instance: RidesafeDatabase? = null
@@ -326,6 +358,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_10_11,
                         MIGRATION_11_12,
                         MIGRATION_12_13,
+                        MIGRATION_13_14,
                     ).build()
                     .also { instance = it }
             }

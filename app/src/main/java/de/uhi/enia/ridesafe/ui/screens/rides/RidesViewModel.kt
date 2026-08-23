@@ -6,10 +6,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
 import de.uhi.enia.ridesafe.data.MergedSummary
+import de.uhi.enia.ridesafe.data.Refuel
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.SavedAddress
+import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.mergeGroupIdFor
 import de.uhi.enia.ridesafe.data.rematchRides
 import de.uhi.enia.ridesafe.data.summarizeMerge
@@ -40,6 +42,11 @@ data class RideRow(
     val vehicleName: String?,
     val startPlace: SavedAddress? = null,
     val endPlace: SavedAddress? = null,
+)
+
+data class RefuelRow(
+    val refuel: Refuel,
+    val vehicleName: String?,
 )
 
 /**
@@ -88,6 +95,7 @@ class RidesViewModel(
     private val vehicleDao = db.vehicleDao()
     private val savedAddressDao = db.savedAddressDao()
     private val rideEventDao = db.rideEventDao()
+    private val refuelDao = db.refuelDao()
 
     private val pipeline = RideAnalysisPipeline(app, db)
     private val rideExporter = RideExporter(app)
@@ -139,9 +147,12 @@ class RidesViewModel(
     val savedAddresses: StateFlow<List<SavedAddress>> =
         savedAddressDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val vehicles: StateFlow<List<Vehicle>> =
+        vehicleDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     /** Rides (newest first) joined to their vehicle name and the saved places their endpoints matched. */
     private val rides: Flow<List<RideRow>> =
-        combine(rideDao.observeAll(), vehicleDao.observeAll(), savedAddressDao.observeAll()) { rides, vehicles, addresses ->
+        combine(rideDao.observeAll(), vehicles, savedAddressDao.observeAll()) { rides, vehicles, addresses ->
             val names = vehicles.associate { it.id to it.displayTitle() }
             val places = addresses.associateBy { it.id }
             rides.map {
@@ -165,6 +176,28 @@ class RidesViewModel(
             .map(::toEntries)
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    private val refuels: Flow<List<RefuelRow>> =
+        combine(refuelDao.observeAll(), vehicles) { refuels, vehicles ->
+            val names = vehicles.associate { it.id to it.displayTitle() }
+            refuels.map { RefuelRow(refuel = it, vehicleName = names[it.vehicleId]) }
+        }
+
+    val timeline: StateFlow<List<TimelineEntry>> =
+        combine(entries, refuels) { rideEntries, refuelRows ->
+            buildList {
+                rideEntries.forEach { add(TimelineEntry.RideEntry(it)) }
+                refuelRows.forEach { add(TimelineEntry.RefuelEntry(it)) }
+            }.sortedWith(timelineEntryComparator)
+        }.flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    fun addRefuel(
+        refuel: Refuel,
+        onResult: (Result<Long>) -> Unit,
+    ) {
+        viewModelScope.launch { onResult(runCatching { refuelDao.insert(refuel) }) }
+    }
 
     fun ride(id: Long): Flow<Ride?> = rideDao.observe(id)
 
@@ -265,3 +298,28 @@ class RidesViewModel(
         }
     }
 }
+
+/** A heterogeneous Rides-page event; ride-only behavior stays inside [LogbookEntry]. */
+sealed interface TimelineEntry {
+    val sortEpochMs: Long
+    val stableKey: String
+
+    data class RideEntry(val entry: LogbookEntry) : TimelineEntry {
+        override val sortEpochMs get() = entry.sortEpochMs
+        override val stableKey get() = entry.key
+    }
+
+    data class RefuelEntry(val row: RefuelRow) : TimelineEntry {
+        override val sortEpochMs get() = row.refuel.timestampEpochMs
+        override val stableKey get() = "f${row.refuel.id}"
+    }
+}
+
+/** Newest first; exact ties put rides before refuels, then use the stable persistent key. */
+val timelineEntryComparator =
+    compareByDescending<TimelineEntry> { it.sortEpochMs }
+        .thenBy { if (it is TimelineEntry.RideEntry) 0 else 1 }
+        .thenByDescending { it.stableKey }
+
+fun rideLogbookEntries(timeline: List<TimelineEntry>): List<LogbookEntry> =
+    timeline.mapNotNull { (it as? TimelineEntry.RideEntry)?.entry }

@@ -73,11 +73,14 @@ import de.uhi.enia.ridesafe.util.formatDurationMs
 import de.uhi.enia.ridesafe.util.formatTimeOfDay
 import de.uhi.enia.ridesafe.util.rideDay
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
 import java.time.LocalDate
+import java.util.Currency
+import java.util.Locale
 
 @Composable
 fun RidesScreen(
-    entries: List<LogbookEntry>,
+    timeline: List<TimelineEntry>,
     analysis: RideAnalysisProgress,
     exportState: RideExportState,
     onOpenRide: (Long) -> Unit,
@@ -86,6 +89,7 @@ fun RidesScreen(
     onMerge: (List<Long>) -> Unit,
     onExport: (List<RideExportRequest>, RideExportFormat) -> Unit,
     onExportResultConsumed: () -> Unit,
+    onAddRefuel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -95,6 +99,7 @@ fun RidesScreen(
     val openFileLabel = stringResource(R.string.ride_export_notification_open)
 
     var selectionMode by rememberSaveable { mutableStateOf(false) }
+    val entries = remember(timeline) { rideLogbookEntries(timeline) }
     var pendingExportRequests by remember { mutableStateOf<List<RideExportRequest>?>(null) }
     // Selection is by entry key; keys that no longer exist (data changed) are ignored below.
     var selectedKeys by
@@ -143,9 +148,7 @@ fun RidesScreen(
                 onExportResultConsumed()
             }
 
-            RideExportState.Idle, RideExportState.Exporting -> {
-                Unit
-            }
+            RideExportState.Idle, RideExportState.Exporting -> Unit
         }
     }
 
@@ -189,12 +192,20 @@ fun RidesScreen(
                                 style = MaterialTheme.typography.headlineMedium,
                             )
                         },
+                        actions = {
+                            IconButton(onClick = onAddRefuel) {
+                                MaterialSymbol(
+                                    symbolName = "add",
+                                    contentDescription = stringResource(R.string.refuel_add),
+                                )
+                            }
+                        },
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                     )
                 }
             },
         ) { innerPadding ->
-            if (entries.isEmpty()) {
+            if (timeline.isEmpty()) {
                 EmptyRides(
                     modifier =
                         Modifier
@@ -208,7 +219,7 @@ fun RidesScreen(
             // One card per calendar day; entries arrive newest-first, so insertion order gives newest day
             // first, newest entry first within each day.
             val groups =
-                remember(entries) { entries.groupByTo(LinkedHashMap()) { rideDay(it.sortEpochMs) } }
+                remember(timeline) { timeline.groupByTo(LinkedHashMap()) { rideDay(it.sortEpochMs) } }
             val today = LocalDate.now()
 
             LazyColumn(
@@ -238,29 +249,38 @@ fun RidesScreen(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Column {
-                                dayEntries.forEachIndexed { index, entry ->
+                                dayEntries.forEachIndexed { index, timelineEntry ->
                                     if (index > 0) {
                                         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
                                     }
-                                    LogbookRow(
-                                        entry = entry,
-                                        selectionMode = selectionMode,
-                                        selected = entry.key in selected,
-                                        onClick = {
-                                            if (selectionMode) {
-                                                toggle(entry.key)
-                                            } else {
-                                                when (entry) {
-                                                    is LogbookEntry.Single -> onOpenRide(entry.row.ride.id)
-                                                    is LogbookEntry.Merged -> onOpenMerged(entry.groupId)
-                                                }
-                                            }
-                                        },
-                                        onLongClick = {
-                                            selectionMode = true
-                                            toggle(entry.key)
-                                        },
-                                    )
+                                    when (timelineEntry) {
+                                        is TimelineEntry.RideEntry -> {
+                                            val entry = timelineEntry.entry
+                                            LogbookRow(
+                                                entry = entry,
+                                                selectionMode = selectionMode,
+                                                selected = entry.key in selected,
+                                                onClick = {
+                                                    if (selectionMode) {
+                                                        toggle(entry.key)
+                                                    } else {
+                                                        when (entry) {
+                                                            is LogbookEntry.Single -> onOpenRide(entry.row.ride.id)
+                                                            is LogbookEntry.Merged -> onOpenMerged(entry.groupId)
+                                                        }
+                                                    }
+                                                },
+                                                onLongClick = {
+                                                    selectionMode = true
+                                                    toggle(entry.key)
+                                                },
+                                            )
+                                        }
+
+                                        is TimelineEntry.RefuelEntry -> {
+                                            RefuelTimelineRow(row = timelineEntry.row)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -603,6 +623,49 @@ private fun LogbookRow(
                     )
                 }
             },
+    )
+}
+
+@Composable
+private fun RefuelTimelineRow(row: RefuelRow) {
+    val context = LocalContext.current
+    val locale = context.resources.configuration.locales[0] ?: Locale.getDefault()
+    val refuel = row.refuel
+    val currency = runCatching { Currency.getInstance(refuel.currencyCode) }.getOrElse { defaultCurrency(locale) }
+    val fractionDigits = currency.defaultFractionDigits.takeIf { it >= 0 } ?: 2
+    val total = java.math.BigDecimal.valueOf(refuel.totalPriceMinor, fractionDigits)
+    val currencyFormat = NumberFormat.getCurrencyInstance(locale).apply { this.currency = currency }
+    val unitPrice =
+        pricePerLiter(refuel.totalPriceMinor, refuel.fuelAmountMilliliters, fractionDigits)
+            ?.let(currencyFormat::format)
+
+    ListItem(
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        leadingContent = {
+            MaterialSymbol(symbolName = "local_gas_station", contentDescription = null)
+        },
+        overlineContent = {
+            Text(row.vehicleName ?: stringResource(R.string.refuel_unknown_vehicle))
+        },
+        headlineContent = {
+            Text(
+                refuel.stationAddress ?: stringResource(R.string.refuel_station_fallback),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleMedium,
+            )
+        },
+        supportingContent = {
+            Text(
+                buildList {
+                    add(formatTimeOfDay(context, refuel.timestampEpochMs))
+                    add(currencyFormat.format(total))
+                    unitPrice?.let { add(stringResource(R.string.refuel_price_per_liter_value, it)) }
+                }.joinToString("  •  "),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
     )
 }
 

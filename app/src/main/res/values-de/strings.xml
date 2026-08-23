@@ -155,9 +155,31 @@
     <string name="unit_liter">L</string>
     <string name="value_not_set">&#8212;</string>
 
+    <!-- Tanken -->
+    <string name="refuel_add">Tankvorgang hinzufügen</string>
+    <string name="refuel_vehicle">Fahrzeug</string>
+    <string name="refuel_vehicle_required">Füge zuerst ein Fahrzeug in der Garage hinzu.</string>
+    <string name="refuel_date">Datum</string>
+    <string name="refuel_time">Uhrzeit</string>
+    <string name="refuel_fuel_amount">Kraftstoffmenge</string>
+    <string name="refuel_total_price">Gesamtpreis</string>
+    <string name="refuel_price_per_liter">Preis pro Liter</string>
+    <string name="refuel_per_liter_suffix">/L</string>
+    <string name="refuel_odometer">Kilometerstand</string>
+    <string name="refuel_station_address">Tankstelle / Adresse (optional)</string>
+    <string name="refuel_full_tank">Vollgetankt</string>
+    <string name="refuel_unknown_vehicle">Unbekanntes Fahrzeug</string>
+    <string name="refuel_station_fallback">Tankstelle</string>
+    <string name="refuel_error_fuel">Gib eine Kraftstoffmenge größer als null mit höchstens drei Nachkommastellen ein.</string>
+    <string name="refuel_error_total">Gib einen nicht negativen Preis mit den Nachkommastellen der Währung ein.</string>
+    <string name="refuel_error_odometer">Gib einen nicht negativen Kilometerstand ein.</string>
+    <string name="refuel_save_failed">Der Tankvorgang konnte nicht gespeichert werden. Deine Eingaben bleiben erhalten; versuche es erneut.</string>
+    <string name="refuel_row_amount_price">%1$s L · %2$s</string>
+    <string name="refuel_price_per_liter_value">%1$s/L</string>
+
     <!-- Fahrten -->
-    <string name="rides_empty_title">Noch keine Fahrten</string>
-    <string name="rides_empty_message">Aufgezeichnete Fahrten erscheinen hier.</string>
+    <string name="rides_empty_title">Noch keine Fahrtenbucheinträge</string>
+    <string name="rides_empty_message">Aufgezeichnete Fahrten und Tankvorgänge erscheinen hier.</string>
     <string name="ride_day_today">Heute</string>
     <string name="ride_day_yesterday">Gestern</string>
     <string name="ride_max_speed_short">max. %1$s</string>

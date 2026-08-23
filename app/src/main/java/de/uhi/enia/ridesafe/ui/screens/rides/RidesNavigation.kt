@@ -21,6 +21,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object AnalysisQueueRoute : NavKey
 
+@Serializable data object AddRefuelRoute : NavKey
+
 /**
  * Rides tab entries: list -> detail. Navigation goes through [onOpen]/[onBack] (the caller
  * mutates the rides back stack and resets the tab-switch flag, so these transitions slide).
@@ -33,11 +35,11 @@ fun EntryProviderScope<NavKey>.ridesEntries(
     onBack: () -> Unit,
 ) {
     entry<RidesRoute> {
-        val entries by viewModel.entries.collectAsState()
+        val timeline by viewModel.timeline.collectAsState()
         val analysis by viewModel.analysisProgress.collectAsState()
         val exportState by viewModel.exportState.collectAsState()
         RidesScreen(
-            entries = entries,
+            timeline = timeline,
             analysis = analysis,
             exportState = exportState,
             onOpenRide = { onOpen(RideDetailRoute(it)) },
@@ -46,6 +48,15 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             onMerge = { viewModel.merge(it) },
             onExport = viewModel::export,
             onExportResultConsumed = viewModel::consumeExportResult,
+            onAddRefuel = { onOpen(AddRefuelRoute) },
+        )
+    }
+    entry<AddRefuelRoute> {
+        val vehicles by viewModel.vehicles.collectAsState()
+        RefuelFormScreen(
+            vehicles = vehicles,
+            onSave = viewModel::addRefuel,
+            onBack = onBack,
         )
     }
     entry<AnalysisQueueRoute> {
