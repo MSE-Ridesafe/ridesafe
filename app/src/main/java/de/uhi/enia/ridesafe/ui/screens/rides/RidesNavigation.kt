@@ -1,5 +1,6 @@
 package de.uhi.enia.ridesafe.ui.screens.rides
 
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -35,6 +36,7 @@ import kotlinx.serialization.Serializable
  */
 fun EntryProviderScope<NavKey>.ridesEntries(
     viewModel: RidesViewModel,
+    selectionDismissRequests: State<Int>,
     onOpen: (NavKey) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -58,6 +60,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             onExport = viewModel::export,
             onExportResultConsumed = viewModel::consumeExportResult,
             onAddRefuel = { onOpen(AddRefuelRoute) },
+            selectionDismissRequests = selectionDismissRequests,
         )
     }
     entry<AddRefuelRoute> {

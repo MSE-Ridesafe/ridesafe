@@ -42,7 +42,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -94,6 +96,7 @@ fun RidesScreen(
     onExport: (List<RideExportRequest>, RideExportFormat) -> Unit,
     onExportResultConsumed: () -> Unit,
     onAddRefuel: () -> Unit,
+    selectionDismissRequests: State<Int>,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -103,6 +106,9 @@ fun RidesScreen(
     val openFileLabel = stringResource(R.string.ride_export_notification_open)
 
     var selectionMode by rememberSaveable { mutableStateOf(false) }
+    var handledSelectionDismissRequest by rememberSaveable {
+        mutableIntStateOf(selectionDismissRequests.value)
+    }
     val entries = remember(timeline) { rideLogbookEntries(timeline) }
     var pendingExportRequests by remember { mutableStateOf<List<RideExportRequest>?>(null) }
     // Selection is by entry key; keys that no longer exist (data changed) are ignored below.
@@ -136,6 +142,14 @@ fun RidesScreen(
 
     fun toggle(key: String) {
         selectedKeys = if (key in selected) selected - key else selected + key
+    }
+
+    val selectionDismissRequest = selectionDismissRequests.value
+    LaunchedEffect(selectionDismissRequest) {
+        if (selectionDismissRequest != handledSelectionDismissRequest) {
+            handledSelectionDismissRequest = selectionDismissRequest
+            exitSelection()
+        }
     }
 
     LaunchedEffect(exportState) {
