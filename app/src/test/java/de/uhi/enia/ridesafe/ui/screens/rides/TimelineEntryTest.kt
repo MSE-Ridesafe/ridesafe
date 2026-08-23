@@ -52,5 +52,7 @@ class TimelineEntryTest {
         val refuel = refuelEntry(8, 200)
 
         assertEquals(listOf(7L), rideLogbookEntries(listOf(refuel, ride)).flatMap { it.rideIds })
+        assertEquals(setOf("f8", "r7"), timelineSelectionKeys(listOf(refuel, ride)))
+        assertEquals(listOf(7L), selectedRideLogbookEntries(listOf(refuel, ride), setOf("f8", "r7")).flatMap { it.rideIds })
     }
 }

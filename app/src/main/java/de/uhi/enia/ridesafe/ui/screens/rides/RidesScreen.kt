@@ -85,6 +85,7 @@ fun RidesScreen(
     exportState: RideExportState,
     onOpenRide: (Long) -> Unit,
     onOpenMerged: (Long) -> Unit,
+    onOpenRefuel: (Long) -> Unit,
     onOpenAnalysisQueue: () -> Unit,
     onMerge: (List<Long>) -> Unit,
     onExport: (List<RideExportRequest>, RideExportFormat) -> Unit,
@@ -107,8 +108,9 @@ fun RidesScreen(
             stateSaver = listSaver(save = { it.toList() }, restore = { it.toSet() }),
         ) { mutableStateOf(emptySet<String>()) }
 
-    val liveKeys = remember(entries) { entries.map { it.key }.toSet() }
+    val liveKeys = remember(timeline) { timelineSelectionKeys(timeline) }
     val selected = selectedKeys.intersect(liveKeys)
+    val selectedRideEntries = remember(timeline, selected) { selectedRideLogbookEntries(timeline, selected) }
 
     fun exitSelection() {
         selectionMode = false
@@ -164,13 +166,13 @@ fun RidesScreen(
                 if (selectionMode) {
                     SelectionTopBar(
                         count = selected.size,
-                        allSelected = entries.isNotEmpty() && selected.size == entries.size,
+                        allSelected = timeline.isNotEmpty() && selected.size == timeline.size,
                         mergeCheck =
                             if (selected.isEmpty()) {
                                 MergeCheck.NOT_ENOUGH
                             } else {
                                 canMerge(
-                                    selectedIds = entries.filter { it.key in selected }.flatMap { it.rideIds }.toSet(),
+                                    selectedIds = selectedRideEntries.flatMap { it.rideIds }.toSet(),
                                     allRides = entries.flatMap { it.rides },
                                 )
                             },
@@ -178,10 +180,10 @@ fun RidesScreen(
                         onSelectAll = { selectedKeys = liveKeys },
                         onDeselectAll = { selectedKeys = emptySet() },
                         onMerge = {
-                            onMerge(entries.filter { it.key in selected }.flatMap { it.rideIds })
+                            onMerge(selectedRideEntries.flatMap { it.rideIds })
                             exitSelection()
                         },
-                        exportEnabled = selected.isNotEmpty() && exportState != RideExportState.Exporting,
+                        exportEnabled = selectedRideEntries.isNotEmpty() && exportState != RideExportState.Exporting,
                         onExport = { pendingExportRequests = exportRequests(entries, selected) },
                     )
                 } else {
@@ -278,7 +280,22 @@ fun RidesScreen(
                                         }
 
                                         is TimelineEntry.RefuelEntry -> {
-                                            RefuelTimelineRow(row = timelineEntry.row)
+                                            RefuelTimelineRow(
+                                                row = timelineEntry.row,
+                                                selectionMode = selectionMode,
+                                                selected = timelineEntry.stableKey in selected,
+                                                onClick = {
+                                                    if (selectionMode) {
+                                                        toggle(timelineEntry.stableKey)
+                                                    } else {
+                                                        onOpenRefuel(timelineEntry.row.refuel.id)
+                                                    }
+                                                },
+                                                onLongClick = {
+                                                    selectionMode = true
+                                                    toggle(timelineEntry.stableKey)
+                                                },
+                                            )
                                         }
                                     }
                                 }
@@ -627,7 +644,13 @@ private fun LogbookRow(
 }
 
 @Composable
-private fun RefuelTimelineRow(row: RefuelRow) {
+private fun RefuelTimelineRow(
+    row: RefuelRow,
+    selectionMode: Boolean,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
     val context = LocalContext.current
     val locale = context.resources.configuration.locales[0] ?: Locale.getDefault()
     val refuel = row.refuel
@@ -640,9 +663,14 @@ private fun RefuelTimelineRow(row: RefuelRow) {
             ?.let(currencyFormat::format)
 
     ListItem(
+        modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick),
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         leadingContent = {
-            MaterialSymbol(symbolName = "local_gas_station", contentDescription = null)
+            if (selectionMode) {
+                SelectionCircle(selected)
+            } else {
+                MaterialSymbol(symbolName = "local_gas_station", contentDescription = null)
+            }
         },
         overlineContent = {
             Text(row.vehicleName ?: stringResource(R.string.refuel_unknown_vehicle))

@@ -23,6 +23,10 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object AddRefuelRoute : NavKey
 
+@Serializable data class EditRefuelRoute(
+    val id: Long,
+) : NavKey
+
 /**
  * Rides tab entries: list -> detail. Navigation goes through [onOpen]/[onBack] (the caller
  * mutates the rides back stack and resets the tab-switch flag, so these transitions slide).
@@ -44,6 +48,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             exportState = exportState,
             onOpenRide = { onOpen(RideDetailRoute(it)) },
             onOpenMerged = { onOpen(MergedRideDetailRoute(it)) },
+            onOpenRefuel = { onOpen(EditRefuelRoute(it)) },
             onOpenAnalysisQueue = { onOpen(AnalysisQueueRoute) },
             onMerge = { viewModel.merge(it) },
             onExport = viewModel::export,
@@ -58,6 +63,28 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             onSave = viewModel::addRefuel,
             onBack = onBack,
         )
+    }
+    entry<EditRefuelRoute> { key ->
+        val loaded by produceState<Result<de.uhi.enia.ridesafe.data.Refuel?>?>(initialValue = null, key.id) {
+            value = runCatching { viewModel.refuel(key.id) }
+        }
+        when (val result = loaded) {
+            null -> RefuelLoadingScreen(onBack = onBack)
+            else -> {
+                val refuel = result.getOrNull()
+                if (refuel == null) {
+                    RefuelUnavailableScreen(onBack = onBack)
+                } else {
+                    val vehicles by viewModel.vehicles.collectAsState()
+                    RefuelFormScreen(
+                        vehicles = vehicles,
+                        existing = refuel,
+                        onSave = viewModel::updateRefuel,
+                        onBack = onBack,
+                    )
+                }
+            }
+        }
     }
     entry<AnalysisQueueRoute> {
         val entries by viewModel.entries.collectAsState()

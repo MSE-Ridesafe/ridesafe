@@ -5,6 +5,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.math.BigDecimal
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.util.Locale
 
 class RefuelNumbersTest {
     @Test
@@ -38,5 +41,45 @@ class RefuelNumbersTest {
     @Test
     fun derivesPricePerLiterWithoutBinaryFloatingPoint() {
         assertEquals(BigDecimal("1.750000"), pricePerLiter(6_720, 38_400, 2))
+    }
+
+    @Test
+    fun editValuesUseStoredTimeAndGermanEditableDecimals() {
+        val zone = ZoneId.of("Europe/Berlin")
+        val timestamp = LocalDateTime.of(2026, 8, 20, 14, 15).atZone(zone).toInstant().toEpochMilli()
+        val initial =
+            refuelFormInitialValues(
+                de.uhi.enia.ridesafe.data.Refuel(
+                    id = 9,
+                    vehicleId = 4,
+                    timestampEpochMs = timestamp,
+                    fuelAmountMilliliters = 38_400,
+                    totalPriceMinor = 6_720,
+                    currencyCode = "EUR",
+                    odometerMeters = 123_456_000,
+                    stationAddress = "Shell Hildesheim",
+                    isFullTank = true,
+                ),
+                UnitSystemSetting.METRIC,
+                Locale.GERMANY,
+                zone,
+            )
+
+        assertEquals(4L, initial.vehicleId)
+        assertEquals(LocalDateTime.of(2026, 8, 20, 14, 15).toLocalDate().toEpochDay(), initial.dateEpochDay)
+        assertEquals(14, initial.hour)
+        assertEquals(15, initial.minute)
+        assertEquals("38,4", initial.fuelText)
+        assertEquals("67,2", initial.totalText)
+        assertEquals("123456", initial.odometerText)
+        assertEquals("Shell Hildesheim", initial.stationText)
+        assertEquals(true, initial.fullTank)
+    }
+
+    @Test
+    fun imperialOdometerEditTextRoundTripsToCanonicalMeters() {
+        val meters = 198_678_000L
+        val display = odometerMetersToDisplay(meters, UnitSystemSetting.IMPERIAL)
+        assertEquals(meters, odometerToMeters(display, UnitSystemSetting.IMPERIAL))
     }
 }

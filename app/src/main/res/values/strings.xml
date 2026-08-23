@@ -157,8 +157,12 @@
 
     <!-- Refueling -->
     <string name="refuel_add">Add refuel</string>
+    <string name="refuel_edit">Edit refuel</string>
+    <string name="refuel_not_found">This refuel is no longer available.</string>
     <string name="refuel_vehicle">Vehicle</string>
     <string name="refuel_vehicle_required">Add a vehicle in Garage before recording a refuel.</string>
+    <string name="refuel_vehicle_unavailable">Previous vehicle unavailable</string>
+    <string name="refuel_vehicle_unavailable_select">The previous vehicle was deleted. Select an available vehicle to save.</string>
     <string name="refuel_date">Date</string>
     <string name="refuel_time">Time</string>
     <string name="refuel_fuel_amount">Fuel amount</string>

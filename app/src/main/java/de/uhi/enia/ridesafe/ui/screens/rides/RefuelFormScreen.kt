@@ -4,6 +4,7 @@ package de.uhi.enia.ridesafe.ui.screens.rides
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -54,7 +56,6 @@ import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.usesMetric
-import java.math.BigDecimal
 import java.text.DateFormat
 import java.text.NumberFormat
 import java.time.Instant
@@ -67,29 +68,100 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
+fun RefuelLoadingScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    RefuelStateScreen(onBack = onBack, modifier = modifier) { CircularProgressIndicator() }
+}
+
+@Composable
+fun RefuelUnavailableScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    RefuelStateScreen(onBack = onBack, modifier = modifier) {
+        Text(
+            stringResource(R.string.refuel_not_found),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun RefuelStateScreen(
+    onBack: () -> Unit,
+    modifier: Modifier,
+    content: @Composable () -> Unit,
+) {
+    Scaffold(
+        modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.refuel_edit)) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        MaterialSymbol(symbolName = "close", contentDescription = stringResource(R.string.action_back))
+                    }
+                },
+            )
+        },
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier.padding(innerPadding).fillMaxSize().padding(32.dp),
+            contentAlignment = Alignment.Center,
+        ) { content() }
+    }
+}
+
+@Composable
 fun RefuelFormScreen(
     vehicles: List<Vehicle>,
-    onSave: (Refuel, (Result<Long>) -> Unit) -> Unit,
+    existing: Refuel? = null,
+    onSave: (Refuel, (Result<Unit>) -> Unit) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val locale = context.resources.configuration.locales[0] ?: Locale.getDefault()
-    val currency = remember(locale) { defaultCurrency(locale) }
+    val currency =
+        remember(locale, existing?.currencyCode) {
+            existing?.currencyCode?.let { runCatching { Currency.getInstance(it) }.getOrNull() }
+                ?: defaultCurrency(locale)
+        }
     val fractionDigits = currency.defaultFractionDigits.takeIf { it >= 0 } ?: 2
     val unitSystem = currentUnitSystem()
     val metric = usesMetric(unitSystem)
-    val initialNow = remember { LocalTime.now() }
+    val editInitial =
+        remember(existing?.id, locale, unitSystem) {
+            existing?.let { refuelFormInitialValues(it, unitSystem, locale) }
+        }
+    val initialDateTime =
+        remember(existing?.id) {
+            java.time.LocalDateTime.now()
+        }
 
-    var selectedVehicleId by rememberSaveable { mutableStateOf<Long?>(null) }
-    var dateEpochDay by rememberSaveable { mutableStateOf(LocalDate.now().toEpochDay()) }
-    var hour by rememberSaveable { mutableStateOf(initialNow.hour) }
-    var minute by rememberSaveable { mutableStateOf(initialNow.minute) }
-    var fuelText by rememberSaveable { mutableStateOf("") }
-    var totalText by rememberSaveable { mutableStateOf("") }
-    var odometerText by rememberSaveable { mutableStateOf("") }
-    var stationText by rememberSaveable { mutableStateOf("") }
-    var fullTank by rememberSaveable { mutableStateOf(false) }
+    var selectedVehicleId by rememberSaveable(existing?.id) { mutableStateOf(editInitial?.vehicleId) }
+    var dateEpochDay by rememberSaveable(existing?.id) { mutableStateOf(editInitial?.dateEpochDay ?: initialDateTime.toLocalDate().toEpochDay()) }
+    var hour by rememberSaveable(existing?.id) { mutableStateOf(editInitial?.hour ?: initialDateTime.hour) }
+    var minute by rememberSaveable(existing?.id) { mutableStateOf(editInitial?.minute ?: initialDateTime.minute) }
+    var fuelText by
+        rememberSaveable(existing?.id) {
+            mutableStateOf(editInitial?.fuelText.orEmpty())
+        }
+    var totalText by
+        rememberSaveable(existing?.id) {
+            mutableStateOf(editInitial?.totalText.orEmpty())
+        }
+    var odometerText by
+        rememberSaveable(existing?.id) {
+            mutableStateOf(editInitial?.odometerText.orEmpty())
+        }
+    var stationText by rememberSaveable(existing?.id) { mutableStateOf(editInitial?.stationText.orEmpty()) }
+    var fullTank by rememberSaveable(existing?.id) { mutableStateOf(editInitial?.fullTank ?: false) }
     var showErrors by rememberSaveable { mutableStateOf(false) }
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
@@ -97,7 +169,7 @@ fun RefuelFormScreen(
     var saveFailed by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(vehicles, selectedVehicleId) {
-        if (selectedVehicleId == null && vehicles.isNotEmpty()) {
+        if (existing == null && selectedVehicleId == null && vehicles.isNotEmpty()) {
             selectedVehicleId = vehicles.firstOrNull { it.isPrimary }?.id ?: vehicles.first().id
         }
     }
@@ -135,8 +207,8 @@ fun RefuelFormScreen(
                     .toEpochMilli()
             }.getOrNull() ?: return
         saving = true
-        onSave(
-            Refuel(
+        val edited =
+            existing?.copy(
                 vehicleId = vehicle.id,
                 timestampEpochMs = timestamp,
                 fuelAmountMilliliters = fuelMilliliters,
@@ -145,7 +217,18 @@ fun RefuelFormScreen(
                 odometerMeters = odometerMeters,
                 stationAddress = stationText.trim().ifBlank { null },
                 isFullTank = fullTank,
-            ),
+            ) ?: Refuel(
+                vehicleId = vehicle.id,
+                timestampEpochMs = timestamp,
+                fuelAmountMilliliters = fuelMilliliters,
+                totalPriceMinor = totalMinor,
+                currencyCode = currency.currencyCode,
+                odometerMeters = odometerMeters,
+                stationAddress = stationText.trim().ifBlank { null },
+                isFullTank = fullTank,
+            )
+        onSave(
+            edited,
         ) { result ->
             saving = false
             saveFailed = result.isFailure
@@ -158,7 +241,7 @@ fun RefuelFormScreen(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.refuel_add)) },
+                title = { Text(stringResource(if (existing == null) R.string.refuel_add else R.string.refuel_edit)) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
                 navigationIcon = {
                     IconButton(onClick = onBack, enabled = !saving) {
@@ -196,6 +279,7 @@ fun RefuelFormScreen(
                 selected = selectedVehicle,
                 onSelected = { selectedVehicleId = it.id },
                 isError = showErrors && selectedVehicle == null,
+                unavailableVehicle = existing != null && selectedVehicle == null,
             )
 
             DateTimeFields(
@@ -308,6 +392,7 @@ private fun VehicleDropdown(
     selected: Vehicle?,
     onSelected: (Vehicle) -> Unit,
     isError: Boolean,
+    unavailableVehicle: Boolean,
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { if (vehicles.isNotEmpty()) expanded = it }) {
@@ -317,11 +402,27 @@ private fun VehicleDropdown(
             readOnly = true,
             enabled = vehicles.isNotEmpty(),
             label = { Text(stringResource(R.string.refuel_vehicle)) },
-            placeholder = { Text(stringResource(R.string.refuel_vehicle_required)) },
+            placeholder = {
+                Text(
+                    stringResource(
+                        if (unavailableVehicle) R.string.refuel_vehicle_unavailable else R.string.refuel_vehicle_required,
+                    ),
+                )
+            },
             isError = isError,
             supportingText =
                 if (vehicles.isEmpty() || isError) {
-                    { Text(stringResource(R.string.refuel_vehicle_required)) }
+                    {
+                        Text(
+                            stringResource(
+                                if (unavailableVehicle) {
+                                    R.string.refuel_vehicle_unavailable_select
+                                } else {
+                                    R.string.refuel_vehicle_required
+                                },
+                            ),
+                        )
+                    }
                 } else {
                     null
                 },

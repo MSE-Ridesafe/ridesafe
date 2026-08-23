@@ -48,4 +48,19 @@ class RefuelDaoTest {
             assertEquals(123_456_789_000, rows.first().odometerMeters)
             assertNull(rows.last().stationAddress)
         }
+
+    @Test
+    fun updatePreservesIdAndDoesNotInsertDuplicate() =
+        runBlocking {
+            val id = dao.insert(refuel(100, "Old station"))
+            val existing = dao.getById(id)!!
+
+            dao.update(existing.copy(timestampEpochMs = 300, stationAddress = "New station", totalPriceMinor = 7_000))
+
+            val rows = dao.observeAll().first()
+            assertEquals(1, rows.size)
+            assertEquals(id, rows.single().id)
+            assertEquals("New station", rows.single().stationAddress)
+            assertEquals(7_000, rows.single().totalPriceMinor)
+        }
 }

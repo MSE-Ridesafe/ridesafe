@@ -1,11 +1,15 @@
 package de.uhi.enia.ridesafe.ui.screens.rides
 
+import de.uhi.enia.ridesafe.data.Refuel
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.usesMetric
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.text.DecimalFormatSymbols
 import java.util.Currency
 import java.util.Locale
+import java.time.Instant
+import java.time.ZoneId
 
 private val MILLILITERS_PER_LITER = BigDecimal("1000")
 private val METERS_PER_KILOMETER = BigDecimal("1000")
@@ -52,6 +56,60 @@ fun pricePerLiter(
 
 fun defaultCurrency(locale: Locale): Currency =
     runCatching { Currency.getInstance(locale) }.getOrElse { Currency.getInstance("EUR") }
+
+/** Editable plain decimal text using the locale's decimal mark and no grouping separators. */
+fun formatRefuelInput(
+    value: BigDecimal,
+    locale: Locale,
+): String =
+    value
+        .stripTrailingZeros()
+        .toPlainString()
+        .replace('.', DecimalFormatSymbols.getInstance(locale).decimalSeparator)
+
+fun odometerMetersToDisplay(
+    meters: Long,
+    unitSystem: UnitSystemSetting,
+): BigDecimal =
+    BigDecimal.valueOf(meters).divide(
+        if (usesMetric(unitSystem)) METERS_PER_KILOMETER else METERS_PER_MILE,
+        if (usesMetric(unitSystem)) 3 else 6,
+        RoundingMode.HALF_UP,
+    )
+
+data class RefuelFormInitialValues(
+    val vehicleId: Long,
+    val dateEpochDay: Long,
+    val hour: Int,
+    val minute: Int,
+    val fuelText: String,
+    val totalText: String,
+    val odometerText: String,
+    val stationText: String,
+    val fullTank: Boolean,
+)
+
+fun refuelFormInitialValues(
+    refuel: Refuel,
+    unitSystem: UnitSystemSetting,
+    locale: Locale,
+    zoneId: ZoneId = ZoneId.systemDefault(),
+): RefuelFormInitialValues {
+    val currency = runCatching { Currency.getInstance(refuel.currencyCode) }.getOrElse { defaultCurrency(locale) }
+    val fractionDigits = currency.defaultFractionDigits.takeIf { it >= 0 } ?: 2
+    val dateTime = Instant.ofEpochMilli(refuel.timestampEpochMs).atZone(zoneId)
+    return RefuelFormInitialValues(
+        vehicleId = refuel.vehicleId,
+        dateEpochDay = dateTime.toLocalDate().toEpochDay(),
+        hour = dateTime.hour,
+        minute = dateTime.minute,
+        fuelText = formatRefuelInput(BigDecimal.valueOf(refuel.fuelAmountMilliliters, 3), locale),
+        totalText = formatRefuelInput(BigDecimal.valueOf(refuel.totalPriceMinor, fractionDigits), locale),
+        odometerText = formatRefuelInput(odometerMetersToDisplay(refuel.odometerMeters, unitSystem), locale),
+        stationText = refuel.stationAddress.orEmpty(),
+        fullTank = refuel.isFullTank,
+    )
+}
 
 private fun exactScaledLong(
     value: BigDecimal,

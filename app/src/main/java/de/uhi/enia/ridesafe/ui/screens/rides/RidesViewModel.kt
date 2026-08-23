@@ -194,9 +194,30 @@ class RidesViewModel(
 
     fun addRefuel(
         refuel: Refuel,
-        onResult: (Result<Long>) -> Unit,
+        onResult: (Result<Unit>) -> Unit,
     ) {
-        viewModelScope.launch { onResult(runCatching { refuelDao.insert(refuel) }) }
+        viewModelScope.launch {
+            onResult(
+                runCatching {
+                    refuelDao.insert(refuel)
+                    Unit
+                }.onFailure { Log.e("RefuelInsert", "Could not insert refuel", it) },
+            )
+        }
+    }
+
+    suspend fun refuel(id: Long): Refuel? = refuelDao.getById(id)
+
+    fun updateRefuel(
+        refuel: Refuel,
+        onResult: (Result<Unit>) -> Unit,
+    ) {
+        viewModelScope.launch {
+            onResult(
+                runCatching { refuelDao.update(refuel) }
+                    .onFailure { Log.e("RefuelUpdate", "Could not update refuel ${refuel.id}", it) },
+            )
+        }
     }
 
     fun ride(id: Long): Flow<Ride?> = rideDao.observe(id)
@@ -323,3 +344,10 @@ val timelineEntryComparator =
 
 fun rideLogbookEntries(timeline: List<TimelineEntry>): List<LogbookEntry> =
     timeline.mapNotNull { (it as? TimelineEntry.RideEntry)?.entry }
+
+fun timelineSelectionKeys(timeline: List<TimelineEntry>): Set<String> = timeline.mapTo(linkedSetOf()) { it.stableKey }
+
+fun selectedRideLogbookEntries(
+    timeline: List<TimelineEntry>,
+    selectedKeys: Set<String>,
+): List<LogbookEntry> = rideLogbookEntries(timeline).filter { it.key in selectedKeys }

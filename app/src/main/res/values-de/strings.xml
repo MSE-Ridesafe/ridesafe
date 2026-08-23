@@ -157,8 +157,12 @@
 
     <!-- Tanken -->
     <string name="refuel_add">Tankvorgang hinzufügen</string>
+    <string name="refuel_edit">Tankvorgang bearbeiten</string>
+    <string name="refuel_not_found">Dieser Tankvorgang ist nicht mehr verfügbar.</string>
     <string name="refuel_vehicle">Fahrzeug</string>
     <string name="refuel_vehicle_required">Füge zuerst ein Fahrzeug in der Garage hinzu.</string>
+    <string name="refuel_vehicle_unavailable">Vorheriges Fahrzeug nicht verfügbar</string>
+    <string name="refuel_vehicle_unavailable_select">Das vorherige Fahrzeug wurde gelöscht. Wähle zum Speichern ein verfügbares Fahrzeug aus.</string>
     <string name="refuel_date">Datum</string>
     <string name="refuel_time">Uhrzeit</string>
     <string name="refuel_fuel_amount">Kraftstoffmenge</string>
