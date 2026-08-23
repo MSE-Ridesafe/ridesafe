@@ -45,7 +45,7 @@ import de.uhi.enia.ridesafe.data.fixedIcon
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 
-/** The fixed-label shortcut kinds, in display order. */
+/** The shortcut kinds, in display order. Gas stations are repeatable; the others are singletons. */
 private val SHORTCUT_KINDS =
     listOf(SavedPlaceKind.HOME, SavedPlaceKind.WORK, SavedPlaceKind.SCHOOL, SavedPlaceKind.GAS_STATION)
 
@@ -60,7 +60,8 @@ internal fun SavedPlaceKind.labelRes(): Int =
     }
 
 /**
- * Saved-addresses management (ADR-03): quick-add chips for the shortcut kinds not created yet, the
+ * Saved-addresses management (ADR-03): quick-add chips for missing singleton shortcuts and the
+ * always-available Gas station shortcut, the
  * list of saved places, and a FAB to add a custom one. Tapping a place opens the editor (where it can
  * be edited or deleted). All rendered with stock M3 components.
  */
@@ -73,7 +74,8 @@ fun SavedAddressesScreen(
     modifier: Modifier = Modifier,
 ) {
     val existingKinds = addresses.map { it.kind }.toSet()
-    val missingShortcuts = SHORTCUT_KINDS.filterNot { it in existingKinds }
+    val availableShortcuts =
+        SHORTCUT_KINDS.filter { kind -> kind == SavedPlaceKind.GAS_STATION || kind !in existingKinds }
 
     Scaffold(
         modifier = modifier,
@@ -114,10 +116,10 @@ fun SavedAddressesScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (missingShortcuts.isNotEmpty()) {
+            if (availableShortcuts.isNotEmpty()) {
                 item {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        missingShortcuts.forEach { kind ->
+                        availableShortcuts.forEach { kind ->
                             AssistChip(
                                 onClick = { onAdd(kind) },
                                 label = {
