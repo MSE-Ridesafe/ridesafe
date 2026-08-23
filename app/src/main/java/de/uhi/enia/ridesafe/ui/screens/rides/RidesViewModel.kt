@@ -229,8 +229,10 @@ class RidesViewModel(
         viewModelScope.launch {
             onResult(
                 runCatching {
-                    refuelDao.insert(refuel)
-                    Unit
+                    db.withTransaction {
+                        val id = refuelDao.insert(refuel)
+                        updateVehicleMileageIfNewest(refuel.copy(id = id))
+                    }
                 }.onFailure { Log.e("RefuelInsert", "Could not insert refuel", it) },
             )
         }
@@ -249,10 +251,22 @@ class RidesViewModel(
     ) {
         viewModelScope.launch {
             onResult(
-                runCatching { refuelDao.update(refuel) }
+                runCatching {
+                    db.withTransaction {
+                        refuelDao.update(refuel)
+                        updateVehicleMileageIfNewest(refuel)
+                    }
+                }
                     .onFailure { Log.e("RefuelUpdate", "Could not update refuel ${refuel.id}", it) },
             )
         }
+    }
+
+    /** A Refuel updates Garage mileage only when it is the newest event for that vehicle. */
+    private suspend fun updateVehicleMileageIfNewest(refuel: Refuel) {
+        if (refuelDao.newestForVehicle(refuel.vehicleId)?.id != refuel.id) return
+        val mileageKm = odometerMetersToVehicleMileageKm(refuel.odometerMeters) ?: return
+        vehicleDao.updateMileage(refuel.vehicleId, mileageKm)
     }
 
     fun ride(id: Long): Flow<Ride?> = rideDao.observe(id)

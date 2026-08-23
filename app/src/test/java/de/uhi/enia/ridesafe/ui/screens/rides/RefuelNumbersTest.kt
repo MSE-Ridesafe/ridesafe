@@ -11,6 +11,13 @@ import java.util.Locale
 
 class RefuelNumbersTest {
     @Test
+    fun newestRefuelOdometerRoundsSafelyForVehicleMileage() {
+        assertEquals(123_457, odometerMetersToVehicleMileageKm(123_456_789))
+        assertEquals(123_456, odometerMetersToVehicleMileageKm(123_456_499))
+        assertNull(odometerMetersToVehicleMileageKm(Long.MAX_VALUE))
+    }
+
+    @Test
     fun parsesCommaAndDotDecimals() {
         assertEquals(BigDecimal("38.4"), parseRefuelDecimal("38,4"))
         assertEquals(BigDecimal("38.4"), parseRefuelDecimal("38.4"))

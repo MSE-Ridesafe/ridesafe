@@ -17,6 +17,10 @@ interface RefuelDao {
     @Query("SELECT * FROM refuels WHERE id IN (:ids)")
     suspend fun byIds(ids: List<Long>): List<Refuel>
 
+    /** Chronologically newest Refuel for a vehicle; id makes equal timestamps deterministic. */
+    @Query("SELECT * FROM refuels WHERE vehicleId = :vehicleId ORDER BY timestampEpochMs DESC, id DESC LIMIT 1")
+    suspend fun newestForVehicle(vehicleId: Long): Refuel?
+
     @Insert
     suspend fun insert(refuel: Refuel): Long
 

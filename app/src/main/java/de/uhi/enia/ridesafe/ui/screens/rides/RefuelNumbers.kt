@@ -77,6 +77,14 @@ fun odometerMetersToDisplay(
         RoundingMode.HALF_UP,
     )
 
+/** Vehicle mileage has legacy whole-kilometer precision; Refuel history keeps the exact meters. */
+fun odometerMetersToVehicleMileageKm(odometerMeters: Long): Int? =
+    runCatching {
+        BigDecimal.valueOf(odometerMeters)
+            .divide(METERS_PER_KILOMETER, 0, RoundingMode.HALF_UP)
+            .intValueExact()
+    }.getOrNull()
+
 data class RefuelFormInitialValues(
     val vehicleId: Long,
     val dateEpochDay: Long,

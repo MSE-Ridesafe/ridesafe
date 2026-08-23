@@ -34,6 +34,12 @@ abstract class VehicleDao {
     @Update
     abstract suspend fun update(vehicle: Vehicle)
 
+    @Query("UPDATE vehicles SET mileageKm = :mileageKm WHERE id = :vehicleId")
+    abstract suspend fun updateMileage(
+        vehicleId: Long,
+        mileageKm: Int,
+    )
+
     @Delete
     abstract suspend fun delete(vehicle: Vehicle)
 
