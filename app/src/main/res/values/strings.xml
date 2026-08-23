@@ -241,7 +241,8 @@
     <string name="action_exit_selection">Exit selection</string>
     <string name="ride_selected">Selected</string>
     <string name="ride_not_selected">Not selected</string>
-    <string name="ride_action_merge">Merge rides</string>
+    <string name="ride_action_merge">Merge</string>
+    <string name="ride_action_unmerge">Unmerge</string>
     <string name="ride_action_export">Export</string>
     <string name="ride_export_format_title">Choose export format</string>
     <string name="ride_export_format_pdf">PDF</string>
