@@ -6,8 +6,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
 import com.google.android.gms.maps.model.LatLng
-import de.uhi.enia.ridesafe.data.MergedSummary
 import de.uhi.enia.ridesafe.data.MergeCheck
+import de.uhi.enia.ridesafe.data.MergedSummary
 import de.uhi.enia.ridesafe.data.Refuel
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RideEvent
@@ -28,9 +28,9 @@ import de.uhi.enia.ridesafe.rides.recording.ridesDir
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -61,8 +61,13 @@ enum class LogbookOperation { MERGED, ATTACHED, DETACHED }
 
 sealed interface LogbookOperationState {
     data object Idle : LogbookOperationState
+
     data object Running : LogbookOperationState
-    data class Success(val operation: LogbookOperation) : LogbookOperationState
+
+    data class Success(
+        val operation: LogbookOperation,
+    ) : LogbookOperationState
+
     data object Error : LogbookOperationState
 }
 
@@ -211,13 +216,19 @@ class RidesViewModel(
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val timeline: StateFlow<List<TimelineEntry>> =
-        combine(entries, refuelRows, ::buildTimeline).flowOn(Dispatchers.Default)
+        combine(entries, refuelRows, ::buildTimeline)
+            .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun attachedRefuels(logbookKey: String): Flow<List<RefuelRow>> =
-        timeline.map { timeline ->
-            timeline.filterIsInstance<TimelineEntry.RideEntry>().firstOrNull { it.stableKey == logbookKey }?.refuels.orEmpty()
-        }.distinctUntilChanged()
+        timeline
+            .map { timeline ->
+                timeline
+                    .filterIsInstance<TimelineEntry.RideEntry>()
+                    .firstOrNull { it.stableKey == logbookKey }
+                    ?.refuels
+                    .orEmpty()
+            }.distinctUntilChanged()
 
     private val _logbookOperationState = MutableStateFlow<LogbookOperationState>(LogbookOperationState.Idle)
     val logbookOperationState: StateFlow<LogbookOperationState> = _logbookOperationState.asStateFlow()
@@ -256,8 +267,7 @@ class RidesViewModel(
                         refuelDao.update(refuel)
                         updateVehicleMileageIfNewest(refuel)
                     }
-                }
-                    .onFailure { Log.e("RefuelUpdate", "Could not update refuel ${refuel.id}", it) },
+                }.onFailure { Log.e("RefuelUpdate", "Could not update refuel ${refuel.id}", it) },
             )
         }
     }
@@ -299,9 +309,11 @@ class RidesViewModel(
             require(selectedRefuels.all { it.vehicleId == vehicleId })
             val liveRideIds = allRides.mapTo(hashSetOf()) { it.id }
             val selectedRideIds = selectedRides.mapTo(hashSetOf()) { it.id }
-            require(selectedRefuels.none { refuel ->
-                refuel.journeyAnchorRideId?.let { it in liveRideIds && it !in selectedRideIds } == true
-            })
+            require(
+                selectedRefuels.none { refuel ->
+                    refuel.journeyAnchorRideId?.let { it in liveRideIds && it !in selectedRideIds } == true
+                },
+            )
 
             // Selecting one already-combined logical entry plus Refuels only needs association work.
             // Avoid a no-op Ride update (and its separate Flow invalidation) in that case.
@@ -341,9 +353,11 @@ class RidesViewModel(
             require(vehicleId != null && targetRides.all { it.vehicleId == vehicleId })
             require(selectedRefuels.all { it.vehicleId == vehicleId })
             val liveRideIds = allRides.mapTo(hashSetOf()) { it.id }
-            require(selectedRefuels.none { refuel ->
-                refuel.journeyAnchorRideId?.let { it in liveRideIds && it !in targetIds } == true
-            })
+            require(
+                selectedRefuels.none { refuel ->
+                    refuel.journeyAnchorRideId?.let { it in liveRideIds && it !in targetIds } == true
+                },
+            )
             val needingAttachment = selectedRefuels.filter { it.journeyAnchorRideId !in targetIds }
             require(needingAttachment.isNotEmpty())
             needingAttachment.forEach { refuelDao.setJourneyAnchor(it.id, closestRideAnchor(it, targetRides).id) }
@@ -502,7 +516,9 @@ sealed interface TimelineEntry {
         override val stableKey get() = entry.key
     }
 
-    data class RefuelEntry(val row: RefuelRow) : TimelineEntry {
+    data class RefuelEntry(
+        val row: RefuelRow,
+    ) : TimelineEntry {
         override val sortEpochMs get() = row.refuel.timestampEpochMs
         override val stableKey get() = "f${row.refuel.id}"
     }
@@ -514,8 +530,7 @@ val timelineEntryComparator =
         .thenBy { if (it is TimelineEntry.RideEntry) 0 else 1 }
         .thenByDescending { it.stableKey }
 
-fun rideLogbookEntries(timeline: List<TimelineEntry>): List<LogbookEntry> =
-    timeline.mapNotNull { (it as? TimelineEntry.RideEntry)?.entry }
+fun rideLogbookEntries(timeline: List<TimelineEntry>): List<LogbookEntry> = timeline.mapNotNull { (it as? TimelineEntry.RideEntry)?.entry }
 
 fun timelineSelectionKeys(timeline: List<TimelineEntry>): Set<String> = timeline.mapTo(linkedSetOf()) { it.stableKey }
 
@@ -557,8 +572,11 @@ fun buildTimeline(
         }
     val attachedByKey =
         refuelRows
-            .mapNotNull { row -> row.refuel.journeyAnchorRideId?.let(entryKeyByRideId::get)?.let { it to row } }
-            .groupBy({ it.first }, { it.second })
+            .mapNotNull { row ->
+                row.refuel.journeyAnchorRideId
+                    ?.let(entryKeyByRideId::get)
+                    ?.let { it to row }
+            }.groupBy({ it.first }, { it.second })
     val attachedIds = attachedByKey.values.flatten().mapTo(hashSetOf()) { it.refuel.id }
     return buildList {
         rideEntries.forEach { entry ->

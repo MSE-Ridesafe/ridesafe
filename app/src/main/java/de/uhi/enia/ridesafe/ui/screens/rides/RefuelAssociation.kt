@@ -91,12 +91,16 @@ sealed interface CombinedJourneyChild {
     val sortEpochMs: Long
     val persistentId: Long
 
-    data class RideChild(val ride: Ride) : CombinedJourneyChild {
+    data class RideChild(
+        val ride: Ride,
+    ) : CombinedJourneyChild {
         override val sortEpochMs get() = ride.startedAtEpochMs
         override val persistentId get() = ride.id
     }
 
-    data class RefuelChild(val row: RefuelRow) : CombinedJourneyChild {
+    data class RefuelChild(
+        val row: RefuelRow,
+    ) : CombinedJourneyChild {
         override val sortEpochMs get() = row.refuel.timestampEpochMs
         override val persistentId get() = row.refuel.id
     }

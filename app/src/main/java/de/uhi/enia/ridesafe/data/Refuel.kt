@@ -1,9 +1,9 @@
 package de.uhi.enia.ridesafe.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import androidx.room.ColumnInfo
 
 /** A historical refueling event. Monetary and volume values use scaled integers for exact storage. */
 @Entity(

@@ -78,7 +78,10 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             value = runCatching { viewModel.refuel(key.id) }
         }
         when (val result = loaded) {
-            null -> RefuelLoadingScreen(onBack = onBack)
+            null -> {
+                RefuelLoadingScreen(onBack = onBack)
+            }
+
             else -> {
                 val refuel = result.getOrNull()
                 if (refuel == null) {

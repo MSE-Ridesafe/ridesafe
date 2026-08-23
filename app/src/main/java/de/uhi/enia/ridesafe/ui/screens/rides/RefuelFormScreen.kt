@@ -147,7 +147,9 @@ fun RefuelFormScreen(
         }
 
     var selectedVehicleId by rememberSaveable(existing?.id) { mutableStateOf(editInitial?.vehicleId) }
-    var dateEpochDay by rememberSaveable(existing?.id) { mutableStateOf(editInitial?.dateEpochDay ?: initialDateTime.toLocalDate().toEpochDay()) }
+    var dateEpochDay by rememberSaveable(existing?.id) {
+        mutableStateOf(editInitial?.dateEpochDay ?: initialDateTime.toLocalDate().toEpochDay())
+    }
     var hour by rememberSaveable(existing?.id) { mutableStateOf(editInitial?.hour ?: initialDateTime.hour) }
     var minute by rememberSaveable(existing?.id) { mutableStateOf(editInitial?.minute ?: initialDateTime.minute) }
     var fuelText by
@@ -196,9 +198,10 @@ fun RefuelFormScreen(
     val unitPrice =
         if (fuelValid && totalValid) pricePerLiter(totalMinor, fuelMilliliters, fractionDigits) else null
     val unitPriceText =
-        unitPrice?.let {
-            NumberFormat.getCurrencyInstance(locale).apply { this.currency = currency }.format(it)
-        }.orEmpty()
+        unitPrice
+            ?.let {
+                NumberFormat.getCurrencyInstance(locale).apply { this.currency = currency }.format(it)
+            }.orEmpty()
 
     LaunchedEffect(selectedStationSavedAddress?.id) {
         if (stationSavedAddressId != null && stationText.isBlank()) {
@@ -370,7 +373,12 @@ fun RefuelFormScreen(
     if (showDatePicker) {
         val pickerState =
             rememberDatePickerState(
-                initialSelectedDateMillis = LocalDate.ofEpochDay(dateEpochDay).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+                initialSelectedDateMillis =
+                    LocalDate
+                        .ofEpochDay(dateEpochDay)
+                        .atStartOfDay(ZoneOffset.UTC)
+                        .toInstant()
+                        .toEpochMilli(),
             )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
@@ -378,7 +386,12 @@ fun RefuelFormScreen(
                 TextButton(
                     onClick = {
                         pickerState.selectedDateMillis?.let {
-                            dateEpochDay = Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate().toEpochDay()
+                            dateEpochDay =
+                                Instant
+                                    .ofEpochMilli(it)
+                                    .atZone(ZoneOffset.UTC)
+                                    .toLocalDate()
+                                    .toEpochDay()
                         }
                         showDatePicker = false
                     },
@@ -395,7 +408,9 @@ fun RefuelFormScreen(
             rememberTimePickerState(
                 initialHour = hour,
                 initialMinute = minute,
-                is24Hour = android.text.format.DateFormat.is24HourFormat(context),
+                is24Hour =
+                    android.text.format.DateFormat
+                        .is24HourFormat(context),
             )
         AlertDialog(
             onDismissRequest = { showTimePicker = false },
@@ -513,10 +528,14 @@ private fun StationAutocompleteField(
                     selectionMissing -> {
                         { Text(stringResource(R.string.refuel_station_saved_unavailable_help)) }
                     }
+
                     selected?.address != null -> {
                         { Text(selected.address) }
                     }
-                    else -> null
+
+                    else -> {
+                        null
+                    }
                 },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded && suggestions.isNotEmpty()) },
             singleLine = true,
@@ -556,8 +575,18 @@ private fun DateTimeFields(
     onDateClick: () -> Unit,
     onTimeClick: () -> Unit,
 ) {
-    val dateText = DateFormat.getDateInstance(DateFormat.MEDIUM, locale).format(Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant()))
-    val timeText = DateFormat.getTimeInstance(DateFormat.SHORT, locale).format(Date.from(date.atTime(time).atZone(ZoneId.systemDefault()).toInstant()))
+    val dateText =
+        DateFormat
+            .getDateInstance(
+                DateFormat.MEDIUM,
+                locale,
+            ).format(Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant()))
+    val timeText =
+        DateFormat
+            .getTimeInstance(
+                DateFormat.SHORT,
+                locale,
+            ).format(Date.from(date.atTime(time).atZone(ZoneId.systemDefault()).toInstant()))
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedTextField(
             value = dateText,

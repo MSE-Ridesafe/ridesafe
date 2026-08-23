@@ -6,36 +6,40 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class TimelineEntryTest {
-    private fun rideEntry(id: Long, timestamp: Long) =
-        TimelineEntry.RideEntry(
-            LogbookEntry.Single(
-                RideRow(
-                    Ride(
-                        id = id,
-                        startedAtEpochMs = timestamp,
-                        startedElapsedNanos = 0,
-                        sampleFile = "ride-$id.ndjson",
-                    ),
-                    vehicleName = null,
-                ),
-            ),
-        )
-
-    private fun refuelEntry(id: Long, timestamp: Long) =
-        TimelineEntry.RefuelEntry(
-            RefuelRow(
-                Refuel(
+    private fun rideEntry(
+        id: Long,
+        timestamp: Long,
+    ) = TimelineEntry.RideEntry(
+        LogbookEntry.Single(
+            RideRow(
+                Ride(
                     id = id,
-                    vehicleId = 1,
-                    timestampEpochMs = timestamp,
-                    fuelAmountMilliliters = 1_000,
-                    totalPriceMinor = 100,
-                    currencyCode = "EUR",
-                    odometerMeters = 1_000,
+                    startedAtEpochMs = timestamp,
+                    startedElapsedNanos = 0,
+                    sampleFile = "ride-$id.ndjson",
                 ),
                 vehicleName = null,
             ),
-        )
+        ),
+    )
+
+    private fun refuelEntry(
+        id: Long,
+        timestamp: Long,
+    ) = TimelineEntry.RefuelEntry(
+        RefuelRow(
+            Refuel(
+                id = id,
+                vehicleId = 1,
+                timestampEpochMs = timestamp,
+                fuelAmountMilliliters = 1_000,
+                totalPriceMinor = 100,
+                currencyCode = "EUR",
+                odometerMeters = 1_000,
+            ),
+            vehicleName = null,
+        ),
+    )
 
     @Test
     fun ordersNewestFirstAndRideBeforeRefuelOnExactTie() {
@@ -59,12 +63,14 @@ class TimelineEntryTest {
     @Test
     fun attachedRefuelIsNestedOnceAndMissingAnchorFallsBackTopLevel() {
         val ride = rideEntry(7, 100).entry
-        val attached = refuelEntry(8, 120).row.copy(
-            refuel = refuelEntry(8, 120).row.refuel.copy(journeyAnchorRideId = 7),
-        )
-        val missingAnchor = refuelEntry(9, 130).row.copy(
-            refuel = refuelEntry(9, 130).row.refuel.copy(journeyAnchorRideId = 99),
-        )
+        val attached =
+            refuelEntry(8, 120).row.copy(
+                refuel = refuelEntry(8, 120).row.refuel.copy(journeyAnchorRideId = 7),
+            )
+        val missingAnchor =
+            refuelEntry(9, 130).row.copy(
+                refuel = refuelEntry(9, 130).row.refuel.copy(journeyAnchorRideId = 99),
+            )
 
         val timeline = buildTimeline(listOf(ride), listOf(attached, missingAnchor))
         val rideTimeline = timeline.filterIsInstance<TimelineEntry.RideEntry>().single()
@@ -85,7 +91,9 @@ class TimelineEntryTest {
             LogbookEntry.Merged(
                 groupId = 1,
                 stops = listOf(first, second),
-                summary = de.uhi.enia.ridesafe.data.summarizeMerge(listOf(first.ride, second.ride)),
+                summary =
+                    de.uhi.enia.ridesafe.data
+                        .summarizeMerge(listOf(first.ride, second.ride)),
                 vehicleName = null,
             )
         val refuel = refuelEntry(8, 150).row.copy(refuel = refuelEntry(8, 150).row.refuel.copy(journeyAnchorRideId = 1))

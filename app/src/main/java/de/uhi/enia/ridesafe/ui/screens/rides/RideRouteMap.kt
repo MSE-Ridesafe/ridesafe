@@ -143,9 +143,10 @@ fun RouteMapCard(
     MapPreview(
         framing = if (segments == null) null else drawn.flatten() + refuelPositions,
         onExpand = {
-            fullScreen.value = FullScreenMapRequest { onClose ->
-                RideFullScreenMap(drawn, rideEvents, refuels, onClose)
-            }
+            fullScreen.value =
+                FullScreenMapRequest { onClose ->
+                    RideFullScreenMap(drawn, rideEvents, refuels, onClose)
+                }
         },
         expandLabel = stringResource(R.string.ride_map_expand),
         empty = { NoGps() },

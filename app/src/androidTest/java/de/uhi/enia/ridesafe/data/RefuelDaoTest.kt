@@ -26,16 +26,18 @@ class RefuelDaoTest {
     @After
     fun tearDown() = db.close()
 
-    private fun refuel(timestamp: Long, address: String? = null) =
-        Refuel(
-            vehicleId = 42,
-            timestampEpochMs = timestamp,
-            fuelAmountMilliliters = 38_400,
-            totalPriceMinor = 6_720,
-            currencyCode = "EUR",
-            odometerMeters = 123_456_789_000,
-            stationAddress = address,
-        )
+    private fun refuel(
+        timestamp: Long,
+        address: String? = null,
+    ) = Refuel(
+        vehicleId = 42,
+        timestampEpochMs = timestamp,
+        fuelAmountMilliliters = 38_400,
+        totalPriceMinor = 6_720,
+        currencyCode = "EUR",
+        odometerMeters = 123_456_789_000,
+        stationAddress = address,
+    )
 
     @Test
     fun insertEmitsNewestFirstAndPreservesNullableAddressAndLargeValues() =

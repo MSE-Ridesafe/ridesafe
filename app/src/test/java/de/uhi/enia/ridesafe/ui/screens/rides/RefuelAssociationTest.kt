@@ -7,36 +7,50 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class RefuelAssociationTest {
-    private fun ride(id: Long, start: Long, vehicleId: Long = 1, groupId: Long? = null) =
-        Ride(
-            id = id,
-            vehicleId = vehicleId,
-            mergeGroupId = groupId,
-            startedAtEpochMs = start,
-            startedElapsedNanos = 0,
-            endedAtEpochMs = start + 10,
-            sampleFile = "ride-$id.ndjson",
-        )
+    private fun ride(
+        id: Long,
+        start: Long,
+        vehicleId: Long = 1,
+        groupId: Long? = null,
+    ) = Ride(
+        id = id,
+        vehicleId = vehicleId,
+        mergeGroupId = groupId,
+        startedAtEpochMs = start,
+        startedElapsedNanos = 0,
+        endedAtEpochMs = start + 10,
+        sampleFile = "ride-$id.ndjson",
+    )
 
     private fun entry(vararg rides: Ride): LogbookEntry =
         if (rides.size == 1) {
             LogbookEntry.Single(RideRow(rides.single(), null))
         } else {
             val rows = rides.map { RideRow(it, null) }
-            LogbookEntry.Merged(rides.first().mergeGroupId!!, rows, de.uhi.enia.ridesafe.data.summarizeMerge(rides.toList()), null)
+            LogbookEntry.Merged(
+                rides.first().mergeGroupId!!,
+                rows,
+                de.uhi.enia.ridesafe.data
+                    .summarizeMerge(rides.toList()),
+                null,
+            )
         }
 
-    private fun refuel(id: Long, time: Long, vehicleId: Long = 1, anchor: Long? = null) =
-        Refuel(
-            id = id,
-            vehicleId = vehicleId,
-            timestampEpochMs = time,
-            fuelAmountMilliliters = 1_000,
-            totalPriceMinor = 100,
-            currencyCode = "EUR",
-            odometerMeters = 1_000,
-            journeyAnchorRideId = anchor,
-        )
+    private fun refuel(
+        id: Long,
+        time: Long,
+        vehicleId: Long = 1,
+        anchor: Long? = null,
+    ) = Refuel(
+        id = id,
+        vehicleId = vehicleId,
+        timestampEpochMs = time,
+        fuelAmountMilliliters = 1_000,
+        totalPriceMinor = 100,
+        currencyCode = "EUR",
+        odometerMeters = 1_000,
+        journeyAnchorRideId = anchor,
+    )
 
     @Test
     fun addToRideRequiresOneRideCompatibleRefuelsAndARealChange() {

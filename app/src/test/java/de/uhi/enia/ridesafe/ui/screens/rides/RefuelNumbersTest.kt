@@ -53,7 +53,12 @@ class RefuelNumbersTest {
     @Test
     fun editValuesUseStoredTimeAndGermanEditableDecimals() {
         val zone = ZoneId.of("Europe/Berlin")
-        val timestamp = LocalDateTime.of(2026, 8, 20, 14, 15).atZone(zone).toInstant().toEpochMilli()
+        val timestamp =
+            LocalDateTime
+                .of(2026, 8, 20, 14, 15)
+                .atZone(zone)
+                .toInstant()
+                .toEpochMilli()
         val initial =
             refuelFormInitialValues(
                 de.uhi.enia.ridesafe.data.Refuel(

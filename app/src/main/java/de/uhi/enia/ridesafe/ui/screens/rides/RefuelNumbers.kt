@@ -6,10 +6,10 @@ import de.uhi.enia.ridesafe.util.usesMetric
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.DecimalFormatSymbols
-import java.util.Currency
-import java.util.Locale
 import java.time.Instant
 import java.time.ZoneId
+import java.util.Currency
+import java.util.Locale
 
 private val MILLILITERS_PER_LITER = BigDecimal("1000")
 private val METERS_PER_KILOMETER = BigDecimal("1000")
@@ -54,8 +54,7 @@ fun pricePerLiter(
     return major.divide(liters, 6, RoundingMode.HALF_UP)
 }
 
-fun defaultCurrency(locale: Locale): Currency =
-    runCatching { Currency.getInstance(locale) }.getOrElse { Currency.getInstance("EUR") }
+fun defaultCurrency(locale: Locale): Currency = runCatching { Currency.getInstance(locale) }.getOrElse { Currency.getInstance("EUR") }
 
 /** Editable plain decimal text using the locale's decimal mark and no grouping separators. */
 fun formatRefuelInput(
@@ -80,7 +79,8 @@ fun odometerMetersToDisplay(
 /** Vehicle mileage has legacy whole-kilometer precision; Refuel history keeps the exact meters. */
 fun odometerMetersToVehicleMileageKm(odometerMeters: Long): Int? =
     runCatching {
-        BigDecimal.valueOf(odometerMeters)
+        BigDecimal
+            .valueOf(odometerMeters)
             .divide(METERS_PER_KILOMETER, 0, RoundingMode.HALF_UP)
             .intValueExact()
     }.getOrNull()
