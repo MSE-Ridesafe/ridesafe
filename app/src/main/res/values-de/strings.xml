@@ -171,6 +171,8 @@
     <string name="refuel_per_liter_suffix">/L</string>
     <string name="refuel_odometer">Kilometerstand</string>
     <string name="refuel_station_address">Tankstelle / Adresse (optional)</string>
+    <string name="refuel_station_saved_unavailable">Gespeicherter Ort nicht verfügbar</string>
+    <string name="refuel_station_saved_unavailable_help">Wähle einen anderen gespeicherten Ort oder verwende eine eigene Adresse.</string>
     <string name="refuel_full_tank">Vollgetankt</string>
     <string name="refuel_unknown_vehicle">Unbekanntes Fahrzeug</string>
     <string name="refuel_station_fallback">Tankstelle</string>
@@ -302,6 +304,7 @@
     <string name="place_kind_home">Zuhause</string>
     <string name="place_kind_work">Arbeit</string>
     <string name="place_kind_school">Schule</string>
+    <string name="place_kind_gas_station">Tankstelle</string>
     <string name="place_kind_custom">Eigener Ort</string>
     <!-- Fahrtenanalyse-Warteschlange (ANL-03) -->
     <string name="analysis_status_title">Fahrten werden analysiert…</string>

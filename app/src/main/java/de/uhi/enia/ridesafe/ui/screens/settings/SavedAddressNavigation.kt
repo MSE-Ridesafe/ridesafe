@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object SavedAddressesRoute : NavKey
 
-/** Add a place; [kind] preselects a shortcut (Home/Work/School) or CUSTOM for a free-form place. */
+/** Add a place; [kind] preselects a fixed shortcut or CUSTOM for a free-form place. */
 @Serializable data class AddSavedAddressRoute(
     val kind: String = SavedPlaceKind.CUSTOM.name,
 ) : NavKey

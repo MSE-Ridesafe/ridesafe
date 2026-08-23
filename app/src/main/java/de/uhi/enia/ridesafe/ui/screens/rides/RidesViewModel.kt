@@ -52,6 +52,7 @@ data class RideRow(
 data class RefuelRow(
     val refuel: Refuel,
     val vehicleName: String?,
+    val stationName: String? = null,
 )
 
 enum class LogbookOperation { MERGED, ATTACHED, DETACHED }
@@ -192,9 +193,16 @@ class RidesViewModel(
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val refuelRows: StateFlow<List<RefuelRow>> =
-        combine(refuelDao.observeAll(), vehicles) { refuels, vehicles ->
+        combine(refuelDao.observeAll(), vehicles, savedAddresses) { refuels, vehicles, addresses ->
             val names = vehicles.associate { it.id to it.displayTitle() }
-            refuels.map { RefuelRow(refuel = it, vehicleName = names[it.vehicleId]) }
+            val places = addresses.associateBy { it.id }
+            refuels.map {
+                RefuelRow(
+                    refuel = it,
+                    vehicleName = names[it.vehicleId],
+                    stationName = it.stationSavedAddressId?.let(places::get)?.label ?: it.stationAddress,
+                )
+            }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val timeline: StateFlow<List<TimelineEntry>> =

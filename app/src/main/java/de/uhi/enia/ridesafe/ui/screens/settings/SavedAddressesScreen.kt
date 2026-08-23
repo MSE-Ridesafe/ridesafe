@@ -45,8 +45,9 @@ import de.uhi.enia.ridesafe.data.fixedIcon
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 
-/** The three shortcut kinds, in display order. */
-private val SHORTCUT_KINDS = listOf(SavedPlaceKind.HOME, SavedPlaceKind.WORK, SavedPlaceKind.SCHOOL)
+/** The fixed-label shortcut kinds, in display order. */
+private val SHORTCUT_KINDS =
+    listOf(SavedPlaceKind.HOME, SavedPlaceKind.WORK, SavedPlaceKind.SCHOOL, SavedPlaceKind.GAS_STATION)
 
 @StringRes
 internal fun SavedPlaceKind.labelRes(): Int =
@@ -54,6 +55,7 @@ internal fun SavedPlaceKind.labelRes(): Int =
         SavedPlaceKind.HOME -> R.string.place_kind_home
         SavedPlaceKind.WORK -> R.string.place_kind_work
         SavedPlaceKind.SCHOOL -> R.string.place_kind_school
+        SavedPlaceKind.GAS_STATION -> R.string.place_kind_gas_station
         SavedPlaceKind.CUSTOM -> R.string.place_kind_custom
     }
 

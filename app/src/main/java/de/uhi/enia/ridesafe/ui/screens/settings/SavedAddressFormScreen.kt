@@ -74,7 +74,7 @@ import de.uhi.enia.ridesafe.data.DEFAULT_PLACE_ICON
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
 import de.uhi.enia.ridesafe.data.fixedIcon
-import de.uhi.enia.ridesafe.data.isShortcut
+import de.uhi.enia.ridesafe.data.hasFixedLabel
 import de.uhi.enia.ridesafe.rides.processing.forwardGeocode
 import de.uhi.enia.ridesafe.rides.processing.reverseGeocode
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
@@ -108,6 +108,7 @@ private val CURATED_PLACE_ICONS =
         "shopping_cart",
         "local_hospital",
         "directions_car",
+        "local_gas_station",
         "flight",
         "park",
         "sports_soccer",
@@ -134,10 +135,13 @@ fun SavedAddressFormScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
-    val isShortcut = presetKind.isShortcut
+    val hasFixedLabel = presetKind.hasFixedLabel
 
     val shortcutLabel = stringResource(presetKind.labelRes())
-    var label by rememberSaveable { mutableStateOf(existing?.label ?: if (isShortcut) shortcutLabel else "") }
+    var label by
+        rememberSaveable {
+            mutableStateOf(existing?.label ?: if (presetKind == SavedPlaceKind.CUSTOM) "" else shortcutLabel)
+        }
     var point by remember { mutableStateOf(existing?.let { LatLng(it.latitude, it.longitude) }) }
     var radius by rememberSaveable { mutableFloatStateOf((existing?.radiusMeters ?: RADIUS_DEFAULT).toFloat()) }
     var icon by rememberSaveable { mutableStateOf(existing?.icon ?: presetKind.fixedIcon() ?: DEFAULT_PLACE_ICON) }
@@ -231,7 +235,7 @@ fun SavedAddressFormScreen(
             )
         onSave(
             base.copy(
-                label = if (isShortcut) shortcutLabel else label.trim(),
+                label = if (hasFixedLabel) shortcutLabel else label.trim(),
                 kind = presetKind,
                 latitude = p.latitude,
                 longitude = p.longitude,
@@ -274,7 +278,7 @@ fun SavedAddressFormScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (isShortcut) {
+            if (hasFixedLabel) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     MaterialSymbol(symbolName = icon, contentDescription = null)
                     Text(shortcutLabel, style = MaterialTheme.typography.titleLarge)
@@ -284,6 +288,12 @@ fun SavedAddressFormScreen(
                     value = label,
                     onValueChange = { label = it },
                     label = { Text(stringResource(R.string.saved_address_label)) },
+                    leadingIcon =
+                        if (presetKind == SavedPlaceKind.GAS_STATION) {
+                            { MaterialSymbol(symbolName = "local_gas_station", contentDescription = null) }
+                        } else {
+                            null
+                        },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -364,7 +374,7 @@ fun SavedAddressFormScreen(
                 steps = RADIUS_STEPS,
             )
 
-            if (!isShortcut) {
+            if (presetKind.fixedIcon() == null) {
                 Text(stringResource(R.string.saved_address_icon), style = MaterialTheme.typography.bodyLarge)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CURATED_PLACE_ICONS.forEach { name ->

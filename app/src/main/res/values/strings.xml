@@ -171,6 +171,8 @@
     <string name="refuel_per_liter_suffix">/L</string>
     <string name="refuel_odometer">Odometer</string>
     <string name="refuel_station_address">Fuel station / address (optional)</string>
+    <string name="refuel_station_saved_unavailable">Saved place unavailable</string>
+    <string name="refuel_station_saved_unavailable_help">Select another saved place or use a custom address.</string>
     <string name="refuel_full_tank">Full tank</string>
     <string name="refuel_unknown_vehicle">Unknown vehicle</string>
     <string name="refuel_station_fallback">Fuel station</string>
@@ -298,6 +300,7 @@
     <string name="place_kind_home">Home</string>
     <string name="place_kind_work">Work</string>
     <string name="place_kind_school">School</string>
+    <string name="place_kind_gas_station">Gas station</string>
     <string name="place_kind_custom">Custom place</string>
 
     <string name="recording_channel_name">Ride recording</string>

@@ -58,6 +58,7 @@ class RefuelNumbersTest {
                     currencyCode = "EUR",
                     odometerMeters = 123_456_000,
                     stationAddress = "Shell Hildesheim",
+                    stationSavedAddressId = 77,
                     isFullTank = true,
                 ),
                 UnitSystemSetting.METRIC,
@@ -73,6 +74,7 @@ class RefuelNumbersTest {
         assertEquals("67,2", initial.totalText)
         assertEquals("123456", initial.odometerText)
         assertEquals("Shell Hildesheim", initial.stationText)
+        assertEquals(77L, initial.stationSavedAddressId)
         assertEquals(true, initial.fullTank)
     }
 

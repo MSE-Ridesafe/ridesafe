@@ -91,4 +91,18 @@ class RefuelDaoTest {
             assertNull(dao.getById(first)!!.journeyAnchorRideId)
             assertEquals(20L, dao.getById(second)!!.journeyAnchorRideId)
         }
+
+    @Test
+    fun savedPlaceAndCustomStationModesRoundTrip() =
+        runBlocking {
+            val id = dao.insert(refuel(100).copy(stationSavedAddressId = 44))
+            val linked = dao.getById(id)!!
+            assertEquals(44L, linked.stationSavedAddressId)
+            assertNull(linked.stationAddress)
+
+            dao.update(linked.copy(stationSavedAddressId = null, stationAddress = "Custom station"))
+            val custom = dao.getById(id)!!
+            assertNull(custom.stationSavedAddressId)
+            assertEquals("Custom station", custom.stationAddress)
+        }
 }

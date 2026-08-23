@@ -804,7 +804,7 @@ internal fun RefuelTimelineRow(
             },
         headlineContent = {
             Text(
-                refuel.stationAddress ?: stringResource(R.string.refuel_station_fallback),
+                row.stationName ?: stringResource(R.string.refuel_station_fallback),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.titleMedium,

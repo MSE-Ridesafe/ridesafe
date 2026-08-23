@@ -51,6 +51,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Refuel
+import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
@@ -120,6 +121,7 @@ private fun RefuelStateScreen(
 @Composable
 fun RefuelFormScreen(
     vehicles: List<Vehicle>,
+    savedAddresses: List<SavedAddress>,
     existing: Refuel? = null,
     onSave: (Refuel, (Result<Unit>) -> Unit) -> Unit,
     onBack: () -> Unit,
@@ -161,6 +163,10 @@ fun RefuelFormScreen(
             mutableStateOf(editInitial?.odometerText.orEmpty())
         }
     var stationText by rememberSaveable(existing?.id) { mutableStateOf(editInitial?.stationText.orEmpty()) }
+    var stationSavedAddressId by
+        rememberSaveable(existing?.id) {
+            mutableStateOf(editInitial?.stationSavedAddressId)
+        }
     var fullTank by rememberSaveable(existing?.id) { mutableStateOf(editInitial?.fullTank ?: false) }
     var showErrors by rememberSaveable { mutableStateOf(false) }
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
@@ -175,6 +181,8 @@ fun RefuelFormScreen(
     }
 
     val selectedVehicle = vehicles.firstOrNull { it.id == selectedVehicleId }
+    val selectedStationSavedAddress = savedAddresses.firstOrNull { it.id == stationSavedAddressId }
+    val stationSelectionValid = stationSavedAddressId == null || selectedStationSavedAddress != null
     val fuelDecimal = parseRefuelDecimal(fuelText)
     val totalDecimal = parseRefuelDecimal(totalText)
     val odometerDecimal = parseRefuelDecimal(odometerText)
@@ -184,7 +192,7 @@ fun RefuelFormScreen(
     val fuelValid = fuelMilliliters != null && fuelMilliliters > 0
     val totalValid = totalMinor != null && totalMinor >= 0
     val odometerValid = odometerMeters != null && odometerMeters >= 0
-    val saveEnabled = vehicles.isNotEmpty() && !saving
+    val saveEnabled = vehicles.isNotEmpty() && stationSelectionValid && !saving
     val unitPrice =
         if (fuelValid && totalValid) pricePerLiter(totalMinor, fuelMilliliters, fractionDigits) else null
     val unitPriceText =
@@ -192,11 +200,17 @@ fun RefuelFormScreen(
             NumberFormat.getCurrencyInstance(locale).apply { this.currency = currency }.format(it)
         }.orEmpty()
 
+    LaunchedEffect(selectedStationSavedAddress?.id) {
+        if (stationSavedAddressId != null && stationText.isBlank()) {
+            selectedStationSavedAddress?.let { stationText = it.label }
+        }
+    }
+
     fun save() {
         showErrors = true
         saveFailed = false
         val vehicle = vehicles.firstOrNull { it.id == selectedVehicleId }
-        if (vehicle == null || !fuelValid || !totalValid || !odometerValid) return
+        if (vehicle == null || !fuelValid || !totalValid || !odometerValid || !stationSelectionValid) return
         val timestamp =
             runCatching {
                 LocalDate
@@ -215,7 +229,8 @@ fun RefuelFormScreen(
                 totalPriceMinor = totalMinor,
                 currencyCode = currency.currencyCode,
                 odometerMeters = odometerMeters,
-                stationAddress = stationText.trim().ifBlank { null },
+                stationAddress = if (stationSavedAddressId == null) stationText.trim().ifBlank { null } else null,
+                stationSavedAddressId = stationSavedAddressId,
                 isFullTank = fullTank,
             ) ?: Refuel(
                 vehicleId = vehicle.id,
@@ -224,7 +239,8 @@ fun RefuelFormScreen(
                 totalPriceMinor = totalMinor,
                 currencyCode = currency.currencyCode,
                 odometerMeters = odometerMeters,
-                stationAddress = stationText.trim().ifBlank { null },
+                stationAddress = if (stationSavedAddressId == null) stationText.trim().ifBlank { null } else null,
+                stationSavedAddressId = stationSavedAddressId,
                 isFullTank = fullTank,
             )
         onSave(
@@ -324,12 +340,25 @@ fun RefuelFormScreen(
                 isError = showErrors && !odometerValid,
                 error = stringResource(R.string.refuel_error_odometer),
             )
-            OutlinedTextField(
+            StationAutocompleteField(
                 value = stationText,
-                onValueChange = { stationText = it },
-                label = { Text(stringResource(R.string.refuel_station_address)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                savedAddresses = savedAddresses,
+                selected = selectedStationSavedAddress,
+                selectionMissing = stationSavedAddressId != null && selectedStationSavedAddress == null,
+                onValueChange = { text ->
+                    stationText = text
+                    stationSavedAddressId =
+                        savedAddresses
+                            .filter { address ->
+                                address.label.equals(text.trim(), ignoreCase = true) ||
+                                    address.address?.equals(text.trim(), ignoreCase = true) == true
+                            }.singleOrNull()
+                            ?.id
+                },
+                onSavedAddressSelected = { address ->
+                    stationSavedAddressId = address.id
+                    stationText = address.label
+                },
             )
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.refuel_full_tank), modifier = Modifier.weight(1f))
@@ -442,6 +471,75 @@ private fun VehicleDropdown(
                     text = { Text(vehicle.displayTitle()) },
                     onClick = {
                         onSelected(vehicle)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StationAutocompleteField(
+    value: String,
+    savedAddresses: List<SavedAddress>,
+    selected: SavedAddress?,
+    selectionMissing: Boolean,
+    onValueChange: (String) -> Unit,
+    onSavedAddressSelected: (SavedAddress) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val query = value.trim()
+    val suggestions =
+        savedAddresses.filter { address ->
+            query.isBlank() ||
+                address.label.contains(query, ignoreCase = true) ||
+                address.address?.contains(query, ignoreCase = true) == true
+        }
+    ExposedDropdownMenuBox(
+        expanded = expanded && suggestions.isNotEmpty(),
+        onExpandedChange = { expanded = it },
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {
+                onValueChange(it)
+                expanded = true
+            },
+            label = { Text(stringResource(R.string.refuel_station_address)) },
+            isError = selectionMissing,
+            supportingText =
+                when {
+                    selectionMissing -> {
+                        { Text(stringResource(R.string.refuel_station_saved_unavailable_help)) }
+                    }
+                    selected?.address != null -> {
+                        { Text(selected.address) }
+                    }
+                    else -> null
+                },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded && suggestions.isNotEmpty()) },
+            singleLine = true,
+            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth(),
+        )
+        ExposedDropdownMenu(expanded = expanded && suggestions.isNotEmpty(), onDismissRequest = { expanded = false }) {
+            suggestions.forEach { address ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(address.label)
+                            address.address?.let {
+                                Text(
+                                    text = it,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    },
+                    leadingIcon = { MaterialSymbol(symbolName = address.icon, contentDescription = null) },
+                    onClick = {
+                        onSavedAddressSelected(address)
                         expanded = false
                     },
                 )

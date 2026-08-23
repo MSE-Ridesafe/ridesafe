@@ -320,6 +320,17 @@ val MIGRATION_14_15 =
         }
     }
 
+/** Allows a Refuel station to reference a Saved Place while preserving custom station text. */
+val MIGRATION_15_16 =
+    object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE refuels ADD COLUMN stationSavedAddressId INTEGER")
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_refuels_stationSavedAddressId ON refuels(stationSavedAddressId)",
+            )
+        }
+    }
+
 @Database(
     entities = [
         Vehicle::class,
@@ -329,7 +340,7 @@ val MIGRATION_14_15 =
         RideAnalysisState::class,
         Refuel::class,
     ],
-    version = 15,
+    version = 16,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -371,6 +382,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_12_13,
                         MIGRATION_13_14,
                         MIGRATION_14_15,
+                        MIGRATION_15_16,
                     ).build()
                     .also { instance = it }
             }
