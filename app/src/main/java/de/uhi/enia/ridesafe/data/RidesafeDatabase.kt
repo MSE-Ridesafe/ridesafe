@@ -309,6 +309,17 @@ val MIGRATION_13_14 =
         }
     }
 
+/** Adds an optional physical-ride anchor used to resolve a Refuel's current logical journey. */
+val MIGRATION_14_15 =
+    object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE refuels ADD COLUMN journeyAnchorRideId INTEGER")
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_refuels_journeyAnchorRideId ON refuels(journeyAnchorRideId)",
+            )
+        }
+    }
+
 @Database(
     entities = [
         Vehicle::class,
@@ -318,7 +329,7 @@ val MIGRATION_13_14 =
         RideAnalysisState::class,
         Refuel::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -359,6 +370,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_11_12,
                         MIGRATION_12_13,
                         MIGRATION_13_14,
+                        MIGRATION_14_15,
                     ).build()
                     .also { instance = it }
             }

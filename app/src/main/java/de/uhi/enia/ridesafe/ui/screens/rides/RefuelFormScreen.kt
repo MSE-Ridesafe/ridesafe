@@ -280,6 +280,7 @@ fun RefuelFormScreen(
                 onSelected = { selectedVehicleId = it.id },
                 isError = showErrors && selectedVehicle == null,
                 unavailableVehicle = existing != null && selectedVehicle == null,
+                vehicleLocked = existing?.journeyAnchorRideId != null,
             )
 
             DateTimeFields(
@@ -393,14 +394,18 @@ private fun VehicleDropdown(
     onSelected: (Vehicle) -> Unit,
     isError: Boolean,
     unavailableVehicle: Boolean,
+    vehicleLocked: Boolean,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { if (vehicles.isNotEmpty()) expanded = it }) {
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { if (vehicles.isNotEmpty() && !vehicleLocked) expanded = it },
+    ) {
         OutlinedTextField(
             value = selected?.displayTitle().orEmpty(),
             onValueChange = {},
             readOnly = true,
-            enabled = vehicles.isNotEmpty(),
+            enabled = vehicles.isNotEmpty() && !vehicleLocked,
             label = { Text(stringResource(R.string.refuel_vehicle)) },
             placeholder = {
                 Text(
@@ -411,7 +416,9 @@ private fun VehicleDropdown(
             },
             isError = isError,
             supportingText =
-                if (vehicles.isEmpty() || isError) {
+                if (vehicleLocked) {
+                    { Text(stringResource(R.string.refuel_vehicle_locked)) }
+                } else if (vehicles.isEmpty() || isError) {
                     {
                         Text(
                             stringResource(

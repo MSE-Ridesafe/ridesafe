@@ -180,6 +180,18 @@
     <string name="refuel_save_failed">Der Tankvorgang konnte nicht gespeichert werden. Deine Eingaben bleiben erhalten; versuche es erneut.</string>
     <string name="refuel_row_amount_price">%1$s L · %2$s</string>
     <string name="refuel_price_per_liter_value">%1$s/L</string>
+    <string name="refuel_action_add_to_ride">Tankvorgang zur Fahrt hinzufügen</string>
+    <string name="refuel_action_remove_from_ride">Von Fahrt entfernen</string>
+    <string name="refuel_attached_success">Tankvorgang zur Fahrt hinzugefügt.</string>
+    <string name="refuel_detached_success">Tankvorgang von der Fahrt entfernt.</string>
+    <string name="ride_merge_success">Fahrten zusammengeführt.</string>
+    <string name="refuel_association_error">Die Zuordnung zur Fahrt konnte nicht geändert werden. Deine Daten wurden nicht verändert.</string>
+    <string name="refuel_reason_vehicle_mismatch">Das Fahrzeug des Tankvorgangs stimmt nicht mit der Fahrt überein</string>
+    <string name="refuel_reason_other_ride">Der Tankvorgang gehört bereits zu einer anderen Fahrt</string>
+    <string name="refuel_reason_already_attached">Alle ausgewählten Tankvorgänge gehören bereits zu dieser Fahrt</string>
+    <string name="refuel_reason_not_all_attached">Wähle nur Tankvorgänge aus, die zu einer Fahrt gehören</string>
+    <string name="refuel_vehicle_locked">Entferne den Tankvorgang zuerst von der Fahrt, um das Fahrzeug zu ändern.</string>
+    <string name="refuel_associated_section">Tankvorgänge</string>
 
     <!-- Fahrten -->
     <string name="rides_empty_title">Noch keine Fahrtenbucheinträge</string>

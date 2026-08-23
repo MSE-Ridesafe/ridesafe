@@ -8,7 +8,7 @@ import androidx.room.ColumnInfo
 /** A historical refueling event. Monetary and volume values use scaled integers for exact storage. */
 @Entity(
     tableName = "refuels",
-    indices = [Index("timestampEpochMs"), Index("vehicleId")],
+    indices = [Index("timestampEpochMs"), Index("vehicleId"), Index("journeyAnchorRideId")],
 )
 data class Refuel(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -20,4 +20,5 @@ data class Refuel(
     val odometerMeters: Long,
     val stationAddress: String? = null,
     @ColumnInfo(defaultValue = "0") val isFullTank: Boolean = false,
+    val journeyAnchorRideId: Long? = null,
 )

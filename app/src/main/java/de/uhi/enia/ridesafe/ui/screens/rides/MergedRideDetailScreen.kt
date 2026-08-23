@@ -70,6 +70,8 @@ fun MergedRideDetailScreen(
     stops: List<Ride>?,
     segments: List<List<LatLng>>?,
     rideEvents: List<RideEvent>,
+    refuels: List<RefuelRow>,
+    onOpenRefuel: (Long) -> Unit,
     onBack: () -> Unit,
     onUnmergeAll: () -> Unit,
     onUnmerge: (stopIds: List<Long>) -> Unit,
@@ -148,6 +150,8 @@ fun MergedRideDetailScreen(
 
             MergedJourneyCard(
                 stops = stops,
+                refuels = refuels,
+                onOpenRefuel = onOpenRefuel,
                 onUnmergeAll = onUnmergeAll,
                 onUnmerge = onUnmerge,
             )
@@ -190,6 +194,8 @@ fun MergedRideDetailScreen(
 @Composable
 private fun MergedJourneyCard(
     stops: List<Ride>,
+    refuels: List<RefuelRow>,
+    onOpenRefuel: (Long) -> Unit,
     onUnmergeAll: () -> Unit,
     onUnmerge: (stopIds: List<Long>) -> Unit,
 ) {
@@ -237,11 +243,44 @@ private fun MergedJourneyCard(
             }
 
             if (!managing) {
-                JourneyTimeline(
-                    stops = buildPlaces(context, stops),
-                    duration = null,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                )
+                val children = combinedJourneyChildren(stops, refuels)
+                children.forEachIndexed { childIndex, child ->
+                    if (childIndex > 0) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
+                    }
+                    when (child) {
+                        is CombinedJourneyChild.RideChild -> {
+                            val ride = child.ride
+                            StopRow(
+                                label = stringResource(R.string.ride_stop_label, stops.indexOfFirst { it.id == ride.id } + 1),
+                                destination =
+                                    ride.endAddress?.let { shortAddress(it) }
+                                        ?: stringResource(R.string.ride_address_unknown),
+                                supporting =
+                                    buildString {
+                                        append(formatTimeOfDay(context, ride.startedAtEpochMs))
+                                        ride.endedAtEpochMs?.let { append(" – ").append(formatTimeOfDay(context, it)) }
+                                        ride.distanceMeters?.let { append("  •  ").append(formatDistance(it, unitSystem)) }
+                                    },
+                                showCheckbox = false,
+                                checked = false,
+                                checkboxEnabled = false,
+                                onToggle = {},
+                            )
+                        }
+
+                        is CombinedJourneyChild.RefuelChild -> {
+                            RefuelTimelineRow(
+                                row = child.row,
+                                selectionMode = false,
+                                selected = false,
+                                onClick = { onOpenRefuel(child.row.refuel.id) },
+                                onLongClick = {},
+                                showVehicle = false,
+                            )
+                        }
+                    }
+                }
                 return@Column
             }
 

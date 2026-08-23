@@ -180,6 +180,18 @@
     <string name="refuel_save_failed">Could not save the refuel. Your entries have been kept; please try again.</string>
     <string name="refuel_row_amount_price">%1$s L · %2$s</string>
     <string name="refuel_price_per_liter_value">%1$s/L</string>
+    <string name="refuel_action_add_to_ride">Add refuel to ride</string>
+    <string name="refuel_action_remove_from_ride">Remove from ride</string>
+    <string name="refuel_attached_success">Refuel added to ride.</string>
+    <string name="refuel_detached_success">Refuel removed from ride.</string>
+    <string name="ride_merge_success">Rides merged.</string>
+    <string name="refuel_association_error">Could not update the ride association. Your data was not changed.</string>
+    <string name="refuel_reason_vehicle_mismatch">Refuel vehicle does not match the ride</string>
+    <string name="refuel_reason_other_ride">Refuel already belongs to another ride</string>
+    <string name="refuel_reason_already_attached">All selected refuels already belong to this ride</string>
+    <string name="refuel_reason_not_all_attached">Select only refuels that belong to a ride</string>
+    <string name="refuel_vehicle_locked">Remove from ride before changing vehicle.</string>
+    <string name="refuel_associated_section">Refuels</string>
 
     <!-- Rides -->
     <string name="rides_empty_title">No logbook entries yet</string>

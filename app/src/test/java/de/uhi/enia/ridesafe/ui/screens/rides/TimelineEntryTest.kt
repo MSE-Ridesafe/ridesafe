@@ -55,4 +55,43 @@ class TimelineEntryTest {
         assertEquals(setOf("f8", "r7"), timelineSelectionKeys(listOf(refuel, ride)))
         assertEquals(listOf(7L), selectedRideLogbookEntries(listOf(refuel, ride), setOf("f8", "r7")).flatMap { it.rideIds })
     }
+
+    @Test
+    fun attachedRefuelIsNestedOnceAndMissingAnchorFallsBackTopLevel() {
+        val ride = rideEntry(7, 100).entry
+        val attached = refuelEntry(8, 120).row.copy(
+            refuel = refuelEntry(8, 120).row.refuel.copy(journeyAnchorRideId = 7),
+        )
+        val missingAnchor = refuelEntry(9, 130).row.copy(
+            refuel = refuelEntry(9, 130).row.refuel.copy(journeyAnchorRideId = 99),
+        )
+
+        val timeline = buildTimeline(listOf(ride), listOf(attached, missingAnchor))
+        val rideTimeline = timeline.filterIsInstance<TimelineEntry.RideEntry>().single()
+
+        assertEquals(listOf(8L), rideTimeline.refuels.map { it.refuel.id })
+        assertEquals(listOf(9L), timeline.filterIsInstance<TimelineEntry.RefuelEntry>().map { it.row.refuel.id })
+        assertEquals(setOf("f9", "r7"), timelineSelectionKeys(timeline))
+        assertEquals(setOf("f9", "r7", "f8"), visibleTimelineSelectionKeys(timeline))
+        assertEquals(emptyList<Refuel>(), selectedRefuels(timeline, setOf("r7")))
+        assertEquals(listOf(8L), selectedRefuels(timeline, setOf("f8")).map { it.id })
+    }
+
+    @Test
+    fun combinedRideRefuelsAreNotSelectableOnMainTimeline() {
+        val first = (rideEntry(1, 100).entry as LogbookEntry.Single).row
+        val second = (rideEntry(2, 200).entry as LogbookEntry.Single).row
+        val merged =
+            LogbookEntry.Merged(
+                groupId = 1,
+                stops = listOf(first, second),
+                summary = de.uhi.enia.ridesafe.data.summarizeMerge(listOf(first.ride, second.ride)),
+                vehicleName = null,
+            )
+        val refuel = refuelEntry(8, 150).row.copy(refuel = refuelEntry(8, 150).row.refuel.copy(journeyAnchorRideId = 1))
+        val timeline = buildTimeline(listOf(merged), listOf(refuel))
+
+        assertEquals(setOf("g1"), visibleTimelineSelectionKeys(timeline))
+        assertEquals(listOf(8L), (timeline.single() as TimelineEntry.RideEntry).refuels.map { it.refuel.id })
+    }
 }

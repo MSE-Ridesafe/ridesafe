@@ -63,4 +63,32 @@ class RefuelDaoTest {
             assertEquals("New station", rows.single().stationAddress)
             assertEquals(7_000, rows.single().totalPriceMinor)
         }
+
+    @Test
+    fun attachAndDetachOnlyChangeJourneyAnchor() =
+        runBlocking {
+            val id = dao.insert(refuel(100, "Station"))
+            val before = dao.getById(id)!!
+
+            dao.setJourneyAnchor(id, 77)
+            val attached = dao.getById(id)!!
+            assertEquals(before.copy(journeyAnchorRideId = 77), attached)
+
+            dao.clearJourneyAnchor(listOf(id))
+            assertEquals(before, dao.getById(id))
+        }
+
+    @Test
+    fun clearingRideAnchorsDetachesOnlyRefuelsFromThoseRides() =
+        runBlocking {
+            val first = dao.insert(refuel(100, "First"))
+            val second = dao.insert(refuel(200, "Second"))
+            dao.setJourneyAnchor(first, 10)
+            dao.setJourneyAnchor(second, 20)
+
+            dao.clearJourneyAnchorsForRides(listOf(10))
+
+            assertNull(dao.getById(first)!!.journeyAnchorRideId)
+            assertEquals(20L, dao.getById(second)!!.journeyAnchorRideId)
+        }
 }

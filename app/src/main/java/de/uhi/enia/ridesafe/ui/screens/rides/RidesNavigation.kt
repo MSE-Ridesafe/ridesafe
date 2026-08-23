@@ -42,6 +42,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
         val timeline by viewModel.timeline.collectAsState()
         val analysis by viewModel.analysisProgress.collectAsState()
         val exportState by viewModel.exportState.collectAsState()
+        val logbookOperationState by viewModel.logbookOperationState.collectAsState()
         RidesScreen(
             timeline = timeline,
             analysis = analysis,
@@ -50,7 +51,11 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             onOpenMerged = { onOpen(MergedRideDetailRoute(it)) },
             onOpenRefuel = { onOpen(EditRefuelRoute(it)) },
             onOpenAnalysisQueue = { onOpen(AnalysisQueueRoute) },
-            onMerge = { viewModel.merge(it) },
+            onMerge = viewModel::merge,
+            onAttachRefuels = viewModel::attachRefuels,
+            onDetachRefuels = viewModel::detachRefuels,
+            logbookOperationState = logbookOperationState,
+            onLogbookOperationResultConsumed = viewModel::consumeLogbookOperationResult,
             onExport = viewModel::export,
             onExportResultConsumed = viewModel::consumeExportResult,
             onAddRefuel = { onOpen(AddRefuelRoute) },
@@ -100,10 +105,13 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             value = stops?.takeIf { it.isNotEmpty() }?.let { viewModel.routes(it) }
         }
         val groupEvents by viewModel.groupRideEvents(key.groupId).collectAsState(initial = emptyList())
+        val refuels by viewModel.attachedRefuels("g${key.groupId}").collectAsState(initial = emptyList())
         MergedRideDetailScreen(
             stops = stops,
             segments = segments,
             rideEvents = groupEvents,
+            refuels = refuels,
+            onOpenRefuel = { onOpen(EditRefuelRoute(it)) },
             onBack = onBack,
             onUnmergeAll = { viewModel.unmergeAll(key.groupId) },
             onUnmerge = { viewModel.unmerge(key.groupId, it) },
@@ -113,6 +121,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
         val ride by viewModel.ride(key.id).collectAsState(initial = null)
         val addresses by viewModel.savedAddresses.collectAsState()
         val rideEvents by viewModel.rideEvents(key.id).collectAsState(initial = emptyList())
+        val refuels by viewModel.attachedRefuels("r${key.id}").collectAsState(initial = emptyList())
         // Non-null only while this very ride is queued, which is what the detail notice keys off.
         val analysis by viewModel.analysisProgress.collectAsState()
         val analysisProgress = analysis.jobs.firstOrNull { it.rideId == key.id }?.progress
@@ -130,6 +139,8 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             startPlace = startPlace,
             endPlace = endPlace,
             analysisProgress = analysisProgress,
+            refuels = refuels,
+            onOpenRefuel = { onOpen(EditRefuelRoute(it)) },
             onBack = onBack,
         )
     }

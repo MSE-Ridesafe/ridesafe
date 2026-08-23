@@ -87,7 +87,11 @@ fun RidesScreen(
     onOpenMerged: (Long) -> Unit,
     onOpenRefuel: (Long) -> Unit,
     onOpenAnalysisQueue: () -> Unit,
-    onMerge: (List<Long>) -> Unit,
+    onMerge: (List<Long>, List<Long>) -> Unit,
+    onAttachRefuels: (List<Long>, List<Long>) -> Unit,
+    onDetachRefuels: (List<Long>) -> Unit,
+    logbookOperationState: LogbookOperationState,
+    onLogbookOperationResultConsumed: () -> Unit,
     onExport: (List<RideExportRequest>, RideExportFormat) -> Unit,
     onExportResultConsumed: () -> Unit,
     onAddRefuel: () -> Unit,
@@ -108,9 +112,21 @@ fun RidesScreen(
             stateSaver = listSaver(save = { it.toList() }, restore = { it.toSet() }),
         ) { mutableStateOf(emptySet<String>()) }
 
-    val liveKeys = remember(timeline) { timelineSelectionKeys(timeline) }
+    val selectAllKeys = remember(timeline) { timelineSelectionKeys(timeline) }
+    val liveKeys = remember(timeline) { visibleTimelineSelectionKeys(timeline) }
     val selected = selectedKeys.intersect(liveKeys)
     val selectedRideEntries = remember(timeline, selected) { selectedRideLogbookEntries(timeline, selected) }
+    val selectedRefuelRecords = remember(timeline, selected) { selectedRefuels(timeline, selected) }
+    val allRides = remember(entries) { entries.flatMap { it.rides } }
+    val mixedMergeCheck = remember(selectedRideEntries, selectedRefuelRecords, allRides) {
+        checkMixedMerge(selectedRideEntries, selectedRefuelRecords, allRides)
+    }
+    val attachCheck = remember(selectedRideEntries, selectedRefuelRecords, allRides) {
+        checkAddRefuelsToRide(selectedRideEntries, selectedRefuelRecords, allRides)
+    }
+    val detachCheck = remember(selectedRideEntries, selectedRefuelRecords, allRides) {
+        checkRemoveRefuelsFromRide(selectedRideEntries, selectedRefuelRecords, allRides)
+    }
 
     fun exitSelection() {
         selectionMode = false
@@ -154,6 +170,31 @@ fun RidesScreen(
         }
     }
 
+    val attachSuccess = stringResource(R.string.refuel_attached_success)
+    val detachSuccess = stringResource(R.string.refuel_detached_success)
+    val mergeSuccess = stringResource(R.string.ride_merge_success)
+    val operationError = stringResource(R.string.refuel_association_error)
+    LaunchedEffect(logbookOperationState) {
+        when (val state = logbookOperationState) {
+            is LogbookOperationState.Success -> {
+                snackbarHostState.showSnackbar(
+                    when (state.operation) {
+                        LogbookOperation.ATTACHED -> attachSuccess
+                        LogbookOperation.DETACHED -> detachSuccess
+                        LogbookOperation.MERGED -> mergeSuccess
+                    },
+                )
+                exitSelection()
+                onLogbookOperationResultConsumed()
+            }
+            LogbookOperationState.Error -> {
+                snackbarHostState.showSnackbar(operationError)
+                onLogbookOperationResultConsumed()
+            }
+            LogbookOperationState.Idle, LogbookOperationState.Running -> Unit
+        }
+    }
+
     // The status bar overlays the Scaffold rather than sitting in its bottomBar slot: that slot
     // reserves an opaque strip of the Scaffold's own container color, so the pill ends up on the
     // same background as everything else and reads as docked. Floating over the list — which keeps
@@ -166,23 +207,28 @@ fun RidesScreen(
                 if (selectionMode) {
                     SelectionTopBar(
                         count = selected.size,
-                        allSelected = timeline.isNotEmpty() && selected.size == timeline.size,
-                        mergeCheck =
-                            if (selected.isEmpty()) {
-                                MergeCheck.NOT_ENOUGH
-                            } else {
-                                canMerge(
-                                    selectedIds = selectedRideEntries.flatMap { it.rideIds }.toSet(),
-                                    allRides = entries.flatMap { it.rides },
-                                )
-                            },
+                        allSelected = selectAllKeys.isNotEmpty() && selectAllKeys.all { it in selected },
+                        mergeCheck = mixedMergeCheck.rideCheck,
+                        mergeRefuelCheck = mixedMergeCheck.refuelCheck,
+                        attachCheck = attachCheck,
+                        detachCheck = detachCheck,
+                        operationRunning = logbookOperationState == LogbookOperationState.Running,
                         onExit = ::exitSelection,
-                        onSelectAll = { selectedKeys = liveKeys },
+                        onSelectAll = { selectedKeys = selectAllKeys },
                         onDeselectAll = { selectedKeys = emptySet() },
                         onMerge = {
-                            onMerge(selectedRideEntries.flatMap { it.rideIds })
-                            exitSelection()
+                            onMerge(
+                                selectedRideEntries.flatMap { it.rideIds },
+                                selectedRefuelRecords.map { it.id },
+                            )
                         },
+                        onAttachRefuels = {
+                            onAttachRefuels(
+                                selectedRideEntries.single().rideIds,
+                                selectedRefuelRecords.map { it.id },
+                            )
+                        },
+                        onDetachRefuels = { onDetachRefuels(selectedRefuelRecords.map { it.id }) },
                         exportEnabled = selectedRideEntries.isNotEmpty() && exportState != RideExportState.Exporting,
                         onExport = { pendingExportRequests = exportRequests(entries, selected) },
                     )
@@ -277,6 +323,31 @@ fun RidesScreen(
                                                     toggle(entry.key)
                                                 },
                                             )
+                                            // Keep the compact main timeline focused on the combined
+                                            // journey summary. Its associated Refuels remain available
+                                            // in the combined-ride detail timeline.
+                                            if (entry is LogbookEntry.Single) {
+                                                timelineEntry.refuels.forEach { nested ->
+                                                    HorizontalDivider(
+                                                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                                        modifier = Modifier.padding(start = 40.dp),
+                                                    )
+                                                    val key = "f${nested.refuel.id}"
+                                                    RefuelTimelineRow(
+                                                        row = nested,
+                                                        selectionMode = selectionMode,
+                                                        selected = key in selected,
+                                                        nested = true,
+                                                        onClick = {
+                                                            if (selectionMode) toggle(key) else onOpenRefuel(nested.refuel.id)
+                                                        },
+                                                        onLongClick = {
+                                                            selectionMode = true
+                                                            toggle(key)
+                                                        },
+                                                    )
+                                                }
+                                            }
                                         }
 
                                         is TimelineEntry.RefuelEntry -> {
@@ -468,10 +539,16 @@ private fun SelectionTopBar(
     count: Int,
     allSelected: Boolean,
     mergeCheck: MergeCheck,
+    mergeRefuelCheck: RefuelAssociationCheck,
+    attachCheck: RefuelAssociationCheck,
+    detachCheck: RefuelAssociationCheck,
+    operationRunning: Boolean,
     onExit: () -> Unit,
     onSelectAll: () -> Unit,
     onDeselectAll: () -> Unit,
     onMerge: () -> Unit,
+    onAttachRefuels: () -> Unit,
+    onDetachRefuels: () -> Unit,
     exportEnabled: Boolean,
     onExport: () -> Unit,
 ) {
@@ -498,7 +575,7 @@ private fun SelectionTopBar(
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(
-                    enabled = mergeCheck == MergeCheck.OK,
+                    enabled = mergeCheck == MergeCheck.OK && mergeRefuelCheck == RefuelAssociationCheck.OK && !operationRunning,
                     onClick = {
                         menuOpen = false
                         onMerge()
@@ -514,12 +591,50 @@ private fun SelectionTopBar(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
+                            if (mergeCheck == MergeCheck.OK) {
+                                associationDisabledReason(mergeRefuelCheck)?.let { reason ->
+                                    Text(
+                                        text = stringResource(reason),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
                         }
                     },
                     leadingIcon = { MaterialSymbol(symbolName = "merge", contentDescription = null) },
                 )
                 DropdownMenuItem(
-                    enabled = exportEnabled,
+                    enabled = attachCheck == RefuelAssociationCheck.OK && !operationRunning,
+                    onClick = {
+                        menuOpen = false
+                        onAttachRefuels()
+                    },
+                    text = {
+                        Column {
+                            Text(stringResource(R.string.refuel_action_add_to_ride))
+                            associationDisabledReason(attachCheck)?.let { reason ->
+                                Text(
+                                    text = stringResource(reason),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    },
+                    leadingIcon = { MaterialSymbol(symbolName = "add_link", contentDescription = null) },
+                )
+                DropdownMenuItem(
+                    enabled = detachCheck == RefuelAssociationCheck.OK && !operationRunning,
+                    onClick = {
+                        menuOpen = false
+                        onDetachRefuels()
+                    },
+                    text = { Text(stringResource(R.string.refuel_action_remove_from_ride)) },
+                    leadingIcon = { MaterialSymbol(symbolName = "link_off", contentDescription = null) },
+                )
+                DropdownMenuItem(
+                    enabled = exportEnabled && !operationRunning,
                     onClick = {
                         menuOpen = false
                         onExport()
@@ -539,6 +654,16 @@ private fun mergeDisabledReason(check: MergeCheck): Int? =
         MergeCheck.NOT_ENOUGH -> R.string.merge_reason_not_enough
         MergeCheck.MIXED_VEHICLE -> R.string.merge_reason_mixed_vehicle
         MergeCheck.NOT_CONTIGUOUS -> R.string.merge_reason_not_contiguous
+    }
+
+private fun associationDisabledReason(check: RefuelAssociationCheck): Int? =
+    when (check) {
+        RefuelAssociationCheck.OK -> null
+        RefuelAssociationCheck.VEHICLE_MISMATCH -> R.string.refuel_reason_vehicle_mismatch
+        RefuelAssociationCheck.OTHER_JOURNEY -> R.string.refuel_reason_other_ride
+        RefuelAssociationCheck.NO_CHANGES -> R.string.refuel_reason_already_attached
+        RefuelAssociationCheck.NOT_ALL_ATTACHED -> R.string.refuel_reason_not_all_attached
+        RefuelAssociationCheck.WRONG_SELECTION -> null
     }
 
 @Composable
@@ -644,12 +769,14 @@ private fun LogbookRow(
 }
 
 @Composable
-private fun RefuelTimelineRow(
+internal fun RefuelTimelineRow(
     row: RefuelRow,
     selectionMode: Boolean,
     selected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    nested: Boolean = false,
+    showVehicle: Boolean = true,
 ) {
     val context = LocalContext.current
     val locale = context.resources.configuration.locales[0] ?: Locale.getDefault()
@@ -663,7 +790,10 @@ private fun RefuelTimelineRow(
             ?.let(currencyFormat::format)
 
     ListItem(
-        modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        modifier =
+            Modifier
+                .then(if (nested) Modifier.padding(start = 24.dp) else Modifier)
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         leadingContent = {
             if (selectionMode) {
@@ -672,9 +802,12 @@ private fun RefuelTimelineRow(
                 MaterialSymbol(symbolName = "local_gas_station", contentDescription = null)
             }
         },
-        overlineContent = {
-            Text(row.vehicleName ?: stringResource(R.string.refuel_unknown_vehicle))
-        },
+        overlineContent =
+            if (showVehicle) {
+                { Text(row.vehicleName ?: stringResource(R.string.refuel_unknown_vehicle)) }
+            } else {
+                null
+            },
         headlineContent = {
             Text(
                 refuel.stationAddress ?: stringResource(R.string.refuel_station_fallback),

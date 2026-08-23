@@ -14,9 +14,24 @@ interface RefuelDao {
     @Query("SELECT * FROM refuels WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): Refuel?
 
+    @Query("SELECT * FROM refuels WHERE id IN (:ids)")
+    suspend fun byIds(ids: List<Long>): List<Refuel>
+
     @Insert
     suspend fun insert(refuel: Refuel): Long
 
     @Update
     suspend fun update(refuel: Refuel)
+
+    @Query("UPDATE refuels SET journeyAnchorRideId = :rideId WHERE id = :refuelId")
+    suspend fun setJourneyAnchor(
+        refuelId: Long,
+        rideId: Long,
+    )
+
+    @Query("UPDATE refuels SET journeyAnchorRideId = NULL WHERE id IN (:refuelIds)")
+    suspend fun clearJourneyAnchor(refuelIds: List<Long>)
+
+    @Query("UPDATE refuels SET journeyAnchorRideId = NULL WHERE journeyAnchorRideId IN (:rideIds)")
+    suspend fun clearJourneyAnchorsForRides(rideIds: List<Long>)
 }
