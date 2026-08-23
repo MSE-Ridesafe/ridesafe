@@ -178,19 +178,21 @@ fun RidesScreen(
     LaunchedEffect(logbookOperationState) {
         when (val state = logbookOperationState) {
             is LogbookOperationState.Success -> {
-                snackbarHostState.showSnackbar(
+                val message =
                     when (state.operation) {
                         LogbookOperation.ATTACHED -> attachSuccess
                         LogbookOperation.DETACHED -> detachSuccess
                         LogbookOperation.MERGED -> mergeSuccess
-                    },
-                )
+                    }
+                // A Snackbar suspends until it times out. Finish the operation first so the
+                // completed selection disappears immediately and a later action is never ignored.
                 exitSelection()
                 onLogbookOperationResultConsumed()
+                snackbarHostState.showSnackbar(message)
             }
             LogbookOperationState.Error -> {
-                snackbarHostState.showSnackbar(operationError)
                 onLogbookOperationResultConsumed()
+                snackbarHostState.showSnackbar(operationError)
             }
             LogbookOperationState.Idle, LogbookOperationState.Running -> Unit
         }

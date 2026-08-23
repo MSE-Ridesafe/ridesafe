@@ -276,7 +276,16 @@ class RidesViewModel(
                 refuel.journeyAnchorRideId?.let { it in liveRideIds && it !in selectedRideIds } == true
             })
 
-            rideDao.setMergeGroup(mergeGroupIdFor(selectedRideIds), selectedRideIds.toList())
+            // Selecting one already-combined logical entry plus Refuels only needs association work.
+            // Avoid a no-op Ride update (and its separate Flow invalidation) in that case.
+            val existingGroupId = selectedRides.first().mergeGroupId
+            val alreadyOneCompleteGroup =
+                existingGroupId != null &&
+                    selectedRides.all { it.mergeGroupId == existingGroupId } &&
+                    allRides.filter { it.mergeGroupId == existingGroupId }.mapTo(hashSetOf()) { it.id } == selectedRideIds
+            if (!alreadyOneCompleteGroup) {
+                rideDao.setMergeGroup(mergeGroupIdFor(selectedRideIds), selectedRideIds.toList())
+            }
             selectedRefuels
                 .filter { it.journeyAnchorRideId !in selectedRideIds }
                 .forEach { refuelDao.setJourneyAnchor(it.id, closestRideAnchor(it, selectedRides).id) }
