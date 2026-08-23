@@ -76,11 +76,15 @@ private fun RideEventType.label(): String =
 private fun rideMapPins(
     segments: List<List<LatLng>>,
     rideEvents: List<RideEvent>,
+    refuels: List<RefuelRow>,
 ): List<MapPin> {
     val startColors = PinColors(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.onSecondary)
     val endColors = PinColors(MaterialTheme.colorScheme.inverseSurface, MaterialTheme.colorScheme.inverseOnSurface)
     val startTitle = stringResource(R.string.ride_start_marker)
     val endTitle = stringResource(R.string.ride_end_marker)
+
+    val refuelColors = PinColors(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
+    val refuelFallback = stringResource(R.string.refuel_station_fallback)
 
     return segments.flatMapIndexed { index, points ->
         listOf(
@@ -104,7 +108,18 @@ private fun rideMapPins(
                             "%.1f".format(event.durationMs / 1000.0),
                         ),
                 )
-            }
+            } +
+        refuels.mapNotNull { row ->
+            val latitude = row.stationLatitude ?: return@mapNotNull null
+            val longitude = row.stationLongitude ?: return@mapNotNull null
+            MapPin(
+                key = "refuel-${row.refuel.id}",
+                position = LatLng(latitude, longitude),
+                symbol = "local_gas_station",
+                colors = refuelColors,
+                title = row.stationName ?: refuelFallback,
+            )
+        }
 }
 
 /**
@@ -116,16 +131,22 @@ private fun rideMapPins(
 fun RouteMapCard(
     segments: List<List<LatLng>>?,
     rideEvents: List<RideEvent> = emptyList(),
+    refuels: List<RefuelRow> = emptyList(),
 ) {
     val fullScreen = LocalFullScreenMap.current
     val drawn = segments?.filter { it.isNotEmpty() }.orEmpty()
     val outline = MaterialTheme.colorScheme.surface
     val routeColor = MaterialTheme.colorScheme.primary
-    val pins = rideMapPins(drawn, rideEvents)
+    val pins = rideMapPins(drawn, rideEvents, refuels)
+    val refuelPositions = pins.filter { it.key is String && it.key.startsWith("refuel-") }.map(MapPin::position)
 
     MapPreview(
-        framing = if (segments == null) null else drawn.flatten(),
-        onExpand = { fullScreen.value = FullScreenMapRequest { onClose -> RideFullScreenMap(drawn, rideEvents, onClose) } },
+        framing = if (segments == null) null else drawn.flatten() + refuelPositions,
+        onExpand = {
+            fullScreen.value = FullScreenMapRequest { onClose ->
+                RideFullScreenMap(drawn, rideEvents, refuels, onClose)
+            }
+        },
         expandLabel = stringResource(R.string.ride_map_expand),
         empty = { NoGps() },
     ) {
@@ -156,6 +177,7 @@ private const val SELECTED_EVENT_ZOOM = 17f
 private fun RideFullScreenMap(
     segments: List<List<LatLng>>,
     rideEvents: List<RideEvent>,
+    refuels: List<RefuelRow>,
     onClose: () -> Unit,
 ) {
     val events =
@@ -165,14 +187,15 @@ private fun RideFullScreenMap(
     var selected by remember { mutableStateOf<SelectedEvent?>(null) }
     val outline = MaterialTheme.colorScheme.surface
     val routeColor = MaterialTheme.colorScheme.primary
-    val pins = rideMapPins(segments, rideEvents)
+    val pins = rideMapPins(segments, rideEvents, refuels)
+    val refuelPositions = pins.filter { it.key is String && it.key.startsWith("refuel-") }.map(MapPin::position)
     val focus =
         selected?.let { pick ->
             pins.firstOrNull { it.key == pick.id }?.let { MapFocus(it.position, SELECTED_EVENT_ZOOM, pick.tick) }
         }
 
     FullScreenMap(
-        framing = segments.flatten(),
+        framing = segments.flatten() + refuelPositions,
         onClose = onClose,
         focus = focus,
         sheetPeek = if (events.isEmpty()) 0.dp else EventSheetPeek,

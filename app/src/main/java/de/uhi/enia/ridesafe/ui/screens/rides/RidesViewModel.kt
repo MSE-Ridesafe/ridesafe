@@ -53,6 +53,8 @@ data class RefuelRow(
     val refuel: Refuel,
     val vehicleName: String?,
     val stationName: String? = null,
+    val stationLatitude: Double? = null,
+    val stationLongitude: Double? = null,
 )
 
 enum class LogbookOperation { MERGED, ATTACHED, DETACHED }
@@ -196,11 +198,14 @@ class RidesViewModel(
         combine(refuelDao.observeAll(), vehicles, savedAddresses) { refuels, vehicles, addresses ->
             val names = vehicles.associate { it.id to it.displayTitle() }
             val places = addresses.associateBy { it.id }
-            refuels.map {
+            refuels.map { refuel ->
+                val station = refuel.stationSavedAddressId?.let(places::get)
                 RefuelRow(
-                    refuel = it,
-                    vehicleName = names[it.vehicleId],
-                    stationName = it.stationSavedAddressId?.let(places::get)?.label ?: it.stationAddress,
+                    refuel = refuel,
+                    vehicleName = names[refuel.vehicleId],
+                    stationName = station?.label ?: refuel.stationAddress,
+                    stationLatitude = station?.latitude,
+                    stationLongitude = station?.longitude,
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())

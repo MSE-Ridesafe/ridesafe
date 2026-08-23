@@ -146,7 +146,7 @@ fun MergedRideDetailScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            RouteMapCard(segments = segments, rideEvents = rideEvents)
+            RouteMapCard(segments = segments, rideEvents = rideEvents, refuels = refuels)
 
             MergedJourneyCard(
                 stops = stops,
