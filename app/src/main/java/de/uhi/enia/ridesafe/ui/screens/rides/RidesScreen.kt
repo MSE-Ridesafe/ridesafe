@@ -178,7 +178,7 @@ fun RidesScreen(
                     vehicles = vehicles,
                     places = places,
                     onFilterChange = onFilterChange,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp),
                 )
 
                 if (visible.isEmpty()) {
