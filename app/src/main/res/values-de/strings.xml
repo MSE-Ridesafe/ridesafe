@@ -27,6 +27,7 @@
     <string name="home_total_distance">Gesamte Strecke</string>
     <string name="home_total_travel_time">Gesamte Fahrzeit</string>
     <string name="home_total_recorded_rides">Aufgezeichnete Fahrten</string>
+    <string name="home_total_fuel">Kraftstoffverbrauch</string>
     <string name="home_metric_card_content_description">%1$s: %2$s</string>
     <string name="home_metric_distance_this_month">+%1$s diesen Monat</string>
     <string name="home_metric_duration_this_month">+%1$s diesen Monat</string>
@@ -34,6 +35,8 @@
     <string name="home_metric_no_distance_this_month">Keine Strecke diesen Monat</string>
     <string name="home_metric_no_duration_this_month">Keine Fahrzeit diesen Monat</string>
     <string name="home_metric_no_rides_this_month">Keine Fahrten diesen Monat</string>
+    <string name="home_metric_fuel_this_month">+%1$s diesen Monat</string>
+    <string name="home_metric_no_fuel_this_month">Kein Verbrauch diesen Monat</string>
     <string name="home_highlight_longest_ride">Längste Fahrt</string>
     <string name="home_highlight_average_ride">Durchschnittliche Fahrt</string>
     <string name="home_highlight_most_active_day">Aktivster Tag</string>
@@ -187,6 +190,19 @@
     <string name="ride_detail_avg_speed">Durchschnittsgeschwindigkeit</string>
     <string name="ride_detail_total_distance">Gesamtstrecke</string>
     <string name="ride_detail_no_gps">Für diese Fahrt wurde kein GPS aufgezeichnet</string>
+
+    <!-- Verbrauchsschätzung (ANL-03), VT-Micro-Modell über Geschwindigkeit und Beschleunigung. -->
+    <string name="ride_detail_section_fuel">Kraftstoff</string>
+    <string name="ride_fuel_consumption">%1$s L/100 km</string>
+    <string name="ride_fuel_liters">%1$s L</string>
+    <string name="ride_fuel_idle">Im Stand</string>
+    <string name="ride_fuel_cruising">Konstante Fahrt</string>
+    <string name="ride_fuel_accelerating">Beschleunigen</string>
+    <string name="ride_fuel_slowing">Verzögern</string>
+    <!-- Legendenzeile: Liter für eine Fahrsituation und ihr Anteil an der Fahrt. -->
+    <string name="ride_fuel_bucket_detail">%1$s L · %2$d%%</string>
+    <string name="ride_fuel_estimate_note">Geschätzt aus Geschwindigkeit und Beschleunigung (VT-Micro-Modell).</string>
+    <string name="ride_fuel_calibration_hint">Verbrauch des Fahrzeugs in der Garage eintragen für eine genauere Schätzung.</string>
     <string name="ride_address_unknown">Unbekannter Ort</string>
 
     <!-- Fahrten zusammenführen (§3.8) -->
@@ -262,5 +278,5 @@
     <string name="analysis_queue_empty_title">Alle Fahrten analysiert</string>
     <string name="analysis_queue_empty_message">Zurzeit wird nichts verarbeitet.</string>
     <string name="analysis_detail_notice_title">Analyse läuft</string>
-    <string name="analysis_detail_notice_message">Distanz, Route und Fahrereignisse sind für diese Fahrt noch nicht verfügbar oder könnten unvollständig sein.</string>
+    <string name="analysis_detail_notice_message">Distanz, Route, Fahrereignisse und Verbrauch sind für diese Fahrt noch nicht verfügbar oder könnten unvollständig sein.</string>
 </resources>

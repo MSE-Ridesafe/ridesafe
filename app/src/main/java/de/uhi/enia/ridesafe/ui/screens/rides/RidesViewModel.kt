@@ -10,6 +10,7 @@ import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.SavedAddress
+import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.mergeGroupIdFor
 import de.uhi.enia.ridesafe.data.rematchRides
 import de.uhi.enia.ridesafe.data.summarizeMerge
@@ -125,6 +126,15 @@ class RidesViewModel(
         rideDao.needingAddresses().forEach { fillAddresses(it) }
         rematchRides(rideDao, savedAddressDao)
     }
+
+    /**
+     * The garage (DR-VEH), exposed so a detail screen can resolve the ride's vehicle. The fuel
+     * estimate (ANL-03) is stored uncalibrated and scaled onto the vehicle on read, so the screen
+     * needs the vehicle itself, not just the name [RideRow] already carries. Whole list rather than
+     * a per-id query for the same reason the saved places are: a garage is a handful of rows.
+     */
+    val vehicles: StateFlow<List<Vehicle>> =
+        vehicleDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Saved places (DR-ADR), exposed so the detail screen can resolve a ride's matched endpoints. */
     val savedAddresses: StateFlow<List<SavedAddress>> =

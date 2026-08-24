@@ -11,9 +11,12 @@ data class HomeDashboardState(
     val totalDistanceMeters: Double = 0.0,
     val totalDurationMillis: Long = 0L,
     val totalRecordedRides: Int = 0,
+    // Only counts rides in a vehicle the fuel model describes (ANL-03); zero hides the card entirely.
+    val totalFuelLiters: Double = 0.0,
     val currentMonthDistanceMeters: Double = 0.0,
     val currentMonthDurationMillis: Long = 0L,
     val currentMonthRecordedRides: Int = 0,
+    val currentMonthFuelLiters: Double = 0.0,
     val activityBars: List<ActivityBar> = emptyList(),
     val monthlyActivity: List<ActivityBar> = emptyList(),
     val activityByDay: Map<LocalDate, ActivityBar> = emptyMap(),

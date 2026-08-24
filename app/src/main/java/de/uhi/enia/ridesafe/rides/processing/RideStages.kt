@@ -192,8 +192,44 @@ class RideEventStage(
     }
 }
 
+/**
+ * Fuel-consumption estimation (ANL-03): run the VT-Micro model over the ride's filtered track and
+ * store the litres, split by driving regime, on the ride row.
+ *
+ * No sink — the pass driver already hands over the Kalman-filtered fixes, and the model works off
+ * their Doppler speed at the ~1 Hz the fixes arrive at, which is the rate it was fitted on. Sharing
+ * pass two with detection means this costs no extra read of the sample file when both are due, and
+ * exactly one when it is the only stage that moved.
+ *
+ * Depends on the route stage for its version rather than its output: a track that filters
+ * differently is a different speed profile and therefore a different amount of fuel.
+ *
+ * What is stored is the model's raw output, uncalibrated — see [de.uhi.enia.ridesafe.data.RideFuel]
+ * for why the vehicle is only applied on read.
+ */
+class FuelStage(
+    private val db: RidesafeDatabase,
+) : RideStage {
+    override val id = "fuel"
+    override val version = 1
+    override val dependsOn = listOf("route")
+
+    override suspend fun finish(ctx: RideAnalysisContext) {
+        val fuel = estimateRideFuel(ctx.filteredFixes.orEmpty().map { it.fix })
+        db.rideDao().setFuel(ctx.ride.id, fuel)
+        // A ride whose track filtered to nothing legitimately has no estimate; it is stamped anyway,
+        // like the route stage does, so it isn't re-read every launch. Logged either way, because a
+        // silently absent estimate and a model returning zero look identical in the UI.
+        Log.i(
+            TAG_FUEL,
+            "ride ${ctx.ride.id}: ${fuel?.let { "%.3f L (idle %.0f%%)".format(it.totalLiters, it.idleShare * 100) } ?: "no estimate"}",
+        )
+    }
+}
+
 private const val TAG_ROUTE = "RideAnalysis"
 private const val TAG_EVENTS = "RideEvents"
+private const val TAG_FUEL = "RideFuel"
 
 /**
  * How far a ride's recorded endpoint must sit from the filtered one before it is treated as wrong

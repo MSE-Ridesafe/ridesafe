@@ -10,7 +10,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.serialization.json.Json
 
-private val deviceJson = Json { ignoreUnknownKeys = true }
+/** JSON for the small owned values kept in a single column (BT devices, fuel estimate). */
+private val columnJson = Json { ignoreUnknownKeys = true }
 
 class Converters {
     @TypeConverter
@@ -20,10 +21,10 @@ class Converters {
     fun stringToFuelType(value: String): FuelType = FuelType.valueOf(value)
 
     @TypeConverter
-    fun devicesToString(value: List<BtDevice>): String = deviceJson.encodeToString(value)
+    fun devicesToString(value: List<BtDevice>): String = columnJson.encodeToString(value)
 
     @TypeConverter
-    fun stringToDevices(value: String): List<BtDevice> = if (value.isBlank()) emptyList() else deviceJson.decodeFromString(value)
+    fun stringToDevices(value: String): List<BtDevice> = if (value.isBlank()) emptyList() else columnJson.decodeFromString(value)
 
     @TypeConverter
     fun placeKindToString(value: SavedPlaceKind): String = value.name
@@ -36,6 +37,14 @@ class Converters {
 
     @TypeConverter
     fun stringToRideEventType(value: String): RideEventType = RideEventType.valueOf(value)
+
+    @TypeConverter
+    fun fuelToString(value: RideFuel?): String? = value?.let { columnJson.encodeToString(it) }
+
+    // A blob written by a build whose RideFuel had different fields reads as "no estimate", and the
+    // pipeline derives it again — cheaper than a migration for a value that is regenerable anyway.
+    @TypeConverter
+    fun stringToFuel(value: String?): RideFuel? = value?.let { runCatching { columnJson.decodeFromString<RideFuel>(it) }.getOrNull() }
 }
 
 /** Adds Vehicle.bluetoothAddresses (GAR-08) without dropping existing vehicles (NFR-06). */
@@ -286,9 +295,22 @@ private val MIGRATION_12_13 =
         }
     }
 
+/**
+ * Adds Ride.fuel, the VT-Micro fuel estimate (ANL-03). Additive and empty: no ride has one, so every
+ * ride is missing the `fuel` analysis stamp and the pipeline derives it on next launch from the raw
+ * sample files that have been recorded all along. Nothing needs re-recording, and no other stage is
+ * invalidated — which is the whole point of stamping stages separately.
+ */
+private val MIGRATION_13_14 =
+    object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE rides ADD COLUMN fuel TEXT")
+        }
+    }
+
 @Database(
     entities = [Vehicle::class, Ride::class, SavedAddress::class, RideEvent::class, RideAnalysisState::class],
-    version = 13,
+    version = 14,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -326,6 +348,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_10_11,
                         MIGRATION_11_12,
                         MIGRATION_12_13,
+                        MIGRATION_13_14,
                     ).build()
                     .also { instance = it }
             }

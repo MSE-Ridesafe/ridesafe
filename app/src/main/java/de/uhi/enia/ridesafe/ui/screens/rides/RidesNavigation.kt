@@ -58,10 +58,14 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             value = stops?.takeIf { it.isNotEmpty() }?.let { viewModel.routes(it) }
         }
         val groupEvents by viewModel.groupRideEvents(key.groupId).collectAsState(initial = emptyList())
+        // Every stop of a merged ride shares one vehicle (MRG-09), so the first stop's answers for all.
+        val vehicles by viewModel.vehicles.collectAsState()
+        val vehicle = stops?.firstOrNull()?.vehicleId?.let { id -> vehicles.firstOrNull { it.id == id } }
         MergedRideDetailScreen(
             stops = stops,
             segments = segments,
             rideEvents = groupEvents,
+            vehicle = vehicle,
             onBack = onBack,
             onUnmergeAll = { viewModel.unmergeAll(key.groupId) },
             onUnmerge = { viewModel.unmerge(key.groupId, it) },
@@ -70,6 +74,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
     entry<RideDetailRoute> { key ->
         val ride by viewModel.ride(key.id).collectAsState(initial = null)
         val addresses by viewModel.savedAddresses.collectAsState()
+        val vehicles by viewModel.vehicles.collectAsState()
         val rideEvents by viewModel.rideEvents(key.id).collectAsState(initial = emptyList())
         // Non-null only while this very ride is queued, which is what the detail notice keys off.
         val analysis by viewModel.analysisProgress.collectAsState()
@@ -81,10 +86,14 @@ fun EntryProviderScope<NavKey>.ridesEntries(
         // Resolve the stored matched-address ids (ADR-07) to the places, for the detail labels (ADR-09).
         val startPlace = ride?.startAddressId?.let { id -> addresses.firstOrNull { it.id == id } }
         val endPlace = ride?.endAddressId?.let { id -> addresses.firstOrNull { it.id == id } }
+        // The fuel estimate (ANL-03) is stored raw and scaled onto the vehicle here, so reassigning a
+        // ride or filling in its car's economy updates it without re-running any analysis.
+        val vehicle = ride?.vehicleId?.let { id -> vehicles.firstOrNull { it.id == id } }
         RideDetailScreen(
             ride = ride,
             route = route,
             rideEvents = rideEvents,
+            vehicle = vehicle,
             startPlace = startPlace,
             endPlace = endPlace,
             analysisProgress = analysisProgress,

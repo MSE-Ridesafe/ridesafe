@@ -27,6 +27,7 @@
     <string name="home_total_distance">Total Distance</string>
     <string name="home_total_travel_time">Total Travel Time</string>
     <string name="home_total_recorded_rides">Total Recorded Rides</string>
+    <string name="home_total_fuel">Fuel Used</string>
     <string name="home_metric_card_content_description">%1$s: %2$s</string>
     <string name="home_metric_distance_this_month">+%1$s this month</string>
     <string name="home_metric_duration_this_month">+%1$s this month</string>
@@ -34,6 +35,8 @@
     <string name="home_metric_no_distance_this_month">No distance this month</string>
     <string name="home_metric_no_duration_this_month">No travel time this month</string>
     <string name="home_metric_no_rides_this_month">No rides this month</string>
+    <string name="home_metric_fuel_this_month">+%1$s this month</string>
+    <string name="home_metric_no_fuel_this_month">No fuel used this month</string>
     <string name="home_highlight_longest_ride">Longest ride</string>
     <string name="home_highlight_average_ride">Average ride</string>
     <string name="home_highlight_most_active_day">Most active day</string>
@@ -188,6 +191,19 @@
     <string name="ride_detail_avg_speed">Average speed</string>
     <string name="ride_detail_total_distance">Total distance</string>
     <string name="ride_detail_no_gps">No GPS recorded for this ride</string>
+
+    <!-- Fuel estimation (ANL-03), VT-Micro model over the ride's speed/acceleration profile. -->
+    <string name="ride_detail_section_fuel">Fuel</string>
+    <string name="ride_fuel_consumption">%1$s L/100 km</string>
+    <string name="ride_fuel_liters">%1$s L</string>
+    <string name="ride_fuel_idle">Idling</string>
+    <string name="ride_fuel_cruising">Cruising</string>
+    <string name="ride_fuel_accelerating">Accelerating</string>
+    <string name="ride_fuel_slowing">Slowing down</string>
+    <!-- Legend row: how many litres went into one driving regime, and what share of the ride that is. -->
+    <string name="ride_fuel_bucket_detail">%1$s L · %2$d%%</string>
+    <string name="ride_fuel_estimate_note">Estimated from speed and acceleration (VT-Micro model).</string>
+    <string name="ride_fuel_calibration_hint">Add this vehicle\'s fuel economy in Garage for a closer estimate.</string>
     <string name="ride_address_unknown">Unknown location</string>
 
     <!-- Ride merging (§3.8) -->
@@ -262,5 +278,5 @@
     <string name="analysis_queue_empty_title">All rides analyzed</string>
     <string name="analysis_queue_empty_message">Nothing is being processed right now.</string>
     <string name="analysis_detail_notice_title">Analysis in progress</string>
-    <string name="analysis_detail_notice_message">Distance, route and driving events aren\'t available for this ride yet or may be incomplete.</string>
+    <string name="analysis_detail_notice_message">Distance, route, driving events and fuel aren\'t available for this ride yet or may be incomplete.</string>
 </resources>

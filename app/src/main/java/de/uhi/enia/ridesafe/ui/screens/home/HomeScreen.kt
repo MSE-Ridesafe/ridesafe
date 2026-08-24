@@ -73,9 +73,11 @@ fun HomeScreen(
                     distanceMeters = state.totalDistanceMeters,
                     durationMillis = state.totalDurationMillis,
                     rideCount = state.totalRecordedRides,
+                    fuelLiters = state.totalFuelLiters,
                     monthDistanceMeters = state.currentMonthDistanceMeters,
                     monthDurationMillis = state.currentMonthDurationMillis,
                     monthRideCount = state.currentMonthRecordedRides,
+                    monthFuelLiters = state.currentMonthFuelLiters,
                 )
             }
             item {

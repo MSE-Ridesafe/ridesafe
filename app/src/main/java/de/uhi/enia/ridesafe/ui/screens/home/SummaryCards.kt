@@ -55,14 +55,22 @@ data class HomeMetricCardModel(
     val contentDescription: String,
 )
 
+/**
+ * The dashboard's swipeable metric cards. [fuelLiters] is the estimated fuel across every ride in a
+ * vehicle the model describes (ANL-03); at zero the fuel card is left out entirely rather than
+ * shown as "0.0 L", since that is what an all-electric garage or an unanalysed logbook looks like
+ * and neither has burned nothing — they have nothing to say.
+ */
 @Composable
 fun SummaryMetricCarousel(
     distanceMeters: Double,
     durationMillis: Long,
     rideCount: Int,
+    fuelLiters: Double,
     monthDistanceMeters: Double,
     monthDurationMillis: Long,
     monthRideCount: Int,
+    monthFuelLiters: Double,
 ) {
     val unitSystem = currentUnitSystem()
     val context = LocalContext.current
@@ -72,8 +80,9 @@ fun SummaryMetricCarousel(
     val monthDistance = formatDistance(monthDistanceMeters, unitSystem)
     val monthDuration = formatCompactDuration(monthDurationMillis)
     val monthRides = formatRecordedRideCount(context, monthRideCount)
+    val totalFuel = formatLiters(context, fuelLiters)
     val metrics =
-        listOf(
+        listOfNotNull(
             HomeMetricCardModel(
                 icon = "route",
                 title = stringResource(R.string.home_total_distance),
@@ -125,6 +134,25 @@ fun SummaryMetricCarousel(
                         totalRides,
                     ),
             ),
+            fuelLiters.takeIf { it > 0.0 }?.let {
+                HomeMetricCardModel(
+                    icon = "local_gas_station",
+                    title = stringResource(R.string.home_total_fuel),
+                    value = totalFuel,
+                    supportingText =
+                        if (monthFuelLiters > 0.0) {
+                            stringResource(R.string.home_metric_fuel_this_month, formatLiters(context, monthFuelLiters))
+                        } else {
+                            stringResource(R.string.home_metric_no_fuel_this_month)
+                        },
+                    contentDescription =
+                        stringResource(
+                            R.string.home_metric_card_content_description,
+                            stringResource(R.string.home_total_fuel),
+                            totalFuel,
+                        ),
+                )
+            },
         )
     val pagerState = rememberPagerState(pageCount = { metrics.size })
 

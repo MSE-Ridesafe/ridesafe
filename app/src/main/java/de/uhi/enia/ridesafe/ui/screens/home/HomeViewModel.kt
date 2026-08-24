@@ -11,7 +11,9 @@ import de.uhi.enia.ridesafe.domain.journeyTotalsForMonth
 import de.uhi.enia.ridesafe.domain.logicalRideJourneys
 import de.uhi.enia.ridesafe.domain.totalJourneyCount
 import de.uhi.enia.ridesafe.domain.totalJourneyDistanceMeters
+import de.uhi.enia.ridesafe.domain.totalJourneyFuelLiters
 import de.uhi.enia.ridesafe.domain.totalJourneyTravelDurationMillis
+import de.uhi.enia.ridesafe.rides.processing.forVehicle
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -42,7 +44,17 @@ class HomeViewModel(
                                     ?: primaryVehicle?.displayTitle(),
                         )
                     }
-            val logicalJourneys = logicalRideJourneys(rides)
+            // Each ride's fuel estimate calibrated onto the car it was driven in (ANL-03). Rides in a
+            // vehicle the model doesn't describe drop out here and simply don't count toward the total.
+            val vehiclesById = vehicles.associateBy { it.id }
+            val fuelByRide =
+                rides
+                    .mapNotNull { ride ->
+                        ride.fuel
+                            .forVehicle(ride.vehicleId?.let(vehiclesById::get))
+                            ?.let { ride.id to it.totalLiters }
+                    }.toMap()
+            val logicalJourneys = logicalRideJourneys(rides, fuelByRide)
             val currentMonthTotals = journeyTotalsForMonth(logicalJourneys, currentMonth, zone)
             val activityByDay =
                 journeyActivityByDay(logicalJourneys, zone)
@@ -67,9 +79,11 @@ class HomeViewModel(
                 totalDistanceMeters = totalJourneyDistanceMeters(logicalJourneys),
                 totalDurationMillis = totalJourneyTravelDurationMillis(logicalJourneys),
                 totalRecordedRides = totalJourneyCount(logicalJourneys),
+                totalFuelLiters = totalJourneyFuelLiters(logicalJourneys),
                 currentMonthDistanceMeters = currentMonthTotals.distanceMeters,
                 currentMonthDurationMillis = currentMonthTotals.durationMillis,
                 currentMonthRecordedRides = currentMonthTotals.journeyCount,
+                currentMonthFuelLiters = currentMonthTotals.fuelLiters,
                 activityBars = bars,
                 monthlyActivity = monthlyActivity,
                 activityByDay = activityByDay,

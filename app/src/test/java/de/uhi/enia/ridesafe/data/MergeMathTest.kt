@@ -15,6 +15,7 @@ class MergeMathTest {
         durMin: Long,
         distanceM: Double? = null,
         maxMps: Double = 0.0,
+        fuel: RideFuel? = null,
     ) = Ride(
         id = id,
         vehicleId = vehicle,
@@ -24,6 +25,7 @@ class MergeMathTest {
         distanceMeters = distanceM,
         maxSpeedMps = maxMps,
         sampleFile = "r$id.ndjson.gz",
+        fuel = fuel,
     )
 
     @Test
@@ -49,6 +51,30 @@ class MergeMathTest {
         val s = summarizeMerge(listOf(ride(1, startMin = 0, durMin = 5), ride(2, startMin = 10, durMin = 5)))
         assertNull(s.distanceMeters)
         assertNull(s.avgSpeedMps)
+    }
+
+    /**
+     * A trip's fuel is its stops' fuel added up bucket by bucket (ANL-03), and a stop still waiting
+     * on analysis contributes nothing rather than voiding the trip's total — the same best-effort
+     * rule the distances follow.
+     */
+    @Test
+    fun fuelSumsAcrossStopsBucketByBucket() {
+        val a = ride(1, startMin = 0, durMin = 10, fuel = RideFuel(0.1, 1.0, 0.4, 0.2))
+        val b = ride(2, startMin = 30, durMin = 10, fuel = RideFuel(0.3, 2.0, 0.6, 0.1))
+
+        val summed = summarizeMerge(listOf(b, a)).fuel!!
+        assertEquals(0.4, summed.idleLiters, 1e-9)
+        assertEquals(3.0, summed.cruiseLiters, 1e-9)
+        assertEquals(1.0, summed.accelLiters, 1e-9)
+        assertEquals(0.3, summed.decelLiters, 1e-9)
+        assertEquals(4.7, summed.totalLiters, 1e-9)
+
+        // One stop analysed, one not: the trip reports what it has rather than nothing.
+        val partial = summarizeMerge(listOf(a, ride(3, startMin = 60, durMin = 10))).fuel!!
+        assertEquals(1.7, partial.totalLiters, 1e-9)
+        // Nothing analysed at all is no estimate, not zero litres.
+        assertNull(summarizeMerge(listOf(ride(4, startMin = 0, durMin = 5), ride(5, startMin = 10, durMin = 5))).fuel)
     }
 
     @Test

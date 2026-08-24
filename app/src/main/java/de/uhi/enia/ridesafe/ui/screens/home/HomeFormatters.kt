@@ -50,3 +50,14 @@ fun formatRecordedRideCount(
     context: Context,
     count: Int,
 ): String = NumberFormat.getIntegerInstance(context.resources.configuration.locales[0]).format(count)
+
+/**
+ * Litres to one decimal, e.g. "42.7 L" — the dashboard's fuel total (ANL-03).
+ *
+ * ponytail: litres whatever the unit setting says, matching the Garage's tank size and rated
+ * economy. Volume conversion is SET-08's job and has to land everywhere at once.
+ */
+fun formatLiters(
+    context: Context,
+    liters: Double,
+): String = "%.1f %s".format(liters, context.getString(R.string.unit_liter))

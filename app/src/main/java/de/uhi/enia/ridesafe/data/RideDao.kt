@@ -107,6 +107,13 @@ interface RideDao {
         avgSpeedMps: Double,
     )
 
+    /** Store the fuel estimate the VT-Micro pass computed from the filtered track (ANL-03). */
+    @Query("UPDATE rides SET fuel = :fuel WHERE id = :id")
+    suspend fun setFuel(
+        id: Long,
+        fuel: RideFuel?,
+    )
+
     /** Rides with a fix but no reverse-geocoded address yet — the address backfill targets these. */
     @Query(
         "SELECT * FROM rides WHERE (startLat IS NOT NULL AND startAddress IS NULL) " +

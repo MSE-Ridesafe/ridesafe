@@ -151,6 +151,10 @@ interface RideStage {
  * *that* constraint is already shared: the GPS is Kalman-filtered once, in pass one, and pass two
  * reuses those fixes instead of filtering again.
  *
+ * Fuel estimation joins pass two rather than adding a third: it reads the same filtered fixes
+ * detection is already being handed, so riding along costs nothing, while a pass of its own would
+ * re-read the file whenever both stages are due.
+ *
  * ponytail: a stage that needs its own pass adds a list here; one that fits an existing pass costs
  * nothing. A pure-derivation stage (the safety score, next) belongs in a third pass with
  * [RideStage.needsSamples] false, so bumping it re-derives from stored events with no file read.
@@ -158,7 +162,7 @@ interface RideStage {
 private fun analysisPasses(db: RidesafeDatabase): List<List<RideStage>> =
     listOf(
         listOf(RouteStage(db), RideEndpointStage(db), ForwardAxisStage()),
-        listOf(RideEventStage(db)),
+        listOf(RideEventStage(db), FuelStage(db)),
     )
 
 /**

@@ -43,8 +43,10 @@ import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.SavedAddress
+import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.haversineMeters
 import de.uhi.enia.ridesafe.rides.processing.addressLines
+import de.uhi.enia.ridesafe.rides.processing.forVehicle
 import de.uhi.enia.ridesafe.rides.processing.latLngDistanceMeters
 import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
@@ -63,6 +65,10 @@ import de.uhi.enia.ridesafe.util.formatTimeOfDay
  * pass ANL-02); they fall back to computing from [route] only for a ride not processed yet, where
  * [route] is the raw track (the simplified sidecar is only ever loaded once the columns are filled).
  *
+ * [vehicle] is the ride's car, needed to turn the stored raw fuel estimate into litres for *this*
+ * vehicle (ANL-03); a ride with no vehicle, or one whose drivetrain the model doesn't describe,
+ * simply shows no fuel card.
+ *
  * [analysisProgress] is non-null only while this ride is still in the analysis queue (ANL-03), and
  * puts a notice at the top of the screen — without it, a half-analyzed ride just looks broken:
  * missing distance, no events, and nothing saying why.
@@ -74,6 +80,7 @@ fun RideDetailScreen(
     rideEvents: List<RideEvent>,
     startPlace: SavedAddress?,
     endPlace: SavedAddress?,
+    vehicle: Vehicle?,
     analysisProgress: Float?,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -185,6 +192,16 @@ fun RideDetailScreen(
                             ),
                     ),
             )
+
+            // Absent for a ride still being analysed, one with no usable track, and one whose vehicle
+            // the model has nothing to say about — all three are "no estimate", not "no fuel used".
+            ride.fuel.forVehicle(vehicle)?.let { fuel ->
+                FuelCard(
+                    fuel = fuel,
+                    distanceMeters = distanceMeters,
+                    calibrated = vehicle?.fuelEconomy != null,
+                )
+            }
         }
     }
 }
