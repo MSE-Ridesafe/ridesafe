@@ -5,10 +5,16 @@ package de.uhi.enia.ridesafe.ui.screens.rides
 import android.content.Context
 import android.text.format.DateUtils
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector2D
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -17,6 +23,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -44,16 +51,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.round
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.DEFAULT_PLACE_ICON
 import de.uhi.enia.ridesafe.data.SavedAddress
@@ -64,6 +76,7 @@ import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.rideDay
 import de.uhi.enia.ridesafe.util.usesMetric
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -153,7 +166,19 @@ fun ActiveFilterChips(
     // The row stays composed even with nothing in it: a chip that has just been removed from the
     // filter still has to be here to play its exit. With no chips it measures to zero height, so it
     // costs no space — hence the spacing living on the chips rather than on the row.
-    FlowRow(modifier = modifier.fillMaxWidth()) {
+    //
+    // The chips that stay glide to their new slots — including up a row — instead of snapping there
+    // the moment one is removed; see animatePlacement. animateContentSize carries the row's own
+    // height with them, so losing a line lifts the rides underneath instead of stepping them up.
+    // Its spring matches the one animatePlacement uses, which keeps a chip travelling up a row in
+    // step with the shrinking box it travels inside — that box clips, and a slower chip would be
+    // cut off on the way.
+    FlowRow(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .animateContentSize(),
+    ) {
         AnimatedChip(
             spec =
                 filter.vehicleId?.let { id ->
@@ -244,8 +269,12 @@ private data class ChipSpec(
 )
 
 /**
- * One filter chip, present while [spec] is non-null. Removing a filter fades the chip out and
- * collapses its width, so the chips after it slide into the gap instead of jumping.
+ * One filter chip, present while [spec] is non-null: it fades and slides on its way in and out, and
+ * glides to its new slot when a neighbour goes away.
+ *
+ * The enter/exit deliberately only translate the chip — they never animate its width. A FlowRow
+ * wraps on the size its children report, so a chip that shrinks on the way out gets narrow enough
+ * to fit on the line above, jumps up there, and finishes vanishing at the end of the wrong row.
  */
 @Composable
 private fun AnimatedChip(
@@ -259,11 +288,39 @@ private fun AnimatedChip(
 
     AnimatedVisibility(
         visible = spec != null,
-        enter = fadeIn() + expandHorizontally(expandFrom = Alignment.Start),
-        exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.Start),
+        modifier = Modifier.animatePlacement(),
+        enter = fadeIn() + slideInHorizontally { it / 4 },
+        exit = fadeOut() + slideOutHorizontally { it / 4 },
     ) {
         shown?.let { RemovableChip(it.label, it.icon, onRemove) }
     }
+}
+
+/**
+ * Slides content from where it was to where the layout just put it.
+ *
+ * Only the placement moves: the content is never re-measured, so it keeps its own size all the way
+ * and the parent keeps seeing that size. Modifier.animateBounds would be the one-liner for this,
+ * but it measures its content at the *animated* size (Constraints.fixed) and reports that size
+ * upwards — so a chip in flight both stretches and feeds a size that is only passing through back
+ * into the FlowRow's wrapping.
+ */
+@Composable
+private fun Modifier.animatePlacement(): Modifier {
+    val scope = rememberCoroutineScope()
+    var target by remember { mutableStateOf(IntOffset.Zero) }
+    var animation by remember { mutableStateOf<Animatable<IntOffset, AnimationVector2D>?>(null) }
+
+    return this
+        .onPlaced { target = it.positionInParent().round() }
+        .offset {
+            val anim = animation ?: Animatable(target, IntOffset.VectorConverter).also { animation = it }
+            if (anim.targetValue != target) {
+                scope.launch { anim.animateTo(target, spring(stiffness = Spring.StiffnessMediumLow)) }
+            }
+            // Place the chip where it used to be, then let the animation carry that offset to zero.
+            anim.value - target
+        }
 }
 
 @Composable

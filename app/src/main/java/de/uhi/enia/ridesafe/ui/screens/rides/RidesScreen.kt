@@ -173,15 +173,16 @@ fun RidesScreen(
                     onOpenFilters = { filtersOpen = true },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
-                ActiveFilterChips(
-                    filter = filter,
-                    vehicles = vehicles,
-                    places = places,
-                    onFilterChange = onFilterChange,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-
                 if (visible.isEmpty()) {
+                    // Nothing matched, so there is no list to scroll the chips away with — and they
+                    // are the way back out, so here they stay put.
+                    ActiveFilterChips(
+                        filter = filter,
+                        vehicles = vehicles,
+                        places = places,
+                        onFilterChange = onFilterChange,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
                     NoMatchingRides(
                         onClear = { onFilterChange(RideFilter()) },
                         modifier =
@@ -211,6 +212,18 @@ fun RidesScreen(
                         ),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    // The chips are the list's first row rather than a bar above it, so a long set
+                    // of them scrolls away under the search bar instead of permanently costing the
+                    // user rides off the bottom of the screen. The filter button keeps its badge, so
+                    // "something is filtered" is still visible once they are gone.
+                    item(key = "chips") {
+                        ActiveFilterChips(
+                            filter = filter,
+                            vehicles = vehicles,
+                            places = places,
+                            onFilterChange = onFilterChange,
+                        )
+                    }
                     groups.forEach { (day, dayEntries) ->
                         item(key = "h$day") {
                             DayHeader(text = formatDayHeader(context, day, today))
