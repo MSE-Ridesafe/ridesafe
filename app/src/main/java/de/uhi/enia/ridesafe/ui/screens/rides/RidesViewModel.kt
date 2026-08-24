@@ -1,7 +1,6 @@
 package de.uhi.enia.ridesafe.ui.screens.rides
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
@@ -24,8 +23,10 @@ import de.uhi.enia.ridesafe.rides.recording.ridesDir
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
@@ -139,6 +140,27 @@ class RidesViewModel(
     /** Saved places (DR-ADR), exposed so the detail screen can resolve a ride's matched endpoints. */
     val savedAddresses: StateFlow<List<SavedAddress>> =
         savedAddressDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Rides carrying at least one detected driving event (ANL-01), for the logbook's events filter. */
+    val ridesWithEvents: StateFlow<Set<Long>> =
+        rideEventDao
+            .observeRideIdsWithEvents()
+            .map { it.toSet() }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    private val _filter = MutableStateFlow(RideFilter())
+
+    /**
+     * The logbook's search + filter criteria (LOG-06, LOG-07, LOG-11 … LOG-15). Kept in the
+     * ViewModel, not the screen: the list entry leaves composition while a ride detail is open, so
+     * screen-local state would drop the user's filters every time they looked at a ride and came
+     * back. It is deliberately not persisted — a fresh launch starts on the whole logbook.
+     */
+    val filter: StateFlow<RideFilter> = _filter.asStateFlow()
+
+    fun setFilter(value: RideFilter) {
+        _filter.value = value
+    }
 
     /** Rides (newest first) joined to their vehicle name and the saved places their endpoints matched. */
     private val rides: Flow<List<RideRow>> =

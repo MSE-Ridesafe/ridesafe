@@ -26,6 +26,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -45,6 +46,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.MergeCheck
+import de.uhi.enia.ridesafe.data.SavedAddress
+import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.canMerge
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
@@ -62,6 +65,11 @@ import java.time.LocalDate
 fun RidesScreen(
     entries: List<LogbookEntry>,
     analysis: RideAnalysisProgress,
+    vehicles: List<Vehicle>,
+    places: List<SavedAddress>,
+    ridesWithEvents: Set<Long>,
+    filter: RideFilter,
+    onFilterChange: (RideFilter) -> Unit,
     onOpenRide: (Long) -> Unit,
     onOpenMerged: (Long) -> Unit,
     onOpenAnalysisQueue: () -> Unit,
@@ -73,8 +81,18 @@ fun RidesScreen(
     var selectionMode by rememberSaveable { mutableStateOf(false) }
     // Selection is by entry key; keys that no longer exist (data changed) are ignored below.
     var selectedKeys by remember { mutableStateOf(emptySet<String>()) }
+    var filtersOpen by rememberSaveable { mutableStateOf(false) }
 
-    val liveKeys = remember(entries) { entries.map { it.key }.toSet() }
+    // Each entry's searchable text, built once per data change; a keystroke then only scans it.
+    val index = remember(entries, context) { searchIndex(context, entries) }
+    val visible =
+        remember(entries, filter, index, ridesWithEvents) {
+            entries.applyFilter(filter, index, ridesWithEvents)
+        }
+
+    // Selection tracks what is on screen: a ride hidden by the filter counts as deselected, so
+    // "select all" means all the *shown* rides and no invisible ride can be swept into a merge.
+    val liveKeys = remember(visible) { visible.map { it.key }.toSet() }
     val selected = selectedKeys.intersect(liveKeys)
 
     fun exitSelection() {
@@ -97,13 +115,16 @@ fun RidesScreen(
                 if (selectionMode) {
                     SelectionTopBar(
                         count = selected.size,
-                        allSelected = entries.isNotEmpty() && selected.size == entries.size,
+                        allSelected = visible.isNotEmpty() && selected.size == visible.size,
                         mergeCheck =
                             if (selected.isEmpty()) {
                                 MergeCheck.NOT_ENOUGH
                             } else {
                                 canMerge(
-                                    selectedIds = entries.filter { it.key in selected }.flatMap { it.rideIds }.toSet(),
+                                    selectedIds = visible.filter { it.key in selected }.flatMap { it.rideIds }.toSet(),
+                                    // Contiguity (MRG-02) is judged against every ride, not the shown
+                                    // ones: a filtered-out ride between two selected ones still
+                                    // breaks the run, and merging across it would be wrong.
                                     allRides = entries.flatMap { it.rides },
                                 )
                             },
@@ -111,7 +132,7 @@ fun RidesScreen(
                         onSelectAll = { selectedKeys = liveKeys },
                         onDeselectAll = { selectedKeys = emptySet() },
                         onMerge = {
-                            onMerge(entries.filter { it.key in selected }.flatMap { it.rideIds })
+                            onMerge(visible.filter { it.key in selected }.flatMap { it.rideIds })
                             exitSelection()
                         },
                     )
@@ -128,73 +149,103 @@ fun RidesScreen(
                 }
             },
         ) { innerPadding ->
-            if (entries.isEmpty()) {
-                EmptyRides(
-                    modifier =
-                        Modifier
-                            .padding(innerPadding)
-                            .fillMaxSize()
-                            .padding(32.dp),
-                )
-                return@Scaffold
-            }
-
-            // One card per calendar day; entries arrive newest-first, so insertion order gives newest day
-            // first, newest entry first within each day.
-            val groups =
-                remember(entries) { entries.groupByTo(LinkedHashMap()) { rideDay(it.sortEpochMs) } }
-            val today = LocalDate.now()
-
-            LazyColumn(
+            Column(
                 modifier =
                     Modifier
                         .padding(innerPadding)
                         .fillMaxSize(),
-                // Nothing reserves space for the floating status bar, so the list leaves room for it
-                // itself — otherwise the last ride of the logbook can never be scrolled out from under it.
-                contentPadding =
-                    PaddingValues(
-                        start = 16.dp,
-                        end = 16.dp,
-                        top = 16.dp,
-                        bottom = if (analysis.running) 88.dp else 16.dp,
-                    ),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                groups.forEach { (day, dayEntries) ->
-                    item(key = "h$day") {
-                        DayHeader(text = formatDayHeader(context, day, today))
-                    }
-                    item(key = "c$day") {
-                        Card(
-                            shape = MaterialTheme.shapes.extraLarge,
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Column {
-                                dayEntries.forEachIndexed { index, entry ->
-                                    if (index > 0) {
-                                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-                                    }
-                                    LogbookRow(
-                                        entry = entry,
-                                        selectionMode = selectionMode,
-                                        selected = entry.key in selected,
-                                        onClick = {
-                                            if (selectionMode) {
-                                                toggle(entry.key)
-                                            } else {
-                                                when (entry) {
-                                                    is LogbookEntry.Single -> onOpenRide(entry.row.ride.id)
-                                                    is LogbookEntry.Merged -> onOpenMerged(entry.groupId)
+                if (entries.isEmpty()) {
+                    // An empty logbook has nothing to search, so the search bar stays away entirely.
+                    EmptyRides(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(32.dp),
+                    )
+                    return@Column
+                }
+
+                RideSearchBar(
+                    query = filter.query,
+                    activeFilterCount = filter.activeFilterCount,
+                    onQueryChange = { onFilterChange(filter.copy(query = it)) },
+                    onOpenFilters = { filtersOpen = true },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+                ActiveFilterChips(
+                    filter = filter,
+                    vehicles = vehicles,
+                    places = places,
+                    onFilterChange = onFilterChange,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                )
+
+                if (visible.isEmpty()) {
+                    NoMatchingRides(
+                        onClear = { onFilterChange(RideFilter()) },
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(32.dp),
+                    )
+                    return@Column
+                }
+
+                // One card per calendar day; entries arrive newest-first, so insertion order gives newest day
+                // first, newest entry first within each day.
+                val groups =
+                    remember(visible) { visible.groupByTo(LinkedHashMap()) { rideDay(it.sortEpochMs) } }
+                val today = LocalDate.now()
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    // Nothing reserves space for the floating status bar, so the list leaves room for it
+                    // itself — otherwise the last ride of the logbook can never be scrolled out from under it.
+                    contentPadding =
+                        PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 8.dp,
+                            bottom = if (analysis.running) 88.dp else 16.dp,
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    groups.forEach { (day, dayEntries) ->
+                        item(key = "h$day") {
+                            DayHeader(text = formatDayHeader(context, day, today))
+                        }
+                        item(key = "c$day") {
+                            Card(
+                                shape = MaterialTheme.shapes.extraLarge,
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Column {
+                                    dayEntries.forEachIndexed { index, entry ->
+                                        if (index > 0) {
+                                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
+                                        }
+                                        LogbookRow(
+                                            entry = entry,
+                                            selectionMode = selectionMode,
+                                            selected = entry.key in selected,
+                                            onClick = {
+                                                if (selectionMode) {
+                                                    toggle(entry.key)
+                                                } else {
+                                                    when (entry) {
+                                                        is LogbookEntry.Single -> onOpenRide(entry.row.ride.id)
+                                                        is LogbookEntry.Merged -> onOpenMerged(entry.groupId)
+                                                    }
                                                 }
-                                            }
-                                        },
-                                        onLongClick = {
-                                            selectionMode = true
-                                            toggle(entry.key)
-                                        },
-                                    )
+                                            },
+                                            onLongClick = {
+                                                selectionMode = true
+                                                toggle(entry.key)
+                                            },
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -210,6 +261,16 @@ fun RidesScreen(
                     .align(Alignment.BottomCenter)
                     .padding(16.dp),
         )
+        if (filtersOpen) {
+            RideFilterSheet(
+                filter = filter,
+                vehicles = vehicles,
+                places = places,
+                matchCount = visible.size,
+                onFilterChange = onFilterChange,
+                onDismiss = { filtersOpen = false },
+            )
+        }
     }
 }
 
@@ -403,6 +464,45 @@ private fun rideTimeRange(
         append(formatTimeOfDay(context, startMs))
         endMs?.let { append(" – ").append(formatTimeOfDay(context, it)) }
     }
+
+/**
+ * The search/filter came up empty — deliberately distinct from an empty logbook (there *are* rides,
+ * they just don't match), and it offers the way back out rather than leaving the user to hunt for it.
+ */
+@Composable
+private fun NoMatchingRides(
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        MaterialSymbol(
+            symbolName = "search_off",
+            contentDescription = null,
+            size = 64.dp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.size(16.dp))
+        Text(
+            text = stringResource(R.string.rides_no_matches_title),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Spacer(Modifier.size(4.dp))
+        Text(
+            text = stringResource(R.string.rides_no_matches_message),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.size(16.dp))
+        TextButton(onClick = onClear) {
+            Text(stringResource(R.string.rides_filter_clear_all))
+        }
+    }
+}
 
 @Composable
 private fun EmptyRides(modifier: Modifier = Modifier) {

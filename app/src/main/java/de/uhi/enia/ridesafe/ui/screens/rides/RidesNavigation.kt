@@ -35,9 +35,19 @@ fun EntryProviderScope<NavKey>.ridesEntries(
     entry<RidesRoute> {
         val entries by viewModel.entries.collectAsState()
         val analysis by viewModel.analysisProgress.collectAsState()
+        // The garage and the saved places feed the filter sheet's dropdowns (LOG-07, LOG-12).
+        val vehicles by viewModel.vehicles.collectAsState()
+        val places by viewModel.savedAddresses.collectAsState()
+        val ridesWithEvents by viewModel.ridesWithEvents.collectAsState()
+        val filter by viewModel.filter.collectAsState()
         RidesScreen(
             entries = entries,
             analysis = analysis,
+            vehicles = vehicles,
+            places = places,
+            ridesWithEvents = ridesWithEvents,
+            filter = filter,
+            onFilterChange = viewModel::setFilter,
             onOpenRide = { onOpen(RideDetailRoute(it)) },
             onOpenMerged = { onOpen(MergedRideDetailRoute(it)) },
             onOpenAnalysisQueue = { onOpen(AnalysisQueueRoute) },

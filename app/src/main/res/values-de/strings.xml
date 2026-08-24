@@ -111,6 +111,7 @@
     <string name="action_edit">Bearbeiten</string>
     <string name="action_delete">Löschen</string>
     <string name="action_cancel">Abbrechen</string>
+    <string name="action_clear">Leeren</string>
     <string name="action_close">Schließen</string>
     <string name="garage_add_vehicle">Fahrzeug hinzufügen</string>
     <string name="garage_edit_vehicle">Fahrzeug bearbeiten</string>
@@ -279,4 +280,46 @@
     <string name="analysis_queue_empty_message">Zurzeit wird nichts verarbeitet.</string>
     <string name="analysis_detail_notice_title">Analyse läuft</string>
     <string name="analysis_detail_notice_message">Distanz, Route, Fahrereignisse und Verbrauch sind für diese Fahrt noch nicht verfügbar oder könnten unvollständig sein.</string>
+
+    <!-- Logbook search & filters (LOG-06, LOG-07, LOG-11 … LOG-15) -->
+    <string name="rides_search_hint">Fahrten durchsuchen</string>
+    <string name="rides_search_clear">Suche leeren</string>
+    <string name="rides_filter_open">Filter</string>
+    <string name="rides_filter_title">Fahrten filtern</string>
+    <string name="rides_filter_reset">Zurücksetzen</string>
+    <plurals name="rides_filter_apply">
+        <item quantity="one">%1$d Fahrt anzeigen</item>
+        <item quantity="other">%1$d Fahrten anzeigen</item>
+    </plurals>
+    <string name="rides_filter_vehicle">Fahrzeug</string>
+    <string name="rides_filter_vehicle_any">Alle Fahrzeuge</string>
+    <string name="rides_filter_start_place">Startort</string>
+    <string name="rides_filter_end_place">Zielort</string>
+    <string name="rides_filter_place_any">Beliebiger Ort</string>
+    <string name="rides_filter_date">Zeitraum</string>
+    <string name="rides_filter_date_from">Von</string>
+    <string name="rides_filter_date_to">Bis</string>
+    <string name="rides_filter_labeled_value">%1$s: %2$s</string>
+    <string name="rides_filter_date_any">Beliebig</string>
+    <string name="rides_filter_distance">Strecke</string>
+    <string name="rides_filter_distance_min">Min. (%1$s)</string>
+    <string name="rides_filter_distance_max">Max. (%1$s)</string>
+    <string name="rides_filter_trip_type">Fahrtart</string>
+    <string name="rides_filter_trip_any">Alle</string>
+    <string name="rides_filter_trip_single">Einzelfahrten</string>
+    <string name="rides_filter_trip_merged">Zusammengeführte Fahrten</string>
+    <string name="rides_filter_events">Nur Fahrten mit Fahrereignissen</string>
+    <string name="rides_filter_clear_all">Filter zurücksetzen</string>
+    <string name="rides_filter_chip_remove">Filter entfernen</string>
+    <string name="rides_filter_chip_start">Start: %1$s</string>
+    <string name="rides_filter_chip_end">Ziel: %1$s</string>
+    <string name="rides_filter_chip_date_range">%1$s – %2$s</string>
+    <string name="rides_filter_chip_date_from">Ab %1$s</string>
+    <string name="rides_filter_chip_date_until">Bis %1$s</string>
+    <string name="rides_filter_chip_distance_range">%1$s – %2$s</string>
+    <string name="rides_filter_chip_distance_min">Ab %1$s</string>
+    <string name="rides_filter_chip_distance_max">Bis %1$s</string>
+    <string name="rides_filter_chip_events">Fahrereignisse</string>
+    <string name="rides_no_matches_title">Keine passenden Fahrten</string>
+    <string name="rides_no_matches_message">Andere Suche versuchen oder Filter lockern.</string>
 </resources>
