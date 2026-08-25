@@ -11,6 +11,16 @@ interface RideDao {
     @Query("SELECT * FROM rides ORDER BY startedAtEpochMs DESC")
     fun observeAll(): Flow<List<Ride>>
 
+    /**
+     * Finished rides, newest first — what the logbook lists (LOG-02). A ride in progress is already
+     * a row (the recorder inserts it at the start and finalizes it at the end), but it is not a
+     * logbook entry yet: it has no end time, no distance and no analysis, and showing it would put
+     * a half-written ride at the top of a record people hand to a tax office. The dashboard's live
+     * card wants exactly that row, so it keeps reading [observeAll].
+     */
+    @Query("SELECT * FROM rides WHERE endedAtEpochMs IS NOT NULL ORDER BY startedAtEpochMs DESC")
+    fun observeFinished(): Flow<List<Ride>>
+
     @Query("SELECT * FROM rides WHERE id = :id")
     fun observe(id: Long): Flow<Ride?>
 

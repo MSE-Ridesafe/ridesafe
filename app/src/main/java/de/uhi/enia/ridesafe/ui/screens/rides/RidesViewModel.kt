@@ -108,8 +108,8 @@ class RidesViewModel(
         // change that set, so the pipeline can't re-trigger itself.
         viewModelScope.launch {
             rideDao
-                .observeAll()
-                .map { rides -> rides.filter { it.endedAtEpochMs != null }.map(Ride::id).toSet() }
+                .observeFinished()
+                .map { rides -> rides.map(Ride::id).toSet() }
                 .distinctUntilChanged()
                 .collect {
                     pipeline.runPending()
@@ -162,9 +162,13 @@ class RidesViewModel(
         _filter.value = value
     }
 
-    /** Rides (newest first) joined to their vehicle name and the saved places their endpoints matched. */
+    /**
+     * Finished rides (newest first) joined to their vehicle name and the saved places their endpoints
+     * matched. The ride being recorded right now is deliberately absent — it only becomes a logbook
+     * entry once it is finalized; the dashboard is where a running ride is shown live.
+     */
     private val rides: Flow<List<RideRow>> =
-        combine(rideDao.observeAll(), vehicleDao.observeAll(), savedAddressDao.observeAll()) { rides, vehicles, addresses ->
+        combine(rideDao.observeFinished(), vehicleDao.observeAll(), savedAddressDao.observeAll()) { rides, vehicles, addresses ->
             val names = vehicles.associate { it.id to it.displayTitle() }
             val places = addresses.associateBy { it.id }
             rides.map {

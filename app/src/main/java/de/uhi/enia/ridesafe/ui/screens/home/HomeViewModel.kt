@@ -75,6 +75,7 @@ class HomeViewModel(
 
             HomeDashboardState(
                 primaryVehicle = primaryVehicle,
+                vehicles = vehicles,
                 activeRide = activeRide,
                 totalDistanceMeters = totalJourneyDistanceMeters(logicalJourneys),
                 totalDurationMillis = totalJourneyTravelDurationMillis(logicalJourneys),

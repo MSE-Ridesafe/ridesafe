@@ -234,6 +234,11 @@
     <string name="ride_action_unmerge_all">Alle trennen</string>
     <string name="ride_action_unmerge_selected">Trennen (%1$d)</string>
 
+    <!-- Manuelle Fahrtaufzeichnung (TRK-07) -->
+    <string name="home_record_start">Fahrt starten</string>
+    <string name="home_record_stop">Fahrt beenden</string>
+    <string name="home_record_failed">Aufzeichnung konnte nicht gestartet werden</string>
+
     <string name="recording_channel_name">Fahrtaufzeichnung</string>
     <string name="recording_notification_title">Fahrt wird aufgezeichnet</string>
     <string name="recording_notification_text">Deine Fahrt wird im Hintergrund aufgezeichnet.</string>

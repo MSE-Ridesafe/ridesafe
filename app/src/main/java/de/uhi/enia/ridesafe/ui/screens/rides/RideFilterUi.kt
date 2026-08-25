@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -47,6 +48,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -371,13 +373,29 @@ fun RideFilterSheet(
     var minText by remember { mutableStateOf(filter.minDistanceMeters.toFieldText(perUnit)) }
     var maxText by remember { mutableStateOf(filter.maxDistanceMeters.toFieldText(perUnit)) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    // Opens straight to the top of the safe area and fills it, the way the Google apps' sheets do —
+    // and not just for looks. AnchoredDraggable settles a fling with a *decay* animation, and that
+    // decay writes the sheet's offset unclamped (AnchoredDraggable.animateToWithDecay: `dragTo(value)`
+    // stops only once it crosses the target). A hard fling could therefore carry the sheet past its
+    // topmost anchor, and from outside the anchor range it never came to rest — it oscillated
+    // forever, replaying the same offsets bit for bit. Both a fling on the drag handle and one on
+    // the content could trigger it.
+    //
+    // When the sheet already sits at its topmost anchor and that anchor is the top of the screen,
+    // `prev == targetOffset` and animateToWithDecay skips the animation altogether: there is nothing
+    // above to decay into. skipPartiallyExpanded removes the half-way anchor for the same reason.
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
         // A LazyColumn rather than Column + verticalScroll: once the sheet is dragged to the top,
         // the sheet's own nested-scroll handling and a plain scroll container fight over the same
         // gesture, and the content bounces between them until the user swipes the other way. The
         // navigation-bar inset sits on the container, not inside the scrolled content, for the same
         // reason — an inset that grows the content is a feedback loop waiting to happen.
         LazyColumn(
+            // Fills the sheet so its expanded anchor lands at the top of the screen — see above.
+            modifier = Modifier.fillMaxHeight(),
             contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {

@@ -265,6 +265,11 @@
     <string name="place_kind_school">School</string>
     <string name="place_kind_custom">Custom place</string>
 
+    <!-- Manual ride recording (TRK-07) -->
+    <string name="home_record_start">Start ride</string>
+    <string name="home_record_stop">Stop ride</string>
+    <string name="home_record_failed">Couldn\'t start recording</string>
+
     <string name="recording_channel_name">Ride recording</string>
     <string name="recording_notification_title">Recording ride</string>
     <string name="recording_notification_text">Tracking your trip in the background.</string>
