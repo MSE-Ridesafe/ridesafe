@@ -40,16 +40,44 @@ class HomeActivityCostTest {
     }
 
     @Test
-    fun calendarWeekAlwaysRunsFromMondayThroughSunday() {
+    fun initialCalendarWeekStartsOnMonday() {
         val referenceDay = LocalDate.of(2026, 8, 26)
 
-        val bars = buildCalendarWeekActivity(emptyMap(), referenceDay)
+        val monday = startOfCalendarWeek(referenceDay)
+        val bars = buildSevenDayActivity(emptyMap(), monday)
 
         assertEquals(7, bars.size)
         assertEquals(DayOfWeek.MONDAY, bars.first().day.dayOfWeek)
         assertEquals(LocalDate.of(2026, 8, 24), bars.first().day)
         assertEquals(DayOfWeek.SUNDAY, bars.last().day.dayOfWeek)
         assertEquals(LocalDate.of(2026, 8, 30), bars.last().day)
+    }
+
+    @Test
+    fun sevenDayWindowCanStartOnTuesday() {
+        val tuesday = LocalDate.of(2026, 8, 25)
+
+        val bars = buildSevenDayActivity(emptyMap(), tuesday)
+
+        assertEquals(DayOfWeek.TUESDAY, bars.first().day.dayOfWeek)
+        assertEquals(tuesday.plusDays(6), bars.last().day)
+        assertEquals(DayOfWeek.MONDAY, bars.last().day.dayOfWeek)
+    }
+
+    @Test
+    fun barScaleCanRemainStableWhenTheLargestDayLeavesTheWindow() {
+        val monday = LocalDate.of(2026, 8, 24)
+        val activityByDay =
+            mapOf(
+                monday to ActivityBar(monday, 1, 157_700.0, 1_000),
+                monday.plusDays(1) to ActivityBar(monday.plusDays(1), 1, 93_400.0, 1_000),
+            )
+
+        val scaleMaximum = activityScaleMaximum(activityByDay.values, ActivityChartMetric.DISTANCE)
+        val tuesdayFraction = activityByDay.getValue(monday.plusDays(1)).distanceMeters / scaleMaximum
+
+        assertEquals(157_700.0, scaleMaximum, 0.0)
+        assertEquals(93_400.0 / 157_700.0, tuesdayFraction, 0.0)
     }
 
     private fun refuel(

@@ -4,16 +4,23 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-fun buildCalendarWeekActivity(
+fun startOfCalendarWeek(day: LocalDate): LocalDate =
+    day.minusDays((day.dayOfWeek.value - 1).toLong())
+
+fun buildSevenDayActivity(
     activityByDay: Map<LocalDate, ActivityBar>,
-    referenceDay: LocalDate,
-): List<ActivityBar> {
-    val monday = referenceDay.minusDays((referenceDay.dayOfWeek.value - 1).toLong())
-    return (0..6).map { offset ->
-        val day = monday.plusDays(offset.toLong())
+    startDay: LocalDate,
+): List<ActivityBar> = buildActivityWindow(activityByDay, startDay, dayCount = 7)
+
+fun buildActivityWindow(
+    activityByDay: Map<LocalDate, ActivityBar>,
+    startDay: LocalDate,
+    dayCount: Int,
+): List<ActivityBar> =
+    (0 until dayCount).map { offset ->
+        val day = startDay.plusDays(offset.toLong())
         activityByDay[day] ?: emptyActivityBar(day)
     }
-}
 
 fun formatActivityDateRange(
     days: List<ActivityBar>,

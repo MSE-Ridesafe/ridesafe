@@ -22,3 +22,8 @@ fun ActivityBar.valueFor(metric: ActivityChartMetric): Double =
         ActivityChartMetric.TRAVEL_TIME -> durationMillis.toDouble()
         ActivityChartMetric.COST -> costMinor.toDouble()
     }
+
+fun activityScaleMaximum(
+    activity: Collection<ActivityBar>,
+    metric: ActivityChartMetric,
+): Double = (activity.maxOfOrNull { it.valueFor(metric) } ?: 0.0).coerceAtLeast(1.0)
