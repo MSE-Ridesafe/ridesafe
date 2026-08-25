@@ -31,19 +31,7 @@ class HomeViewModel(
             val zone = ZoneId.systemDefault()
             val today = LocalDate.now(zone)
             val currentMonth = YearMonth.from(today)
-            val vehicleNames = vehicles.associate { it.id to it.displayTitle() }
             val primaryVehicle = vehicles.firstOrNull { it.isPrimary } ?: vehicles.firstOrNull()
-            val activeRide =
-                rides
-                    .firstOrNull { it.endedAtEpochMs == null }
-                    ?.let { ride ->
-                        ActiveRideSummary(
-                            ride = ride,
-                            vehicleName =
-                                ride.vehicleId?.let(vehicleNames::get)
-                                    ?: primaryVehicle?.displayTitle(),
-                        )
-                    }
             // Each ride's fuel estimate calibrated onto the car it was driven in (ANL-03). Rides in a
             // vehicle the model doesn't describe drop out here and simply don't count toward the total.
             val vehiclesById = vehicles.associateBy { it.id }
@@ -76,7 +64,6 @@ class HomeViewModel(
             HomeDashboardState(
                 primaryVehicle = primaryVehicle,
                 vehicles = vehicles,
-                activeRide = activeRide,
                 totalDistanceMeters = totalJourneyDistanceMeters(logicalJourneys),
                 totalDurationMillis = totalJourneyTravelDurationMillis(logicalJourneys),
                 totalRecordedRides = totalJourneyCount(logicalJourneys),

@@ -6,6 +6,9 @@ import android.Manifest
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -81,7 +84,8 @@ fun HomeScreen(
                 Modifier
                     .padding(innerPadding)
                     .fillMaxSize(),
-            // Extra room at the bottom so the last card can be scrolled out from under the FAB.
+            // Extra room at the bottom so the last card can be scrolled out from under the FAB
+            // (and, while a ride records, the floating recording bar that replaces it).
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -89,11 +93,6 @@ fun HomeScreen(
                 VehicleCard(
                     vehicle = state.primaryVehicle,
                 )
-            }
-            state.activeRide?.let { activeRide ->
-                item {
-                    ActiveRideCard(activeRide = activeRide)
-                }
             }
             item {
                 SummaryMetricCarousel(
@@ -122,10 +121,10 @@ fun HomeScreen(
 }
 
 /**
- * Start or stop a ride by hand (TRK-07) — for auto-tracking switched off, a car with no mapped
- * device, or a trigger that simply missed. Recording state comes from [RecordingStatus], the
- * engine's own live flag, rather than from the dashboard flow: the running ride's database row is
- * incomplete until it is finalized, which is exactly why the logbook ignores it.
+ * Start a ride by hand (TRK-07) — for auto-tracking switched off, a car with no mapped device, or a
+ * trigger that simply missed. Stopping belongs to the floating
+ * [de.uhi.enia.ridesafe.ui.components.RecordingStatusBar], which is on screen in every tab while a
+ * ride runs, so this button steps aside for it rather than offering the same thing twice.
  */
 @Composable
 private fun RecordRideFab(vehicles: List<Vehicle>) {
@@ -153,30 +152,26 @@ private fun RecordRideFab(vehicles: List<Vehicle>) {
             if (granted) beginRide()
         }
 
-    ExtendedFloatingActionButton(
-        onClick = {
-            when {
-                running != null -> RideRecordingService.stop(context, manual = true)
-                AppPermission.LOCATION.isGranted(context) -> beginRide()
-                else -> requestLocation.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-            }
-        },
-        // Ending a ride is the weightier half, so it carries the colour — same reasoning as the car screen.
-        containerColor =
-            if (running != null) {
-                MaterialTheme.colorScheme.errorContainer
-            } else {
-                MaterialTheme.colorScheme.primaryContainer
+    // Nothing to offer while a ride runs: the floating recording bar carries the clock and the
+    // stop button, on this tab and every other one.
+    AnimatedVisibility(
+        visible = running == null,
+        enter = scaleIn(),
+        exit = scaleOut(),
+    ) {
+        ExtendedFloatingActionButton(
+            onClick = {
+                if (AppPermission.LOCATION.isGranted(context)) {
+                    beginRide()
+                } else {
+                    requestLocation.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                }
             },
-        icon = {
-            MaterialSymbol(
-                symbolName = if (running != null) "stop" else "play_arrow",
-                contentDescription = null,
-                fill = true,
-            )
-        },
-        text = { Text(stringResource(if (running != null) R.string.home_record_stop else R.string.home_record_start)) },
-    )
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            icon = { MaterialSymbol(symbolName = "play_arrow", contentDescription = null, fill = true) },
+            text = { Text(stringResource(R.string.home_record_start)) },
+        )
+    }
 
     if (picking) {
         AlertDialog(

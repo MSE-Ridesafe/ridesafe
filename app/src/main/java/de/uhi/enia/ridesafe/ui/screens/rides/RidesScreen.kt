@@ -30,6 +30,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,7 +52,9 @@ import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.canMerge
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
+import de.uhi.enia.ridesafe.rides.recording.RecordingStatus
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.RECORDING_BAR_INSET
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDayHeader
 import de.uhi.enia.ridesafe.util.formatDistance
@@ -77,6 +80,10 @@ fun RidesScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    // Both floating overlays live in the same bottom corner, so the analysis bar (and the list
+    // under it) step up over the app shell's recording bar while a ride runs.
+    val recording by RecordingStatus.running.collectAsState()
+    val recordingInset = if (recording != null) RECORDING_BAR_INSET else 0.dp
 
     var selectionMode by rememberSaveable { mutableStateOf(false) }
     // Selection is by entry key; keys that no longer exist (data changed) are ignored below.
@@ -208,7 +215,7 @@ fun RidesScreen(
                             start = 16.dp,
                             end = 16.dp,
                             top = 8.dp,
-                            bottom = if (analysis.running) 88.dp else 16.dp,
+                            bottom = (if (analysis.running) 88.dp else 16.dp) + recordingInset,
                         ),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -272,7 +279,8 @@ fun RidesScreen(
             modifier =
                 Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .padding(bottom = recordingInset),
         )
         if (filtersOpen) {
             RideFilterSheet(

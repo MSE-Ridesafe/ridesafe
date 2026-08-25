@@ -21,7 +21,7 @@
     <string name="home_no_primary_vehicle">Kein Prim&#228;rfahrzeug</string>
     <string name="home_unknown_vehicle">Fahrzeug</string>
     <string name="home_add_vehicle_hint">F&#252;ge ein Fahrzeug in der Garage hinzu</string>
-    <string name="home_active_ride">Aktive Fahrt</string>
+    <string name="recording_active_ride">Aktive Fahrt</string>
     <string name="home_started_at">Gestartet bei %1$s</string>
     <string name="home_vehicle_fuel_consumption">Kraftstoffverbrauch</string>
     <string name="home_total_distance">Gesamte Strecke</string>

@@ -19,11 +19,13 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -31,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.entryProvider
@@ -40,6 +43,7 @@ import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.permissions.PermissionState
 import de.uhi.enia.ridesafe.rides.trigger.AutoTrackPrefs
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.RecordingStatusBar
 import de.uhi.enia.ridesafe.ui.components.map.FullScreenMapHost
 import de.uhi.enia.ridesafe.ui.components.map.FullScreenMapRequest
 import de.uhi.enia.ridesafe.ui.components.map.LocalFullScreenMap
@@ -112,6 +116,9 @@ fun RidesafeApp() {
     // Shared across the garage list/detail/add screens; Room Flow is the source of truth.
     val garageViewModel: GarageViewModel = viewModel()
 
+    // Only so the floating recording bar can name the car it is logging against.
+    val vehicles by garageViewModel.vehicles.collectAsState()
+
     // Shared across the rides list/detail screens; Room Flow is the source of truth.
     val ridesViewModel: RidesViewModel = viewModel()
 
@@ -175,82 +182,96 @@ fun RidesafeApp() {
                     // (incl. behind the status bar); the nav bar keeps its own dimmer surfaceDim.
                     containerColor = Color.Transparent,
                 ) { innerPadding ->
-                    NavDisplay(
-                        backStack = stacks.getValue(current),
-                        onBack = {
-                            isTabSwitch = false
-                            stacks.getValue(current).removeLastOrNull()
-                        },
-                        // Sub-route nav: new screen slides in, previous fades out at the same speed;
-                        // back mirrors it (top slides out, revealed screen fades in). Tab switches are
-                        // a quick cross-fade. predictivePop is always an in-tab back, so always slides.
-                        transitionSpec = {
-                            if (isTabSwitch) {
-                                fadeIn(tween(FADE_MS)) togetherWith fadeOut(tween(FADE_MS))
-                            } else {
-                                slideInHorizontally(tween(SLIDE_MS)) { it } togetherWith fadeOut(tween(SLIDE_MS))
-                            }
-                        },
-                        popTransitionSpec = {
-                            if (isTabSwitch) {
-                                fadeIn(tween(FADE_MS)) togetherWith fadeOut(tween(FADE_MS))
-                            } else {
-                                fadeIn(tween(SLIDE_MS)) togetherWith slideOutHorizontally(tween(SLIDE_MS)) { it }
-                            }
-                        },
-                        predictivePopTransitionSpec = { _ ->
-                            fadeIn(tween(SLIDE_MS)) togetherWith slideOutHorizontally(tween(SLIDE_MS)) { it }
-                        },
-                        entryProvider =
-                            entryProvider {
-                                homeEntries(
-                                    viewModel = homeViewModel,
-                                )
-                                ridesEntries(
-                                    viewModel = ridesViewModel,
-                                    onOpen = {
-                                        isTabSwitch = false
-                                        ridesStack.add(it)
-                                    },
-                                    onBack = {
-                                        isTabSwitch = false
-                                        ridesStack.removeLastOrNull()
-                                    },
-                                )
-                                garageEntries(
-                                    viewModel = garageViewModel,
-                                    onOpen = {
-                                        isTabSwitch = false
-                                        garageStack.add(it)
-                                    },
-                                    onBack = {
-                                        isTabSwitch = false
-                                        garageStack.removeLastOrNull()
-                                    },
-                                    onPopToGarage = {
-                                        isTabSwitch = false
-                                        while (garageStack.size > 1) garageStack.removeLastOrNull()
-                                    },
-                                )
-                                settingsEntries(
-                                    savedAddressViewModel = savedAddressViewModel,
-                                    onOpen = {
-                                        isTabSwitch = false
-                                        settingsStack.add(it)
-                                    },
-                                    onBack = {
-                                        isTabSwitch = false
-                                        settingsStack.removeLastOrNull()
-                                    },
-                                )
+                    // The recording bar floats over whatever tab is showing, inside the Scaffold's
+                    // content area so it clears the navigation bar. Nothing lays out around it: it
+                    // is only ever on screen while a ride records, and it collapses to nothing after.
+                    Box(
+                        Modifier
+                            .padding(innerPadding)
+                            .consumeWindowInsets(innerPadding)
+                            .fillMaxSize(),
+                    ) {
+                        NavDisplay(
+                            backStack = stacks.getValue(current),
+                            onBack = {
+                                isTabSwitch = false
+                                stacks.getValue(current).removeLastOrNull()
                             },
-                        // Outer Scaffold already insets for system bars; mark them consumed so a
-                        // screen's own TopAppBar/Scaffold doesn't apply the same insets again.
-                        modifier =
-                            Modifier
-                                .padding(innerPadding)
-                                .consumeWindowInsets(innerPadding),
-                    )
+                            // Sub-route nav: new screen slides in, previous fades out at the same speed;
+                            // back mirrors it (top slides out, revealed screen fades in). Tab switches are
+                            // a quick cross-fade. predictivePop is always an in-tab back, so always slides.
+                            transitionSpec = {
+                                if (isTabSwitch) {
+                                    fadeIn(tween(FADE_MS)) togetherWith fadeOut(tween(FADE_MS))
+                                } else {
+                                    slideInHorizontally(tween(SLIDE_MS)) { it } togetherWith fadeOut(tween(SLIDE_MS))
+                                }
+                            },
+                            popTransitionSpec = {
+                                if (isTabSwitch) {
+                                    fadeIn(tween(FADE_MS)) togetherWith fadeOut(tween(FADE_MS))
+                                } else {
+                                    fadeIn(tween(SLIDE_MS)) togetherWith slideOutHorizontally(tween(SLIDE_MS)) { it }
+                                }
+                            },
+                            predictivePopTransitionSpec = { _ ->
+                                fadeIn(tween(SLIDE_MS)) togetherWith slideOutHorizontally(tween(SLIDE_MS)) { it }
+                            },
+                            entryProvider =
+                                entryProvider {
+                                    homeEntries(
+                                        viewModel = homeViewModel,
+                                    )
+                                    ridesEntries(
+                                        viewModel = ridesViewModel,
+                                        onOpen = {
+                                            isTabSwitch = false
+                                            ridesStack.add(it)
+                                        },
+                                        onBack = {
+                                            isTabSwitch = false
+                                            ridesStack.removeLastOrNull()
+                                        },
+                                    )
+                                    garageEntries(
+                                        viewModel = garageViewModel,
+                                        onOpen = {
+                                            isTabSwitch = false
+                                            garageStack.add(it)
+                                        },
+                                        onBack = {
+                                            isTabSwitch = false
+                                            garageStack.removeLastOrNull()
+                                        },
+                                        onPopToGarage = {
+                                            isTabSwitch = false
+                                            while (garageStack.size > 1) garageStack.removeLastOrNull()
+                                        },
+                                    )
+                                    settingsEntries(
+                                        savedAddressViewModel = savedAddressViewModel,
+                                        onOpen = {
+                                            isTabSwitch = false
+                                            settingsStack.add(it)
+                                        },
+                                        onBack = {
+                                            isTabSwitch = false
+                                            settingsStack.removeLastOrNull()
+                                        },
+                                    )
+                                },
+                            // The Box above already applied (and consumed) the Scaffold's insets, so a
+                            // screen's own TopAppBar/Scaffold doesn't apply the same insets again.
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        RecordingStatusBar(
+                            vehicles = vehicles,
+                            modifier =
+                                Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(16.dp),
+                        )
+                    }
                 }
             }
             FullScreenMapHost(fullScreenMap)

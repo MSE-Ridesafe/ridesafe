@@ -1,6 +1,5 @@
 package de.uhi.enia.ridesafe.ui.screens.home
 
-import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.Vehicle
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -9,7 +8,6 @@ data class HomeDashboardState(
     val primaryVehicle: Vehicle? = null,
     // The garage, primary first — the manual-start button asks which car when there is a choice (TRK-08).
     val vehicles: List<Vehicle> = emptyList(),
-    val activeRide: ActiveRideSummary? = null,
     val totalDistanceMeters: Double = 0.0,
     val totalDurationMillis: Long = 0L,
     val totalRecordedRides: Int = 0,
@@ -23,11 +21,6 @@ data class HomeDashboardState(
     val monthlyActivity: List<ActivityBar> = emptyList(),
     val activityByDay: Map<LocalDate, ActivityBar> = emptyMap(),
     val highlights: HomeHighlights = HomeHighlights(),
-)
-
-data class ActiveRideSummary(
-    val ride: Ride,
-    val vehicleName: String?,
 )
 
 data class ActivityBar(
