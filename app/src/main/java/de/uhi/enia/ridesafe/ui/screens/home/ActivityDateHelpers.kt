@@ -4,8 +4,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-fun startOfCalendarWeek(day: LocalDate): LocalDate =
-    day.minusDays((day.dayOfWeek.value - 1).toLong())
+fun startOfCalendarWeek(day: LocalDate): LocalDate = day.minusDays((day.dayOfWeek.value - 1).toLong())
 
 fun buildSevenDayActivity(
     activityByDay: Map<LocalDate, ActivityBar>,

@@ -83,13 +83,17 @@ class HomeActivityCostTest {
     private fun refuel(
         day: LocalDate,
         costMinor: Long,
-    ) =
-        Refuel(
-            vehicleId = 1,
-            timestampEpochMs = day.atTime(12, 0).atZone(zone).toInstant().toEpochMilli(),
-            fuelAmountMilliliters = 30_000,
-            totalPriceMinor = costMinor,
-            currencyCode = "EUR",
-            odometerMeters = 100_000_000,
-        )
+    ) = Refuel(
+        vehicleId = 1,
+        timestampEpochMs =
+            day
+                .atTime(12, 0)
+                .atZone(zone)
+                .toInstant()
+                .toEpochMilli(),
+        fuelAmountMilliliters = 30_000,
+        totalPriceMinor = costMinor,
+        currencyCode = "EUR",
+        odometerMeters = 100_000_000,
+    )
 }

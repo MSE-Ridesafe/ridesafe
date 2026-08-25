@@ -17,11 +17,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -34,9 +34,9 @@ import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
 import java.math.BigDecimal
 import java.text.NumberFormat
+import java.time.format.TextStyle
 import java.util.Currency
 import java.util.Locale
-import java.time.format.TextStyle
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -178,8 +178,14 @@ private fun ActivityBar.labelFor(
     locale: Locale,
 ): String =
     when (metric) {
-        ActivityChartMetric.DISTANCE -> formatDistance(distanceMeters, unitSystem)
-        ActivityChartMetric.TRAVEL_TIME -> formatCompactDuration(durationMillis)
+        ActivityChartMetric.DISTANCE -> {
+            formatDistance(distanceMeters, unitSystem)
+        }
+
+        ActivityChartMetric.TRAVEL_TIME -> {
+            formatCompactDuration(durationMillis)
+        }
+
         ActivityChartMetric.COST -> {
             val fractionDigits = currency.defaultFractionDigits.takeIf { it >= 0 } ?: 2
             NumberFormat
