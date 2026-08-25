@@ -9,7 +9,16 @@ class CurrencyPrefsTest {
     fun supportedLocalesResolveToTheirCurrency() {
         assertEquals(CurrencySetting.US_DOLLAR, defaultCurrencySetting(Locale.US))
         assertEquals(CurrencySetting.BRITISH_POUND, defaultCurrencySetting(Locale.UK))
-        assertEquals(CurrencySetting.SWISS_FRANC, defaultCurrencySetting(Locale.Builder().setLanguage("de").setRegion("CH").build()))
+        assertEquals(
+            CurrencySetting.SWISS_FRANC,
+            defaultCurrencySetting(
+                Locale
+                    .Builder()
+                    .setLanguage("de")
+                    .setRegion("CH")
+                    .build(),
+            ),
+        )
         assertEquals(CurrencySetting.EURO, defaultCurrencySetting(Locale.GERMANY))
     }
 

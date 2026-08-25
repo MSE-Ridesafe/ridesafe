@@ -62,8 +62,8 @@ import de.uhi.enia.ridesafe.util.CurrencyPrefs
 import de.uhi.enia.ridesafe.util.CurrencySetting
 import de.uhi.enia.ridesafe.util.UnitPrefs
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
-import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.currentCurrencySetting
+import de.uhi.enia.ridesafe.util.currentUnitSystem
 import kotlinx.coroutines.launch
 
 @Composable
