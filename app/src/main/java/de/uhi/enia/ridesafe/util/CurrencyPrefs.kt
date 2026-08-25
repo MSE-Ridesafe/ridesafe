@@ -35,7 +35,10 @@ object CurrencyPrefs {
 
     fun get(context: Context): CurrencySetting = cached ?: read(context).also { cached = it }
 
-    fun set(context: Context, value: CurrencySetting) {
+    fun set(
+        context: Context,
+        value: CurrencySetting,
+    ) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit {
             putString(KEY_CURRENCY, value.name)
         }

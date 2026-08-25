@@ -26,14 +26,15 @@ class RefuelDaoTest {
     @After
     fun tearDown() = db.close()
 
-    private fun refuel(timestamp: Long) = Refuel(
-        vehicleId = 42,
-        timestampEpochMs = timestamp,
-        fuelAmountMilliliters = 38_400,
-        totalPriceMinor = 6_720,
-        currencyCode = "EUR",
-        odometerMeters = 123_456_789_000,
-    )
+    private fun refuel(timestamp: Long) =
+        Refuel(
+            vehicleId = 42,
+            timestampEpochMs = timestamp,
+            fuelAmountMilliliters = 38_400,
+            totalPriceMinor = 6_720,
+            currencyCode = "EUR",
+            odometerMeters = 123_456_789_000,
+        )
 
     @Test
     fun insertEmitsNewestFirstAndPreservesLargeValues() =
@@ -88,5 +89,4 @@ class RefuelDaoTest {
             assertNull(dao.getById(first)!!.journeyAnchorRideId)
             assertEquals(20L, dao.getById(second)!!.journeyAnchorRideId)
         }
-
 }
