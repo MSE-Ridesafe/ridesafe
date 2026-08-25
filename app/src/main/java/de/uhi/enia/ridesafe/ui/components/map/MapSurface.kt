@@ -137,6 +137,7 @@ internal fun MapSurface(
     modifier: Modifier = Modifier,
     bottomPadding: Dp = 0.dp,
     focus: MapFocus? = null,
+    onMapClick: ((LatLng) -> Unit)? = null,
     content: MapContent,
 ) {
     var mapLoaded by remember { mutableStateOf(false) }
@@ -179,6 +180,7 @@ internal fun MapSurface(
                     mapToolbarEnabled = false,
                     zoomControlsEnabled = false,
                 ),
+            onMapClick = { position -> onMapClick?.invoke(position) },
             onMapLoaded = { mapLoaded = true },
             content = content,
         )

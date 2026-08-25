@@ -42,13 +42,14 @@ fun FullScreenMap(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
     focus: MapFocus? = null,
+    onMapClick: ((LatLng) -> Unit)? = null,
     sheetPeek: Dp = 0.dp,
     sheet: (@Composable () -> Unit)? = null,
     content: MapContent,
 ) {
     if (sheet == null) {
         Box(modifier.fillMaxSize()) {
-            MapSurface(framing = framing, liteMode = false, focus = focus, content = content)
+            MapSurface(framing = framing, liteMode = false, focus = focus, onMapClick = onMapClick, content = content)
             CloseMapButton(onClose)
         }
         return
@@ -73,6 +74,7 @@ fun FullScreenMap(
                 liteMode = false,
                 focus = focus,
                 bottomPadding = peek,
+                onMapClick = onMapClick,
                 content = content,
             )
             CloseMapButton(onClose)

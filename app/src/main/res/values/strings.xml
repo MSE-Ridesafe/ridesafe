@@ -282,6 +282,8 @@
     <string name="saved_address_icon">Icon</string>
     <string name="saved_address_pick_hint">Tap the map, search, or use your location to set the point.</string>
     <string name="saved_address_marker">Saved place location</string>
+    <string name="saved_address_map_open">Choose location on map</string>
+    <string name="saved_address_map_confirm">Use this location</string>
     <string name="saved_address_delete">Delete place</string>
     <string name="saved_address_delete_confirm_title">Delete place?</string>
     <string name="saved_address_delete_confirm_message">%1$s will be removed. This can\'t be undone.</string>

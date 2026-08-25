@@ -9,16 +9,20 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -26,8 +30,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.IconButton
@@ -43,6 +45,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,16 +62,11 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.maps.android.compose.Circle
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.rememberCameraPositionState
-import com.google.maps.android.compose.rememberMarkerState
+import com.google.maps.android.compose.rememberUpdatedMarkerState
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.DEFAULT_PLACE_ICON
 import de.uhi.enia.ridesafe.data.SavedAddress
@@ -79,6 +77,10 @@ import de.uhi.enia.ridesafe.rides.processing.forwardGeocode
 import de.uhi.enia.ridesafe.rides.processing.reverseGeocode
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.map.FullScreenMap
+import de.uhi.enia.ridesafe.ui.components.map.FullScreenMapRequest
+import de.uhi.enia.ridesafe.ui.components.map.LocalFullScreenMap
+import de.uhi.enia.ridesafe.ui.components.map.MapPreview
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatShortDistance
 import kotlinx.coroutines.delay
@@ -92,6 +94,7 @@ private const val RADIUS_STEPS = 18 // 25 m increments across 25..500
 
 // Camera fallback when adding a place with no point yet (roughly the centre of Germany).
 private val FALLBACK_CENTER = LatLng(51.1657, 10.4515)
+private val FALLBACK_FRAMING = listOf(LatLng(47.2, 5.8), LatLng(55.1, 15.1))
 
 /** Curated Material Symbols offered for a custom place (ADR-06); the full font is thousands of glyphs. */
 private val CURATED_PLACE_ICONS =
@@ -135,6 +138,7 @@ fun SavedAddressFormScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
+    val fullScreenMap = LocalFullScreenMap.current
     val hasFixedLabel = presetKind.hasFixedLabel
 
     val shortcutLabel = stringResource(presetKind.labelRes())
@@ -150,23 +154,7 @@ fun SavedAddressFormScreen(
     var searchFailed by remember { mutableStateOf(false) }
     var locationFailed by remember { mutableStateOf(false) }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
-
-    val cameraPositionState =
-        rememberCameraPositionState {
-            position = CameraPosition.fromLatLngZoom(point ?: FALLBACK_CENTER, if (point != null) 15f else 5f)
-        }
-    val markerState = rememberMarkerState(position = point ?: FALLBACK_CENTER)
-
-    // Two-way sync between the point state and the draggable marker (both idempotent, so they settle).
-    LaunchedEffect(point) { point?.let { if (markerState.position != it) markerState.position = it } }
-    LaunchedEffect(markerState.position) {
-        if (point != null && markerState.position != point) point = markerState.position
-    }
-    // Recenter the camera when the point jumps via search / my-location (not on drag or tap).
-    var recenterTo by remember { mutableStateOf<LatLng?>(null) }
-    LaunchedEffect(recenterTo) {
-        recenterTo?.let { cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(it, 15f)) }
-    }
+    val formScrollState = rememberScrollState()
     // Reverse-geocode the point (debounced) to show/store the address for exact-match suppression (ADR-09).
     LaunchedEffect(point) {
         val p = point ?: return@LaunchedEffect
@@ -185,7 +173,6 @@ fun SavedAddressFormScreen(
                 if (loc != null) {
                     val here = LatLng(loc.latitude, loc.longitude)
                     point = here
-                    recenterTo = here
                 } else {
                     locationFailed = true
                 }
@@ -212,7 +199,6 @@ fun SavedAddressFormScreen(
             if (result != null) {
                 val found = LatLng(result.first, result.second)
                 point = found
-                recenterTo = found
                 searchFailed = false
             } else {
                 searchFailed = true
@@ -274,7 +260,7 @@ fun SavedAddressFormScreen(
                     .padding(innerPadding)
                     .fillMaxSize()
                     .imePadding()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(formScrollState)
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -319,19 +305,30 @@ fun SavedAddressFormScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Card(
-                shape = MaterialTheme.shapes.extraLarge,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-                modifier = Modifier.fillMaxWidth().height(260.dp),
-            ) {
-                GoogleMap(
-                    modifier = Modifier.fillMaxSize(),
-                    cameraPositionState = cameraPositionState,
-                    uiSettings = MapUiSettings(tiltGesturesEnabled = false, mapToolbarEnabled = false, zoomControlsEnabled = false),
-                    onMapClick = { point = it },
+            key(point) {
+                val previewMarkerState = rememberUpdatedMarkerState(position = point ?: FALLBACK_CENTER)
+                MapPreview(
+                    framing = point?.let(::listOf) ?: FALLBACK_FRAMING,
+                    height = 260.dp,
+                    onExpand = {
+                        val initialPoint = point
+                        fullScreenMap.value =
+                            FullScreenMapRequest { onClose ->
+                                SavedAddressLocationPicker(
+                                    initialPoint = initialPoint,
+                                    radiusMeters = radius,
+                                    onConfirm = { selected ->
+                                        point = selected
+                                        onClose()
+                                    },
+                                    onClose = onClose,
+                                )
+                            }
+                    },
+                    expandLabel = stringResource(R.string.saved_address_map_open),
                 ) {
                     point?.let { p ->
-                        Marker(state = markerState, draggable = true, title = stringResource(R.string.saved_address_marker))
+                        Marker(state = previewMarkerState, title = stringResource(R.string.saved_address_marker))
                         Circle(
                             center = p,
                             radius = radius.toDouble(),
@@ -421,5 +418,58 @@ fun SavedAddressFormScreen(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun SavedAddressLocationPicker(
+    initialPoint: LatLng?,
+    radiusMeters: Float,
+    onConfirm: (LatLng) -> Unit,
+    onClose: () -> Unit,
+) {
+    var selectedPoint by remember { mutableStateOf(initialPoint) }
+    val markerState = rememberUpdatedMarkerState(position = selectedPoint ?: FALLBACK_CENTER)
+    LaunchedEffect(markerState.position) {
+        if (selectedPoint != null && markerState.position != selectedPoint) {
+            selectedPoint = markerState.position
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        FullScreenMap(
+            framing = initialPoint?.let(::listOf) ?: FALLBACK_FRAMING,
+            onClose = onClose,
+            onMapClick = { selectedPoint = it },
+        ) {
+            selectedPoint?.let { selected ->
+                Marker(
+                    state = markerState,
+                    draggable = true,
+                    title = stringResource(R.string.saved_address_marker),
+                )
+                Circle(
+                    center = selected,
+                    radius = radiusMeters.toDouble(),
+                    strokeColor = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 4f,
+                    fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                )
+            }
+        }
+
+        Button(
+            onClick = { selectedPoint?.let(onConfirm) },
+            enabled = selectedPoint != null,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+        ) {
+            MaterialSymbol(symbolName = "check", contentDescription = null, size = 18.dp)
+            Text(stringResource(R.string.saved_address_map_confirm), modifier = Modifier.padding(start = 8.dp))
+        }
     }
 }
