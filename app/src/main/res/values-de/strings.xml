@@ -17,7 +17,6 @@
     <string name="screen_rides_title">Fahrten</string>
     <string name="screen_garage_title">Garage</string>
     <string name="screen_settings_title">Einstellungen</string>
-    <string name="home_notifications">Benachrichtigungen</string>
     <string name="home_no_primary_vehicle">Kein Prim&#228;rfahrzeug</string>
     <string name="home_unknown_vehicle">Fahrzeug</string>
     <string name="home_add_vehicle_hint">F&#252;ge ein Fahrzeug in der Garage hinzu</string>
