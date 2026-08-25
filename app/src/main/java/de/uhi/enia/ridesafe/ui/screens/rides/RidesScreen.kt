@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -52,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -329,24 +331,34 @@ private fun ExportFormatSheet(
     ModalBottomSheet(
         onDismissRequest = { if (!selectionInProgress) onDismiss() },
         sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        dragHandle = {
+            BottomSheetDefaults.DragHandle(
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+            )
+        },
     ) {
         Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+                    .padding(bottom = 24.dp),
         ) {
-            Text(
-                text = stringResource(R.string.ride_action_export),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(horizontal = 24.dp),
-            )
-            Text(
-                text = stringResource(R.string.ride_export_format_title),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 24.dp, top = 4.dp, end = 24.dp, bottom = 8.dp),
-            )
+            Column(
+                modifier = Modifier.padding(start = 24.dp, top = 4.dp, end = 24.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.ride_action_export),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                Text(
+                    text = stringResource(R.string.ride_export_format_title),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             ExportFormatOption(
                 title = stringResource(R.string.ride_export_format_pdf),
                 description = stringResource(R.string.ride_export_format_pdf_description),
@@ -354,7 +366,10 @@ private fun ExportFormatSheet(
                 enabled = !selectionInProgress,
                 onClick = { select(RideExportFormat.PDF) },
             )
-            HorizontalDivider(modifier = Modifier.padding(start = 72.dp, end = 16.dp))
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 72.dp, end = 24.dp),
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
             ExportFormatOption(
                 title = stringResource(R.string.ride_export_format_csv),
                 description = stringResource(R.string.ride_export_format_csv_description),
@@ -377,8 +392,21 @@ private fun ExportFormatOption(
     ListItem(
         modifier =
             Modifier
+                .padding(horizontal = 8.dp)
                 .fillMaxWidth()
+                .clip(MaterialTheme.shapes.large)
                 .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+        colors =
+            ListItemDefaults.colors(
+                containerColor = Color.Transparent,
+                headlineColor = MaterialTheme.colorScheme.onSurface,
+                supportingColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                trailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledHeadlineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                disabledLeadingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                disabledTrailingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+            ),
         headlineContent = {
             Text(
                 text = title,
@@ -389,21 +417,18 @@ private fun ExportFormatOption(
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         },
         leadingContent = {
             MaterialSymbol(
                 symbolName = symbolName,
                 contentDescription = null,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         },
         trailingContent = {
             MaterialSymbol(
                 symbolName = "chevron_right",
                 contentDescription = null,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         },
     )
