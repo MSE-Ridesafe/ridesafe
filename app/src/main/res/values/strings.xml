@@ -350,4 +350,8 @@
     <string name="car_discarded">Ride discarded</string>
     <string name="car_events_channel_name">Ride events</string>
     <string name="car_notify_started">Recording started</string>
+    <!-- Two-pane (tablet) empty detail pane. -->
+    <string name="placeholder_select_ride">Select a ride to see its details</string>
+    <string name="placeholder_select_vehicle">Select a vehicle to see its details</string>
+    <string name="placeholder_select_setting">Select a setting</string>
 </resources>

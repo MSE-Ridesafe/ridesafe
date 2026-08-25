@@ -350,4 +350,8 @@
     <string name="car_discarded">Fahrt verworfen</string>
     <string name="car_events_channel_name">Fahrt-Ereignisse</string>
     <string name="car_notify_started">Aufzeichnung gestartet</string>
+    <!-- Two-pane (tablet) empty detail pane. -->
+    <string name="placeholder_select_ride">Fahrt auswählen, um Details zu sehen</string>
+    <string name="placeholder_select_vehicle">Fahrzeug auswählen, um Details zu sehen</string>
+    <string name="placeholder_select_setting">Einstellung auswählen</string>
 </resources>

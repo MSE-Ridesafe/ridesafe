@@ -14,6 +14,11 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
+import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
@@ -36,6 +41,7 @@ import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
@@ -47,16 +53,21 @@ import de.uhi.enia.ridesafe.ui.components.RecordingStatusBar
 import de.uhi.enia.ridesafe.ui.components.map.FullScreenMapHost
 import de.uhi.enia.ridesafe.ui.components.map.FullScreenMapRequest
 import de.uhi.enia.ridesafe.ui.components.map.LocalFullScreenMap
+import de.uhi.enia.ridesafe.ui.screens.garage.EditVehicleRoute
 import de.uhi.enia.ridesafe.ui.screens.garage.GarageRoute
 import de.uhi.enia.ridesafe.ui.screens.garage.GarageViewModel
+import de.uhi.enia.ridesafe.ui.screens.garage.VehicleDetailRoute
 import de.uhi.enia.ridesafe.ui.screens.garage.garageEntries
 import de.uhi.enia.ridesafe.ui.screens.home.HomeRoute
 import de.uhi.enia.ridesafe.ui.screens.home.HomeViewModel
 import de.uhi.enia.ridesafe.ui.screens.home.homeEntries
+import de.uhi.enia.ridesafe.ui.screens.rides.MergedRideDetailRoute
+import de.uhi.enia.ridesafe.ui.screens.rides.RideDetailRoute
 import de.uhi.enia.ridesafe.ui.screens.rides.RidesRoute
 import de.uhi.enia.ridesafe.ui.screens.rides.RidesViewModel
 import de.uhi.enia.ridesafe.ui.screens.rides.ridesEntries
 import de.uhi.enia.ridesafe.ui.screens.settings.SavedAddressViewModel
+import de.uhi.enia.ridesafe.ui.screens.settings.SettingsMenuRoutes
 import de.uhi.enia.ridesafe.ui.screens.settings.SettingsRoute
 import de.uhi.enia.ridesafe.ui.screens.settings.settingsEntries
 
@@ -80,6 +91,7 @@ private const val FADE_MS = 250 // quick cross-fade between tabs
  * AppDestinations entry + a back stack below.
  */
 @PreviewScreenSizes
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun RidesafeApp() {
     val context = LocalContext.current
@@ -90,6 +102,24 @@ fun RidesafeApp() {
         PermissionState.refresh(context)
         onPauseOrDispose { }
     }
+
+    // One directive, read twice: it decides where the window splits AND whether a detail pane still
+    // needs its own back arrow, so the two can never disagree. Material's default splits from 840dp
+    // up — tablet landscape, but not tablet portrait.
+    //
+    // showBack = !twoPane only reaches the screens a list can open directly: pinned beside the list
+    // they are already "here", so an arrow back to nothing is noise. The forms sit a level deeper
+    // and keep their own cancel regardless — that X discards edits, it is not navigation.
+    val directive = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo())
+    val twoPane = directive.maxHorizontalPartitions > 1
+    // PopLatest, not the default PopUntilScaffoldValueChange: with a placeholder filling the empty
+    // detail pane, the scaffold value never changes, so the default finds nothing to pop and lets
+    // back fall through to finishing the activity. One entry per press also matches the phone.
+    val listDetail =
+        rememberListDetailSceneStrategy<NavKey>(
+            directive = directive,
+            backNavigationBehavior = BackNavigationBehavior.PopLatest,
+        )
 
     // One back stack per tab; the active tab selects which one NavDisplay renders.
     val homeStack = rememberNavBackStack(HomeRoute)
@@ -106,6 +136,24 @@ fun RidesafeApp() {
             )
         }
     var current by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
+
+    // What each tab's list pane marks as open: the *deepest* route the list knows how to mark.
+    // Opening a second detail pushes rather than replaces (that is what the pane scaffold expects),
+    // so reading a fixed depth would freeze on whichever was opened first. Searching from the top
+    // down also still finds "Saved addresses" while its editor sits a level deeper.
+    val openRide =
+        when (val key = ridesStack.lastOrNull { it is RideDetailRoute || it is MergedRideDetailRoute }) {
+            is RideDetailRoute -> "r${key.id}" // matches LogbookEntry.key
+            is MergedRideDetailRoute -> "g${key.groupId}"
+            else -> null
+        }
+    val openVehicle =
+        when (val key = garageStack.lastOrNull { it is VehicleDetailRoute || it is EditVehicleRoute }) {
+            is VehicleDetailRoute -> key.id
+            is EditVehicleRoute -> key.id
+            else -> null
+        }
+    val openSetting = settingsStack.lastOrNull { it in SettingsMenuRoutes }
 
     // Discriminates the two kinds of NavDisplay transition: a tab switch (set here, fades)
     // vs. an in-tab sub-route push/pop (cleared by the nav lambdas below, slides). Reading
@@ -193,6 +241,10 @@ fun RidesafeApp() {
                     ) {
                         NavDisplay(
                             backStack = stacks.getValue(current),
+                            // Groups each tab's list route with everything below it into one
+                            // two-pane scene; routes without pane metadata (Home) fall through to
+                            // the single-pane scene unchanged.
+                            sceneStrategies = listOf(listDetail),
                             onBack = {
                                 isTabSwitch = false
                                 stacks.getValue(current).removeLastOrNull()
@@ -224,6 +276,8 @@ fun RidesafeApp() {
                                     )
                                     ridesEntries(
                                         viewModel = ridesViewModel,
+                                        selectedKey = openRide,
+                                        showBack = !twoPane,
                                         onOpen = {
                                             isTabSwitch = false
                                             ridesStack.add(it)
@@ -235,6 +289,8 @@ fun RidesafeApp() {
                                     )
                                     garageEntries(
                                         viewModel = garageViewModel,
+                                        selectedId = openVehicle,
+                                        showBack = !twoPane,
                                         onOpen = {
                                             isTabSwitch = false
                                             garageStack.add(it)
@@ -250,6 +306,8 @@ fun RidesafeApp() {
                                     )
                                     settingsEntries(
                                         savedAddressViewModel = savedAddressViewModel,
+                                        selected = openSetting,
+                                        showBack = !twoPane,
                                         onOpen = {
                                             isTabSwitch = false
                                             settingsStack.add(it)

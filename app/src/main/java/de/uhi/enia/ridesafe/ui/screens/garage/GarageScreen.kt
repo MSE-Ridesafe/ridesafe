@@ -46,6 +46,8 @@ fun GarageScreen(
     vehicles: List<Vehicle>,
     onVehicleClick: (Long) -> Unit,
     onAddVehicle: () -> Unit,
+    // The vehicle whose detail pane is showing. Null on a phone, where the detail covers the list.
+    selectedId: Long? = null,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -89,7 +91,11 @@ fun GarageScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(vehicles, key = { it.id }) { vehicle ->
-                    VehicleCard(vehicle = vehicle, onClick = { onVehicleClick(vehicle.id) })
+                    VehicleCard(
+                        vehicle = vehicle,
+                        isOpen = vehicle.id == selectedId,
+                        onClick = { onVehicleClick(vehicle.id) },
+                    )
                 }
             }
         }
@@ -99,12 +105,21 @@ fun GarageScreen(
 @Composable
 private fun VehicleCard(
     vehicle: Vehicle,
+    isOpen: Boolean,
     onClick: () -> Unit,
 ) {
     Card(
         onClick = onClick,
         shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (isOpen) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceBright
+                    },
+            ),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(

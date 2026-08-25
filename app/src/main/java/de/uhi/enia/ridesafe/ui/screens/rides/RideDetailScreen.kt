@@ -83,6 +83,7 @@ fun RideDetailScreen(
     vehicle: Vehicle?,
     analysisProgress: Float?,
     onBack: () -> Unit,
+    showBack: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val unitSystem = currentUnitSystem()
@@ -95,7 +96,7 @@ fun RideDetailScreen(
                 title = { Text(ride?.let { formatRideDateTime(context, it.startedAtEpochMs) } ?: "") },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    if (showBack) IconButton(onClick = onBack) {
                         MaterialSymbol(
                             symbolName = "arrow_back",
                             contentDescription = stringResource(R.string.action_back),

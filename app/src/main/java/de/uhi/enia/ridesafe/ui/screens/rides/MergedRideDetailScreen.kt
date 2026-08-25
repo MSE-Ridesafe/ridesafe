@@ -77,6 +77,7 @@ fun MergedRideDetailScreen(
     onBack: () -> Unit,
     onUnmergeAll: () -> Unit,
     onUnmerge: (stopIds: List<Long>) -> Unit,
+    showBack: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val unitSystem = currentUnitSystem()
@@ -97,7 +98,7 @@ fun MergedRideDetailScreen(
                     title = {},
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                     navigationIcon = {
-                        IconButton(onClick = onBack) {
+                        if (showBack) IconButton(onClick = onBack) {
                             MaterialSymbol(symbolName = "arrow_back", contentDescription = stringResource(R.string.action_back))
                         }
                     },
@@ -129,7 +130,7 @@ fun MergedRideDetailScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    if (showBack) IconButton(onClick = onBack) {
                         MaterialSymbol(
                             symbolName = "arrow_back",
                             contentDescription = stringResource(R.string.action_back),

@@ -77,6 +77,9 @@ fun RidesScreen(
     onOpenMerged: (Long) -> Unit,
     onOpenAnalysisQueue: () -> Unit,
     onMerge: (List<Long>) -> Unit,
+    // The entry whose detail pane is showing (LogbookEntry.key). Null on a phone, where the detail
+    // covers the list rather than sitting beside it.
+    selectedKey: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -250,6 +253,7 @@ fun RidesScreen(
                                             entry = entry,
                                             selectionMode = selectionMode,
                                             selected = entry.key in selected,
+                                            isOpen = entry.key == selectedKey,
                                             onClick = {
                                                 if (selectionMode) {
                                                     toggle(entry.key)
@@ -377,6 +381,7 @@ private fun LogbookRow(
     entry: LogbookEntry,
     selectionMode: Boolean,
     selected: Boolean,
+    isOpen: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
@@ -432,7 +437,11 @@ private fun LogbookRow(
                 onClick = onClick,
                 onLongClick = onLongClick,
             ),
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        colors =
+            ListItemDefaults.colors(
+                containerColor =
+                    if (isOpen) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+            ),
         leadingContent = {
             if (selectionMode) {
                 SelectionCircle(selected = selected)

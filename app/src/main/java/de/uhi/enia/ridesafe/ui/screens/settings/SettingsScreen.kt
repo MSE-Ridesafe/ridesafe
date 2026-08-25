@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.navigation3.runtime.NavKey
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.permissions.PermissionAlertCard
 import de.uhi.enia.ridesafe.permissions.PermissionState
@@ -65,6 +66,9 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
+    // The sub-screen currently in the detail pane, so the menu can mark the row it belongs to.
+    // Null on a phone, where the sub-screen covers the menu instead of sitting beside it.
+    selected: NavKey? = null,
     modifier: Modifier = Modifier,
     onOpenLanguage: () -> Unit,
     onOpenUnits: () -> Unit,
@@ -113,6 +117,7 @@ fun SettingsScreen(
                         iconName = "language",
                         title = stringResource(R.string.settings_language_title),
                         subtitle = currentLanguageLabel(),
+                        isOpen = selected == SettingsLanguageRoute,
                         onClick = onOpenLanguage,
                     )
                     SettingsDivider()
@@ -120,6 +125,7 @@ fun SettingsScreen(
                         iconName = "straighten",
                         title = stringResource(R.string.settings_units_title),
                         subtitle = unitSystemLabel(unitSystem),
+                        isOpen = selected == SettingsUnitsRoute,
                         onClick = onOpenUnits,
                     )
                 }
@@ -133,6 +139,7 @@ fun SettingsScreen(
                         iconName = "location_on",
                         title = stringResource(R.string.settings_saved_addresses_title),
                         subtitle = stringResource(R.string.settings_saved_addresses_summary),
+                        isOpen = selected == SavedAddressesRoute,
                         onClick = onOpenSavedAddresses,
                     )
                 }
@@ -146,6 +153,7 @@ fun SettingsScreen(
                         iconName = "route",
                         title = stringResource(R.string.settings_auto_track_title),
                         subtitle = autoTrackModeLabel(autoTrackMode),
+                        isOpen = selected == SettingsAutoTrackRoute,
                         onClick = onOpenAutoTrack,
                     )
                     SettingsDivider()
@@ -153,6 +161,7 @@ fun SettingsScreen(
                         iconName = "bluetooth_searching",
                         title = stringResource(R.string.settings_reconnect_grace_title),
                         subtitle = stringResource(reconnectGraceLabelRes(reconnectGrace)),
+                        isOpen = selected == SettingsReconnectGraceRoute,
                         onClick = onOpenReconnectGrace,
                     )
                     SettingsDivider()
@@ -160,6 +169,7 @@ fun SettingsScreen(
                         iconName = "timer",
                         title = stringResource(R.string.settings_min_ride_length_title),
                         subtitle = stringResource(minRideLengthLabelRes(minRideLength)),
+                        isOpen = selected == SettingsMinRideLengthRoute,
                         onClick = onOpenMinRideLength,
                     )
                 }
@@ -171,6 +181,7 @@ fun SettingsScreen(
 @Composable
 fun LanguageSettingsScreen(
     onBack: () -> Unit,
+    showBack: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -195,6 +206,7 @@ fun LanguageSettingsScreen(
         title = stringResource(R.string.settings_language_title),
         description = stringResource(R.string.settings_language_detail_description),
         onBack = onBack,
+        showBack = showBack,
         modifier = modifier,
     ) {
         options.forEach { (tag, labelRes) ->
@@ -220,6 +232,7 @@ fun LanguageSettingsScreen(
 @Composable
 fun UnitSettingsScreen(
     onBack: () -> Unit,
+    showBack: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -236,6 +249,7 @@ fun UnitSettingsScreen(
         title = stringResource(R.string.settings_units_title),
         description = stringResource(R.string.settings_units_detail_description),
         onBack = onBack,
+        showBack = showBack,
         modifier = modifier,
     ) {
         options.forEach { (option, labelRes) ->
@@ -253,6 +267,7 @@ fun UnitSettingsScreen(
 @Composable
 fun AutoTrackSettingsScreen(
     onBack: () -> Unit,
+    showBack: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -277,6 +292,7 @@ fun AutoTrackSettingsScreen(
         title = stringResource(R.string.settings_auto_track_title),
         description = stringResource(R.string.settings_auto_track_detail_description),
         onBack = onBack,
+        showBack = showBack,
         modifier = modifier,
     ) {
         options.forEach { (option, labelRes) ->
@@ -296,6 +312,7 @@ fun AutoTrackSettingsScreen(
 @Composable
 fun ReconnectGraceSettingsScreen(
     onBack: () -> Unit,
+    showBack: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -305,6 +322,7 @@ fun ReconnectGraceSettingsScreen(
         title = stringResource(R.string.settings_reconnect_grace_title),
         description = stringResource(R.string.settings_reconnect_grace_detail_description),
         onBack = onBack,
+        showBack = showBack,
         modifier = modifier,
     ) {
         ReconnectGrace.entries.forEach { option ->
@@ -320,6 +338,7 @@ fun ReconnectGraceSettingsScreen(
 @Composable
 fun MinRideLengthSettingsScreen(
     onBack: () -> Unit,
+    showBack: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -329,6 +348,7 @@ fun MinRideLengthSettingsScreen(
         title = stringResource(R.string.settings_min_ride_length_title),
         description = stringResource(R.string.settings_min_ride_length_detail_description),
         onBack = onBack,
+        showBack = showBack,
         modifier = modifier,
     ) {
         MinRideLength.entries.forEach { option ->
@@ -346,6 +366,7 @@ private fun SettingsSelectionScreen(
     title: String,
     description: String,
     onBack: () -> Unit,
+    showBack: Boolean = true,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -363,7 +384,7 @@ private fun SettingsSelectionScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    if (showBack) IconButton(onClick = onBack) {
                         MaterialSymbol(
                             symbolName = "arrow_back",
                             contentDescription = stringResource(R.string.action_back),
@@ -401,12 +422,15 @@ private fun SettingsListItem(
     iconName: String,
     title: String,
     subtitle: String,
+    isOpen: Boolean,
     onClick: () -> Unit,
 ) {
     Row(
         modifier =
             Modifier
-                .clickable(onClick = onClick)
+                .background(
+                    if (isOpen) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+                ).clickable(onClick = onClick)
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = 72.dp)
                 .padding(horizontal = 16.dp, vertical = 12.dp),

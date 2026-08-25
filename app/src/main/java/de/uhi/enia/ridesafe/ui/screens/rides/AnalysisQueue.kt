@@ -199,6 +199,7 @@ fun AnalysisQueueScreen(
     progress: RideAnalysisProgress,
     rides: Map<Long, Ride>,
     onBack: () -> Unit,
+    showBack: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -239,7 +240,7 @@ fun AnalysisQueueScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    if (showBack) IconButton(onClick = onBack) {
                         MaterialSymbol(
                             symbolName = "arrow_back",
                             contentDescription = stringResource(R.string.action_back),
