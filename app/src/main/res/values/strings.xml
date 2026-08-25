@@ -322,4 +322,27 @@
     <string name="rides_filter_chip_events">Driving events</string>
     <string name="rides_no_matches_title">No rides match</string>
     <string name="rides_no_matches_message">Try another search term, or loosen the filters.</string>
+
+    <!-- Android Auto car screen (TRK-07) -->
+    <string name="car_vehicle">Vehicle</string>
+    <string name="car_no_vehicle">No vehicle</string>
+    <string name="car_no_ride_vehicle">—</string>
+    <string name="car_not_recording">Not recording</string>
+    <string name="car_start">Start ride</string>
+    <string name="car_stop">Stop ride</string>
+    <string name="car_discard">Discard</string>
+    <string name="car_start_failed">Can\'t start — check Ridesafe on your phone</string>
+    <string name="car_pick_vehicle">Which vehicle?</string>
+    <string name="car_ride_finished">Ride finished</string>
+    <string name="car_result_saved">Ride saved · %1$s</string>
+    <string name="car_result_too_short">Too short — not saved (%1$s)</string>
+    <string name="car_done">Done</string>
+    <string name="car_delete">Delete ride</string>
+    <string name="car_delete_confirm">Delete this ride?</string>
+    <string name="car_keep">Keep</string>
+    <string name="car_deleted">Ride deleted</string>
+    <string name="car_discard_confirm">Discard this ride? It won\'t be saved.</string>
+    <string name="car_discarded">Ride discarded</string>
+    <string name="car_events_channel_name">Ride events</string>
+    <string name="car_notify_started">Recording started</string>
 </resources>

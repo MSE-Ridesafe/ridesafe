@@ -2,6 +2,7 @@ package de.uhi.enia.ridesafe.rides.recording
 
 import android.content.Context
 import android.util.Log
+import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -163,4 +164,18 @@ fun trackDistanceMeters(locations: List<LocationSample>): Double {
         total += haversineMeters(a.lat, a.lon, b.lat, b.lon)
     }
     return total
+}
+
+/**
+ * Delete a logged ride and the sample file that belongs to it — what the car screen's "delete this
+ * ride" does (LOG-05). The driving events and analysis state rows go with it: both cascade on the
+ * ride row.
+ */
+suspend fun deleteRide(
+    appContext: Context,
+    rideId: Long,
+) {
+    val dao = RidesafeDatabase.getInstance(appContext).rideDao()
+    dao.byId(rideId)?.let { File(ridesDir(appContext), it.sampleFile).delete() }
+    dao.deleteById(rideId)
 }

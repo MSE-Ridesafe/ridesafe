@@ -137,6 +137,9 @@ interface RideDao {
         endAddressId: Long?,
     )
 
+    @Query("SELECT * FROM rides WHERE id = :id")
+    suspend fun byId(id: Long): Ride?
+
     /** Drop a ride the recorder decided not to keep (TRK-10); its sample file goes with it. */
     @Query("DELETE FROM rides WHERE id = :id")
     suspend fun deleteById(id: Long)

@@ -16,6 +16,7 @@ playServicesLocation = "21.4.0"
 mapsCompose = "8.4.0"
 mapsUtils = "4.5.0"
 commonsMath3 = "3.6.1"
+carApp = "1.7.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -45,6 +46,7 @@ play-services-location = { group = "com.google.android.gms", name = "play-servic
 maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
 maps-utils = { group = "com.google.maps.android", name = "android-maps-utils", version.ref = "mapsUtils" }
 commons-math3 = { group = "org.apache.commons", name = "commons-math3", version.ref = "commonsMath3" }
+androidx-car-app = { group = "androidx.car.app", name = "app", version.ref = "carApp" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

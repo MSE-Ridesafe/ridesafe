@@ -322,4 +322,27 @@
     <string name="rides_filter_chip_events">Fahrereignisse</string>
     <string name="rides_no_matches_title">Keine passenden Fahrten</string>
     <string name="rides_no_matches_message">Andere Suche versuchen oder Filter lockern.</string>
+
+    <!-- Android Auto car screen (TRK-07) -->
+    <string name="car_vehicle">Fahrzeug</string>
+    <string name="car_no_vehicle">Kein Fahrzeug</string>
+    <string name="car_no_ride_vehicle">—</string>
+    <string name="car_not_recording">Keine Aufzeichnung</string>
+    <string name="car_start">Fahrt starten</string>
+    <string name="car_stop">Fahrt beenden</string>
+    <string name="car_discard">Verwerfen</string>
+    <string name="car_start_failed">Start nicht möglich — sieh in Ridesafe auf dem Handy nach</string>
+    <string name="car_pick_vehicle">Welches Fahrzeug?</string>
+    <string name="car_ride_finished">Fahrt beendet</string>
+    <string name="car_result_saved">Fahrt gespeichert · %1$s</string>
+    <string name="car_result_too_short">Zu kurz — nicht gespeichert (%1$s)</string>
+    <string name="car_done">Fertig</string>
+    <string name="car_delete">Fahrt löschen</string>
+    <string name="car_delete_confirm">Diese Fahrt löschen?</string>
+    <string name="car_keep">Behalten</string>
+    <string name="car_deleted">Fahrt gelöscht</string>
+    <string name="car_discard_confirm">Diese Fahrt verwerfen? Sie wird nicht gespeichert.</string>
+    <string name="car_discarded">Fahrt verworfen</string>
+    <string name="car_events_channel_name">Fahrt-Ereignisse</string>
+    <string name="car_notify_started">Aufzeichnung gestartet</string>
 </resources>
