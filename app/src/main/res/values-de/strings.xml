@@ -61,6 +61,12 @@
     <string name="settings_category_ride_recording">Fahrtaufzeichnung</string>
     <string name="settings_units_title">Entfernungseinheit</string>
     <string name="settings_units_detail_description">Wählen Sie, wie Strecken und Fahrtdaten in Ridesafe angezeigt werden.</string>
+    <string name="settings_currency_title">Währung</string>
+    <string name="settings_currency_detail_description">Wählen Sie die Währung für die Eingabe und Anzeige von Tankkosten.</string>
+    <string name="currency_us_dollar">US-Dollar ($)</string>
+    <string name="currency_british_pound">Britisches Pfund (£)</string>
+    <string name="currency_swiss_franc">Schweizer Franken (CHF)</string>
+    <string name="currency_euro">Euro (€)</string>
     <string name="unit_system_automatic">Automatisch (Basierend auf Sprache)</string>
     <string name="unit_system_metric">Metrisch (Kilometer)</string>
     <string name="unit_system_imperial">Imperial (Meilen)</string>

@@ -58,9 +58,12 @@ import de.uhi.enia.ridesafe.rides.trigger.AutoTrackMode
 import de.uhi.enia.ridesafe.rides.trigger.AutoTrackPrefs
 import de.uhi.enia.ridesafe.rides.trigger.applyAutoTrackMode
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.util.CurrencyPrefs
+import de.uhi.enia.ridesafe.util.CurrencySetting
 import de.uhi.enia.ridesafe.util.UnitPrefs
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.currentUnitSystem
+import de.uhi.enia.ridesafe.util.currentCurrencySetting
 import kotlinx.coroutines.launch
 
 @Composable
@@ -68,6 +71,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     onOpenLanguage: () -> Unit,
     onOpenUnits: () -> Unit,
+    onOpenCurrency: () -> Unit,
     onOpenAutoTrack: () -> Unit,
     onOpenReconnectGrace: () -> Unit,
     onOpenMinRideLength: () -> Unit,
@@ -75,6 +79,7 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val unitSystem = currentUnitSystem()
+    val currency = currentCurrencySetting()
     val autoTrackMode = AutoTrackPrefs.get(context)
     val reconnectGrace = ReconnectGracePrefs.get(context)
     val minRideLength = MinRideLengthPrefs.get(context)
@@ -121,6 +126,13 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_units_title),
                         subtitle = unitSystemLabel(unitSystem),
                         onClick = onOpenUnits,
+                    )
+                    SettingsDivider()
+                    SettingsListItem(
+                        iconName = "payments",
+                        title = stringResource(R.string.settings_currency_title),
+                        subtitle = currencyLabel(currency),
+                        onClick = onOpenCurrency,
                     )
                 }
             }
@@ -244,6 +256,40 @@ fun UnitSettingsScreen(
                 selected = option == unitSystem,
                 onClick = {
                     scope.launch { SettingsFade.applyWhileHidden { UnitPrefs.set(context, option) } }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+fun CurrencySettingsScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val selectedCurrency = currentCurrencySetting()
+    val options =
+        listOf(
+            CurrencySetting.US_DOLLAR to R.string.currency_us_dollar,
+            CurrencySetting.BRITISH_POUND to R.string.currency_british_pound,
+            CurrencySetting.SWISS_FRANC to R.string.currency_swiss_franc,
+            CurrencySetting.EURO to R.string.currency_euro,
+        )
+
+    SettingsSelectionScreen(
+        title = stringResource(R.string.settings_currency_title),
+        description = stringResource(R.string.settings_currency_detail_description),
+        onBack = onBack,
+        modifier = modifier,
+    ) {
+        options.forEach { (option, labelRes) ->
+            SelectableSettingRow(
+                title = stringResource(labelRes),
+                selected = option == selectedCurrency,
+                onClick = {
+                    scope.launch { SettingsFade.applyWhileHidden { CurrencyPrefs.set(context, option) } }
                 },
             )
         }
@@ -536,6 +582,17 @@ private fun unitSystemLabel(unitSystem: UnitSystemSetting): String =
             UnitSystemSetting.AUTOMATIC -> R.string.unit_system_automatic
             UnitSystemSetting.METRIC -> R.string.unit_system_metric
             UnitSystemSetting.IMPERIAL -> R.string.unit_system_imperial
+        },
+    )
+
+@Composable
+private fun currencyLabel(currency: CurrencySetting): String =
+    stringResource(
+        when (currency) {
+            CurrencySetting.US_DOLLAR -> R.string.currency_us_dollar
+            CurrencySetting.BRITISH_POUND -> R.string.currency_british_pound
+            CurrencySetting.SWISS_FRANC -> R.string.currency_swiss_franc
+            CurrencySetting.EURO -> R.string.currency_euro
         },
     )
 

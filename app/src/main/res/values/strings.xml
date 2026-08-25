@@ -61,6 +61,12 @@
     <string name="settings_category_ride_recording">Ride recording</string>
     <string name="settings_units_title">Distance Units</string>
     <string name="settings_units_detail_description">Choose how distances and ride measurements are shown throughout Ridesafe.</string>
+    <string name="settings_currency_title">Currency</string>
+    <string name="settings_currency_detail_description">Choose the currency used to enter and display refuel prices.</string>
+    <string name="currency_us_dollar">US Dollar ($)</string>
+    <string name="currency_british_pound">British Pound (£)</string>
+    <string name="currency_swiss_franc">Swiss Franc (CHF)</string>
+    <string name="currency_euro">Euro (€)</string>
     <string name="unit_system_automatic">Automatic (Based on language)</string>
     <string name="unit_system_metric">Metric (Kilometers)</string>
     <string name="unit_system_imperial">Imperial (Miles)</string>

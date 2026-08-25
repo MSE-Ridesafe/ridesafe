@@ -10,6 +10,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object SettingsUnitsRoute : NavKey
 
+@Serializable data object SettingsCurrencyRoute : NavKey
+
 @Serializable data object SettingsAutoTrackRoute : NavKey
 
 @Serializable data object SettingsReconnectGraceRoute : NavKey
@@ -25,6 +27,7 @@ fun EntryProviderScope<NavKey>.settingsEntries(
         SettingsScreen(
             onOpenLanguage = { onOpen(SettingsLanguageRoute) },
             onOpenUnits = { onOpen(SettingsUnitsRoute) },
+            onOpenCurrency = { onOpen(SettingsCurrencyRoute) },
             onOpenAutoTrack = { onOpen(SettingsAutoTrackRoute) },
             onOpenReconnectGrace = { onOpen(SettingsReconnectGraceRoute) },
             onOpenMinRideLength = { onOpen(SettingsMinRideLengthRoute) },
@@ -43,6 +46,9 @@ fun EntryProviderScope<NavKey>.settingsEntries(
         UnitSettingsScreen(
             onBack = onBack,
         )
+    }
+    entry<SettingsCurrencyRoute> {
+        CurrencySettingsScreen(onBack = onBack)
     }
     entry<SettingsAutoTrackRoute> {
         AutoTrackSettingsScreen(

@@ -69,6 +69,7 @@ import de.uhi.enia.ridesafe.data.canMerge
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.util.currentCurrencySetting
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDayHeader
 import de.uhi.enia.ridesafe.util.formatDistance
@@ -79,7 +80,6 @@ import de.uhi.enia.ridesafe.util.rideDay
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.time.LocalDate
-import java.util.Currency
 import java.util.Locale
 
 @Composable
@@ -811,7 +811,7 @@ internal fun RefuelTimelineRow(
     val context = LocalContext.current
     val locale = context.resources.configuration.locales[0] ?: Locale.getDefault()
     val refuel = row.refuel
-    val currency = runCatching { Currency.getInstance(refuel.currencyCode) }.getOrElse { defaultCurrency(locale) }
+    val currency = currentCurrencySetting().currency
     val fractionDigits = currency.defaultFractionDigits.takeIf { it >= 0 } ?: 2
     val total = java.math.BigDecimal.valueOf(refuel.totalPriceMinor, fractionDigits)
     val currencyFormat = NumberFormat.getCurrencyInstance(locale).apply { this.currency = currency }

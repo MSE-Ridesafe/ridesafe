@@ -55,6 +55,7 @@ import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
+import de.uhi.enia.ridesafe.util.currentCurrencySetting
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.usesMetric
 import java.text.DateFormat
@@ -64,7 +65,6 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
-import java.util.Currency
 import java.util.Date
 import java.util.Locale
 
@@ -129,11 +129,7 @@ fun RefuelFormScreen(
 ) {
     val context = LocalContext.current
     val locale = context.resources.configuration.locales[0] ?: Locale.getDefault()
-    val currency =
-        remember(locale, existing?.currencyCode) {
-            existing?.currencyCode?.let { runCatching { Currency.getInstance(it) }.getOrNull() }
-                ?: defaultCurrency(locale)
-        }
+    val currency = currentCurrencySetting().currency
     val fractionDigits = currency.defaultFractionDigits.takeIf { it >= 0 } ?: 2
     val unitSystem = currentUnitSystem()
     val metric = usesMetric(unitSystem)
@@ -322,7 +318,7 @@ fun RefuelFormScreen(
                 value = totalText,
                 onValueChange = { totalText = it },
                 label = stringResource(R.string.refuel_total_price),
-                suffix = currency.symbol,
+                suffix = currency.getSymbol(locale),
                 isError = showErrors && !totalValid,
                 error = stringResource(R.string.refuel_error_total),
             )
