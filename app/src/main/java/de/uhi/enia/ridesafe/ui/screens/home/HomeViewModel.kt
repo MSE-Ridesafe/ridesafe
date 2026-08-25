@@ -2,6 +2,7 @@ package de.uhi.enia.ridesafe.ui.screens.home
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import de.uhi.enia.ridesafe.data.Refuel
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.domain.JourneyActivity
 import de.uhi.enia.ridesafe.domain.JourneyHighlights
@@ -15,6 +16,7 @@ import de.uhi.enia.ridesafe.domain.totalJourneyTravelDurationMillis
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
@@ -25,7 +27,7 @@ class HomeViewModel(
     private val db = RidesafeDatabase.getInstance(app)
 
     val dashboard: Flow<HomeDashboardState> =
-        combine(db.vehicleDao().observeAll(), db.rideDao().observeAll()) { vehicles, rides ->
+        combine(db.vehicleDao().observeAll(), db.rideDao().observeAll(), db.refuelDao().observeAll()) { vehicles, rides, refuels ->
             val zone = ZoneId.systemDefault()
             val today = LocalDate.now(zone)
             val currentMonth = YearMonth.from(today)
@@ -45,21 +47,11 @@ class HomeViewModel(
             val logicalJourneys = logicalRideJourneys(rides)
             val currentMonthTotals = journeyTotalsForMonth(logicalJourneys, currentMonth, zone)
             val activityByDay =
-                journeyActivityByDay(logicalJourneys, zone)
-                    .mapValues { it.value.toActivityBar() }
-            val weekDays = (6 downTo 0).map { today.minusDays(it.toLong()) }
-            val bars =
-                weekDays.map { day ->
-                    activityByDay[day] ?: ActivityBar(day, rideCount = 0, distanceMeters = 0.0, durationMillis = 0L)
-                }
-            val monthDays =
-                (1..currentMonth.lengthOfMonth()).map { dayOfMonth ->
-                    currentMonth.atDay(dayOfMonth)
-                }
-            val monthlyActivity =
-                monthDays.map { day ->
-                    activityByDay[day] ?: ActivityBar(day, rideCount = 0, distanceMeters = 0.0, durationMillis = 0L)
-                }
+                addRefuelCosts(
+                    activityByDay = journeyActivityByDay(logicalJourneys, zone).mapValues { it.value.toActivityBar() },
+                    refuels = refuels,
+                    zone = zone,
+                )
 
             HomeDashboardState(
                 primaryVehicle = primaryVehicle,
@@ -70,12 +62,24 @@ class HomeViewModel(
                 currentMonthDistanceMeters = currentMonthTotals.distanceMeters,
                 currentMonthDurationMillis = currentMonthTotals.durationMillis,
                 currentMonthRecordedRides = currentMonthTotals.journeyCount,
-                activityBars = bars,
-                monthlyActivity = monthlyActivity,
                 activityByDay = activityByDay,
                 highlights = calculateJourneyHighlights(logicalJourneys, zone).toHomeHighlights(),
             )
         }
+}
+
+internal fun addRefuelCosts(
+    activityByDay: Map<LocalDate, ActivityBar>,
+    refuels: List<Refuel>,
+    zone: ZoneId,
+): Map<LocalDate, ActivityBar> {
+    val result = activityByDay.toMutableMap()
+    refuels.forEach { refuel ->
+        val day = Instant.ofEpochMilli(refuel.timestampEpochMs).atZone(zone).toLocalDate()
+        val existing = result[day] ?: ActivityBar(day, rideCount = 0, distanceMeters = 0.0, durationMillis = 0L)
+        result[day] = existing.copy(costMinor = existing.costMinor + refuel.totalPriceMinor)
+    }
+    return result
 }
 
 private fun JourneyActivity.toActivityBar(): ActivityBar =

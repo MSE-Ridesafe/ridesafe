@@ -48,6 +48,7 @@ fun ActivitySection(activityByDay: Map<LocalDate, ActivityBar>) {
             when (selectedMetric) {
                 ActivityChartMetric.DISTANCE -> R.string.home_activity_distance_week
                 ActivityChartMetric.TRAVEL_TIME -> R.string.home_activity_time_week
+                ActivityChartMetric.COST -> R.string.home_activity_cost_week
             },
         )
     val canNavigateForward = weekOffset < 0

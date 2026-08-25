@@ -39,8 +39,10 @@
     <string name="home_activity_title">Aktivit&#228;t</string>
     <string name="home_activity_distance_week">Wöchentliche Strecke</string>
     <string name="home_activity_time_week">Wöchentliche Fahrzeit</string>
+    <string name="home_activity_cost_week">Wöchentliche Kosten</string>
     <string name="home_activity_metric_distance">Strecke</string>
     <string name="home_activity_metric_time">Fahrzeit</string>
+    <string name="home_activity_metric_cost">Kosten</string>
 
     <string name="settings_category_preferences">Präferenzen</string>
     <string name="settings_category_ride_recording">Fahrtaufzeichnung</string>

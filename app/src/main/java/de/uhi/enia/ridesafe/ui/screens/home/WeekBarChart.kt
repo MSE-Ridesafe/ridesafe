@@ -26,8 +26,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import de.uhi.enia.ridesafe.util.currentCurrencySetting
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
+import java.math.BigDecimal
+import java.text.NumberFormat
+import java.util.Currency
+import java.util.Locale
 import java.time.format.TextStyle
 import kotlin.math.max
 
@@ -38,6 +43,8 @@ fun WeeklyBarChart(
     maxValue: Double,
 ) {
     val unitSystem = currentUnitSystem()
+    val locale = LocalLocale.current.platformLocale
+    val currency = currentCurrencySetting().currency
     Row(
         modifier =
             Modifier
@@ -50,7 +57,7 @@ fun WeeklyBarChart(
             val value = bar.valueFor(selectedMetric)
             ActivityBarColumn(
                 bar = bar,
-                valueLabel = bar.labelFor(selectedMetric, unitSystem),
+                valueLabel = bar.labelFor(selectedMetric, unitSystem, currency, locale),
                 hasValue = value > 0.0,
                 fraction = (value / maxValue).toFloat().coerceIn(0f, 1f),
                 modifier = Modifier.weight(1f),
@@ -122,8 +129,17 @@ private fun ActivityBarColumn(
 private fun ActivityBar.labelFor(
     metric: ActivityChartMetric,
     unitSystem: UnitSystemSetting,
+    currency: Currency,
+    locale: Locale,
 ): String =
     when (metric) {
         ActivityChartMetric.DISTANCE -> formatDistance(distanceMeters, unitSystem)
         ActivityChartMetric.TRAVEL_TIME -> formatCompactDuration(durationMillis)
+        ActivityChartMetric.COST -> {
+            val fractionDigits = currency.defaultFractionDigits.takeIf { it >= 0 } ?: 2
+            NumberFormat
+                .getCurrencyInstance(locale)
+                .apply { this.currency = currency }
+                .format(BigDecimal.valueOf(costMinor, fractionDigits))
+        }
     }
