@@ -1,7 +1,6 @@
 package de.uhi.enia.ridesafe.ui.screens.home
 
 import java.time.LocalDate
-import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -11,15 +10,6 @@ fun buildRollingWeekActivity(
 ): List<ActivityBar> =
     (6 downTo 0).map { offset ->
         val day = endDay.minusDays(offset.toLong())
-        activityByDay[day] ?: emptyActivityBar(day)
-    }
-
-fun buildMonthActivity(
-    activityByDay: Map<LocalDate, ActivityBar>,
-    month: YearMonth,
-): List<ActivityBar> =
-    (1..month.lengthOfMonth()).map { dayOfMonth ->
-        val day = month.atDay(dayOfMonth)
         activityByDay[day] ?: emptyActivityBar(day)
     }
 

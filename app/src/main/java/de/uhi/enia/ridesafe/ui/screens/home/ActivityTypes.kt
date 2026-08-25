@@ -7,18 +7,6 @@ enum class ActivityChartMetric {
     TRAVEL_TIME,
 }
 
-enum class ActivityTimeRange {
-    WEEK,
-    MONTH,
-}
-
-val ActivityTimeRange.labelRes: Int
-    get() =
-        when (this) {
-            ActivityTimeRange.WEEK -> R.string.home_activity_period_week
-            ActivityTimeRange.MONTH -> R.string.home_activity_period_month
-        }
-
 val ActivityChartMetric.labelRes: Int
     get() =
         when (this) {

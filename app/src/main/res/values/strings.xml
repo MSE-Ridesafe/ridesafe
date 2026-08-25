@@ -39,22 +39,8 @@
     <string name="home_activity_title">Activity</string>
     <string name="home_activity_distance_week">Weekly Distance</string>
     <string name="home_activity_time_week">Weekly Travel Time</string>
-    <string name="home_activity_distance_month">Monthly Distance</string>
-    <string name="home_activity_time_month">Monthly Travel Time</string>
-    <string name="home_activity_period_week">Week</string>
-    <string name="home_activity_period_month">Month</string>
     <string name="home_activity_metric_distance">Distance</string>
     <string name="home_activity_metric_time">Travel time</string>
-    <string name="home_activity_empty_week">No activity this week</string>
-    <string name="home_activity_empty_month">No activity this month</string>
-    <string name="home_activity_dialog_distance">Distance: %1$s</string>
-    <string name="home_activity_dialog_time">Travel time: %1$s</string>
-    <string name="home_activity_legend_none">None</string>
-    <string name="home_activity_legend_low">Low</string>
-    <string name="home_activity_legend_medium">Medium</string>
-    <string name="home_activity_legend_high">High</string>
-    <string name="home_activity_legend_less">Less</string>
-    <string name="home_activity_legend_more">More</string>
 
     <string name="settings_category_preferences">Preferences</string>
     <string name="settings_category_ride_recording">Ride recording</string>
