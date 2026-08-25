@@ -3,6 +3,7 @@ package de.uhi.enia.ridesafe.ui.screens.home
 import de.uhi.enia.ridesafe.data.Refuel
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -36,6 +37,19 @@ class HomeActivityCostTest {
         assertEquals(rideActivity.copy(costMinor = 6_500), result[rideDay])
         assertEquals(7_200L, result.getValue(refuelOnlyDay).costMinor)
         assertEquals(0, result.getValue(refuelOnlyDay).rideCount)
+    }
+
+    @Test
+    fun calendarWeekAlwaysRunsFromMondayThroughSunday() {
+        val referenceDay = LocalDate.of(2026, 8, 26)
+
+        val bars = buildCalendarWeekActivity(emptyMap(), referenceDay)
+
+        assertEquals(7, bars.size)
+        assertEquals(DayOfWeek.MONDAY, bars.first().day.dayOfWeek)
+        assertEquals(LocalDate.of(2026, 8, 24), bars.first().day)
+        assertEquals(DayOfWeek.SUNDAY, bars.last().day.dayOfWeek)
+        assertEquals(LocalDate.of(2026, 8, 30), bars.last().day)
     }
 
     private fun refuel(

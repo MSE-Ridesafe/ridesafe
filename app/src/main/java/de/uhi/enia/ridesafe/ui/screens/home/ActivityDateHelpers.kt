@@ -4,14 +4,16 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-fun buildRollingWeekActivity(
+fun buildCalendarWeekActivity(
     activityByDay: Map<LocalDate, ActivityBar>,
-    endDay: LocalDate,
-): List<ActivityBar> =
-    (6 downTo 0).map { offset ->
-        val day = endDay.minusDays(offset.toLong())
+    referenceDay: LocalDate,
+): List<ActivityBar> {
+    val monday = referenceDay.minusDays((referenceDay.dayOfWeek.value - 1).toLong())
+    return (0..6).map { offset ->
+        val day = monday.plusDays(offset.toLong())
         activityByDay[day] ?: emptyActivityBar(day)
     }
+}
 
 fun formatActivityDateRange(
     days: List<ActivityBar>,

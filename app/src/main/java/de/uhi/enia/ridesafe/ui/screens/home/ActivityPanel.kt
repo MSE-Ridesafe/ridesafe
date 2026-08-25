@@ -35,8 +35,8 @@ fun ActivitySection(activityByDay: Map<LocalDate, ActivityBar>) {
     var weekOffset by rememberSaveable { mutableStateOf(0) }
     val locale = LocalLocale.current.platformLocale
     val today = LocalDate.now()
-    val selectedWeekEnd = today.plusDays(weekOffset * 7L)
-    val weeklyBars = buildRollingWeekActivity(activityByDay, selectedWeekEnd)
+    val selectedWeekReferenceDay = today.plusDays(weekOffset * 7L)
+    val weeklyBars = buildCalendarWeekActivity(activityByDay, selectedWeekReferenceDay)
     val dateRange = formatActivityDateRange(weeklyBars, locale)
     val maxValue =
         max(
