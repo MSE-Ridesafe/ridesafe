@@ -65,10 +65,8 @@ fun EntryProviderScope<NavKey>.ridesEntries(
     }
     entry<AddRefuelRoute> {
         val vehicles by viewModel.vehicles.collectAsState()
-        val savedAddresses by viewModel.savedAddresses.collectAsState()
         RefuelFormScreen(
             vehicles = vehicles,
-            savedAddresses = savedAddresses,
             onSave = viewModel::addRefuel,
             onBack = onBack,
         )
@@ -88,10 +86,8 @@ fun EntryProviderScope<NavKey>.ridesEntries(
                     RefuelUnavailableScreen(onBack = onBack)
                 } else {
                     val vehicles by viewModel.vehicles.collectAsState()
-                    val savedAddresses by viewModel.savedAddresses.collectAsState()
                     RefuelFormScreen(
                         vehicles = vehicles,
-                        savedAddresses = savedAddresses,
                         existing = refuel,
                         onSave = viewModel::updateRefuel,
                         onBack = onBack,

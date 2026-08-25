@@ -93,8 +93,6 @@ data class RefuelFormInitialValues(
     val fuelText: String,
     val totalText: String,
     val odometerText: String,
-    val stationText: String,
-    val stationSavedAddressId: Long?,
     val fullTank: Boolean,
 )
 
@@ -115,8 +113,6 @@ fun refuelFormInitialValues(
         fuelText = formatRefuelInput(BigDecimal.valueOf(refuel.fuelAmountMilliliters, 3), locale),
         totalText = formatRefuelInput(BigDecimal.valueOf(refuel.totalPriceMinor, fractionDigits), locale),
         odometerText = formatRefuelInput(odometerMetersToDisplay(refuel.odometerMeters, unitSystem), locale),
-        stationText = refuel.stationAddress.orEmpty(),
-        stationSavedAddressId = refuel.stationSavedAddressId,
         fullTank = refuel.isFullTank,
     )
 }

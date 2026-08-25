@@ -176,12 +176,9 @@
     <string name="refuel_price_per_liter">Preis pro Liter</string>
     <string name="refuel_per_liter_suffix">/L</string>
     <string name="refuel_odometer">Kilometerstand</string>
-    <string name="refuel_station_address">Tankstelle / Adresse (optional)</string>
-    <string name="refuel_station_saved_unavailable">Gespeicherter Ort nicht verfügbar</string>
-    <string name="refuel_station_saved_unavailable_help">Wähle einen anderen gespeicherten Ort oder verwende eine eigene Adresse.</string>
+    <string name="refuel_label">Tankvorgang</string>
     <string name="refuel_full_tank">Vollgetankt</string>
     <string name="refuel_unknown_vehicle">Unbekanntes Fahrzeug</string>
-    <string name="refuel_station_fallback">Tankstelle</string>
     <string name="refuel_error_fuel">Gib eine Kraftstoffmenge größer als null mit höchstens drei Nachkommastellen ein.</string>
     <string name="refuel_error_total">Gib einen nicht negativen Preis mit den Nachkommastellen der Währung ein.</string>
     <string name="refuel_error_odometer">Gib einen nicht negativen Kilometerstand ein.</string>

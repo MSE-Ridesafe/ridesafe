@@ -12,7 +12,6 @@ import androidx.room.PrimaryKey
         Index("timestampEpochMs"),
         Index("vehicleId"),
         Index("journeyAnchorRideId"),
-        Index("stationSavedAddressId"),
     ],
 )
 data class Refuel(
@@ -23,8 +22,6 @@ data class Refuel(
     val totalPriceMinor: Long,
     val currencyCode: String,
     val odometerMeters: Long,
-    val stationAddress: String? = null,
-    val stationSavedAddressId: Long? = null,
     @ColumnInfo(defaultValue = "0") val isFullTank: Boolean = false,
     val journeyAnchorRideId: Long? = null,
 )

@@ -331,6 +331,16 @@ val MIGRATION_15_16 =
         }
     }
 
+/** Removes obsolete Refuel station/address data while preserving every fuel and cost field. */
+val MIGRATION_16_17 =
+    object : Migration(16, 17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP INDEX IF EXISTS index_refuels_stationSavedAddressId")
+            db.execSQL("ALTER TABLE refuels DROP COLUMN stationSavedAddressId")
+            db.execSQL("ALTER TABLE refuels DROP COLUMN stationAddress")
+        }
+    }
+
 @Database(
     entities = [
         Vehicle::class,
@@ -340,7 +350,7 @@ val MIGRATION_15_16 =
         RideAnalysisState::class,
         Refuel::class,
     ],
-    version = 16,
+    version = 17,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -383,6 +393,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_13_14,
                         MIGRATION_14_15,
                         MIGRATION_15_16,
+                        MIGRATION_16_17,
                     ).build()
                     .also { instance = it }
             }

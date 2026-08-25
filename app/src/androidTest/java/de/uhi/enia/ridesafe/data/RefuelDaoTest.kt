@@ -26,50 +26,45 @@ class RefuelDaoTest {
     @After
     fun tearDown() = db.close()
 
-    private fun refuel(
-        timestamp: Long,
-        address: String? = null,
-    ) = Refuel(
+    private fun refuel(timestamp: Long) = Refuel(
         vehicleId = 42,
         timestampEpochMs = timestamp,
         fuelAmountMilliliters = 38_400,
         totalPriceMinor = 6_720,
         currencyCode = "EUR",
         odometerMeters = 123_456_789_000,
-        stationAddress = address,
     )
 
     @Test
-    fun insertEmitsNewestFirstAndPreservesNullableAddressAndLargeValues() =
+    fun insertEmitsNewestFirstAndPreservesLargeValues() =
         runBlocking {
-            dao.insert(refuel(100, null))
-            dao.insert(refuel(200, "Station"))
+            dao.insert(refuel(100))
+            dao.insert(refuel(200))
 
             val rows = dao.observeAll().first()
             assertEquals(listOf(200L, 100L), rows.map { it.timestampEpochMs })
             assertEquals(123_456_789_000, rows.first().odometerMeters)
-            assertNull(rows.last().stationAddress)
         }
 
     @Test
     fun updatePreservesIdAndDoesNotInsertDuplicate() =
         runBlocking {
-            val id = dao.insert(refuel(100, "Old station"))
+            val id = dao.insert(refuel(100))
             val existing = dao.getById(id)!!
 
-            dao.update(existing.copy(timestampEpochMs = 300, stationAddress = "New station", totalPriceMinor = 7_000))
+            dao.update(existing.copy(timestampEpochMs = 300, totalPriceMinor = 7_000))
 
             val rows = dao.observeAll().first()
             assertEquals(1, rows.size)
             assertEquals(id, rows.single().id)
-            assertEquals("New station", rows.single().stationAddress)
+            assertEquals(300L, rows.single().timestampEpochMs)
             assertEquals(7_000, rows.single().totalPriceMinor)
         }
 
     @Test
     fun attachAndDetachOnlyChangeJourneyAnchor() =
         runBlocking {
-            val id = dao.insert(refuel(100, "Station"))
+            val id = dao.insert(refuel(100))
             val before = dao.getById(id)!!
 
             dao.setJourneyAnchor(id, 77)
@@ -83,8 +78,8 @@ class RefuelDaoTest {
     @Test
     fun clearingRideAnchorsDetachesOnlyRefuelsFromThoseRides() =
         runBlocking {
-            val first = dao.insert(refuel(100, "First"))
-            val second = dao.insert(refuel(200, "Second"))
+            val first = dao.insert(refuel(100))
+            val second = dao.insert(refuel(200))
             dao.setJourneyAnchor(first, 10)
             dao.setJourneyAnchor(second, 20)
 
@@ -94,17 +89,4 @@ class RefuelDaoTest {
             assertEquals(20L, dao.getById(second)!!.journeyAnchorRideId)
         }
 
-    @Test
-    fun savedPlaceAndCustomStationModesRoundTrip() =
-        runBlocking {
-            val id = dao.insert(refuel(100).copy(stationSavedAddressId = 44))
-            val linked = dao.getById(id)!!
-            assertEquals(44L, linked.stationSavedAddressId)
-            assertNull(linked.stationAddress)
-
-            dao.update(linked.copy(stationSavedAddressId = null, stationAddress = "Custom station"))
-            val custom = dao.getById(id)!!
-            assertNull(custom.stationSavedAddressId)
-            assertEquals("Custom station", custom.stationAddress)
-        }
 }
