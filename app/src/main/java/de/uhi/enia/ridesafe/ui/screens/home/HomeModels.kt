@@ -4,6 +4,7 @@ import de.uhi.enia.ridesafe.data.SafetyScore
 import de.uhi.enia.ridesafe.data.Vehicle
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.YearMonth
 
 data class HomeDashboardState(
     val primaryVehicle: Vehicle? = null,
@@ -27,6 +28,11 @@ data class HomeDashboardState(
     val safetyWeek: SafetyScore? = null,
     val safetyMonth: SafetyScore? = null,
     val safetyAllTime: SafetyScore? = null,
+    // Chart inputs (DSH-04): combined score per ISO week (keyed by its Monday), per calendar month,
+    // and the all-time figure's own day-end history, oldest first.
+    val safetyScoreByWeek: Map<LocalDate, Int> = emptyMap(),
+    val safetyScoreByMonth: Map<YearMonth, Int> = emptyMap(),
+    val safetyScoreHistory: List<Pair<LocalDate, Int>> = emptyList(),
 )
 
 data class ActivityBar(

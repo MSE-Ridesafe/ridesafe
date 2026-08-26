@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,7 +36,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
+import de.uhi.enia.ridesafe.data.RideEventType
 import de.uhi.enia.ridesafe.data.SafetyScore
+import de.uhi.enia.ridesafe.data.symbol
 
 // The gauge is an open ring: 270° of arc with the gap at the bottom, where the label sits.
 private const val GAUGE_START_DEG = 135f
@@ -46,17 +49,28 @@ private const val GAUGE_SWEEP_DEG = 270f
  * as smaller ones beside each other, each with its value in the middle.
  *
  * Shared between the dashboard (DSH-06) and the ride detail, which is what keeps "the score" looking
- * like one thing everywhere it appears. [controls] is the slot the dashboard puts its period chips
- * in; the ride detail leaves it empty. A null [score] renders [emptyText] instead of gauges — the
- * ride that was too short to judge, the week with nothing scored in it — because an empty gauge
- * showing a dash looks broken rather than deliberate.
+ * like one thing everywhere it appears. The dimension gauges carry the same symbols the map markers
+ * use for the matching event types, so the ring under "podiatry" and the brake markers on the route
+ * are recognisably one subject; only the combined gauge shows a number, because one number is the
+ * summary and four is a table.
+ *
+ * [controls] is the slot the dashboard puts its period chips in, [chart] the one its history chart
+ * renders in below the gauges; the ride detail leaves both empty. [largeTitle] gives the dashboard
+ * the same headline style as its activity card, and [subtitle] the matching line under it — the
+ * dashboard uses it to say what the chart below covers, so a mostly-empty chart reads as a period
+ * choice rather than missing data. A null [score] renders [emptyText] instead of
+ * gauges — the ride that was too short to judge, the week with nothing scored in it — because an
+ * empty gauge showing a dash looks broken rather than deliberate.
  */
 @Composable
 fun SafetyScoreCard(
     score: SafetyScore?,
     modifier: Modifier = Modifier,
     emptyText: String? = null,
+    largeTitle: Boolean = false,
+    subtitle: String? = null,
     controls: (@Composable ColumnScope.() -> Unit)? = null,
+    chart: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     Card(
@@ -65,18 +79,25 @@ fun SafetyScoreCard(
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            if (largeTitle) {
+                Column {
+                    Text(
+                        text = stringResource(R.string.safety_score_title),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    if (subtitle != null) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = scheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            } else {
                 Text(
                     text = stringResource(R.string.safety_score_title),
                     style = MaterialTheme.typography.titleSmall,
                     color = scheme.primary,
-                    modifier = Modifier.weight(1f),
-                )
-                MaterialSymbol(
-                    symbolName = "speed",
-                    contentDescription = null,
-                    size = 20.dp,
-                    color = scheme.onSurfaceVariant,
                 )
             }
 
@@ -101,28 +122,35 @@ fun SafetyScoreCard(
                 )
                 Row(modifier = Modifier.fillMaxWidth()) {
                     listOf(
-                        score.braking to R.string.safety_score_braking,
-                        score.acceleration to R.string.safety_score_acceleration,
-                        score.cornering to R.string.safety_score_cornering,
-                    ).forEach { (value, labelRes) ->
+                        Triple(score.braking, R.string.safety_score_braking, RideEventType.BRAKING),
+                        Triple(score.acceleration, R.string.safety_score_acceleration, RideEventType.ACCELERATION),
+                        Triple(score.cornering, R.string.safety_score_cornering, RideEventType.CORNERING),
+                    ).forEach { (value, labelRes, eventType) ->
                         ScoreGauge(
                             value = value,
                             label = stringResource(labelRes),
                             diameter = 72.dp,
                             stroke = 8.dp,
                             valueStyle = MaterialTheme.typography.titleLarge,
+                            icon = eventType.symbol(),
                             modifier = Modifier.weight(1f),
                         )
                     }
                 }
+            }
+
+            if (chart != null) {
+                HorizontalDivider(color = scheme.surfaceContainerHighest)
+                chart()
             }
         }
     }
 }
 
 /**
- * One 0–100 score as an arc gauge with the value in the middle and [label] beneath; the arc's
- * gap faces the label so the ring never crowds it.
+ * One 0–100 score as an arc gauge with [label] beneath; the arc's gap faces the label so the ring
+ * never crowds it. The middle holds the value, or — for the dimension gauges — the [icon] its event
+ * type wears on the map, tinted like the arc; the number is still spoken to accessibility either way.
  *
  * Colour comes from the value, not the dimension, so the card reads at a glance: the same green /
  * amber / red judgement everywhere a gauge appears. The sweep animates up from empty on first
@@ -137,6 +165,7 @@ private fun ScoreGauge(
     stroke: Dp,
     valueStyle: TextStyle,
     modifier: Modifier = Modifier,
+    icon: String? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     val color =
@@ -183,7 +212,16 @@ private fun ScoreGauge(
                     )
                 }
             }
-            Text(text = value.toString(), style = valueStyle, color = MaterialTheme.colorScheme.onSurface)
+            if (icon != null) {
+                MaterialSymbol(
+                    symbolName = icon,
+                    contentDescription = null,
+                    size = diameter * 0.34f,
+                    color = color,
+                )
+            } else {
+                Text(text = value.toString(), style = valueStyle, color = MaterialTheme.colorScheme.onSurface)
+            }
         }
         Text(
             text = label,

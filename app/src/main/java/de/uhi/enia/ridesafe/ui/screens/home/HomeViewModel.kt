@@ -9,6 +9,9 @@ import de.uhi.enia.ridesafe.domain.calculateJourneyHighlights
 import de.uhi.enia.ridesafe.domain.journeyActivityByDay
 import de.uhi.enia.ridesafe.domain.journeyTotalsForMonth
 import de.uhi.enia.ridesafe.domain.logicalRideJourneys
+import de.uhi.enia.ridesafe.domain.allTimeSafetyScoreHistory
+import de.uhi.enia.ridesafe.domain.monthlySafetyScores
+import de.uhi.enia.ridesafe.domain.weeklySafetyScores
 import de.uhi.enia.ridesafe.domain.safetyScoreForMonth
 import de.uhi.enia.ridesafe.domain.safetyScoreForRides
 import de.uhi.enia.ridesafe.domain.safetyScoreForRollingWeek
@@ -84,6 +87,9 @@ class HomeViewModel(
                 safetyWeek = safetyScoreForRollingWeek(rides, today, zone),
                 safetyMonth = safetyScoreForMonth(rides, currentMonth, zone),
                 safetyAllTime = safetyScoreForRides(rides),
+                safetyScoreByWeek = weeklySafetyScores(rides, zone),
+                safetyScoreByMonth = monthlySafetyScores(rides, zone),
+                safetyScoreHistory = allTimeSafetyScoreHistory(rides, zone),
             )
         }
 }

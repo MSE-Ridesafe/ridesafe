@@ -217,6 +217,11 @@
     <string name="ride_score_unscoreable">Zu wenig auswertbare Fahrzeit, um diese Fahrt zu bewerten.</string>
     <string name="home_score_period_all">Insgesamt</string>
     <string name="home_score_empty">Keine bewerteten Fahrten in diesem Zeitraum.</string>
+    <!-- Diagramm-Untertitel je Zeitraum und die Kalenderwochen-Beschriftung eines Wochenbalkens. -->
+    <string name="home_score_dev_week">Score-Entwicklung der letzten Wochen</string>
+    <string name="home_score_dev_month">Score-Entwicklung der letzten Monate</string>
+    <string name="home_score_dev_all">Score-Entwicklung insgesamt</string>
+    <string name="score_week_label">KW%1$d</string>
 
     <!-- Fahrten zusammenführen (§3.8) -->
     <string name="ride_merged_label">Zusammengeführt</string>

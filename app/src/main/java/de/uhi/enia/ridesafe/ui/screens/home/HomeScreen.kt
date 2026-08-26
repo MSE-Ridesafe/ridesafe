@@ -114,6 +114,9 @@ fun HomeScreen(
                         week = state.safetyWeek,
                         month = state.safetyMonth,
                         allTime = state.safetyAllTime,
+                        scoreByWeek = state.safetyScoreByWeek,
+                        scoreByMonth = state.safetyScoreByMonth,
+                        scoreHistory = state.safetyScoreHistory,
                     )
                 }
             }
