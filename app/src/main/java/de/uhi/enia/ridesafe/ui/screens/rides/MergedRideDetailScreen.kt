@@ -49,10 +49,12 @@ import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.canToggleStop
 import de.uhi.enia.ridesafe.data.canUnmergeSelection
 import de.uhi.enia.ridesafe.data.summarizeMerge
+import de.uhi.enia.ridesafe.domain.safetyScoreForRides
 import de.uhi.enia.ridesafe.rides.processing.forVehicle
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDurationMs
@@ -98,8 +100,10 @@ fun MergedRideDetailScreen(
                     title = {},
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                     navigationIcon = {
-                        if (showBack) IconButton(onClick = onBack) {
-                            MaterialSymbol(symbolName = "arrow_back", contentDescription = stringResource(R.string.action_back))
+                        if (showBack) {
+                            IconButton(onClick = onBack) {
+                                MaterialSymbol(symbolName = "arrow_back", contentDescription = stringResource(R.string.action_back))
+                            }
                         }
                     },
                 )
@@ -130,11 +134,13 @@ fun MergedRideDetailScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 navigationIcon = {
-                    if (showBack) IconButton(onClick = onBack) {
-                        MaterialSymbol(
-                            symbolName = "arrow_back",
-                            contentDescription = stringResource(R.string.action_back),
-                        )
+                    if (showBack) {
+                        IconButton(onClick = onBack) {
+                            MaterialSymbol(
+                                symbolName = "arrow_back",
+                                contentDescription = stringResource(R.string.action_back),
+                            )
+                        }
                     }
                 },
             )
@@ -156,6 +162,10 @@ fun MergedRideDetailScreen(
                 onUnmergeAll = onUnmergeAll,
                 onUnmerge = onUnmerge,
             )
+
+            // The whole trip's score: the stops' penalties and exposure summed, mapped once — never
+            // an average of their scores (see SafetyScoreWindows). Hidden when no stop was scoreable.
+            safetyScoreForRides(stops)?.let { SafetyScoreCard(score = it) }
 
             DetailCard(
                 title = stringResource(R.string.ride_detail_section_summary),

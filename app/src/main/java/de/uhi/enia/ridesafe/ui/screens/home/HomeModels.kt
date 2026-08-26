@@ -1,5 +1,6 @@
 package de.uhi.enia.ridesafe.ui.screens.home
 
+import de.uhi.enia.ridesafe.data.SafetyScore
 import de.uhi.enia.ridesafe.data.Vehicle
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -21,6 +22,11 @@ data class HomeDashboardState(
     val monthlyActivity: List<ActivityBar> = emptyList(),
     val activityByDay: Map<LocalDate, ActivityBar> = emptyMap(),
     val highlights: HomeHighlights = HomeHighlights(),
+    // The safety score over three windows (DSH-06); null = nothing scoreable in that window. All-time
+    // null implies the others are too, which is what hides the card on a fresh install.
+    val safetyWeek: SafetyScore? = null,
+    val safetyMonth: SafetyScore? = null,
+    val safetyAllTime: SafetyScore? = null,
 )
 
 data class ActivityBar(

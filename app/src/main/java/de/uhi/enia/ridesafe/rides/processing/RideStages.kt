@@ -236,10 +236,9 @@ class ScoreStage(
         val dynamics = ctx.dynamics
         val score = dynamics?.let { scoreRide(it, config, weights) }
         db.rideDao().setScore(ctx.ride.id, score)
-        // The calibration record. referenceRate and priorRate are provisional until they have been
-        // set against real driving, and these are the numbers that set them: collect them across the
-        // logbook, put the median where a good-but-not-perfect ride belongs, and bump [version] —
-        // which re-derives every score from stored profiles without reading a sample file.
+        // The calibration record: collect these across the logbook to judge the ScoreWeights
+        // constants against real driving, and bump [version] after changing any — which re-derives
+        // every score from stored profiles without reading a sample file.
         Log.i(
             TAG_SCORE,
             "ride ${ctx.ride.id}: " +

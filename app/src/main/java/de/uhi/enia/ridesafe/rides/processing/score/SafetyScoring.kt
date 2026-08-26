@@ -46,8 +46,12 @@ import kotlin.math.roundToInt
  *
  * @property referenceRate The roughness rate at which the score falls to 1/e of 100, i.e. ~37. The
  * single dial that positions the whole population of scores: raise it and everyone scores higher,
- * lower it and everyone scores lower. Provisional until calibrated against real rides — see the log
- * line in [de.uhi.enia.ridesafe.rides.processing.ScoreStage].
+ * lower it and everyone scores lower. Validated against the real logbook (94 rides, 2026-08-26):
+ * the ride median lands at 91 with a spread down to single digits for the genuinely rough ones,
+ * which is the intended shape. Note the trap found while validating: the pooled all-time rate sits
+ * ~12x the median ride's, because risk adds and the tail carries most of it — so re-deriving this
+ * from "put the median at X" alone collapses the aggregate. Check both before moving it; the log
+ * line in [de.uhi.enia.ridesafe.rides.processing.ScoreStage] is the input.
  *
  * @property priorRate The rate a ride is assumed to have before its own driving says otherwise —
  * roughly what a typical ride scores. Only matters for short rides, where it is most of the answer.

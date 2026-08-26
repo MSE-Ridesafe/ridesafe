@@ -106,6 +106,17 @@ fun HomeScreen(
                     monthFuelLiters = state.currentMonthFuelLiters,
                 )
             }
+            // The core feature (DSH-06) sits right under the mileage summary. Absent entirely until
+            // a first ride has been scored — an empty gauge would only advertise a missing feature.
+            if (state.safetyAllTime != null) {
+                item {
+                    SafetyScoreSection(
+                        week = state.safetyWeek,
+                        month = state.safetyMonth,
+                        allTime = state.safetyAllTime,
+                    )
+                }
+            }
             item {
                 HighlightsCard(
                     highlights = state.highlights,

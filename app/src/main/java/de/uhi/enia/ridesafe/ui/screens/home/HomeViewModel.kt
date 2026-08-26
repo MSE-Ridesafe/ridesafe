@@ -9,6 +9,9 @@ import de.uhi.enia.ridesafe.domain.calculateJourneyHighlights
 import de.uhi.enia.ridesafe.domain.journeyActivityByDay
 import de.uhi.enia.ridesafe.domain.journeyTotalsForMonth
 import de.uhi.enia.ridesafe.domain.logicalRideJourneys
+import de.uhi.enia.ridesafe.domain.safetyScoreForMonth
+import de.uhi.enia.ridesafe.domain.safetyScoreForRides
+import de.uhi.enia.ridesafe.domain.safetyScoreForRollingWeek
 import de.uhi.enia.ridesafe.domain.totalJourneyCount
 import de.uhi.enia.ridesafe.domain.totalJourneyDistanceMeters
 import de.uhi.enia.ridesafe.domain.totalJourneyFuelLiters
@@ -76,6 +79,11 @@ class HomeViewModel(
                 monthlyActivity = monthlyActivity,
                 activityByDay = activityByDay,
                 highlights = calculateJourneyHighlights(logicalJourneys, zone).toHomeHighlights(),
+                // Off the raw ride rows, not the journeys: a merged ride's stops carry their own
+                // scores and summing them is already the right aggregate (see SafetyScoreWindows).
+                safetyWeek = safetyScoreForRollingWeek(rides, today, zone),
+                safetyMonth = safetyScoreForMonth(rides, currentMonth, zone),
+                safetyAllTime = safetyScoreForRides(rides),
             )
         }
 }
