@@ -1,6 +1,9 @@
 package de.uhi.enia.ridesafe.rides.processing.event
 
+import de.uhi.enia.ridesafe.data.RideDynamics
 import de.uhi.enia.ridesafe.data.RideEventType
+import de.uhi.enia.ridesafe.rides.processing.kalmanFilterLocations
+import de.uhi.enia.ridesafe.rides.processing.score.scoreRide
 import de.uhi.enia.ridesafe.rides.recording.LocationSample
 import de.uhi.enia.ridesafe.rides.recording.MotionSample
 import de.uhi.enia.ridesafe.rides.recording.MotionSensor
@@ -14,7 +17,8 @@ import kotlin.math.sin
  * Covers the two things that are easy to get silently wrong and hard to debug from a real ride: the
  * device→world orientation convention, and whether gravity leaks into the horizontal plane on a
  * slope. Both use hand-computed device-frame readings rather than a helper that would just invert
- * the production math and pass regardless. The rest covers the event state machine.
+ * the production math and pass regardless. The rest covers the event state machine, and the last few
+ * cover the dynamics profile the same pass accumulates for scoring (ANL-01).
  */
 class RideEventsTest {
     private companion object {
@@ -686,5 +690,132 @@ class RideEventsTest {
         Assert.assertTrue(detectRideEvents(full.copy(rotation = emptyList()), 0L).isEmpty())
         Assert.assertTrue(detectRideEvents(full.copy(accel = emptyList()), 0L).isEmpty())
         Assert.assertTrue(detectRideEvents(full.copy(locations = emptyList()), 0L).isEmpty())
+    }
+
+    /**
+     * Runs the detector exactly as [detectRideEvents] does, but keeps the dynamics profile instead of
+     * the events. Both come out of one pass over the same conditioned signal.
+     */
+    private fun dynamicsOf(
+        samples: RideSamples,
+        config: RideEventConfig = RideEventConfig(),
+    ): RideDynamics {
+        val fixes = kalmanFilterLocations(samples.locations)
+        val detector = StreamingDetector(estimateForwardAxis(fixes, samples.rotation, config), config, 0L)
+        val merged = (fixes + samples.accel + samples.gyro + samples.rotation).sortedBy { it.t }
+        for (sample in merged) {
+            when (sample) {
+                is LocationSample -> detector.onFix(sample)
+                is MotionSample -> detector.onMotion(sample)
+            }
+        }
+        detector.finish()
+        return detector.dynamics()
+    }
+
+    /** Ordinary cruising is measurable end to end, and none of it counts as roughness. */
+    @Test
+    fun cruisingIsFullyMeasuredAndEntirelySmooth() {
+        val dynamics = dynamicsOf(ride(seconds = 300.0) { Triple(0.0, 0.0, GRAVITY) })
+
+        Assert.assertTrue("expected most of the ride measured, got ${dynamics.coverage}", dynamics.coverage > 0.9)
+        Assert.assertNotNull("a clean ride is still a scoreable one", scoreRide(dynamics))
+    }
+
+    /**
+     * The hole this profile exists to close. A ride spent below the speed gate — a long crawl around
+     * a car park — produces no events at all, which on its own is indistinguishable from flawless
+     * motorway driving. Only the gap between measured and elapsed time tells them apart, so the
+     * profile has to record both and the score has to come back absent rather than perfect.
+     */
+    @Test
+    fun timeBelowTheSpeedGateIsElapsedButNotMeasured() {
+        val crawling = dynamicsOf(ride(seconds = 300.0, speedMps = 2.0) { Triple(0.0, 0.0, GRAVITY) })
+
+        Assert.assertEquals("nothing above the gate", 0.0, crawling.qualifiedSeconds, 0.5)
+        Assert.assertTrue("time still elapsed, got ${crawling.totalSeconds}", crawling.totalSeconds > 250)
+        Assert.assertNull("unmeasurable is not flawless", scoreRide(crawling))
+    }
+
+    /**
+     * End to end through the real detector: stabs at the brakes have to land in the profile's upper
+     * jerk bins and drag the score down, or nothing else in the scoring chain matters.
+     */
+    @Test
+    fun harshBrakingLandsInTheProfileAndLowersTheScore() {
+        val smooth = dynamicsOf(ride(seconds = 300.0) { Triple(0.0, 0.0, GRAVITY) })
+        val harsh =
+            dynamicsOf(
+                // Three 0.45 g stabs a minute apart, each held a second.
+                ride(seconds = 300.0) { t ->
+                    if (t % 60.0 in 30.0..31.0) Triple(-4.41, 0.0, GRAVITY) else Triple(0.0, 0.0, GRAVITY)
+                },
+            )
+
+        // Bins from index 10 up start at 1.0 g/s, which is where braking becomes an event.
+        Assert.assertTrue(
+            "expected time past the braking jerk threshold, got ${harsh.braking.jerkSeconds}",
+            harsh.braking.jerkSeconds.drop(10).sum() > 0f,
+        )
+        val smoothScore = scoreRide(smooth)!!.total
+        val harshScore = scoreRide(harsh)!!.total
+        Assert.assertTrue("expected $harshScore well below $smoothScore", smoothScore - harshScore > 5)
+    }
+
+    /**
+     * Repeated braking to [peakG], eased on and off over [onset] seconds, once every 30 s for twenty
+     * minutes. Real pedal ramps rather than step changes: how fast a brake is applied is the whole
+     * quantity being scored, so a synthetic that jumps instantly would test the low-pass filter
+     * instead of the driving.
+     */
+    private fun brakingRide(
+        peakG: Double,
+        onset: Double,
+    ) = ride(seconds = 1200.0) { t ->
+        val phase = t % 30.0
+        val fraction =
+            when {
+                phase < onset -> phase / onset
+                phase < onset + 1.0 -> 1.0
+                phase < onset * 2 + 1.0 -> 1 - (phase - onset - 1.0) / onset
+                else -> 0.0
+            }
+        Triple(-peakG * GRAVITY * fraction, 0.0, GRAVITY)
+    }
+
+    /**
+     * The requirement discrete events could never satisfy on their own (ANL-01): braking firm enough
+     * to be unpleasant but not firm enough to trigger anything must still cost something.
+     *
+     * The sporty case is the one that matters — it fires **zero** events, so any score built by
+     * counting events would call it indistinguishable from a gentle drive, yet it is plainly not the
+     * same driving. Scoring the whole distribution rather than its tail is what separates them, and
+     * this test fails the moment that stops being true.
+     */
+    @Test
+    fun nearMissesCostSomethingEvenWhenNoEventFires() {
+        val gentle = dynamicsOf(brakingRide(peakG = 0.15, onset = 2.0))
+        val sportyRide = brakingRide(peakG = 0.45, onset = 0.5)
+        val sporty = dynamicsOf(sportyRide)
+
+        Assert.assertEquals("the sporty drive must not trigger events", 0, detectRideEvents(sportyRide, 0L).size)
+        val gentleScore = scoreRide(gentle)!!.total
+        val sportyScore = scoreRide(sporty)!!.total
+        Assert.assertTrue("gentle braking should cost nothing at all", gentle.braking.jerkSeconds.drop(5).sum() == 0f)
+        Assert.assertTrue(
+            "near-miss braking should cost real points, got $sportyScore against $gentleScore",
+            gentleScore - sportyScore in 5..30,
+        )
+    }
+
+    /** Severity has to order the score across the whole range, not just above the event threshold. */
+    @Test
+    fun harsherBrakingScoresProgressivelyWorse() {
+        val scores =
+            listOf(0.15 to 2.0, 0.35 to 0.8, 0.45 to 0.5, 0.60 to 0.35).map { (peak, onset) ->
+                scoreRide(dynamicsOf(brakingRide(peak, onset)))!!.total
+            }
+        Assert.assertEquals("expected monotonically worse, got $scores", scores.sortedDescending(), scores)
+        Assert.assertTrue("expected a wide spread, got $scores", scores.first() - scores.last() > 50)
     }
 }

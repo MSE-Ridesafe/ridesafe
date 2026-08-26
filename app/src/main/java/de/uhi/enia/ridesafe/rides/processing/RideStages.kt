@@ -6,6 +6,8 @@ import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.rides.processing.event.ForwardAxisEstimator
 import de.uhi.enia.ridesafe.rides.processing.event.RideEventConfig
 import de.uhi.enia.ridesafe.rides.processing.event.StreamingDetector
+import de.uhi.enia.ridesafe.rides.processing.score.ScoreWeights
+import de.uhi.enia.ridesafe.rides.processing.score.scoreRide
 import de.uhi.enia.ridesafe.rides.recording.LocationSample
 import de.uhi.enia.ridesafe.rides.recording.MotionSample
 import de.uhi.enia.ridesafe.rides.recording.MotionSensor
@@ -123,12 +125,15 @@ class ForwardAxisStage(
  * ride's id. Streams the file, so every sensor is read at the recorded 50 Hz and memory stays flat
  * in ride length — what is held is the reorder window and a second of acceleration.
  *
- * A ride with no acceleration samples yields an empty list, same as before.
+ * It also accumulates the ride's dynamics profile — how long was spent at each level of force and
+ * onset rate — which is what the safety score is computed from. That rides along here rather than
+ * forming its own stage because it is read off the very same conditioned signal the detector already
+ * produces per sample; a separate stage would have to redo the rotation, projection and filtering to
+ * see it.
  *
- * ponytail: a ride recorded without a gyroscope or rotation vector also yields an empty list, so
- * "no events" currently conflates "clean" with "unscoreable". Harmless while this only feeds a
- * marker layer; when the safety score (ANL-01) lands it needs its own sensor-availability signal
- * rather than reading zero events as a perfect drive.
+ * A ride with no acceleration samples yields an empty list and an empty profile. The two are not the
+ * same thing downstream: the profile records how much of the ride was measurable at all, so a ride
+ * recorded without a rotation vector is scored as *unscoreable* rather than as a flawless drive.
  *
  * v2: detection threshold dropped from 0.20 g to 0.10 g, where real-world harsh driving actually
  * sits — 0.20 g was high enough that ordinary rides logged nothing at all.
@@ -146,13 +151,16 @@ class ForwardAxisStage(
  * v8: analysis streams the file rather than materialising it, so every sensor is read at the full
  * recorded rate. Detection itself is unchanged; the version moves only because the orientation and
  * gyro thinning v7 shipped with is gone, which can shift a borderline event by a hair.
+ * v9: the dynamics profile is accumulated and stored alongside the events (ANL-01). Detection is
+ * untouched; the version moves because rides analysed by v8 hold no profile and therefore cannot be
+ * scored.
  */
 class RideEventStage(
     private val db: RidesafeDatabase,
     private val config: RideEventConfig = RideEventConfig(),
 ) : RideStage {
     override val id = "events"
-    override val version = 8
+    override val version = 9
     override val dependsOn = listOf("axis")
     override val restorable = true
 
@@ -175,6 +183,10 @@ class RideEventStage(
         val events = detector?.finish()?.map { it.copy(rideId = ctx.ride.id) } ?: emptyList()
         db.rideEventDao().replaceForRide(ctx.ride.id, events)
         ctx.events = events
+        // Read after finish(), which drains the last of the held acceleration into the profile.
+        val dynamics = detector?.dynamics()
+        db.rideDao().setDynamics(ctx.ride.id, dynamics)
+        ctx.dynamics = dynamics
         // Both peaks are logged because they're the two numbers detection is tuned on, and reading
         // them off real rides beats guessing at thresholds. It also keeps "no events"
         // distinguishable from "detector broken".
@@ -185,10 +197,66 @@ class RideEventStage(
         )
     }
 
-    /** Stored events are the output; a later stage (the safety score) reads them without a file pass. */
+    /**
+     * Stored events and the stored profile are the output; the score stage reads them without a file
+     * pass. Restoring the profile matters as much as restoring the events: without it, re-deriving a
+     * score for a ride whose detection is already current would find nothing to score.
+     */
     override suspend fun load(ctx: RideAnalysisContext): Boolean {
         ctx.events = db.rideEventDao().eventsFor(ctx.ride.id)
+        ctx.dynamics = ctx.ride.dynamics
         return true
+    }
+}
+
+/**
+ * Safety scoring (ANL-01): turn the ride's dynamics profile into 0–100 scores for braking,
+ * acceleration and cornering, and one combined figure.
+ *
+ * Reads no samples. Everything it needs was left on the context by detection, so re-tuning the
+ * scoring is a version bump and one query per ride — no sample file is opened, and a full re-score
+ * of the whole logbook takes about as long as a scroll. That is the entire reason the profile stores
+ * a distribution rather than a finished penalty: what counts as a bad drive stays a read-time
+ * decision, exactly as what counts as a harsh event does.
+ *
+ * A ride with too little measurable driving is stored with no score rather than a poor one — see
+ * [de.uhi.enia.ridesafe.data.SafetyScore].
+ */
+class ScoreStage(
+    private val db: RidesafeDatabase,
+    private val config: RideEventConfig = RideEventConfig(),
+    private val weights: ScoreWeights = ScoreWeights(),
+) : RideStage {
+    override val id = "score"
+    override val version = 1
+    override val dependsOn = listOf("events")
+    override val needsSamples = false
+
+    override suspend fun finish(ctx: RideAnalysisContext) {
+        val dynamics = ctx.dynamics
+        val score = dynamics?.let { scoreRide(it, config, weights) }
+        db.rideDao().setScore(ctx.ride.id, score)
+        // The calibration record. referenceRate and priorRate are provisional until they have been
+        // set against real driving, and these are the numbers that set them: collect them across the
+        // logbook, put the median where a good-but-not-perfect ride belongs, and bump [version] —
+        // which re-derives every score from stored profiles without reading a sample file.
+        Log.i(
+            TAG_SCORE,
+            "ride ${ctx.ride.id}: " +
+                if (dynamics == null) {
+                    "no profile"
+                } else {
+                    "%.0f s qualified (%.0f%% coverage), penalties %.2f/%.2f/%.2f, score %s".format(
+                        dynamics.qualifiedSeconds,
+                        dynamics.coverage * 100,
+                        score?.brakingPenalty ?: 0.0,
+                        score?.accelerationPenalty ?: 0.0,
+                        score?.corneringPenalty ?: 0.0,
+                        score?.let { "${it.total} (b ${it.braking} / a ${it.acceleration} / c ${it.cornering})" }
+                            ?: "none — too little measurable driving",
+                    )
+                },
+        )
     }
 }
 
@@ -230,6 +298,7 @@ class FuelStage(
 private const val TAG_ROUTE = "RideAnalysis"
 private const val TAG_EVENTS = "RideEvents"
 private const val TAG_FUEL = "RideFuel"
+private const val TAG_SCORE = "RideScore"
 
 /**
  * How far a ride's recorded endpoint must sit from the filtered one before it is treated as wrong

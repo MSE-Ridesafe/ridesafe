@@ -37,11 +37,17 @@ import androidx.room.PrimaryKey
  * or null when none matches (ADR-07). Persisted by the re-match pass (rematchRides), which reruns on
  * any saved-address change and once per launch, so the display just resolves the id to the place.
  *
+ * [dynamics] is the ride's driving-dynamics profile and [score] its safety score (ANL-01), both
+ * filled by the analysis pipeline. They are stored separately because they are versioned separately:
+ * the profile costs a pass over the sample file, the score is arithmetic over the profile, so
+ * re-tuning the scoring never re-reads a ride. Either may be null — see [SafetyScore] for why an
+ * unscoreable ride has no score rather than a bad one.
+ *
  * Which build of which analysis step last ran for this ride is tracked separately, in
  * [RideAnalysisState] — one row per step, so re-tuning one step doesn't invalidate the others.
  *
- * ponytail: notes/tags/purpose/safety score (DR-RID, ANL-01) are written by later UI/analysis
- * layers, not recording — add the columns via an ALTER-TABLE migration when those land.
+ * ponytail: notes/tags/purpose (DR-RID) are written by later UI layers, not recording — add the
+ * columns via an ALTER-TABLE migration when those land.
  */
 @Entity(tableName = "rides")
 data class Ride(
@@ -64,4 +70,6 @@ data class Ride(
     val startAddressId: Long? = null,
     val endAddressId: Long? = null,
     val fuel: RideFuel? = null,
+    val dynamics: RideDynamics? = null,
+    val score: SafetyScore? = null,
 )

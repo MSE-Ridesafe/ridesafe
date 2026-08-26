@@ -140,15 +140,20 @@ end-to-end until recording (TRK-01, DR-RID) exists.
 
 ### 3.6 Analytics & safety
 
-| ID     | P | Requirement                                                                                                                                                                                      | Status | Related                                                |
-|--------|---|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------|--------------------------------------------------------|
-| ANL-01 | M | Ridesafe shall compute a driver safety score from GPS and motion-sensor data (harsh braking, hard acceleration, cornering, speeding).                                                            | Draft  | ANL-05, DR-RID, DSH-04, DSH-06, GRP-02, LOG-15, TRK-01, TRK-04 |
-| ANL-02 | M | Ridesafe shall compute mileage statistics.                                                                                                                                                       | Draft  | DR-RID, DSH-02, DSH-03, DSH-05, GRP-02, LOG-13, SET-07 |
-| ANL-03 | S | Ridesafe shall provide fuel-efficiency insights from GPS and motion-sensor data (favouring steady moderate speed over stop-and-go, gentle acceleration, and gentle braking / gliding to a stop). | Draft  | ANL-06, SET-08, TRK-04                                 |
-| ANL-04 | S | Ridesafe shall provide vehicle-usage statistics across the user's vehicles.                                                                                                                      | Draft  | DR-RID, DR-VEH                                         |
-| ANL-05 | C | Ridesafe shall provide a per-ride safety ranking/comparison.                                                                                                                                     | Draft  | ANL-01                                                 |
-| ANL-06 | C | Ridesafe shall estimate fuel cost per ride/period.                                                                                                                                               | Draft  | ANL-03, ANL-07, CST-02, DR-VEH, SET-08                 |
-| ANL-07 | C | Ridesafe shall estimate CO₂ emissions.                                                                                                                                                           | Draft  | ANL-06, DR-VEH                                         |
+*ANL-01 originally included speeding. It was dropped rather than deferred: judging speeding needs
+posted speed limits, and every source of those is a paid commercial API, which an on-device app
+with no backend (NFR-03) cannot use. The three remaining dimensions are all derived from sensors
+the phone already has.*
+
+| ID     | P | Requirement                                                                                                                                                                                      | Status      | Related                                                |
+|--------|---|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------|--------------------------------------------------------|
+| ANL-01 | M | Ridesafe shall compute a driver safety score from GPS and motion-sensor data (harsh braking, hard acceleration, cornering).                                                                      | Implemented | ANL-05, DR-RID, DSH-04, DSH-06, GRP-02, LOG-15, TRK-01, TRK-04 |
+| ANL-02 | M | Ridesafe shall compute mileage statistics.                                                                                                                                                       | Draft       | DR-RID, DSH-02, DSH-03, DSH-05, GRP-02, LOG-13, SET-07 |
+| ANL-03 | S | Ridesafe shall provide fuel-efficiency insights from GPS and motion-sensor data (favouring steady moderate speed over stop-and-go, gentle acceleration, and gentle braking / gliding to a stop). | Draft       | ANL-06, SET-08, TRK-04                                 |
+| ANL-04 | S | Ridesafe shall provide vehicle-usage statistics across the user's vehicles.                                                                                                                      | Draft       | DR-RID, DR-VEH                                         |
+| ANL-05 | C | Ridesafe shall provide a per-ride safety ranking/comparison.                                                                                                                                     | Draft       | ANL-01                                                 |
+| ANL-06 | C | Ridesafe shall estimate fuel cost per ride/period.                                                                                                                                               | Draft       | ANL-03, ANL-07, CST-02, DR-VEH, SET-08                 |
+| ANL-07 | C | Ridesafe shall estimate CO₂ emissions.                                                                                                                                                           | Draft       | ANL-06, DR-VEH                                         |
 
 ### 3.7 Group rides (cluster your own rides)
 

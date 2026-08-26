@@ -10,7 +10,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.serialization.json.Json
 
-/** JSON for the small owned values kept in a single column (BT devices, fuel estimate). */
+/** JSON for the small owned values kept in a single column (BT devices, fuel, dynamics, score). */
 private val columnJson = Json { ignoreUnknownKeys = true }
 
 class Converters {
@@ -45,6 +45,20 @@ class Converters {
     // pipeline derives it again — cheaper than a migration for a value that is regenerable anyway.
     @TypeConverter
     fun stringToFuel(value: String?): RideFuel? = value?.let { runCatching { columnJson.decodeFromString<RideFuel>(it) }.getOrNull() }
+
+    @TypeConverter
+    fun dynamicsToString(value: RideDynamics?): String? = value?.let { columnJson.encodeToString(it) }
+
+    @TypeConverter
+    fun stringToDynamics(value: String?): RideDynamics? =
+        value?.let { runCatching { columnJson.decodeFromString<RideDynamics>(it) }.getOrNull() }
+
+    @TypeConverter
+    fun scoreToString(value: SafetyScore?): String? = value?.let { columnJson.encodeToString(it) }
+
+    @TypeConverter
+    fun stringToScore(value: String?): SafetyScore? =
+        value?.let { runCatching { columnJson.decodeFromString<SafetyScore>(it) }.getOrNull() }
 }
 
 /** Adds Vehicle.bluetoothAddresses (GAR-08) without dropping existing vehicles (NFR-06). */
@@ -308,9 +322,23 @@ private val MIGRATION_13_14 =
         }
     }
 
+/**
+ * Adds the driving-dynamics profile and the safety score (ANL-01). Both are left null: no stamp
+ * exists for the score stage, and the event stage's stamp is behind the build that writes profiles,
+ * so the pipeline derives both on next launch from sample files that have been recorded all along.
+ * Nothing needs re-recording.
+ */
+private val MIGRATION_14_15 =
+    object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE rides ADD COLUMN dynamics TEXT")
+            db.execSQL("ALTER TABLE rides ADD COLUMN score TEXT")
+        }
+    }
+
 @Database(
     entities = [Vehicle::class, Ride::class, SavedAddress::class, RideEvent::class, RideAnalysisState::class],
-    version = 14,
+    version = 15,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -349,6 +377,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_11_12,
                         MIGRATION_12_13,
                         MIGRATION_13_14,
+                        MIGRATION_14_15,
                     ).build()
                     .also { instance = it }
             }

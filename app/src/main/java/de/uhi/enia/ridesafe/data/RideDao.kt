@@ -124,6 +124,20 @@ interface RideDao {
         fuel: RideFuel?,
     )
 
+    /** Store the driving-dynamics profile the detection pass accumulated (ANL-01). */
+    @Query("UPDATE rides SET dynamics = :dynamics WHERE id = :id")
+    suspend fun setDynamics(
+        id: Long,
+        dynamics: RideDynamics?,
+    )
+
+    /** Store the safety score derived from that profile (ANL-01). */
+    @Query("UPDATE rides SET score = :score WHERE id = :id")
+    suspend fun setScore(
+        id: Long,
+        score: SafetyScore?,
+    )
+
     /** Rides with a fix but no reverse-geocoded address yet — the address backfill targets these. */
     @Query(
         "SELECT * FROM rides WHERE (startLat IS NOT NULL AND startAddress IS NULL) " +
