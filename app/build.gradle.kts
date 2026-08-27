@@ -78,7 +78,6 @@ dependencies {
     implementation(libs.commons.math3)
     implementation(libs.androidx.car.app)
     testImplementation(libs.junit)
-    // The BOM has to reach the androidTest classpath too, or ui-test-junit4 resolves without a version.
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -1,5 +1,8 @@
 package de.uhi.enia.ridesafe.ui.components.map
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.model.LatLng
@@ -37,8 +41,13 @@ private const val TRANSITION_SETTLE_MS = 350L
 
 /**
  * A map in a card, framed on [framing] and drawing whatever [content] puts on it. Null [framing]
- * means the data is still loading and shows a spinner; empty means there is nothing to place, and
- * [empty] says so in the caller's own words.
+ * means the data is still loading; empty means there is nothing to place, and [empty] says so in
+ * the caller's own words.
+ *
+ * The card waits three times in a row — the route loading, the open transition settling, the map
+ * bootstrapping — and all three hide behind **one** spinner cover owned here (MapSurface's own is
+ * suppressed via its onLoaded hoist), so the sequence reads as a single load. Separate spinners per
+ * phase restart the indicator's spin at each hand-off, which reads as a glitch.
  *
  * It renders in lite mode: a static snapshot, which is what a card wants and what keeps a list of
  * them cheap. Lite maps open the Google Maps app when tapped, so when [onExpand] is given the tap is
@@ -60,23 +69,28 @@ fun MapPreview(
         delay(TRANSITION_SETTLE_MS)
         settled = true
     }
+    var mapLoaded by remember { mutableStateOf(false) }
     Card(
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
         modifier = modifier.fillMaxWidth().height(height),
     ) {
-        when {
-            framing == null || !settled -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            }
+        Box(Modifier.fillMaxSize()) {
+            when {
+                // Still waiting on the route or the transition: the cover below is the whole content.
+                framing == null || !settled -> {}
 
-            framing.isEmpty() -> {
-                empty()
-            }
+                framing.isEmpty() -> {
+                    empty()
+                }
 
-            else -> {
-                Box(Modifier.fillMaxSize()) {
-                    MapSurface(framing = framing, liteMode = true, content = content)
+                else -> {
+                    MapSurface(
+                        framing = framing,
+                        liteMode = true,
+                        onLoaded = { mapLoaded = true },
+                        content = content,
+                    )
                     if (onExpand != null) {
                         Box(
                             Modifier
@@ -84,6 +98,22 @@ fun MapPreview(
                                 .clickable(onClickLabel = expandLabel, onClick = onExpand),
                         )
                     }
+                }
+            }
+            // The one cover, alive from the card's first frame until the map reports in, so its
+            // spinner never restarts between the waits. A framing that turns out empty drops it on
+            // the spot instead — there is no map coming to fade over.
+            if (framing?.isEmpty() != true) {
+                val coverAlpha by animateFloatAsState(if (mapLoaded) 0f else 1f, tween(400), label = "previewCover")
+                if (coverAlpha > 0f) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .matchParentSize()
+                                .alpha(coverAlpha)
+                                .background(MaterialTheme.colorScheme.surfaceBright),
+                        contentAlignment = Alignment.Center,
+                    ) { CircularProgressIndicator() }
                 }
             }
         }
