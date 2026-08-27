@@ -94,7 +94,10 @@ fun RidesScreen(
     var filtersOpen by rememberSaveable { mutableStateOf(false) }
 
     // Each entry's searchable text, built once per data change; a keystroke then only scans it.
-    val index = remember(entries, context) { searchIndex(context, entries) }
+    // Only built while a query is active: applyFilter never reads it otherwise, and skipping it keeps
+    // the list's first composition cheap — which is the frame the detail-close animation runs on.
+    val searchActive = filter.query.isNotBlank()
+    val index = remember(entries, context, searchActive) { if (searchActive) searchIndex(context, entries) else emptyMap() }
     val visible =
         remember(entries, filter, index, ridesWithEvents) {
             entries.applyFilter(filter, index, ridesWithEvents)

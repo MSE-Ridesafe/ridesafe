@@ -167,8 +167,10 @@ fun queryTokens(query: String): List<String> = searchFold(query).trim().split(Re
  * localized, and reading them off the composition's context means a locale change rebuilds the
  * index instead of leaving it answering in the old language.
  *
- * ponytail: rebuilt whole whenever the entries change — a couple of milliseconds at a personal
- * logbook's scale. Move it to the ViewModel on Dispatchers.Default if it ever runs into thousands.
+ * ponytail: rebuilt whole whenever the entries change, and only while a query is active — the date
+ * formatting per entry is too slow for the list's first composition frame, which is when the
+ * detail-close animation runs. Move it to the ViewModel on Dispatchers.Default if typing the first
+ * character ever visibly hitches.
  */
 fun searchIndex(
     context: Context,
