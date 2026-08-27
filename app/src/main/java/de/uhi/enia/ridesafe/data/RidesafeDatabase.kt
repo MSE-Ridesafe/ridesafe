@@ -11,6 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.serialization.json.Json
 
 private val deviceJson = Json { ignoreUnknownKeys = true }
+const val RIDESAFE_DATABASE_VERSION = 17
 
 class Converters {
     @TypeConverter
@@ -350,7 +351,7 @@ val MIGRATION_16_17 =
         RideAnalysisState::class,
         Refuel::class,
     ],
-    version = 17,
+    version = RIDESAFE_DATABASE_VERSION,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

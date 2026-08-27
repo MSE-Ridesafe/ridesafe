@@ -505,6 +505,17 @@ private fun ExportFormatSheet(
                 enabled = !selectionInProgress,
                 onClick = { select(RideExportFormat.CSV) },
             )
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 72.dp, end = 24.dp),
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
+            ExportFormatOption(
+                title = stringResource(R.string.ride_export_format_zip),
+                description = stringResource(R.string.ride_export_format_zip_description),
+                symbolName = "folder_zip",
+                enabled = !selectionInProgress,
+                onClick = { select(RideExportFormat.ZIP) },
+            )
         }
     }
 }

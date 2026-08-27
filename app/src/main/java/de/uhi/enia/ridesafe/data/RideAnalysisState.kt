@@ -55,4 +55,7 @@ interface RideAnalysisDao {
      */
     @Query("SELECT * FROM ride_analysis")
     suspend fun all(): List<RideAnalysisState>
+
+    @Query("SELECT * FROM ride_analysis WHERE rideId IN (:rideIds) ORDER BY rideId ASC, stage ASC")
+    suspend fun forRides(rideIds: List<Long>): List<RideAnalysisState>
 }

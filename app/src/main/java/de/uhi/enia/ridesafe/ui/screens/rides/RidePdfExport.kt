@@ -80,6 +80,7 @@ enum class RideExportFormat(
 ) {
     PDF("pdf", "application/pdf"),
     CSV("csv", "text/csv"),
+    ZIP("zip", "application/zip"),
 }
 
 /** Complete renderer input for one selected logical logbook entry. */
@@ -188,14 +189,23 @@ class RideExporter(
             cleanupStaleTemps(app.cacheDir)
             val temp = File.createTempFile(EXPORT_PREFIX, ".${format.extension}", app.cacheDir)
             try {
-                val journeys = loadJourneys(requests)
-                require(journeys.isNotEmpty()) { "Selected rides no longer exist" }
                 coroutineContext.ensureActive()
                 val exportDate = LocalDate.now()
-                val units = UnitPrefs.get(app)
                 when (format) {
-                    RideExportFormat.PDF -> RidePdfReport(app).write(temp, journeys, exportDate, units)
-                    RideExportFormat.CSV -> RideCsvReport(app).write(temp, journeys, units)
+                    RideExportFormat.PDF,
+                    RideExportFormat.CSV,
+                    -> {
+                        val journeys = loadJourneys(requests)
+                        require(journeys.isNotEmpty()) { "Selected rides no longer exist" }
+                        val units = UnitPrefs.get(app)
+                        when (format) {
+                            RideExportFormat.PDF -> RidePdfReport(app).write(temp, journeys, exportDate, units)
+                            RideExportFormat.CSV -> RideCsvReport(app).write(temp, journeys, units)
+                            RideExportFormat.ZIP -> error("Handled outside this branch")
+                        }
+                    }
+
+                    RideExportFormat.ZIP -> RideZipBackup(app, db).write(temp, requests)
                 }
                 coroutineContext.ensureActive()
                 val saved =

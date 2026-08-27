@@ -238,8 +238,10 @@
     <string name="ride_export_format_title">Exportformat auswählen</string>
     <string name="ride_export_format_pdf">PDF</string>
     <string name="ride_export_format_csv">CSV</string>
+    <string name="ride_export_format_zip">ZIP</string>
     <string name="ride_export_format_pdf_description">Formatierter Bericht zum Lesen und Teilen</string>
     <string name="ride_export_format_csv_description">Tabellendaten für Excel und andere Programme</string>
+    <string name="ride_export_format_zip_description">Sicherung mit Fahrtdaten, Routen und verknüpften Einträgen</string>
     <string name="ride_exporting">Fahrten werden exportiert…</string>
     <string name="ride_export_success">Export unter Downloads/RideSafe gespeichert.</string>
     <string name="ride_export_error">Fahrten konnten nicht exportiert werden. Bitte erneut versuchen.</string>

@@ -145,6 +145,8 @@ class RideCsvExportTest {
         assertEquals("RideSafe_Rides_Export_2026-08-22_2.csv", duplicateSafeFileName(desired, setOf(desired)))
         assertEquals("text/csv", RideExportFormat.CSV.mimeType)
         assertEquals("application/pdf", RideExportFormat.PDF.mimeType)
+        assertEquals("application/zip", RideExportFormat.ZIP.mimeType)
+        assertEquals("RideSafe_Rides_Export_2026-08-22.zip", exportFileName(date, RideExportFormat.ZIP))
         assertEquals(
             "RideSafe_Rides_Export_2026-08-22_2.pdf",
             duplicateSafeFileName(exportFileName(date, RideExportFormat.PDF), setOf(exportFileName(date, RideExportFormat.PDF))),

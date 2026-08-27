@@ -1,0 +1,84 @@
+# RideSafe selected-rides backup format
+
+## Contract and compatibility
+
+The archive is a machine-oriented, self-contained export of the selected logical rides. It is the
+restore contract for a future transactional RideSafe importer; it is not the human-readable sharing
+format (PDF/CSV) and is not a third-party interchange standard.
+
+The ZIP root contains `manifest.json`. `formatId` identifies this product contract,
+`formatVersion` versions the ZIP/container conventions, and `schemaVersion` versions the manifest
+data model. These are independent of `sourceDatabaseVersion`, which is diagnostic producer metadata
+and must never be used to decide archive compatibility.
+
+Schema 2 is the first restore-ready schema. A reader must ignore unknown JSON object fields. Missing
+optional fields use their documented defaults; missing required fields are invalid. Unknown enum
+values are invalid unless a later schema explicitly defines a lossless representation. A reader
+must reject unsupported newer schemas before changing any state. Older schemas are accepted only
+after an explicit, tested, sequential in-memory upgrade to a supported schema; there is deliberately
+no implicit best-effort upgrade from the earlier experimental schema 1.
+
+Every numeric `archiveId` and `*ArchiveId` is scoped to its entity namespace and to this archive.
+Values may resemble source database primary keys, but they are references, not destination keys. An
+importer must allocate destination IDs and remap every relationship. It must not insert archive IDs
+directly. Logical selection IDs are likewise archive-local.
+
+## Manifest entities and relationships
+
+`logicalSelections` partitions all exported rides and preserves which physical rides formed each
+selected logbook entry. `mergeGroups` records ordered membership independently of logical selection.
+Each ride optionally references one vehicle, one merge group, and saved start/end addresses. Events
+and analysis states reference a ride. Refuels reference a vehicle and optionally their selected
+journey anchor. Bluetooth devices are owned values nested in their vehicle.
+
+Every non-null reference must resolve inside the manifest. A merge group's forward membership and
+the rides' reverse merge-group references must agree. The exporter validates these rules before ZIP
+creation and the reference reader validates them again from the finished ZIP.
+
+## File layout and integrity
+
+Paths are canonical and derived only from archive-local ride IDs:
+
+```text
+manifest.json
+data/rides/{rideArchiveId}/samples.ndjson.gz
+data/rides/{rideArchiveId}/route.v{routeProcessingVersion}
+```
+
+Paths must be relative, slash-separated, normalized ASCII paths without empty, `.` or `..`
+components. Duplicate paths and unlisted ZIP entries are invalid.
+
+Raw samples are `required_source`; their absence or invalid gzip/NDJSON makes export fail. A route is
+`optional_regenerable_derived`: its descriptor is always present, with `status: "absent"`, null size
+and null hash when no sidecar exists. Every included file carries its compressed/on-disk byte size
+and lowercase SHA-256. Already-compressed raw `.gz` files use ZIP method STORED. ZIP CRC is additional
+transport protection and is not a replacement for the manifest hash.
+
+The raw file is UTF-8 newline-delimited JSON inside gzip. Records use discriminator `ty` (`loc` or
+`mot`). Records are **not necessarily globally ordered by timestamp**: sensor FIFO batching can write
+older motion records after newer GPS records. Each stream is monotonic; consumers needing a unified
+timeline must reorder records by `t` with an appropriate bounded window.
+
+## `.route.v2`
+
+The route sidecar is UTF-8 text containing one Google Encoded Polyline. It has no header and carries
+only latitude/longitude. Coordinates use the encoded-polyline 1e-5-degree quantization (about 1.11 m
+latitude; longitude varies with latitude). No timestamps, altitude, speed, or accuracy are stored.
+Before encoding, fixes are Kalman-filtered and RDP-simplified with a 5 m tolerance. The filename's
+version is the route processing version; it is also recorded in `processingVersions.route`.
+
+## Consistent snapshot
+
+An active ride (`endedAtEpochMs == null`) cannot be exported. Recording closes and flushes the gzip
+writer before it finalizes that field, so an accepted raw file is no longer being appended.
+
+Analysis and export share per-ride locks. Export acquires all selected locks in ascending ID order,
+reads related database rows in one Room transaction, and copies raw/derived files into a private
+temporary snapshot while the locks remain held. ZIP creation uses only those snapshots. Route
+sidecars are published through an fsynced same-directory temporary file and atomic replacement, so
+readers see either the old complete sidecar or the new complete sidecar. Unrelated rides remain free
+to record or analyze concurrently.
+
+After writing, the production reference reader reopens the finished ZIP, verifies paths, schema,
+relationships, sizes, hashes, gzip/NDJSON, route decoding, entry set, and STORED handling. Only an
+archive accepted by that reader may be published to Downloads.

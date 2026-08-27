@@ -30,6 +30,9 @@ interface RideDao {
     @Query("SELECT * FROM rides WHERE mergeGroupId = :groupId")
     suspend fun groupMembers(groupId: Long): List<Ride>
 
+    @Query("SELECT * FROM rides WHERE mergeGroupId IN (:groupIds)")
+    suspend fun membersOfGroups(groupIds: List<Long>): List<Ride>
+
     /** Tag rides with a merge group id (MRG-01), or clear it (null) to un-merge them (MRG-03). */
     @Query("UPDATE rides SET mergeGroupId = :groupId WHERE id IN (:ids)")
     suspend fun setMergeGroup(
