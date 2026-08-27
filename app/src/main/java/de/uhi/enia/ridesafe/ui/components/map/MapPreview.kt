@@ -10,14 +10,30 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.model.LatLng
+import kotlinx.coroutines.delay
 
 /** The card preview's height — tall enough to read a route, short enough to scroll past. */
 val MapPreviewHeight = 300.dp
+
+/**
+ * How long the card waits before letting the MapView into the composition. The screens that host one
+ * arrive by a navigation/pane transition, and inflating a MapView (plus rendering its markers)
+ * mid-animation is main-thread work that eats the animation's frames. The wait hides behind the same
+ * spinner the route-loading phase shows, so it reads as loading, not as a delay.
+ * ponytail: a fixed settle delay — longer than either transition — beats plumbing "is the
+ * animation done" out of two different animation systems (NavDisplay and the pane scaffold).
+ */
+private const val TRANSITION_SETTLE_MS = 350L
 
 /**
  * A map in a card, framed on [framing] and drawing whatever [content] puts on it. Null [framing]
@@ -39,13 +55,18 @@ fun MapPreview(
     empty: @Composable () -> Unit = {},
     content: MapContent,
 ) {
+    var settled by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(TRANSITION_SETTLE_MS)
+        settled = true
+    }
     Card(
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
         modifier = modifier.fillMaxWidth().height(height),
     ) {
         when {
-            framing == null -> {
+            framing == null || !settled -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             }
 
