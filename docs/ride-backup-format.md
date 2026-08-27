@@ -87,8 +87,8 @@ archive accepted by that reader may be published to Downloads.
 
 Import is additive for rides and refuels: it never replaces existing rides or settings. The selected content URI is copied
 to private storage and the same reference reader validates it again immediately before restoration.
-Every archive-local vehicle, address, ride, event and refuel ID is mapped to a newly allocated Room
-ID; merge-group membership and all nullable references are rebuilt from those maps.
+Every archive-local vehicle, address, ride, event and refuel ID is mapped to a retained or newly
+allocated Room ID; merge-group membership and all nullable references are rebuilt from those maps.
 
 Vehicles carry a stable `vehicleUuid` and `updatedAtEpochMs`. Import maps an archived vehicle to the
 existing row with the same UUID, preserving the destination database ID and primary status. If the
@@ -98,6 +98,14 @@ normalized nonblank license plate or Bluetooth hardware address identifies exact
 vehicle. Conflicting or ambiguous legacy evidence never auto-merges. Legacy mileage resolves to the
 greater value. If the garage is empty, the archived primary (or first archived vehicle) becomes
 primary.
+
+Saved places are remapped rather than blindly inserted. Home, Work and School match their existing
+singleton kind. Custom places and gas stations match only when their normalized label and postal
+address agree, or when the same label is within 15 metres. If an older importer already made
+equivalent duplicate rows, import retains the lowest destination ID, repoints existing ride endpoint
+references to it, and removes the redundant rows in the same transaction.
+The same consolidation runs during the normal saved-place refresh, repairing duplicates created by
+older app versions without requiring the archive to be imported again.
 
 Included files are extracted into a private staging directory. Within one Room transaction, imported
 rows are inserted and the required raw files are fsynced and atomically moved to collision-safe new

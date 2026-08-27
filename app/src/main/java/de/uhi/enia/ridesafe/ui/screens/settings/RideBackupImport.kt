@@ -14,11 +14,13 @@ import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
 import de.uhi.enia.ridesafe.data.Vehicle
+import de.uhi.enia.ridesafe.data.haversineMeters
 import de.uhi.enia.ridesafe.rides.processing.ROUTE_VERSION
 import de.uhi.enia.ridesafe.rides.processing.processedRouteFile
 import de.uhi.enia.ridesafe.rides.recording.ridesDir
 import de.uhi.enia.ridesafe.ui.screens.rides.BackupFile
 import de.uhi.enia.ridesafe.ui.screens.rides.BackupRide
+import de.uhi.enia.ridesafe.ui.screens.rides.BackupSavedAddress
 import de.uhi.enia.ridesafe.ui.screens.rides.BackupVehicle
 import de.uhi.enia.ridesafe.ui.screens.rides.RideBackupArchiveValidator
 import de.uhi.enia.ridesafe.ui.screens.rides.RideBackupManifest
@@ -96,7 +98,7 @@ internal class RideBackupImporter(
                 val stagedFiles = extractIncludedFiles(archive, manifest, staging)
                 val token = UUID.randomUUID().toString().replace("-", "")
                 val sampleNames = manifest.rides.associate { it.archiveId to "ride_import_${token}_${it.archiveId}.ndjson.gz" }
-                val importedVehicleCount = db.withTransaction {
+                val importedCounts = db.withTransaction {
                     val vehicleIds = insertVehicles(manifest)
                     val addressIds = insertAddresses(manifest)
                     val rideIds = insertRides(manifest, vehicleIds, addressIds, sampleNames)
@@ -105,12 +107,12 @@ internal class RideBackupImporter(
                     insertAnalysisStates(manifest, rideIds)
                     insertRefuels(manifest, vehicleIds, rideIds)
                     publishFiles(manifest, stagedFiles, rideIds, sampleNames, published)
-                    vehicleIds.values.toSet().size
+                    vehicleIds.values.toSet().size to addressIds.values.toSet().size
                 }
                 RideBackupImportResult(
                     manifest.rides.size,
-                    importedVehicleCount,
-                    manifest.savedAddresses.size,
+                    importedCounts.first,
+                    importedCounts.second,
                     manifest.refuels.size,
                 )
             } catch (failure: Exception) {
@@ -157,21 +159,34 @@ internal class RideBackupImporter(
         return mappings
     }
 
-    private suspend fun insertAddresses(manifest: RideBackupManifest): Map<Long, Long> =
-        manifest.savedAddresses.associate { archived ->
-            archived.archiveId to
-                db.savedAddressDao().insert(
-                    SavedAddress(
-                        label = archived.label,
-                        kind = SavedPlaceKind.valueOf(archived.kind),
-                        latitude = archived.latitude,
-                        longitude = archived.longitude,
-                        radiusMeters = archived.radiusMeters,
-                        icon = archived.icon,
-                        address = archived.address,
-                    ),
-                )
+    private suspend fun insertAddresses(manifest: RideBackupManifest): Map<Long, Long> {
+        val dao = db.savedAddressDao()
+        val existing = dao.all().toMutableList()
+        val mappings = mutableMapOf<Long, Long>()
+        manifest.savedAddresses.forEach { archived ->
+            val matches = existing.filter { it.matches(archived) }.sortedBy(SavedAddress::id)
+            val retained = matches.firstOrNull()
+            if (retained == null) {
+                val inserted = archived.toSavedAddress()
+                val id = dao.insert(inserted)
+                existing += inserted.copy(id = id)
+                mappings[archived.archiveId] = id
+            } else {
+                // Repair duplicates made by older importer versions. All existing ride references
+                // are moved before the redundant address rows are removed.
+                val duplicates = matches.drop(1)
+                duplicates.forEach { duplicate ->
+                    db.rideDao().replaceSavedAddressReferences(duplicate.id, retained.id)
+                }
+                if (duplicates.isNotEmpty()) {
+                    dao.deleteByIds(duplicates.map(SavedAddress::id))
+                    existing.removeAll { candidate -> duplicates.any { it.id == candidate.id } }
+                }
+                mappings[archived.archiveId] = retained.id
+            }
         }
+        return mappings
+    }
 
     private suspend fun insertRides(
         manifest: RideBackupManifest,
@@ -358,6 +373,41 @@ internal fun normalizeLicensePlate(value: String): String =
 
 private fun normalizeBluetoothAddress(value: String): String? =
     value.filter(Char::isLetterOrDigit).uppercase(Locale.ROOT).takeIf { it.length == 12 }
+
+private val singletonSavedPlaceKinds =
+    setOf(SavedPlaceKind.HOME, SavedPlaceKind.WORK, SavedPlaceKind.SCHOOL)
+
+/**
+ * Home/Work/School are product-level singletons. Other place types may legitimately share a postal
+ * address, so they additionally require the same label; coordinates cover legacy null-address rows.
+ */
+private fun SavedAddress.matches(archived: BackupSavedAddress): Boolean {
+    val archivedKind = SavedPlaceKind.valueOf(archived.kind)
+    if (kind != archivedKind) return false
+    if (kind in singletonSavedPlaceKinds) return true
+
+    val sameLabel = normalizeSavedPlaceText(label) == normalizeSavedPlaceText(archived.label)
+    if (!sameLabel) return false
+    val localAddress = address?.let(::normalizeSavedPlaceText).orEmpty()
+    val archivedAddress = archived.address?.let(::normalizeSavedPlaceText).orEmpty()
+    val sameKnownAddress = localAddress.isNotEmpty() && localAddress == archivedAddress
+    val sameCoordinates = haversineMeters(latitude, longitude, archived.latitude, archived.longitude) <= 15.0
+    return sameKnownAddress || sameCoordinates
+}
+
+private fun normalizeSavedPlaceText(value: String): String =
+    value.filter(Char::isLetterOrDigit).uppercase(Locale.ROOT)
+
+private fun BackupSavedAddress.toSavedAddress() =
+    SavedAddress(
+        label = label,
+        kind = SavedPlaceKind.valueOf(kind),
+        latitude = latitude,
+        longitude = longitude,
+        radiusMeters = radiusMeters,
+        icon = icon,
+        address = address,
+    )
 
 private fun vehicleFreshness(
     archived: BackupVehicle,

@@ -137,6 +137,18 @@ interface RideDao {
         endAddressId: Long?,
     )
 
+    /** Repoint rides before an equivalent duplicate Saved Place is removed during import. */
+    @Query(
+        "UPDATE rides SET " +
+            "startAddressId = CASE WHEN startAddressId = :duplicateId THEN :retainedId ELSE startAddressId END, " +
+            "endAddressId = CASE WHEN endAddressId = :duplicateId THEN :retainedId ELSE endAddressId END " +
+            "WHERE startAddressId = :duplicateId OR endAddressId = :duplicateId",
+    )
+    suspend fun replaceSavedAddressReferences(
+        duplicateId: Long,
+        retainedId: Long,
+    )
+
     /** Drop a ride the recorder decided not to keep (TRK-10); its sample file goes with it. */
     @Query("DELETE FROM rides WHERE id = :id")
     suspend fun deleteById(id: Long)
