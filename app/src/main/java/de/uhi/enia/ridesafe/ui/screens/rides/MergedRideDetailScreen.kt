@@ -45,12 +45,10 @@ import com.google.android.gms.maps.model.LatLng
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RideEvent
-import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.canToggleStop
 import de.uhi.enia.ridesafe.data.canUnmergeSelection
 import de.uhi.enia.ridesafe.data.summarizeMerge
 import de.uhi.enia.ridesafe.domain.safetyScoreForRides
-import de.uhi.enia.ridesafe.rides.processing.forVehicle
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
@@ -65,8 +63,7 @@ import de.uhi.enia.ridesafe.util.formatTimeOfDay
 /**
  * Detail of a merged ride (§3.8): the stops' routes drawn as disconnected polylines (MRG-07), the
  * aggregated metrics (MRG-05), and the list of stops with un-merge controls (MRG-04, MRG-11). [stops]
- * is chronological; [segments] holds one route per stop (null while loading); [vehicle] is the car
- * every stop shares (MRG-09), which the fuel estimate is scaled onto on read (ANL-03). Un-merging happens via
+ * is chronological; [segments] holds one route per stop (null while loading). Un-merging happens via
  * [onUnmerge] (peel selected stops) and [onUnmergeAll]; the screen pops itself once fewer than two
  * stops remain, since the merged ride no longer exists.
  */
@@ -75,7 +72,6 @@ fun MergedRideDetailScreen(
     stops: List<Ride>?,
     segments: List<List<LatLng>>?,
     rideEvents: List<RideEvent>,
-    vehicle: Vehicle?,
     onBack: () -> Unit,
     onUnmergeAll: () -> Unit,
     onUnmerge: (stopIds: List<Long>) -> Unit,
@@ -191,15 +187,9 @@ fun MergedRideDetailScreen(
                     ),
             )
 
-            // The trip's fuel, same card as a single ride's — the buckets add up across stops, so the
-            // breakdown covers the whole trip rather than whichever leg the user happens to open.
-            summary.fuel.forVehicle(vehicle)?.let { fuel ->
-                FuelCard(
-                    fuel = fuel,
-                    distanceMeters = summary.distanceMeters,
-                    calibrated = vehicle?.fuelEconomy != null,
-                )
-            }
+            // The trip's efficiency, same card as a single ride's — the aggregates add up across
+            // stops and the level is derived once from the whole trip's driving (MRG-05 rule).
+            summary.eco?.let { EcoCard(eco = it) }
         }
     }
 }

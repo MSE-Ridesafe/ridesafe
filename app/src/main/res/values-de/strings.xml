@@ -27,7 +27,6 @@
     <string name="home_total_distance">Gesamte Strecke</string>
     <string name="home_total_travel_time">Gesamte Fahrzeit</string>
     <string name="home_total_recorded_rides">Aufgezeichnete Fahrten</string>
-    <string name="home_total_fuel">Kraftstoffverbrauch</string>
     <string name="home_metric_card_content_description">%1$s: %2$s</string>
     <string name="home_metric_distance_this_month">+%1$s diesen Monat</string>
     <string name="home_metric_duration_this_month">+%1$s diesen Monat</string>
@@ -35,8 +34,6 @@
     <string name="home_metric_no_distance_this_month">Keine Strecke diesen Monat</string>
     <string name="home_metric_no_duration_this_month">Keine Fahrzeit diesen Monat</string>
     <string name="home_metric_no_rides_this_month">Keine Fahrten diesen Monat</string>
-    <string name="home_metric_fuel_this_month">+%1$s diesen Monat</string>
-    <string name="home_metric_no_fuel_this_month">Kein Verbrauch diesen Monat</string>
     <string name="home_highlight_longest_ride">Längste Fahrt</string>
     <string name="home_highlight_average_ride">Durchschnittliche Fahrt</string>
     <string name="home_highlight_most_active_day">Aktivster Tag</string>
@@ -192,18 +189,28 @@
     <string name="ride_detail_total_distance">Gesamtstrecke</string>
     <string name="ride_detail_no_gps">Für diese Fahrt wurde kein GPS aufgezeichnet</string>
 
-    <!-- Verbrauchsschätzung (ANL-03), VT-Micro-Modell über Geschwindigkeit und Beschleunigung. -->
-    <string name="ride_detail_section_fuel">Kraftstoff</string>
-    <string name="ride_fuel_consumption">%1$s L/100 km</string>
-    <string name="ride_fuel_liters">%1$s L</string>
-    <string name="ride_fuel_idle">Im Stand</string>
-    <string name="ride_fuel_cruising">Konstante Fahrt</string>
-    <string name="ride_fuel_accelerating">Beschleunigen</string>
-    <string name="ride_fuel_slowing">Verzögern</string>
-    <!-- Legendenzeile: Liter für eine Fahrsituation und ihr Anteil an der Fahrt. -->
-    <string name="ride_fuel_bucket_detail">%1$s L · %2$d%%</string>
-    <string name="ride_fuel_estimate_note">Geschätzt aus Geschwindigkeit und Beschleunigung (VT-Micro-Modell).</string>
-    <string name="ride_fuel_calibration_hint">Verbrauch des Fahrzeugs in der Garage eintragen für eine genauere Schätzung.</string>
+    <!-- Effizienz (ANL-03): Öko-Stufe 0-3 und die Zeitaufteilung nach Fahrsituation. Bewusst ohne Zahlen. -->
+    <string name="ride_detail_section_eco">Effizienz</string>
+    <string name="ride_eco_level_3">Sehr effizient</string>
+    <string name="ride_eco_level_2">Effizient</string>
+    <string name="ride_eco_level_1">Mäßig effizient</string>
+    <string name="ride_eco_level_0">Ineffizient</string>
+    <!-- Motivierende Unterzeilen zur Stufe. Auf jeder Stufe ermutigend, nie belehrend. -->
+    <string name="ride_eco_sub_3">Effizienter geht’s kaum!</string>
+    <string name="ride_eco_sub_2">Fast perfekt unterwegs.</string>
+    <string name="ride_eco_sub_1">Etwas mehr Gleiten wirkt Wunder.</string>
+    <string name="ride_eco_sub_0">Kleine Änderungen, große Wirkung.</string>
+    <!-- Screenreader-Ansage des Segmentbalkens, z. B. "Effizienzstufe 2 von 3". -->
+    <string name="ride_eco_level_a11y">Effizienzstufe %1$d von %2$d</string>
+    <string name="ride_eco_idle">Im Stand</string>
+    <string name="ride_eco_accelerating">Beschleunigen</string>
+    <string name="ride_eco_cruising">Konstante Fahrt</string>
+    <string name="ride_eco_braking">Bremsen</string>
+    <!-- Screenreader-Ansage eines Abschnitts, z. B. "Bremsen: 12 % der Fahrt". -->
+    <string name="ride_eco_bucket_a11y">%1$s: %2$d %% der Fahrt</string>
+    <!-- Zwischenüberschrift über der Aufteilung nach Fahrsituation. -->
+    <string name="ride_eco_breakdown_title">Wohin die Zeit ging</string>
+    <string name="ride_eco_note">Basierend auf Brems-, Stand- und Beschleunigungsverhalten. Ausrollen zählt als konstante Fahrt.</string>
     <string name="ride_address_unknown">Unbekannter Ort</string>
 
     <!-- Sicherheits-Score (ANL-01): 0–100-Anzeigen aus dem Fahrdynamik-Profil der Fahrt. -->
@@ -217,6 +224,7 @@
     <string name="ride_score_unscoreable">Zu wenig auswertbare Fahrzeit, um diese Fahrt zu bewerten.</string>
     <string name="home_score_period_all">Insgesamt</string>
     <string name="home_score_empty">Keine bewerteten Fahrten in diesem Zeitraum.</string>
+    <string name="home_eco_empty">Noch keine bewerteten Fahrten für diese Auswahl.</string>
     <!-- Diagramm-Untertitel je Zeitraum und die Kalenderwochen-Beschriftung eines Wochenbalkens. -->
     <string name="home_score_dev_week">Score-Entwicklung der letzten Wochen</string>
     <string name="home_score_dev_month">Score-Entwicklung der letzten Monate</string>
@@ -301,7 +309,7 @@
     <string name="analysis_queue_empty_title">Alle Fahrten analysiert</string>
     <string name="analysis_queue_empty_message">Zurzeit wird nichts verarbeitet.</string>
     <string name="analysis_detail_notice_title">Analyse läuft</string>
-    <string name="analysis_detail_notice_message">Distanz, Route, Fahrereignisse und Verbrauch sind für diese Fahrt noch nicht verfügbar oder könnten unvollständig sein.</string>
+    <string name="analysis_detail_notice_message">Distanz, Route, Fahrereignisse und Bewertungen sind für diese Fahrt noch nicht verfügbar oder könnten unvollständig sein.</string>
 
     <!-- Logbook search & filters (LOG-06, LOG-07, LOG-11 … LOG-15) -->
     <string name="rides_search_hint">Fahrten durchsuchen</string>

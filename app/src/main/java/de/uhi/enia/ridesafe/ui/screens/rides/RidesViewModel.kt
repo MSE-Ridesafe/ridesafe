@@ -128,12 +128,7 @@ class RidesViewModel(
         rematchRides(rideDao, savedAddressDao)
     }
 
-    /**
-     * The garage (DR-VEH), exposed so a detail screen can resolve the ride's vehicle. The fuel
-     * estimate (ANL-03) is stored uncalibrated and scaled onto the vehicle on read, so the screen
-     * needs the vehicle itself, not just the name [RideRow] already carries. Whole list rather than
-     * a per-id query for the same reason the saved places are: a garage is a handful of rows.
-     */
+    /** The garage (DR-VEH), for the filter sheet's vehicle dropdown (LOG-07). */
     val vehicles: StateFlow<List<Vehicle>> =
         vehicleDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 

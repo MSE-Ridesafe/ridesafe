@@ -99,11 +99,9 @@ fun HomeScreen(
                     distanceMeters = state.totalDistanceMeters,
                     durationMillis = state.totalDurationMillis,
                     rideCount = state.totalRecordedRides,
-                    fuelLiters = state.totalFuelLiters,
                     monthDistanceMeters = state.currentMonthDistanceMeters,
                     monthDurationMillis = state.currentMonthDurationMillis,
                     monthRideCount = state.currentMonthRecordedRides,
-                    monthFuelLiters = state.currentMonthFuelLiters,
                 )
             }
             // The core feature (DSH-06) sits right under the mileage summary. Absent entirely until
@@ -117,6 +115,16 @@ fun HomeScreen(
                         scoreByWeek = state.safetyScoreByWeek,
                         scoreByMonth = state.safetyScoreByMonth,
                         scoreHistory = state.safetyScoreHistory,
+                    )
+                }
+            }
+            // Absent until a first ride is profiled, same rule as the safety card above it.
+            if (state.ecoAllTime != null) {
+                item {
+                    EcoSection(
+                        allVehicles = state.ecoAllTime,
+                        byVehicle = state.ecoByVehicle,
+                        vehicles = state.vehicles,
                     )
                 }
             }

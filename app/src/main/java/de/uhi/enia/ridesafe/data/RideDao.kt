@@ -117,11 +117,11 @@ interface RideDao {
         avgSpeedMps: Double,
     )
 
-    /** Store the fuel estimate the VT-Micro pass computed from the filtered track (ANL-03). */
-    @Query("UPDATE rides SET fuel = :fuel WHERE id = :id")
-    suspend fun setFuel(
+    /** Store the efficiency profile integrated from the filtered track (ANL-03). */
+    @Query("UPDATE rides SET eco = :eco WHERE id = :id")
+    suspend fun setEco(
         id: Long,
-        fuel: RideFuel?,
+        eco: RideEco?,
     )
 
     /** Store the driving-dynamics profile the detection pass accumulated (ANL-01). */

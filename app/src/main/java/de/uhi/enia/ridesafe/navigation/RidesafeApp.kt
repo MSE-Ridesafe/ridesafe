@@ -143,8 +143,11 @@ fun RidesafeApp() {
     // down also still finds "Saved addresses" while its editor sits a level deeper.
     val openRide =
         when (val key = ridesStack.lastOrNull { it is RideDetailRoute || it is MergedRideDetailRoute }) {
-            is RideDetailRoute -> "r${key.id}" // matches LogbookEntry.key
+            is RideDetailRoute -> "r${key.id}"
+
+            // matches LogbookEntry.key
             is MergedRideDetailRoute -> "g${key.groupId}"
+
             else -> null
         }
     val openVehicle =

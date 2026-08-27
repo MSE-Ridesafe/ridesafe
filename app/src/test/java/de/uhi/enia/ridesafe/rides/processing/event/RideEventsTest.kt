@@ -755,7 +755,9 @@ class RideEventsTest {
         // Bins from index 10 up start at 1.0 g/s, which is where braking becomes an event.
         Assert.assertTrue(
             "expected time past the braking jerk threshold, got ${harsh.braking.jerkSeconds}",
-            harsh.braking.jerkSeconds.drop(10).sum() > 0f,
+            harsh.braking.jerkSeconds
+                .drop(10)
+                .sum() > 0f,
         )
         val smoothScore = scoreRide(smooth)!!.total
         val harshScore = scoreRide(harsh)!!.total
@@ -801,7 +803,12 @@ class RideEventsTest {
         Assert.assertEquals("the sporty drive must not trigger events", 0, detectRideEvents(sportyRide, 0L).size)
         val gentleScore = scoreRide(gentle)!!.total
         val sportyScore = scoreRide(sporty)!!.total
-        Assert.assertTrue("gentle braking should cost nothing at all", gentle.braking.jerkSeconds.drop(5).sum() == 0f)
+        Assert.assertTrue(
+            "gentle braking should cost nothing at all",
+            gentle.braking.jerkSeconds
+                .drop(5)
+                .sum() == 0f,
+        )
         Assert.assertTrue(
             "near-miss braking should cost real points, got $sportyScore against $gentleScore",
             gentleScore - sportyScore in 5..30,

@@ -27,7 +27,6 @@
     <string name="home_total_distance">Total Distance</string>
     <string name="home_total_travel_time">Total Travel Time</string>
     <string name="home_total_recorded_rides">Total Recorded Rides</string>
-    <string name="home_total_fuel">Fuel Used</string>
     <string name="home_metric_card_content_description">%1$s: %2$s</string>
     <string name="home_metric_distance_this_month">+%1$s this month</string>
     <string name="home_metric_duration_this_month">+%1$s this month</string>
@@ -35,8 +34,6 @@
     <string name="home_metric_no_distance_this_month">No distance this month</string>
     <string name="home_metric_no_duration_this_month">No travel time this month</string>
     <string name="home_metric_no_rides_this_month">No rides this month</string>
-    <string name="home_metric_fuel_this_month">+%1$s this month</string>
-    <string name="home_metric_no_fuel_this_month">No fuel used this month</string>
     <string name="home_highlight_longest_ride">Longest ride</string>
     <string name="home_highlight_average_ride">Average ride</string>
     <string name="home_highlight_most_active_day">Most active day</string>
@@ -193,18 +190,28 @@
     <string name="ride_detail_total_distance">Total distance</string>
     <string name="ride_detail_no_gps">No GPS recorded for this ride</string>
 
-    <!-- Fuel estimation (ANL-03), VT-Micro model over the ride's speed/acceleration profile. -->
-    <string name="ride_detail_section_fuel">Fuel</string>
-    <string name="ride_fuel_consumption">%1$s L/100 km</string>
-    <string name="ride_fuel_liters">%1$s L</string>
-    <string name="ride_fuel_idle">Idling</string>
-    <string name="ride_fuel_cruising">Cruising</string>
-    <string name="ride_fuel_accelerating">Accelerating</string>
-    <string name="ride_fuel_slowing">Slowing down</string>
-    <!-- Legend row: how many litres went into one driving regime, and what share of the ride that is. -->
-    <string name="ride_fuel_bucket_detail">%1$s L · %2$d%%</string>
-    <string name="ride_fuel_estimate_note">Estimated from speed and acceleration (VT-Micro model).</string>
-    <string name="ride_fuel_calibration_hint">Add this vehicle\'s fuel economy in Garage for a closer estimate.</string>
+    <!-- Efficiency (ANL-03): the 0-3 eco level and the time-by-regime breakdown. No numbers by design. -->
+    <string name="ride_detail_section_eco">Efficiency</string>
+    <string name="ride_eco_level_3">Very efficient</string>
+    <string name="ride_eco_level_2">Efficient</string>
+    <string name="ride_eco_level_1">Moderately efficient</string>
+    <string name="ride_eco_level_0">Inefficient</string>
+    <!-- Coaching one-liners under the level label. Encouraging at every level, never scolding. -->
+    <string name="ride_eco_sub_3">As efficient as it gets!</string>
+    <string name="ride_eco_sub_2">Just shy of perfect.</string>
+    <string name="ride_eco_sub_1">A little more gliding goes a long way.</string>
+    <string name="ride_eco_sub_0">Small changes, big difference.</string>
+    <!-- Screen-reader reading of the segmented bar, e.g. "Efficiency level 2 of 3". -->
+    <string name="ride_eco_level_a11y">Efficiency level %1$d of %2$d</string>
+    <string name="ride_eco_idle">Idling</string>
+    <string name="ride_eco_accelerating">Accelerating</string>
+    <string name="ride_eco_cruising">Cruising</string>
+    <string name="ride_eco_braking">Braking</string>
+    <!-- Screen-reader reading of one breakdown slice, e.g. "Braking: 12% of the ride". -->
+    <string name="ride_eco_bucket_a11y">%1$s: %2$d%% of the ride</string>
+    <!-- Sub-header over the per-regime breakdown rows. -->
+    <string name="ride_eco_breakdown_title">Where the time went</string>
+    <string name="ride_eco_note">Based on braking, idling and acceleration patterns. Gliding to a stop counts as cruising.</string>
     <string name="ride_address_unknown">Unknown location</string>
 
     <!-- Safety score (ANL-01): 0–100 gauges from the ride's driving-dynamics profile. -->
@@ -218,6 +225,7 @@
     <string name="ride_score_unscoreable">Not enough measurable driving to score this ride.</string>
     <string name="home_score_period_all">All time</string>
     <string name="home_score_empty">No scored rides in this period.</string>
+    <string name="home_eco_empty">No rated rides for this selection yet.</string>
     <!-- Chart subtitle per period, and the calendar-week label under a weekly bar. -->
     <string name="home_score_dev_week">Score development over the past weeks</string>
     <string name="home_score_dev_month">Score development over the past months</string>
@@ -301,7 +309,7 @@
     <string name="analysis_queue_empty_title">All rides analyzed</string>
     <string name="analysis_queue_empty_message">Nothing is being processed right now.</string>
     <string name="analysis_detail_notice_title">Analysis in progress</string>
-    <string name="analysis_detail_notice_message">Distance, route, driving events and fuel aren\'t available for this ride yet or may be incomplete.</string>
+    <string name="analysis_detail_notice_message">Distance, route, driving events and scores aren\'t available for this ride yet or may be incomplete.</string>
 
     <!-- Logbook search & filters (LOG-06, LOG-07, LOG-11 … LOG-15) -->
     <string name="rides_search_hint">Search rides</string>

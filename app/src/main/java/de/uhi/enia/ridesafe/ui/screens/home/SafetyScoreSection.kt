@@ -13,13 +13,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.SafetyScore
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
-import androidx.compose.ui.platform.LocalLocale
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -116,7 +116,9 @@ fun SafetyScoreSection(
                         )
                     }
 
-                    ScoreWindow.ALL_TIME -> AllTimeScoreLine(scoreHistory)
+                    ScoreWindow.ALL_TIME -> {
+                        AllTimeScoreLine(scoreHistory)
+                    }
                 }
             }
         },

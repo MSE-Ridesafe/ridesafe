@@ -86,11 +86,13 @@ fun VehicleDetailScreen(
                         containerColor = Color.Transparent,
                     ),
                 navigationIcon = {
-                    if (showBack) IconButton(onClick = onBack) {
-                        MaterialSymbol(
-                            symbolName = "arrow_back",
-                            contentDescription = stringResource(R.string.action_back),
-                        )
+                    if (showBack) {
+                        IconButton(onClick = onBack) {
+                            MaterialSymbol(
+                                symbolName = "arrow_back",
+                                contentDescription = stringResource(R.string.action_back),
+                            )
+                        }
                     }
                 },
                 actions = {

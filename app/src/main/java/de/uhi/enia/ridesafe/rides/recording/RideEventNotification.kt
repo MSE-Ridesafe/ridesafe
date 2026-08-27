@@ -9,8 +9,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
-import de.uhi.enia.ridesafe.util.inAppLanguage
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
+import de.uhi.enia.ridesafe.util.inAppLanguage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -38,7 +38,12 @@ suspend fun notifyRideStarted(
     val vehicle =
         vehicleId?.let { id ->
             withContext(Dispatchers.IO) {
-                RidesafeDatabase.getInstance(appContext).vehicleDao().all().firstOrNull { it.id == id }?.displayTitle()
+                RidesafeDatabase
+                    .getInstance(appContext)
+                    .vehicleDao()
+                    .all()
+                    .firstOrNull { it.id == id }
+                    ?.displayTitle()
             }
         }
     post(appContext, appContext.inAppLanguage().getString(R.string.car_notify_started), vehicle)

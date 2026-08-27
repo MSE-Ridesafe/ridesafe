@@ -7,6 +7,8 @@ import de.uhi.enia.ridesafe.rides.processing.event.ForwardAxisEstimator
 import de.uhi.enia.ridesafe.rides.processing.event.RideEventConfig
 import de.uhi.enia.ridesafe.rides.processing.event.StreamingDetector
 import de.uhi.enia.ridesafe.rides.processing.score.ScoreWeights
+import de.uhi.enia.ridesafe.rides.processing.score.ecoLevel
+import de.uhi.enia.ridesafe.rides.processing.score.rideEcoProfile
 import de.uhi.enia.ridesafe.rides.processing.score.scoreRide
 import de.uhi.enia.ridesafe.rides.recording.LocationSample
 import de.uhi.enia.ridesafe.rides.recording.MotionSample
@@ -264,43 +266,52 @@ class ScoreStage(
 }
 
 /**
- * Fuel-consumption estimation (ANL-03): run the VT-Micro model over the ride's filtered track and
- * store the litres, split by driving regime, on the ride row.
+ * Efficiency profiling (ANL-03): integrate the ride's kinematic energy accounting — friction
+ * braking, idling, how speed was gained — from the filtered track and store it on the ride row.
+ * The 0–3 eco level is derived from the profile at read time (see ecoLevel), so retuning what
+ * counts as efficient never reopens a sample file.
  *
- * No sink — the pass driver already hands over the Kalman-filtered fixes, and the model works off
- * their Doppler speed at the ~1 Hz the fixes arrive at, which is the rate it was fitted on. Sharing
- * pass two with detection means this costs no extra read of the sample file when both are due, and
- * exactly one when it is the only stage that moved.
+ * No sink — the pass driver already hands over the Kalman-filtered fixes, and the profile works off
+ * their Doppler speed at the ~1 Hz the fixes arrive at. Sharing pass two with detection means this
+ * costs no extra read of the sample file when both are due, and exactly one when it is the only
+ * stage that moved.
  *
  * Depends on the route stage for its version rather than its output: a track that filters
- * differently is a different speed profile and therefore a different amount of fuel.
- *
- * What is stored is the model's raw output, uncalibrated — see [de.uhi.enia.ridesafe.data.RideFuel]
- * for why the vehicle is only applied on read.
+ * differently is a different speed profile and therefore a different energy account.
  */
-class FuelStage(
+class EcoStage(
     private val db: RidesafeDatabase,
 ) : RideStage {
-    override val id = "fuel"
+    override val id = "eco"
     override val version = 1
     override val dependsOn = listOf("route")
 
     override suspend fun finish(ctx: RideAnalysisContext) {
-        val fuel = estimateRideFuel(ctx.filteredFixes.orEmpty().map { it.fix })
-        db.rideDao().setFuel(ctx.ride.id, fuel)
-        // A ride whose track filtered to nothing legitimately has no estimate; it is stamped anyway,
-        // like the route stage does, so it isn't re-read every launch. Logged either way, because a
-        // silently absent estimate and a model returning zero look identical in the UI.
+        val eco = rideEcoProfile(ctx.filteredFixes.orEmpty().map { it.fix })
+        db.rideDao().setEco(ctx.ride.id, eco)
+        // A ride whose track filtered to nothing legitimately has no profile; it is stamped anyway,
+        // like the route stage does, so it isn't re-read every launch. The logged figures are the
+        // calibration record for EcoKnobs, the same way ScoreStage's line feeds ScoreWeights.
         Log.i(
-            TAG_FUEL,
-            "ride ${ctx.ride.id}: ${fuel?.let { "%.3f L (idle %.0f%%)".format(it.totalLiters, it.idleShare * 100) } ?: "no estimate"}",
+            TAG_ECO,
+            "ride ${ctx.ride.id}: " +
+                (
+                    eco?.let {
+                        "brake %.0f J/kg/km, idle %.0f%%, hard-accel %.0f%% -> level %s".format(
+                            it.brakeJPerKgPerKm,
+                            it.idleShare * 100,
+                            it.hardAccelShare * 100,
+                            ecoLevel(it)?.toString() ?: "none",
+                        )
+                    } ?: "no profile"
+                ),
         )
     }
 }
 
 private const val TAG_ROUTE = "RideAnalysis"
 private const val TAG_EVENTS = "RideEvents"
-private const val TAG_FUEL = "RideFuel"
+private const val TAG_ECO = "RideEco"
 private const val TAG_SCORE = "RideScore"
 
 /**

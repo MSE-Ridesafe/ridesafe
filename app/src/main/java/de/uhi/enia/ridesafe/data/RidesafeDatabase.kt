@@ -10,7 +10,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.serialization.json.Json
 
-/** JSON for the small owned values kept in a single column (BT devices, fuel, dynamics, score). */
+/** JSON for the small owned values kept in a single column (BT devices, eco, dynamics, score). */
 private val columnJson = Json { ignoreUnknownKeys = true }
 
 class Converters {
@@ -39,12 +39,12 @@ class Converters {
     fun stringToRideEventType(value: String): RideEventType = RideEventType.valueOf(value)
 
     @TypeConverter
-    fun fuelToString(value: RideFuel?): String? = value?.let { columnJson.encodeToString(it) }
+    fun ecoToString(value: RideEco?): String? = value?.let { columnJson.encodeToString(it) }
 
-    // A blob written by a build whose RideFuel had different fields reads as "no estimate", and the
+    // A blob written by a build whose RideEco had different fields reads as "no profile", and the
     // pipeline derives it again — cheaper than a migration for a value that is regenerable anyway.
     @TypeConverter
-    fun stringToFuel(value: String?): RideFuel? = value?.let { runCatching { columnJson.decodeFromString<RideFuel>(it) }.getOrNull() }
+    fun stringToEco(value: String?): RideEco? = value?.let { runCatching { columnJson.decodeFromString<RideEco>(it) }.getOrNull() }
 
     @TypeConverter
     fun dynamicsToString(value: RideDynamics?): String? = value?.let { columnJson.encodeToString(it) }
@@ -336,9 +336,26 @@ private val MIGRATION_14_15 =
         }
     }
 
+/**
+ * Replaces the never-displayed VT-Micro fuel estimate with the efficiency profile (ANL-03): the
+ * absolute-litres approach was dropped before it shipped a release, in favour of a car-independent
+ * eco level derived from kinematic aggregates. The `fuel` column and its `ride_analysis` stamps go
+ * — additive-only would leave a dead column and orphaned stamps forever — and `eco` starts empty,
+ * so the pipeline derives every ride's profile from the raw sample files on next launch.
+ * minSdk 34 means SQLite 3.39+, so DROP COLUMN needs no table rebuild (same as MIGRATION_12_13).
+ */
+private val MIGRATION_15_16 =
+    object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE rides DROP COLUMN fuel")
+            db.execSQL("ALTER TABLE rides ADD COLUMN eco TEXT")
+            db.execSQL("DELETE FROM ride_analysis WHERE stage = 'fuel'")
+        }
+    }
+
 @Database(
     entities = [Vehicle::class, Ride::class, SavedAddress::class, RideEvent::class, RideAnalysisState::class],
-    version = 15,
+    version = 16,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -378,6 +395,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_12_13,
                         MIGRATION_13_14,
                         MIGRATION_14_15,
+                        MIGRATION_15_16,
                     ).build()
                     .also { instance = it }
             }

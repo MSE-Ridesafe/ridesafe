@@ -29,9 +29,9 @@ import androidx.room.PrimaryKey
  * is no separate merged-ride row and no stored stop order — stops order by [startedAtEpochMs] and the
  * aggregated metrics/addresses are derived on read (MRG-05, MRG-07).
  *
- * [fuel] is the estimated fuel consumption (ANL-03), filled by the analysis pass that runs the
- * VT-Micro model over the filtered track; null until then, and for a ride with no usable track. It
- * holds the model's raw output — calibrating it to a vehicle happens on read, see [RideFuel].
+ * [eco] is the ride's efficiency profile (ANL-03) — kinematic aggregates integrated from the
+ * filtered track, from which the 0–3 eco level is derived at read time; null until the analysis
+ * pass fills it, and for a ride with no usable track. Pure kinematics, so it needs no vehicle.
  *
  * [startAddressId]/[endAddressId] are the saved addresses (DR-ADR) the start/end points fall into,
  * or null when none matches (ADR-07). Persisted by the re-match pass (rematchRides), which reruns on
@@ -69,7 +69,7 @@ data class Ride(
     val endAddress: String? = null,
     val startAddressId: Long? = null,
     val endAddressId: Long? = null,
-    val fuel: RideFuel? = null,
+    val eco: RideEco? = null,
     val dynamics: RideDynamics? = null,
     val score: SafetyScore? = null,
 )

@@ -155,9 +155,9 @@ interface RideStage {
  * *that* constraint is already shared: the GPS is Kalman-filtered once, in pass one, and pass two
  * reuses those fixes instead of filtering again.
  *
- * Fuel estimation joins pass two rather than adding a third: it reads the same filtered fixes
- * detection is already being handed, so riding along costs nothing, while a pass of its own would
- * re-read the file whenever both stages are due.
+ * Efficiency profiling joins pass two rather than adding a fourth: it reads the same filtered
+ * fixes detection is already being handed, so riding along costs nothing, while a pass of its own
+ * would re-read the file whenever both stages are due.
  *
  * Scoring is the third pass and reads no samples at all: it derives from the profile detection left
  * behind, so re-tuning the score costs one query per ride and no file is opened. That is what makes
@@ -169,7 +169,7 @@ interface RideStage {
 private fun analysisPasses(db: RidesafeDatabase): List<List<RideStage>> =
     listOf(
         listOf(RouteStage(db), RideEndpointStage(db), ForwardAxisStage()),
-        listOf(RideEventStage(db), FuelStage(db)),
+        listOf(RideEventStage(db), EcoStage(db)),
         listOf(ScoreStage(db)),
     )
 

@@ -13,7 +13,6 @@ data class LogicalRideJourney(
     val startEpochMs: Long,
     val distanceMeters: Double?,
     val travelDurationMillis: Long,
-    val fuelLiters: Double? = null,
 )
 
 data class JourneyActivity(
@@ -33,23 +32,9 @@ data class JourneyPeriodTotals(
     val distanceMeters: Double,
     val durationMillis: Long,
     val journeyCount: Int,
-    val fuelLiters: Double,
 )
 
-/**
- * Fold the logbook into the trips the dashboard counts: a merged ride is one journey, everything
- * else is its own.
- *
- * [fuelLitersByRide] carries each ride's calibrated fuel estimate (ANL-03), keyed by ride id. Passed
- * in rather than read off the ride, because the stored estimate is the raw model output and turning
- * it into litres for a specific car needs the garage — which this pure fold has no business knowing
- * about. Rides absent from the map (no estimate, or a vehicle the model doesn't describe) contribute
- * nothing, exactly as a ride with no distance yet does.
- */
-fun logicalRideJourneys(
-    rides: List<Ride>,
-    fuelLitersByRide: Map<Long, Double> = emptyMap(),
-): List<LogicalRideJourney> {
+fun logicalRideJourneys(rides: List<Ride>): List<LogicalRideJourney> {
     val finishedRides = rides.filter { it.endedAtEpochMs != null }
     val consumedSegmentIds = mutableSetOf<Long>()
     val mergedJourneys =
@@ -65,7 +50,6 @@ fun logicalRideJourneys(
                     startEpochMs = summary.startEpochMs,
                     distanceMeters = summary.distanceMeters,
                     travelDurationMillis = summary.movingDurationMs,
-                    fuelLiters = segments.mapNotNull { fuelLitersByRide[it.id] }.takeIf { it.isNotEmpty() }?.sum(),
                 )
             }
 
@@ -78,7 +62,6 @@ fun logicalRideJourneys(
                     startEpochMs = ride.startedAtEpochMs,
                     distanceMeters = ride.distanceMeters,
                     travelDurationMillis = ride.durationMillis(),
-                    fuelLiters = fuelLitersByRide[ride.id],
                 )
             }
 
@@ -90,8 +73,6 @@ fun totalJourneyDistanceMeters(journeys: List<LogicalRideJourney>): Double = jou
 fun totalJourneyTravelDurationMillis(journeys: List<LogicalRideJourney>): Long = journeys.sumOf { it.travelDurationMillis }
 
 fun totalJourneyCount(journeys: List<LogicalRideJourney>): Int = journeys.size
-
-fun totalJourneyFuelLiters(journeys: List<LogicalRideJourney>): Double = journeys.sumOf { it.fuelLiters ?: 0.0 }
 
 fun journeyTotalsForMonth(
     journeys: List<LogicalRideJourney>,
@@ -106,7 +87,6 @@ fun journeyTotalsForMonth(
         distanceMeters = totalJourneyDistanceMeters(monthJourneys),
         durationMillis = totalJourneyTravelDurationMillis(monthJourneys),
         journeyCount = totalJourneyCount(monthJourneys),
-        fuelLiters = totalJourneyFuelLiters(monthJourneys),
     )
 }
 
