@@ -156,6 +156,10 @@ internal data class BackupVehicle(
     val year: Int? = null,
     val fuelEconomy: Double? = null,
     val tankSize: Double? = null,
+    /** Null only for archives produced before stable cross-backup vehicle identity existed. */
+    val vehicleUuid: String? = null,
+    /** Null only for legacy archives; their manifest creation time is the freshness fallback. */
+    val updatedAtEpochMs: Long? = null,
 )
 
 @Serializable
@@ -497,7 +501,14 @@ internal object RideBackupArchiveValidator {
             requireRef(it.vehicleArchiveId, vehicles, false, "refuel vehicle")
             requireRef(it.journeyAnchorRideArchiveId, rides, true, "refuel journey anchor")
         }
-        manifest.vehicles.forEach { if (it.fuelType !in FuelType.entries.map { value -> value.name }) fail("Unknown fuel-type enum ${it.fuelType}") }
+        manifest.vehicles.forEach {
+            if (it.fuelType !in FuelType.entries.map { value -> value.name }) fail("Unknown fuel-type enum ${it.fuelType}")
+            it.vehicleUuid?.let { uuid ->
+                if (runCatching { java.util.UUID.fromString(uuid) }.isFailure) fail("Invalid vehicle UUID")
+            }
+            if (it.updatedAtEpochMs != null && it.updatedAtEpochMs < 0) fail("Invalid vehicle modification time")
+        }
+        unique(manifest.vehicles.mapNotNull(BackupVehicle::vehicleUuid), "vehicle UUIDs")
         manifest.savedAddresses.forEach { if (it.kind !in SavedPlaceKind.entries.map { value -> value.name }) fail("Unknown saved-place enum ${it.kind}") }
 
         unique(manifest.files.map(BackupFile::path), "manifest file paths")
@@ -618,8 +629,20 @@ private fun Ride.toBackup() =
 
 private fun Vehicle.toBackup() =
     BackupVehicle(
-        id, name, make, model, licensePlate, fuelType.name, mileageKm, isPrimary,
-        bluetoothDevices.map { BackupBluetoothDevice(it.address, it.name) }, year, fuelEconomy, tankSize,
+        archiveId = id,
+        name = name,
+        make = make,
+        model = model,
+        licensePlate = licensePlate,
+        fuelType = fuelType.name,
+        mileageKm = mileageKm,
+        isPrimary = isPrimary,
+        bluetoothDevices = bluetoothDevices.map { BackupBluetoothDevice(it.address, it.name) },
+        year = year,
+        fuelEconomy = fuelEconomy,
+        tankSize = tankSize,
+        vehicleUuid = vehicleUuid,
+        updatedAtEpochMs = updatedAtEpochMs,
     )
 
 private fun SavedAddress.toBackup() = BackupSavedAddress(id, label, kind.name, latitude, longitude, radiusMeters, icon, address)

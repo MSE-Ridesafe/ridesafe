@@ -19,6 +19,7 @@ import de.uhi.enia.ridesafe.rides.processing.processedRouteFile
 import de.uhi.enia.ridesafe.rides.recording.ridesDir
 import de.uhi.enia.ridesafe.ui.screens.rides.BackupFile
 import de.uhi.enia.ridesafe.ui.screens.rides.BackupRide
+import de.uhi.enia.ridesafe.ui.screens.rides.BackupVehicle
 import de.uhi.enia.ridesafe.ui.screens.rides.RideBackupArchiveValidator
 import de.uhi.enia.ridesafe.ui.screens.rides.RideBackupManifest
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +30,7 @@ import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.UUID
+import java.util.Locale
 import java.util.zip.ZipFile
 import kotlin.coroutines.coroutineContext
 
@@ -94,7 +96,7 @@ internal class RideBackupImporter(
                 val stagedFiles = extractIncludedFiles(archive, manifest, staging)
                 val token = UUID.randomUUID().toString().replace("-", "")
                 val sampleNames = manifest.rides.associate { it.archiveId to "ride_import_${token}_${it.archiveId}.ndjson.gz" }
-                db.withTransaction {
+                val importedVehicleCount = db.withTransaction {
                     val vehicleIds = insertVehicles(manifest)
                     val addressIds = insertAddresses(manifest)
                     val rideIds = insertRides(manifest, vehicleIds, addressIds, sampleNames)
@@ -103,10 +105,11 @@ internal class RideBackupImporter(
                     insertAnalysisStates(manifest, rideIds)
                     insertRefuels(manifest, vehicleIds, rideIds)
                     publishFiles(manifest, stagedFiles, rideIds, sampleNames, published)
+                    vehicleIds.values.toSet().size
                 }
                 RideBackupImportResult(
                     manifest.rides.size,
-                    manifest.vehicles.size,
+                    importedVehicleCount,
                     manifest.savedAddresses.size,
                     manifest.refuels.size,
                 )
@@ -119,31 +122,39 @@ internal class RideBackupImporter(
         }
 
     private suspend fun insertVehicles(manifest: RideBackupManifest): Map<Long, Long> {
-        val existing = db.vehicleDao().all()
+        val dao = db.vehicleDao()
+        val existing = dao.all().toMutableList()
         val primaryArchiveId =
             if (existing.isEmpty()) {
                 manifest.vehicles.firstOrNull { it.isPrimary }?.archiveId ?: manifest.vehicles.firstOrNull()?.archiveId
             } else {
                 null
             }
-        return manifest.vehicles.associate { archived ->
-            archived.archiveId to
-                db.vehicleDao().insert(
-                    Vehicle(
-                        name = archived.name,
-                        make = archived.make,
-                        model = archived.model,
-                        licensePlate = archived.licensePlate,
-                        fuelType = FuelType.valueOf(archived.fuelType),
-                        mileageKm = archived.mileageKm,
-                        isPrimary = archived.archiveId == primaryArchiveId,
-                        bluetoothDevices = archived.bluetoothDevices.map { BtDevice(it.address, it.name) },
-                        year = archived.year,
-                        fuelEconomy = archived.fuelEconomy,
-                        tankSize = archived.tankSize,
-                    ),
-                )
+
+        // Put the archived primary first when the garage is empty. This preserves the one-primary
+        // invariant even if multiple legacy archive records collapse onto the same physical car.
+        val ordered =
+            manifest.vehicles.sortedWith(
+                compareBy<BackupVehicle>({ it.archiveId != primaryArchiveId }, { vehicleFreshness(it, manifest) }, { it.archiveId }),
+            )
+        val mappings = mutableMapOf<Long, Long>()
+        ordered.forEach { archived ->
+            val matched = findMatchingVehicle(archived, existing)
+            if (matched == null) {
+                val inserted = archived.toVehicle(archived.archiveId == primaryArchiveId, manifest)
+                val id = dao.insert(inserted)
+                existing += inserted.copy(id = id)
+                mappings[archived.archiveId] = id
+            } else {
+                val resolved = resolveVehicleConflict(matched, archived, manifest)
+                if (resolved != matched) {
+                    dao.update(resolved)
+                    existing[existing.indexOfFirst { it.id == matched.id }] = resolved
+                }
+                mappings[archived.archiveId] = matched.id
+            }
         }
+        return mappings
     }
 
     private suspend fun insertAddresses(manifest: RideBackupManifest): Map<Long, Long> =
@@ -306,6 +317,107 @@ private suspend fun copyCancellable(input: java.io.InputStream, output: java.io.
         if (count < 0) return
         output.write(buffer, 0, count)
     }
+}
+
+/**
+ * Stable UUID is authoritative. Plate/Bluetooth matching exists only for legacy archives that did
+ * not yet carry that identity. Ambiguous evidence deliberately creates a separate garage entry.
+ */
+internal fun findMatchingVehicle(
+    archived: BackupVehicle,
+    existing: List<Vehicle>,
+): Vehicle? {
+    archived.vehicleUuid?.let { uuid ->
+        return existing.singleOrNull { it.vehicleUuid.equals(uuid, ignoreCase = true) }
+    }
+
+    val plate = normalizeLicensePlate(archived.licensePlate)
+    val plateMatches =
+        if (plate.isEmpty()) emptyList() else existing.filter { normalizeLicensePlate(it.licensePlate) == plate }
+    val archivedBluetooth = archived.bluetoothDevices.mapNotNull { normalizeBluetoothAddress(it.address) }.toSet()
+    val bluetoothMatches =
+        if (archivedBluetooth.isEmpty()) {
+            emptyList()
+        } else {
+            existing.filter { vehicle ->
+                vehicle.bluetoothDevices.any { normalizeBluetoothAddress(it.address) in archivedBluetooth }
+            }
+        }
+
+    return when {
+        plateMatches.isNotEmpty() && bluetoothMatches.isNotEmpty() ->
+            plateMatches.intersect(bluetoothMatches.toSet()).singleOrNull()
+        plateMatches.size == 1 -> plateMatches.single()
+        bluetoothMatches.size == 1 -> bluetoothMatches.single()
+        else -> null
+    }
+}
+
+internal fun normalizeLicensePlate(value: String): String =
+    value.filter(Char::isLetterOrDigit).uppercase(Locale.ROOT)
+
+private fun normalizeBluetoothAddress(value: String): String? =
+    value.filter(Char::isLetterOrDigit).uppercase(Locale.ROOT).takeIf { it.length == 12 }
+
+private fun vehicleFreshness(
+    archived: BackupVehicle,
+    manifest: RideBackupManifest,
+): Long = archived.updatedAtEpochMs ?: manifest.createdAtEpochMs
+
+private fun BackupVehicle.toVehicle(
+    isPrimary: Boolean,
+    manifest: RideBackupManifest,
+): Vehicle =
+    Vehicle(
+        name = name,
+        make = make,
+        model = model,
+        licensePlate = licensePlate,
+        fuelType = FuelType.valueOf(fuelType),
+        mileageKm = mileageKm,
+        isPrimary = isPrimary,
+        bluetoothDevices = bluetoothDevices.map { BtDevice(it.address, it.name) },
+        year = year,
+        fuelEconomy = fuelEconomy,
+        tankSize = tankSize,
+        vehicleUuid = vehicleUuid ?: UUID.randomUUID().toString(),
+        updatedAtEpochMs = vehicleFreshness(this, manifest),
+    )
+
+private fun resolveVehicleConflict(
+    local: Vehicle,
+    archived: BackupVehicle,
+    manifest: RideBackupManifest,
+): Vehicle {
+    val archivedFreshness = vehicleFreshness(archived, manifest)
+    val archiveWins = archivedFreshness > local.updatedAtEpochMs
+    val resolvedMileage =
+        if (archived.updatedAtEpochMs == null) {
+            maxOf(local.mileageKm, archived.mileageKm)
+        } else if (archiveWins) {
+            archived.mileageKm
+        } else {
+            local.mileageKm
+        }
+
+    if (!archiveWins) {
+        return if (resolvedMileage == local.mileageKm) local else local.copy(mileageKm = resolvedMileage)
+    }
+    return local.copy(
+        name = archived.name,
+        make = archived.make,
+        model = archived.model,
+        licensePlate = archived.licensePlate,
+        fuelType = FuelType.valueOf(archived.fuelType),
+        mileageKm = resolvedMileage,
+        // Primary status belongs to the destination garage, not the source device.
+        isPrimary = local.isPrimary,
+        bluetoothDevices = archived.bluetoothDevices.map { BtDevice(it.address, it.name) },
+        year = archived.year,
+        fuelEconomy = archived.fuelEconomy,
+        tankSize = archived.tankSize,
+        updatedAtEpochMs = archivedFreshness,
+    )
 }
 
 private fun RideBackupManifest.preview() =

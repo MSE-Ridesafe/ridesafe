@@ -57,7 +57,7 @@
     <string name="settings_backup_import_confirm_message">Diese Sicherung enthält %1$d Fahrten, %2$d Fahrzeuge, %3$d Orte und %4$d Tankvorgänge. Sie werden zu den vorhandenen Daten hinzugefügt.</string>
     <string name="settings_backup_import_confirm">Importieren</string>
     <string name="settings_backup_import_success_title">Sicherung importiert</string>
-    <string name="settings_backup_import_success_message">%1$d Fahrten, %2$d Fahrzeuge, %3$d Orte und %4$d Tankvorgänge wurden hinzugefügt.</string>
+    <string name="settings_backup_import_success_message">%1$d Fahrten, %2$d Fahrzeuge, %3$d Orte und %4$d Tankvorgänge wurden importiert.</string>
     <string name="settings_backup_import_error_title">Sicherung konnte nicht importiert werden</string>
     <string name="settings_backup_import_error_message">Das Archiv wurde nicht verändert oder konnte nicht sicher wiederhergestellt werden. %1$s</string>
     <string name="settings_units_title">Entfernungseinheit</string>

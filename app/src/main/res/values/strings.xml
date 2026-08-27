@@ -57,7 +57,7 @@
     <string name="settings_backup_import_confirm_message">This backup contains %1$d rides, %2$d vehicles, %3$d places, and %4$d refuels. They will be added to your existing data.</string>
     <string name="settings_backup_import_confirm">Import</string>
     <string name="settings_backup_import_success_title">Backup imported</string>
-    <string name="settings_backup_import_success_message">Added %1$d rides, %2$d vehicles, %3$d places, and %4$d refuels.</string>
+    <string name="settings_backup_import_success_message">Imported %1$d rides, %2$d vehicles, %3$d places, and %4$d refuels.</string>
     <string name="settings_backup_import_error_title">Could not import backup</string>
     <string name="settings_backup_import_error_message">The archive was not changed or could not be restored safely. %1$s</string>
     <string name="settings_units_title">Distance Units</string>

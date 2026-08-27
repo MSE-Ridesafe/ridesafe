@@ -269,7 +269,7 @@ class RidesViewModel(
     private suspend fun updateVehicleMileageIfNewest(refuel: Refuel) {
         if (refuelDao.newestForVehicle(refuel.vehicleId)?.id != refuel.id) return
         val mileageKm = odometerMetersToVehicleMileageKm(refuel.odometerMeters) ?: return
-        vehicleDao.updateMileage(refuel.vehicleId, mileageKm)
+        vehicleDao.updateMileage(refuel.vehicleId, mileageKm, System.currentTimeMillis())
     }
 
     fun ride(id: Long): Flow<Ride?> = rideDao.observe(id)

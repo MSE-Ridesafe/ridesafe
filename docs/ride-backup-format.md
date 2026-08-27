@@ -85,12 +85,19 @@ archive accepted by that reader may be published to Downloads.
 
 ## Restore behavior
 
-Import is additive: it never replaces existing rides or settings. The selected content URI is copied
+Import is additive for rides and refuels: it never replaces existing rides or settings. The selected content URI is copied
 to private storage and the same reference reader validates it again immediately before restoration.
 Every archive-local vehicle, address, ride, event and refuel ID is mapped to a newly allocated Room
-ID; merge-group membership and all nullable references are rebuilt from those maps. If the garage
-already has data, its current primary vehicle stays primary and imported vehicles are non-primary.
-With an empty garage, the archived primary (or first archived vehicle) becomes primary.
+ID; merge-group membership and all nullable references are rebuilt from those maps.
+
+Vehicles carry a stable `vehicleUuid` and `updatedAtEpochMs`. Import maps an archived vehicle to the
+existing row with the same UUID, preserving the destination database ID and primary status. If the
+archive record is newer, its editable vehicle fields replace the older copy; every imported ride and
+refuel then points to that retained row. Archives predating these fields are matched only when a
+normalized nonblank license plate or Bluetooth hardware address identifies exactly one destination
+vehicle. Conflicting or ambiguous legacy evidence never auto-merges. Legacy mileage resolves to the
+greater value. If the garage is empty, the archived primary (or first archived vehicle) becomes
+primary.
 
 Included files are extracted into a private staging directory. Within one Room transaction, imported
 rows are inserted and the required raw files are fsynced and atomically moved to collision-safe new
