@@ -9,6 +9,8 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -30,12 +33,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconToggleButton
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -56,6 +61,8 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -66,9 +73,7 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.rememberCameraPositionState
-import com.google.maps.android.compose.rememberMarkerState
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.DEFAULT_PLACE_ICON
 import de.uhi.enia.ridesafe.data.SavedAddress
@@ -150,17 +155,22 @@ fun SavedAddressFormScreen(
     var searchFailed by remember { mutableStateOf(false) }
     var locationFailed by remember { mutableStateOf(false) }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
+    var showMapPicker by rememberSaveable { mutableStateOf(false) }
 
     val cameraPositionState =
         rememberCameraPositionState {
             position = CameraPosition.fromLatLngZoom(point ?: FALLBACK_CENTER, if (point != null) 15f else 5f)
         }
-    val markerState = rememberMarkerState(position = point ?: FALLBACK_CENTER)
+    val pickerCameraPositionState =
+        rememberCameraPositionState {
+            position = CameraPosition.fromLatLngZoom(point ?: FALLBACK_CENTER, if (point != null) 15f else 5f)
+        }
 
-    // Two-way sync between the point state and the draggable marker (both idempotent, so they settle).
-    LaunchedEffect(point) { point?.let { if (markerState.position != it) markerState.position = it } }
-    LaunchedEffect(markerState.position) {
-        if (point != null && markerState.position != point) point = markerState.position
+    fun openMapPicker() {
+        val center = point ?: cameraPositionState.position.target
+        val zoom = if (point != null) maxOf(cameraPositionState.position.zoom, 15f) else cameraPositionState.position.zoom
+        pickerCameraPositionState.position = CameraPosition.fromLatLngZoom(center, zoom)
+        showMapPicker = true
     }
     // Recenter the camera when the point jumps via search / my-location (not on drag or tap).
     var recenterTo by remember { mutableStateOf<LatLng?>(null) }
@@ -324,22 +334,46 @@ fun SavedAddressFormScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
                 modifier = Modifier.fillMaxWidth().height(260.dp),
             ) {
-                GoogleMap(
-                    modifier = Modifier.fillMaxSize(),
-                    cameraPositionState = cameraPositionState,
-                    uiSettings = MapUiSettings(tiltGesturesEnabled = false, mapToolbarEnabled = false, zoomControlsEnabled = false),
-                    onMapClick = { point = it },
-                ) {
-                    point?.let { p ->
-                        Marker(state = markerState, draggable = true, title = stringResource(R.string.saved_address_marker))
-                        Circle(
-                            center = p,
-                            radius = radius.toDouble(),
-                            strokeColor = MaterialTheme.colorScheme.primary,
-                            strokeWidth = 4f,
-                            fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                Box(Modifier.fillMaxSize()) {
+                    GoogleMap(
+                        modifier = Modifier.fillMaxSize(),
+                        cameraPositionState = cameraPositionState,
+                        uiSettings =
+                            MapUiSettings(
+                                scrollGesturesEnabled = false,
+                                zoomGesturesEnabled = false,
+                                rotationGesturesEnabled = false,
+                                tiltGesturesEnabled = false,
+                                mapToolbarEnabled = false,
+                                zoomControlsEnabled = false,
+                            ),
+                    ) {
+                        point?.let { p ->
+                            Circle(
+                                center = p,
+                                radius = radius.toDouble(),
+                                strokeColor = MaterialTheme.colorScheme.primary,
+                                strokeWidth = 4f,
+                                fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            )
+                        }
+                    }
+                    if (point != null) {
+                        MaterialSymbol(
+                            symbolName = "location_on",
+                            contentDescription = null,
+                            fill = true,
+                            size = 48.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.align(Alignment.Center).offset(y = (-24).dp),
                         )
                     }
+                    Box(
+                        modifier =
+                            Modifier
+                                .matchParentSize()
+                                .clickable(onClickLabel = stringResource(R.string.saved_address_map_open), onClick = ::openMapPicker),
+                    )
                 }
             }
 
@@ -396,6 +430,98 @@ fun SavedAddressFormScreen(
                 ) {
                     MaterialSymbol(symbolName = "delete", contentDescription = null, size = 18.dp)
                     Text(stringResource(R.string.saved_address_delete), modifier = Modifier.padding(start = 8.dp))
+                }
+            }
+        }
+    }
+
+    if (showMapPicker) {
+        Dialog(
+            onDismissRequest = { showMapPicker = false },
+            properties =
+                DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    decorFitsSystemWindows = false,
+                ),
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.surface,
+            ) {
+                Box(Modifier.fillMaxSize()) {
+                    GoogleMap(
+                        modifier = Modifier.fillMaxSize(),
+                        cameraPositionState = pickerCameraPositionState,
+                        uiSettings =
+                            MapUiSettings(
+                                tiltGesturesEnabled = false,
+                                mapToolbarEnabled = false,
+                                zoomControlsEnabled = false,
+                            ),
+                    ) {
+                        Circle(
+                            center = pickerCameraPositionState.position.target,
+                            radius = radius.toDouble(),
+                            strokeColor = MaterialTheme.colorScheme.primary,
+                            strokeWidth = 4f,
+                            fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                        )
+                    }
+
+                    // This is deliberately not a map Marker: the map moves underneath it, so the
+                    // pin remains perfectly centered throughout pan, fling, pinch and zoom gestures.
+                    MaterialSymbol(
+                        symbolName = "location_on",
+                        contentDescription = stringResource(R.string.saved_address_marker),
+                        fill = true,
+                        size = 56.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.align(Alignment.Center).offset(y = (-28).dp),
+                    )
+
+                    TopAppBar(
+                        title = { Text(stringResource(R.string.saved_address_map_picker_title)) },
+                        navigationIcon = {
+                            IconButton(onClick = { showMapPicker = false }) {
+                                MaterialSymbol(
+                                    symbolName = "close",
+                                    contentDescription = stringResource(R.string.action_cancel),
+                                )
+                            }
+                        },
+                        actions = {
+                            FilledIconButton(
+                                onClick = {
+                                    val selected = pickerCameraPositionState.position.target
+                                    point = selected
+                                    recenterTo = selected
+                                    showMapPicker = false
+                                },
+                                modifier = Modifier.padding(end = 8.dp),
+                            ) {
+                                MaterialSymbol(
+                                    symbolName = "check",
+                                    contentDescription = stringResource(R.string.action_done),
+                                )
+                            }
+                        },
+                        colors =
+                            TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+                            ),
+                        modifier = Modifier.align(Alignment.TopCenter),
+                    )
+
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)),
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.saved_address_map_picker_hint),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        )
+                    }
                 }
             }
         }

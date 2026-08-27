@@ -309,6 +309,9 @@
     <string name="saved_address_icon">Symbol</string>
     <string name="saved_address_pick_hint">Tippe auf die Karte, suche eine Adresse oder verwende deinen Standort.</string>
     <string name="saved_address_marker">Standort des gespeicherten Ortes</string>
+    <string name="saved_address_map_open">Karte im Vollbild öffnen</string>
+    <string name="saved_address_map_picker_title">Standort auswählen</string>
+    <string name="saved_address_map_picker_hint">Verschiebe und zoome die Karte, um die Markierung zu positionieren.</string>
     <string name="saved_address_delete">Ort löschen</string>
     <string name="saved_address_delete_confirm_title">Ort löschen?</string>
     <string name="saved_address_delete_confirm_message">%1$s wird entfernt. Das kann nicht rückgängig gemacht werden.</string>
