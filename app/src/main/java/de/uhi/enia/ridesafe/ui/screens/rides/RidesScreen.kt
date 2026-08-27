@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,6 +39,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -93,6 +95,7 @@ fun RidesScreen(
     onOpenAnalysisQueue: () -> Unit,
     onMerge: (List<Long>, List<Long>) -> Unit,
     onUnmerge: (Long) -> Unit,
+    onDelete: (List<Long>, List<Long>) -> Unit,
     logbookOperationState: LogbookOperationState,
     onLogbookOperationResultConsumed: () -> Unit,
     onExport: (List<RideExportRequest>, RideExportFormat) -> Unit,
@@ -113,6 +116,8 @@ fun RidesScreen(
     }
     val entries = remember(timeline) { rideLogbookEntries(timeline) }
     var pendingExportRequests by remember { mutableStateOf<List<RideExportRequest>?>(null) }
+    var deleteConfirmationOpen by rememberSaveable { mutableStateOf(false) }
+    var deleteOperationPending by rememberSaveable { mutableStateOf(false) }
     // Selection is by entry key; keys that no longer exist (data changed) are ignored below.
     var selectedKeys by
         rememberSaveable(
@@ -193,7 +198,9 @@ fun RidesScreen(
     val attachSuccess = stringResource(R.string.refuel_attached_success)
     val detachSuccess = stringResource(R.string.refuel_detached_success)
     val mergeSuccess = stringResource(R.string.ride_merge_success)
+    val deleteSuccess = stringResource(R.string.ride_delete_success)
     val operationError = stringResource(R.string.refuel_association_error)
+    val deleteError = stringResource(R.string.ride_delete_error)
     LaunchedEffect(logbookOperationState) {
         when (val state = logbookOperationState) {
             is LogbookOperationState.Success -> {
@@ -202,7 +209,9 @@ fun RidesScreen(
                         LogbookOperation.ATTACHED -> attachSuccess
                         LogbookOperation.DETACHED -> detachSuccess
                         LogbookOperation.MERGED -> mergeSuccess
+                        LogbookOperation.DELETED -> deleteSuccess
                     }
+                deleteOperationPending = false
                 // A Snackbar suspends until it times out. Finish the operation first so the
                 // completed selection disappears immediately and a later action is never ignored.
                 exitSelection()
@@ -211,8 +220,11 @@ fun RidesScreen(
             }
 
             LogbookOperationState.Error -> {
+                val message =
+                    if (deleteOperationPending) deleteError else operationError
+                deleteOperationPending = false
                 onLogbookOperationResultConsumed()
-                snackbarHostState.showSnackbar(operationError)
+                snackbarHostState.showSnackbar(message)
             }
 
             LogbookOperationState.Idle, LogbookOperationState.Running -> {
@@ -253,6 +265,10 @@ fun RidesScreen(
                         },
                         exportEnabled = selectedRideEntries.isNotEmpty() && exportState != RideExportState.Exporting,
                         onExport = { pendingExportRequests = exportRequests(entries, selected) },
+                        deleteEnabled =
+                            selected.isNotEmpty() &&
+                                selectedRideEntries.flatMap { it.rides }.all { it.endedAtEpochMs != null },
+                        onDelete = { deleteConfirmationOpen = true },
                     )
                 } else {
                     TopAppBar(
@@ -436,6 +452,37 @@ fun RidesScreen(
             onDismiss = { pendingExportRequests = null },
         )
     }
+
+    if (deleteConfirmationOpen) {
+        AlertDialog(
+            onDismissRequest = { deleteConfirmationOpen = false },
+            icon = { MaterialSymbol(symbolName = "delete", contentDescription = null) },
+            title = { Text(stringResource(R.string.ride_delete_title)) },
+            text = { Text(stringResource(R.string.ride_delete_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        deleteConfirmationOpen = false
+                        deleteOperationPending = true
+                        onDelete(
+                            selectedRideEntries.flatMap { it.rideIds },
+                            selectedRefuelRecords.map { it.id },
+                        )
+                    },
+                ) {
+                    Text(
+                        text = stringResource(R.string.ride_delete_confirm),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteConfirmationOpen = false }) {
+                    Text(stringResource(R.string.ride_delete_cancel))
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -605,6 +652,8 @@ private fun SelectionTopBar(
     onUnmerge: (Long) -> Unit,
     exportEnabled: Boolean,
     onExport: () -> Unit,
+    deleteEnabled: Boolean,
+    onDelete: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
 
@@ -682,6 +731,26 @@ private fun SelectionTopBar(
                     },
                     text = { Text(stringResource(R.string.ride_action_export)) },
                     leadingIcon = { MaterialSymbol(symbolName = "download", contentDescription = null) },
+                )
+                DropdownMenuItem(
+                    enabled = deleteEnabled && !operationRunning,
+                    onClick = {
+                        menuOpen = false
+                        onDelete()
+                    },
+                    text = {
+                        Text(
+                            text = stringResource(R.string.ride_action_delete),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    },
+                    leadingIcon = {
+                        MaterialSymbol(
+                            symbolName = "delete",
+                            contentDescription = null,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    },
                 )
             }
         },

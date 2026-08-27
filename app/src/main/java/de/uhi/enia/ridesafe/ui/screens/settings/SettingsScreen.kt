@@ -76,6 +76,7 @@ fun SettingsScreen(
     onOpenReconnectGrace: () -> Unit,
     onOpenMinRideLength: () -> Unit,
     onOpenSavedAddresses: () -> Unit,
+    onOpenBackupImport: () -> Unit,
 ) {
     val context = LocalContext.current
     val unitSystem = currentUnitSystem()
@@ -173,6 +174,19 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_min_ride_length_title),
                         subtitle = stringResource(minRideLengthLabelRes(minRideLength)),
                         onClick = onOpenMinRideLength,
+                    )
+                }
+            }
+            item {
+                SettingsCategoryHeader(text = stringResource(R.string.settings_category_backup_restore))
+            }
+            item {
+                SettingsGroupCard {
+                    SettingsListItem(
+                        iconName = "settings_backup_restore",
+                        title = stringResource(R.string.settings_backup_import_title),
+                        subtitle = stringResource(R.string.settings_backup_import_summary),
+                        onClick = onOpenBackupImport,
                     )
                 }
             }

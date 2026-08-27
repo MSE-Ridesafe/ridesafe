@@ -18,6 +18,7 @@ import de.uhi.enia.ridesafe.data.canMerge
 import de.uhi.enia.ridesafe.data.mergeGroupIdFor
 import de.uhi.enia.ridesafe.data.rematchRides
 import de.uhi.enia.ridesafe.data.summarizeMerge
+import de.uhi.enia.ridesafe.rides.RideDataCoordinator
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisPipeline
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
 import de.uhi.enia.ridesafe.rides.processing.processedRouteFile
@@ -54,7 +55,7 @@ data class RefuelRow(
     val vehicleName: String?,
 )
 
-enum class LogbookOperation { MERGED, ATTACHED, DETACHED }
+enum class LogbookOperation { MERGED, ATTACHED, DETACHED, DELETED }
 
 sealed interface LogbookOperationState {
     data object Idle : LogbookOperationState
@@ -366,6 +367,74 @@ class RidesViewModel(
                 refuelDao.clearJourneyAnchor(selected.map { it.id })
             }
         }
+
+    /**
+     * Permanently remove the selected logical entries. A merged entry supplies every physical ride
+     * id in the group. Refuels are independent records: deleting a ride only detaches its linked
+     * refuels; a refuel is deleted only when its own id is explicitly selected.
+     */
+    fun deleteEntries(
+        rideIds: List<Long>,
+        refuelIds: List<Long>,
+    ) = startLogbookOperation(LogbookOperation.DELETED) {
+        val distinctRideIds = rideIds.distinct()
+        val distinctRefuelIds = refuelIds.distinct()
+        require(distinctRideIds.isNotEmpty() || distinctRefuelIds.isNotEmpty())
+
+        RideDataCoordinator.withRides(distinctRideIds) {
+            val ridesToDelete = if (distinctRideIds.isEmpty()) emptyList() else rideDao.byIds(distinctRideIds)
+            val refuelsToDelete = if (distinctRefuelIds.isEmpty()) emptyList() else refuelDao.byIds(distinctRefuelIds)
+            require(ridesToDelete.size == distinctRideIds.size)
+            require(refuelsToDelete.size == distinctRefuelIds.size)
+            // The recorder owns active rides and their open streams; they cannot be deleted here.
+            require(ridesToDelete.all { it.endedAtEpochMs != null })
+
+            db.withTransaction {
+                if (distinctRideIds.isNotEmpty()) {
+                    refuelDao.clearJourneyAnchorsForRides(distinctRideIds)
+                }
+                if (distinctRefuelIds.isNotEmpty()) {
+                    refuelDao.deleteByIds(distinctRefuelIds)
+                }
+                if (distinctRideIds.isNotEmpty()) {
+                    rideDao.deleteByIds(distinctRideIds)
+                }
+            }
+
+            // Database rows are the source of truth. Clean up their private sample and derived
+            // files while the same per-ride locks used by analysis/export are still held.
+            val directory = ridesDir(getApplication())
+            ridesToDelete.forEach { ride ->
+                runCatching {
+                    safeRideFile(directory, ride.sampleFile)?.delete()
+                    safePrivateFile(directory, processedRouteFile(getApplication(), ride))?.delete()
+                }.onFailure {
+                    // The database deletion has committed, so a stale private sidecar must not turn
+                    // a successful user action into a misleading failure. It is harmless and can be
+                    // removed by later maintenance.
+                    Log.w("LogbookDelete", "Could not clean private files for ride ${ride.id}", it)
+                }
+            }
+        }
+    }
+
+    private fun safeRideFile(
+        directory: File,
+        relativeName: String,
+    ): File? {
+        val root = directory.canonicalFile
+        val candidate = File(root, relativeName).canonicalFile
+        return candidate.takeIf { it.parentFile == root }
+    }
+
+    private fun safePrivateFile(
+        directory: File,
+        file: File,
+    ): File? {
+        val root = directory.canonicalFile
+        val candidate = file.canonicalFile
+        return candidate.takeIf { it.parentFile == root }
+    }
 
     fun consumeLogbookOperationResult() {
         if (_logbookOperationState.value is LogbookOperationState.Success ||

@@ -82,3 +82,19 @@ to record or analyze concurrently.
 After writing, the production reference reader reopens the finished ZIP, verifies paths, schema,
 relationships, sizes, hashes, gzip/NDJSON, route decoding, entry set, and STORED handling. Only an
 archive accepted by that reader may be published to Downloads.
+
+## Restore behavior
+
+Import is additive: it never replaces existing rides or settings. The selected content URI is copied
+to private storage and the same reference reader validates it again immediately before restoration.
+Every archive-local vehicle, address, ride, event and refuel ID is mapped to a newly allocated Room
+ID; merge-group membership and all nullable references are rebuilt from those maps. If the garage
+already has data, its current primary vehicle stays primary and imported vehicles are non-primary.
+With an empty garage, the archived primary (or first archived vehicle) becomes primary.
+
+Included files are extracted into a private staging directory. Within one Room transaction, imported
+rows are inserted and the required raw files are fsynced and atomically moved to collision-safe new
+names. A current-version route is restored when present. An absent or older derived route has its
+route analysis stamp omitted so the normal pipeline regenerates it from raw samples. If any database
+or file operation fails or is cancelled, the Room transaction rolls back and every file already
+published by that attempt is deleted.

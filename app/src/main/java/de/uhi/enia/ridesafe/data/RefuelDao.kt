@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface RefuelDao {
+    @Query("SELECT * FROM refuels ORDER BY timestampEpochMs ASC, id ASC")
+    suspend fun all(): List<Refuel>
+
     @Query("SELECT * FROM refuels ORDER BY timestampEpochMs DESC, id DESC")
     fun observeAll(): Flow<List<Refuel>>
 
@@ -41,4 +44,7 @@ interface RefuelDao {
 
     @Query("UPDATE refuels SET journeyAnchorRideId = NULL WHERE journeyAnchorRideId IN (:rideIds)")
     suspend fun clearJourneyAnchorsForRides(rideIds: List<Long>)
+
+    @Query("DELETE FROM refuels WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
 }

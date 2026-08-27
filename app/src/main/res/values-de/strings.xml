@@ -46,6 +46,20 @@
 
     <string name="settings_category_preferences">Präferenzen</string>
     <string name="settings_category_ride_recording">Fahrtaufzeichnung</string>
+    <string name="settings_category_backup_restore">Sicherung und Wiederherstellung</string>
+    <string name="settings_backup_import_title">Fahrtsicherung importieren</string>
+    <string name="settings_backup_import_summary">Fahrten aus einem RideSafe-ZIP-Archiv wiederherstellen</string>
+    <string name="settings_backup_import_description">Wählen Sie eine RideSafe-ZIP-Sicherung aus. Das Archiv wird vollständig geprüft, bevor Daten hinzugefügt werden. Vorhandene Fahrten und Einstellungen bleiben erhalten.</string>
+    <string name="settings_backup_import_choose">Sicherung auswählen</string>
+    <string name="settings_backup_import_checking">Sicherung wird geprüft…</string>
+    <string name="settings_backup_import_importing">Sicherung wird importiert…</string>
+    <string name="settings_backup_import_confirm_title">Diese Sicherung importieren?</string>
+    <string name="settings_backup_import_confirm_message">Diese Sicherung enthält %1$d Fahrten, %2$d Fahrzeuge, %3$d Orte und %4$d Tankvorgänge. Sie werden zu den vorhandenen Daten hinzugefügt.</string>
+    <string name="settings_backup_import_confirm">Importieren</string>
+    <string name="settings_backup_import_success_title">Sicherung importiert</string>
+    <string name="settings_backup_import_success_message">%1$d Fahrten, %2$d Fahrzeuge, %3$d Orte und %4$d Tankvorgänge wurden hinzugefügt.</string>
+    <string name="settings_backup_import_error_title">Sicherung konnte nicht importiert werden</string>
+    <string name="settings_backup_import_error_message">Das Archiv wurde nicht verändert oder konnte nicht sicher wiederhergestellt werden. %1$s</string>
     <string name="settings_units_title">Entfernungseinheit</string>
     <string name="settings_units_detail_description">Wählen Sie, wie Strecken und Fahrtdaten in Ridesafe angezeigt werden.</string>
     <string name="settings_currency_title">Währung</string>
@@ -235,6 +249,13 @@
     <string name="ride_action_merge">Zusammenführen</string>
     <string name="ride_action_unmerge">Trennen</string>
     <string name="ride_action_export">Exportieren</string>
+    <string name="ride_action_delete">Löschen</string>
+    <string name="ride_delete_title">Ausgewählte Einträge löschen?</string>
+    <string name="ride_delete_message">Ausgewählte Fahrten, alle Stopps einer zusammengeführten Fahrt und ausgewählte Tankvorgänge werden dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="ride_delete_confirm">Löschen</string>
+    <string name="ride_delete_cancel">Abbrechen</string>
+    <string name="ride_delete_success">Ausgewählte Einträge gelöscht.</string>
+    <string name="ride_delete_error">Die ausgewählten Einträge konnten nicht gelöscht werden. Deine Daten wurden nicht verändert.</string>
     <string name="ride_export_format_title">Exportformat auswählen</string>
     <string name="ride_export_format_pdf">PDF</string>
     <string name="ride_export_format_csv">CSV</string>

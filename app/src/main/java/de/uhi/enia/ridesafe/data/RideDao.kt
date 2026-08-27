@@ -141,6 +141,9 @@ interface RideDao {
     @Query("DELETE FROM rides WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("DELETE FROM rides WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
+
     @Delete
     suspend fun delete(ride: Ride)
 }

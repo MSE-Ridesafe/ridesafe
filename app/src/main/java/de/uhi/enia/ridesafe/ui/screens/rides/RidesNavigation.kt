@@ -55,6 +55,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             onOpenAnalysisQueue = { onOpen(AnalysisQueueRoute) },
             onMerge = viewModel::merge,
             onUnmerge = viewModel::unmergeAll,
+            onDelete = viewModel::deleteEntries,
             logbookOperationState = logbookOperationState,
             onLogbookOperationResultConsumed = viewModel::consumeLogbookOperationResult,
             onExport = viewModel::export,

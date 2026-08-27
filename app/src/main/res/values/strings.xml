@@ -46,6 +46,20 @@
 
     <string name="settings_category_preferences">Preferences</string>
     <string name="settings_category_ride_recording">Ride recording</string>
+    <string name="settings_category_backup_restore">Backup and restore</string>
+    <string name="settings_backup_import_title">Import ride backup</string>
+    <string name="settings_backup_import_summary">Restore rides from a RideSafe ZIP archive</string>
+    <string name="settings_backup_import_description">Choose a RideSafe ZIP backup. The archive is fully checked before anything is added. Existing rides and settings are kept.</string>
+    <string name="settings_backup_import_choose">Choose backup</string>
+    <string name="settings_backup_import_checking">Checking backup…</string>
+    <string name="settings_backup_import_importing">Importing backup…</string>
+    <string name="settings_backup_import_confirm_title">Import this backup?</string>
+    <string name="settings_backup_import_confirm_message">This backup contains %1$d rides, %2$d vehicles, %3$d places, and %4$d refuels. They will be added to your existing data.</string>
+    <string name="settings_backup_import_confirm">Import</string>
+    <string name="settings_backup_import_success_title">Backup imported</string>
+    <string name="settings_backup_import_success_message">Added %1$d rides, %2$d vehicles, %3$d places, and %4$d refuels.</string>
+    <string name="settings_backup_import_error_title">Could not import backup</string>
+    <string name="settings_backup_import_error_message">The archive was not changed or could not be restored safely. %1$s</string>
     <string name="settings_units_title">Distance Units</string>
     <string name="settings_units_detail_description">Choose how distances and ride measurements are shown throughout Ridesafe.</string>
     <string name="settings_currency_title">Currency</string>
@@ -236,6 +250,13 @@
     <string name="ride_action_merge">Merge</string>
     <string name="ride_action_unmerge">Unmerge</string>
     <string name="ride_action_export">Export</string>
+    <string name="ride_action_delete">Delete</string>
+    <string name="ride_delete_title">Delete selected entries?</string>
+    <string name="ride_delete_message">Selected rides, every stop in a grouped ride, and selected refuels will be permanently deleted. This cannot be undone.</string>
+    <string name="ride_delete_confirm">Delete</string>
+    <string name="ride_delete_cancel">Cancel</string>
+    <string name="ride_delete_success">Selected entries deleted.</string>
+    <string name="ride_delete_error">Could not delete the selected entries. Your data was not changed.</string>
     <string name="ride_export_format_title">Choose export format</string>
     <string name="ride_export_format_pdf">PDF</string>
     <string name="ride_export_format_csv">CSV</string>
