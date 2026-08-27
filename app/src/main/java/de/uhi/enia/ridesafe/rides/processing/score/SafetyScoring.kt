@@ -44,17 +44,32 @@ import kotlin.math.roundToInt
  * event type telematics research most consistently ties to claims; cornering trails because lateral
  * force is largely geometry. Re-weight to change what the app tells drivers to work on.
  *
+ * @property referenceScale How far above the detection gate the score's full event-equivalent sits.
+ * The score normalises against the detector's thresholds so the two stay one yardstick — but the
+ * penalty is cubic in that normalisation, so nudging a detection gate down 10% roughly *doubles*
+ * what near-threshold driving costs, which is a far bigger move than the nudge itself. This factor
+ * absorbs that: detection may flag a maneuver a little before the score prices it at full weight.
+ * At 1.11 the v10 gate cut (×0.9) leaves the score's references where they were, so making the
+ * detector a tad more sensitive did not silently reprice every near-miss. Lower it toward 1 and the
+ * two references converge — and any future gate cut will hit the scores with its cube.
+ *
  * @property referenceRate The roughness rate at which the score falls to 1/e of 100, i.e. ~37. The
  * single dial that positions the whole population of scores: raise it and everyone scores higher,
- * lower it and everyone scores lower. Validated against the real logbook (94 rides, 2026-08-26):
- * the ride median lands at 91 with a spread down to single digits for the genuinely rough ones,
- * which is the intended shape. Note the trap found while validating: the pooled all-time rate sits
+ * lower it and everyone scores lower. Validated against the real logbook (94 rides, 2026-08-26,
+ * re-checked after the leniency tune): the ride median lands at 98, seven rides sit at 99, a clean
+ * three-quarters of an hour reaches 100, and the spread still runs down to single digits for the
+ * genuinely rough ones — scores skew high with a long tail, which is the shape real telematics
+ * programmes have. Note the trap found while validating: the pooled all-time rate sits
  * ~12x the median ride's, because risk adds and the tail carries most of it — so re-deriving this
  * from "put the median at X" alone collapses the aggregate. Check both before moving it; the log
  * line in [de.uhi.enia.ridesafe.rides.processing.ScoreStage] is the input.
  *
  * @property priorRate The rate a ride is assumed to have before its own driving says otherwise —
- * roughly what a typical ride scores. Only matters for short rides, where it is most of the answer.
+ * set to the *measured median ride's* rate from the real-logbook calibration run (2026-08-26),
+ * which is the value the credibility form wants: the assumed-average driver should be the actual
+ * average driver. It is what lets genuinely smooth driving reach 100 — with the earlier, six-times
+ * pessimistic guess, even a flawless ride carried enough assumed penalty to cap out at 95 — while
+ * still holding a short ride near the middle until it has earned its own number.
  *
  * @property priorSeconds How much driving it takes before a ride is judged mostly on itself. Without
  * this, one hard brake three minutes into a drive reads as a catastrophe, because the rate divides
@@ -76,11 +91,12 @@ data class ScoreWeights(
     val comfortFloor: Double = 0.5,
     val exponent: Double = 3.0,
     val jerkWeight: Double = 0.7,
+    val referenceScale: Double = 1.11,
     val brakingWeight: Double = 0.5,
     val accelerationWeight: Double = 0.25,
     val corneringWeight: Double = 0.25,
     val referenceRate: Double = 0.02,
-    val priorRate: Double = 0.003,
+    val priorRate: Double = 0.0005,
     val priorSeconds: Double = 600.0,
     val minQualifiedSeconds: Double = 120.0,
     val minCoverage: Double = 0.25,
@@ -106,7 +122,9 @@ data class ScoreWeights(
  * can raise the score except driving more gently.
  *
  * [config] supplies the same thresholds the detector triggered on, so the score and the events shown
- * on the map are two readings of one yardstick rather than two opinions.
+ * on the map are two readings of one yardstick rather than two opinions — offset only by
+ * [ScoreWeights.referenceScale], which keeps a small detection-sensitivity change from being cubed
+ * into a large scoring one.
  */
 fun scoreRide(
     dynamics: RideDynamics,
@@ -165,9 +183,11 @@ private fun directionPenalty(
     thresholds: DirectionThresholds,
     weights: ScoreWeights,
 ): Double {
-    val jerk = channelPenalty(histogram.jerkSeconds, DYNAMICS_JERK_PER_BIN, thresholds.enterJerkGPerS, weights)
+    val jerk =
+        channelPenalty(histogram.jerkSeconds, DYNAMICS_JERK_PER_BIN, thresholds.enterJerkGPerS * weights.referenceScale, weights)
     val magnitudeReference = thresholds.highPeakG ?: return jerk
-    val magnitude = channelPenalty(histogram.magnitudeSeconds, DYNAMICS_G_PER_BIN, magnitudeReference, weights)
+    val magnitude =
+        channelPenalty(histogram.magnitudeSeconds, DYNAMICS_G_PER_BIN, magnitudeReference * weights.referenceScale, weights)
     return weights.jerkWeight * jerk + (1 - weights.jerkWeight) * magnitude
 }
 
@@ -250,10 +270,10 @@ private fun safetyScore(
  * driving gets the less the difference matters — the gap between 95 and 85 is worth noticing, the
  * gap between 15 and 5 is not.
  *
- * Note that 100 is approached rather than reached: a flawless ride still carries the assumed
- * average, so twenty clean minutes score in the mid-90s and it takes hours of them to sit at 99.
- * That is credibility working as intended — a perfect score should have to be earned over more than
- * one drive — and it is why the top of the range is not crowded.
+ * The assumed average keeps 100 from being free: twenty clean minutes round to 99, and it takes a
+ * clean three-quarters of an hour — or a week of ordinary smooth rides pooled — before the mix is
+ * clean enough to round to 100. That is credibility working as intended: a perfect score is
+ * reachable by driving smoothly for a while, not by any single short errand.
  */
 private fun curve(
     penalty: Double,

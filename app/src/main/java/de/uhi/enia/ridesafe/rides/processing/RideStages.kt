@@ -154,13 +154,17 @@ class ForwardAxisStage(
  * v9: the dynamics profile is accumulated and stored alongside the events (ANL-01). Detection is
  * untouched; the version moves because rides analysed by v8 hold no profile and therefore cannot be
  * scored.
+ * v10: entry thresholds lowered ~10% across the board (jerk gates 1.0/0.8/1.0 → 0.9/0.7/0.9 g/s,
+ * force bypasses 0.50/0.35 → 0.45/0.32 g), after real-logbook review found borderline-harsh
+ * maneuvers going unrecorded. The peak floors stay put — what counts as *worth keeping* hasn't
+ * changed, only how readily a maneuver opens an event.
  */
 class RideEventStage(
     private val db: RidesafeDatabase,
     private val config: RideEventConfig = RideEventConfig(),
 ) : RideStage {
     override val id = "events"
-    override val version = 9
+    override val version = 10
     override val dependsOn = listOf("axis")
     override val restorable = true
 
@@ -228,7 +232,7 @@ class ScoreStage(
     private val weights: ScoreWeights = ScoreWeights(),
 ) : RideStage {
     override val id = "score"
-    override val version = 1
+    override val version = 2
     override val dependsOn = listOf("events")
     override val needsSamples = false
 

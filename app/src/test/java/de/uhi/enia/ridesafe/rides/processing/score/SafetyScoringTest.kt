@@ -105,15 +105,18 @@ class SafetyScoringTest {
 
     /**
      * Driving that never approaches an event accrues no penalty at all, so the only thing keeping the
-     * score off 100 is the assumed average — which is why a clean half-hour lands in the mid-90s
-     * rather than exactly at the top. That gap is intentional: a perfect score is earned over many
-     * rides, not one.
+     * score off 100 is the assumed average mixed in by credibility. The contract: a clean half-hour
+     * rounds to 99, and a clean three-quarters of an hour reaches a full 100 — smooth driving must be
+     * able to earn the top of the range, the way it does with real telematics programmes, without a
+     * two-minute errand getting it for free.
      */
     @Test
-    fun smoothDrivingScoresNearTheTop() {
-        val score = scoreRide(dynamics(1800.0))!!
-        assertEquals(0.0, score.brakingPenalty, 0.0)
-        assertTrue("expected a near-perfect score, got ${score.total}", score.total >= 94)
+    fun smoothDrivingReachesAHundred() {
+        val halfHour = scoreRide(dynamics(1800.0))!!
+        assertEquals(0.0, halfHour.brakingPenalty, 0.0)
+        assertTrue("expected a clean half-hour at 99+, got ${halfHour.total}", halfHour.total >= 99)
+        assertEquals("a clean 45 minutes is a full house", 100, scoreRide(dynamics(2700.0))!!.total)
+        assertTrue("a clean 5 minutes has not earned it yet", scoreRide(dynamics(300.0))!!.total < 100)
     }
 
     /** Nothing a driver does can raise the score except driving more gently. */
