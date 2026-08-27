@@ -2,6 +2,7 @@ package de.uhi.enia.ridesafe.ui.screens.home
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.domain.JourneyActivity
 import de.uhi.enia.ridesafe.domain.JourneyHighlights
@@ -19,8 +20,12 @@ import de.uhi.enia.ridesafe.domain.totalJourneyCount
 import de.uhi.enia.ridesafe.domain.totalJourneyDistanceMeters
 import de.uhi.enia.ridesafe.domain.totalJourneyTravelDurationMillis
 import de.uhi.enia.ridesafe.domain.weeklySafetyScores
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
@@ -30,7 +35,11 @@ class HomeViewModel(
 ) : AndroidViewModel(app) {
     private val db = RidesafeDatabase.getInstance(app)
 
-    val dashboard: Flow<HomeDashboardState> =
+    // Hot + prefetched, same pattern (and reason) as RidesViewModel.entries: the combine below folds
+    // every score/eco/activity window over all rides, so it runs on Default (off the frame thread)
+    // and stays warm app-wide — a tab switch reads the last value on its first frame instead of
+    // re-querying Room and recomputing the whole dashboard mid-fade on the main thread.
+    val dashboard: StateFlow<HomeDashboardState> =
         combine(db.vehicleDao().observeAll(), db.rideDao().observeAll()) { vehicles, rides ->
             val zone = ZoneId.systemDefault()
             val today = LocalDate.now(zone)
@@ -85,7 +94,8 @@ class HomeViewModel(
                             ecoProfileForRides(rides, vehicle.id)?.let { vehicle.id to it }
                         }.toMap(),
             )
-        }
+        }.flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, HomeDashboardState())
 }
 
 private fun JourneyActivity.toActivityBar(): ActivityBar =
