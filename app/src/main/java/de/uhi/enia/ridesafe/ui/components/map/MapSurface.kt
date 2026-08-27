@@ -127,6 +127,11 @@ private fun fittingCamera(
  * can only be set after the map is created, so the map stays covered until it reports itself
  * loaded — otherwise it shows a light frame or two before the style lands.
  *
+ * [onLoaded] hoists that cover: non-null suppresses the internal one and instead reports the same
+ * moment (map loaded, or the reveal fallback) upward, so a caller with waits of its own — MapPreview
+ * loads the route and sits out the open transition first — can keep one continuous spinner across
+ * every phase instead of mounting a second one when the map joins the composition.
+ *
  * [bottomPadding] is how much of the map something else covers (a sheet), kept out of both the
  * framing and the camera's idea of center.
  */
@@ -137,9 +142,17 @@ internal fun MapSurface(
     modifier: Modifier = Modifier,
     bottomPadding: Dp = 0.dp,
     focus: MapFocus? = null,
+    onLoaded: (() -> Unit)? = null,
     content: MapContent,
 ) {
     var mapLoaded by remember { mutableStateOf(false) }
+
+    fun markLoaded() {
+        if (!mapLoaded) {
+            mapLoaded = true
+            onLoaded?.invoke()
+        }
+    }
     val dark = isSystemInDarkTheme()
     val context = LocalContext.current
     val mapStyle =
@@ -179,23 +192,26 @@ internal fun MapSurface(
                     mapToolbarEnabled = false,
                     zoomControlsEnabled = false,
                 ),
-            onMapLoaded = { mapLoaded = true },
+            onMapLoaded = ::markLoaded,
             content = content,
         )
 
         // The same placeholder a caller shows while its data loads, so the two phases read as one
         // wait rather than a spinner followed by a flashing map. It fades rather than pops, which
-        // also hides the frame or two the map spends applying its style.
-        val coverAlpha by animateFloatAsState(if (mapLoaded) 0f else 1f, tween(400), label = "mapCover")
-        if (coverAlpha > 0f) {
-            Box(
-                modifier =
-                    Modifier
-                        .matchParentSize()
-                        .alpha(coverAlpha)
-                        .background(MaterialTheme.colorScheme.surfaceBright),
-                contentAlignment = Alignment.Center,
-            ) { CircularProgressIndicator() }
+        // also hides the frame or two the map spends applying its style. Skipped when the caller
+        // hoisted the cover via [onLoaded] — theirs is already on top.
+        if (onLoaded == null) {
+            val coverAlpha by animateFloatAsState(if (mapLoaded) 0f else 1f, tween(400), label = "mapCover")
+            if (coverAlpha > 0f) {
+                Box(
+                    modifier =
+                        Modifier
+                            .matchParentSize()
+                            .alpha(coverAlpha)
+                            .background(MaterialTheme.colorScheme.surfaceBright),
+                    contentAlignment = Alignment.Center,
+                ) { CircularProgressIndicator() }
+            }
         }
     }
 
@@ -203,6 +219,6 @@ internal fun MapSurface(
     // Long enough not to pre-empt a slow first load, which reveals a half-tiled map.
     LaunchedEffect(Unit) {
         delay(6_000.milliseconds)
-        mapLoaded = true
+        markLoaded()
     }
 }
