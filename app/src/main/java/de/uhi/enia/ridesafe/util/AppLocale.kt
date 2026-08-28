@@ -61,6 +61,25 @@ fun formattingLocale(): Locale {
     return mergeRegional(appLocale, system)
 }
 
+// Single entry: one process has one formatting locale at a time. Races are benign — a stale
+// read only rebuilds the context.
+private var cachedFormatContext: Pair<String, Context>? = null
+
+/**
+ * A context configured for [formattingLocale] — what [android.text.format.DateUtils] and other
+ * context-locale APIs should format through. Only for formatting: user-visible strings keep
+ * coming from the caller's context, in the in-app language. Free when the locales already agree
+ * (no in-app language set); otherwise a cached configuration context off the application one.
+ */
+fun Context.regionalFormatContext(): Context {
+    val locale = formattingLocale()
+    if (resources.configuration.locales.get(0) == locale) return this
+    val key = locale.toLanguageTag()
+    cachedFormatContext?.let { (cachedKey, cached) -> if (cachedKey == key) return cached }
+    val config = Configuration(applicationContext.resources.configuration).apply { setLocale(locale) }
+    return applicationContext.createConfigurationContext(config).also { cachedFormatContext = key to it }
+}
+
 /** [language]'s words with [regional]'s region, variant, and unicode extensions. */
 fun mergeRegional(
     language: Locale,
