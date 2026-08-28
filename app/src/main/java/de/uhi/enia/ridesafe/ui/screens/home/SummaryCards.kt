@@ -31,7 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -65,13 +64,12 @@ fun SummaryMetricCarousel(
     monthRideCount: Int,
 ) {
     val unitSystem = currentUnitSystem()
-    val context = LocalContext.current
     val totalDistance = formatDistance(distanceMeters, unitSystem)
     val totalDuration = formatCompactDuration(durationMillis)
-    val totalRides = formatRecordedRideCount(context, rideCount)
+    val totalRides = formatRecordedRideCount(rideCount)
     val monthDistance = formatDistance(monthDistanceMeters, unitSystem)
     val monthDuration = formatCompactDuration(monthDurationMillis)
-    val monthRides = formatRecordedRideCount(context, monthRideCount)
+    val monthRides = formatRecordedRideCount(monthRideCount)
     val metrics =
         listOf(
             HomeMetricCardModel(
