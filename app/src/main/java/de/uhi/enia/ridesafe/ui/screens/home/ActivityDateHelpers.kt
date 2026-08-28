@@ -1,5 +1,6 @@
 package de.uhi.enia.ridesafe.ui.screens.home
 
+import android.text.format.DateFormat
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -29,7 +30,8 @@ fun formatActivityDateRange(
 ): String {
     val start = days.firstOrNull()?.day ?: LocalDate.now()
     val end = days.lastOrNull()?.day ?: start
-    val formatter = DateTimeFormatter.ofPattern("dd.MM.", locale)
+    // Day+month in the region's order — "dd.MM." for a German region, "MM/dd" for a US one.
+    val formatter = DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "MMdd"), locale)
     return "${start.format(formatter)} - ${end.format(formatter)}"
 }
 
