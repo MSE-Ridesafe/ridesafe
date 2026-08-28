@@ -1,7 +1,13 @@
 package de.uhi.enia.ridesafe.ui.screens.settings
 
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
+import androidx.compose.ui.res.stringResource
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
+import de.uhi.enia.ridesafe.R
+import de.uhi.enia.ridesafe.ui.components.DetailPlaceholder
+import de.uhi.enia.ridesafe.ui.components.ListPaneFocusSink
 import kotlinx.serialization.Serializable
 
 @Serializable data object SettingsRoute : NavKey
@@ -16,47 +22,85 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object SettingsMinRideLengthRoute : NavKey
 
+/** Ties this tab's list and detail routes into one scene, distinct from the other tabs'. */
+internal const val SETTINGS_SCENE = "settings"
+
+/** The routes the settings menu can mark as open — everything exactly one tap from the menu. */
+internal val SettingsMenuRoutes: Set<NavKey> =
+    setOf(
+        SettingsLanguageRoute,
+        SettingsUnitsRoute,
+        SavedAddressesRoute,
+        SettingsAutoTrackRoute,
+        SettingsReconnectGraceRoute,
+        SettingsMinRideLengthRoute,
+    )
+
+/**
+ * Settings tab entries: the menu plus every sub-screen below it, including the saved-addresses
+ * flow. The pane metadata groups them into one list-detail scene, so on a wide window the menu
+ * stays put on the left while its sub-screen fills the right. [selected] is the menu row to mark as
+ * open — one of [SettingsMenuRoutes], which stays lit even when the saved-address editor sits a
+ * further level down. [showBack] is false once both panes are visible, where a back arrow on a
+ * pinned pane would be meaningless.
+ */
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 fun EntryProviderScope<NavKey>.settingsEntries(
     savedAddressViewModel: SavedAddressViewModel,
+    selected: NavKey?,
+    showBack: Boolean,
     onOpen: (NavKey) -> Unit,
     onBack: () -> Unit,
 ) {
-    entry<SettingsRoute> {
-        SettingsScreen(
-            onOpenLanguage = { onOpen(SettingsLanguageRoute) },
-            onOpenUnits = { onOpen(SettingsUnitsRoute) },
-            onOpenAutoTrack = { onOpen(SettingsAutoTrackRoute) },
-            onOpenReconnectGrace = { onOpen(SettingsReconnectGraceRoute) },
-            onOpenMinRideLength = { onOpen(SettingsMinRideLengthRoute) },
-            onOpenSavedAddresses = { onOpen(SavedAddressesRoute) },
-        )
+    entry<SettingsRoute>(
+        metadata =
+            ListDetailSceneStrategy.listPane(sceneKey = SETTINGS_SCENE) {
+                DetailPlaceholder(stringResource(R.string.placeholder_select_setting))
+            },
+    ) {
+        ListPaneFocusSink {
+            SettingsScreen(
+                onOpenLanguage = { onOpen(SettingsLanguageRoute) },
+                onOpenUnits = { onOpen(SettingsUnitsRoute) },
+                onOpenAutoTrack = { onOpen(SettingsAutoTrackRoute) },
+                onOpenReconnectGrace = { onOpen(SettingsReconnectGraceRoute) },
+                onOpenMinRideLength = { onOpen(SettingsMinRideLengthRoute) },
+                onOpenSavedAddresses = { onOpen(SavedAddressesRoute) },
+                selected = selected,
+            )
+        }
     }
     savedAddressEntries(
         viewModel = savedAddressViewModel,
+        showBack = showBack,
         onOpen = onOpen,
         onBack = onBack,
     )
-    entry<SettingsLanguageRoute> {
-        LanguageSettingsScreen(onBack = onBack)
+    entry<SettingsLanguageRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
+        LanguageSettingsScreen(onBack = onBack, showBack = showBack)
     }
-    entry<SettingsUnitsRoute> {
+    entry<SettingsUnitsRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         UnitSettingsScreen(
             onBack = onBack,
+            showBack = showBack,
         )
     }
-    entry<SettingsAutoTrackRoute> {
+    entry<SettingsAutoTrackRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         AutoTrackSettingsScreen(
             onBack = onBack,
+            showBack = showBack,
         )
     }
-    entry<SettingsReconnectGraceRoute> {
+    entry<SettingsReconnectGraceRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         ReconnectGraceSettingsScreen(
             onBack = onBack,
+            showBack = showBack,
         )
     }
-    entry<SettingsMinRideLengthRoute> {
+    entry<SettingsMinRideLengthRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         MinRideLengthSettingsScreen(
             onBack = onBack,
+            showBack = showBack,
         )
     }
 }

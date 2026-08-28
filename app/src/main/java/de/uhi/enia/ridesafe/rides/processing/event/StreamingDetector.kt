@@ -1,5 +1,6 @@
 package de.uhi.enia.ridesafe.rides.processing.event
 
+import de.uhi.enia.ridesafe.data.RideDynamics
 import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.RideEventType
 import de.uhi.enia.ridesafe.rides.processing.TrackFilter
@@ -38,6 +39,7 @@ internal class StreamingDetector(
     private val accelerating =
         EventAccumulator(RideEventType.ACCELERATION, config, config.acceleration, rideStartElapsedNanos)
     private val cornering = EventAccumulator(RideEventType.CORNERING, config, config.cornering, rideStartElapsedNanos)
+    private val profile = DynamicsAccumulator()
 
     private val baselineNanos = config.jerkBaselineMs * 1_000_000
     private val brakingRate = RateTracker(baselineNanos)
@@ -94,6 +96,12 @@ internal class StreamingDetector(
         drain(force = true)
         return (braking.finish() + accelerating.finish() + cornering.finish()).sortedBy { it.startOffsetMs }
     }
+
+    /**
+     * The ride's dynamics profile (ANL-01). Read after [finish], which is what drains the last of the
+     * held acceleration into it.
+     */
+    fun dynamics(): RideDynamics = profile.result()
 
     /** Resolve what only the orientation and gyro can give, and queue the rest for the next fix. */
     private fun hold(sample: MotionSample) {
@@ -210,6 +218,7 @@ internal class StreamingDetector(
         val alpha = if (seeded) dt / (dt + rc) else 1.0
         previousNanos = nanos
         seeded = true
+        profile.addElapsed(dt)
         smoothedLongitudinal += alpha * (longitudinal - smoothedLongitudinal)
         smoothedLateral += alpha * (lateral - smoothedLateral)
         smoothedYawRate += alpha * (yawRate - smoothedYawRate)
@@ -252,6 +261,18 @@ internal class StreamingDetector(
         braking.feed(nanos, brakingG, brakingJerk, state)
         accelerating.feed(nanos, acceleratingG, acceleratingJerk, state)
         cornering.feed(nanos, corneringG, corneringJerk, state)
+        // Only what survived the gates reaches the profile, so the score divides by time it could
+        // actually judge rather than by however long the phone happened to be recording.
+        profile.add(
+            brakingG = brakingG,
+            brakingJerk = brakingJerk,
+            acceleratingG = acceleratingG,
+            acceleratingJerk = acceleratingJerk,
+            corneringG = corneringG,
+            corneringJerk = corneringJerk,
+            speedMps = state.speedMps,
+            dtSeconds = dt,
+        )
     }
 
     private companion object {

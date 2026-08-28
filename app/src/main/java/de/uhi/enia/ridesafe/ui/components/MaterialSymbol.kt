@@ -5,6 +5,7 @@ package de.uhi.enia.ridesafe.ui.components
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
@@ -56,19 +57,23 @@ fun MaterialSymbol(
             Modifier.clearAndSetSemantics { }
         }
 
+    // Remembered so recomposition (every frame of any animation over icons) reuses the instance
+    // instead of allocating a fresh FontFamily + variation-settings chain per icon per frame.
     val dynamicFontFamily =
-        FontFamily(
-            Font(
-                resId = R.font.material_symbols_outlined,
-                variationSettings =
-                    FontVariation.Settings(
-                        FontVariation.Setting("FILL", if (fill) 1f else 0f),
-                        FontVariation.weight(weight),
-                        FontVariation.Setting("GRAD", grade.toFloat()),
-                        FontVariation.Setting("opsz", size.value),
-                    ),
-            ),
-        )
+        remember(fill, weight, grade, size) {
+            FontFamily(
+                Font(
+                    resId = R.font.material_symbols_outlined,
+                    variationSettings =
+                        FontVariation.Settings(
+                            FontVariation.Setting("FILL", if (fill) 1f else 0f),
+                            FontVariation.weight(weight),
+                            FontVariation.Setting("GRAD", grade.toFloat()),
+                            FontVariation.Setting("opsz", size.value),
+                        ),
+                ),
+            )
+        }
 
     Text(
         text = symbolName,

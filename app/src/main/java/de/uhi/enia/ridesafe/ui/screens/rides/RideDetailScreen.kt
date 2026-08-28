@@ -48,6 +48,7 @@ import de.uhi.enia.ridesafe.rides.processing.addressLines
 import de.uhi.enia.ridesafe.rides.processing.latLngDistanceMeters
 import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDuration
@@ -76,6 +77,7 @@ fun RideDetailScreen(
     endPlace: SavedAddress?,
     analysisProgress: Float?,
     onBack: () -> Unit,
+    showBack: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val unitSystem = currentUnitSystem()
@@ -88,11 +90,13 @@ fun RideDetailScreen(
                 title = { Text(ride?.let { formatRideDateTime(context, it.startedAtEpochMs) } ?: "") },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        MaterialSymbol(
-                            symbolName = "arrow_back",
-                            contentDescription = stringResource(R.string.action_back),
-                        )
+                    if (showBack) {
+                        IconButton(onClick = onBack) {
+                            MaterialSymbol(
+                                symbolName = "arrow_back",
+                                contentDescription = stringResource(R.string.action_back),
+                            )
+                        }
                     }
                 },
             )
@@ -163,6 +167,14 @@ fun RideDetailScreen(
                 duration = formatDuration(ride.startedAtEpochMs, ride.endedAtEpochMs),
             )
 
+            // The score sits directly under the map that shows its events (ANL-01). Three states:
+            // scored; analysed but unscoreable (too little measurable driving — say so rather than
+            // hiding, or the absence reads as a bug); not analysed / no motion sensors (nothing).
+            ride.score?.let { SafetyScoreCard(score = it) }
+                ?: ride.dynamics?.let {
+                    SafetyScoreCard(score = null, emptyText = stringResource(R.string.ride_score_unscoreable))
+                }
+
             DetailCard(
                 title = stringResource(R.string.ride_detail_section_speed),
                 rows =
@@ -185,6 +197,10 @@ fun RideDetailScreen(
                             ),
                     ),
             )
+
+            // Absent for a ride still being analysed and for one with no usable track — "no
+            // profile", not "a perfectly efficient drive". Kinematic, so it needs no vehicle.
+            ride.eco?.let { EcoCard(eco = it) }
         }
     }
 }

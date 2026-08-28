@@ -11,6 +11,16 @@ interface RideDao {
     @Query("SELECT * FROM rides ORDER BY startedAtEpochMs DESC")
     fun observeAll(): Flow<List<Ride>>
 
+    /**
+     * Finished rides, newest first — what the logbook lists (LOG-02). A ride in progress is already
+     * a row (the recorder inserts it at the start and finalizes it at the end), but it is not a
+     * logbook entry yet: it has no end time, no distance and no analysis, and showing it would put
+     * a half-written ride at the top of a record people hand to a tax office. The dashboard's live
+     * card wants exactly that row, so it keeps reading [observeAll].
+     */
+    @Query("SELECT * FROM rides WHERE endedAtEpochMs IS NOT NULL ORDER BY startedAtEpochMs DESC")
+    fun observeFinished(): Flow<List<Ride>>
+
     @Query("SELECT * FROM rides WHERE id = :id")
     fun observe(id: Long): Flow<Ride?>
 
@@ -107,6 +117,27 @@ interface RideDao {
         avgSpeedMps: Double,
     )
 
+    /** Store the efficiency profile integrated from the filtered track (ANL-03). */
+    @Query("UPDATE rides SET eco = :eco WHERE id = :id")
+    suspend fun setEco(
+        id: Long,
+        eco: RideEco?,
+    )
+
+    /** Store the driving-dynamics profile the detection pass accumulated (ANL-01). */
+    @Query("UPDATE rides SET dynamics = :dynamics WHERE id = :id")
+    suspend fun setDynamics(
+        id: Long,
+        dynamics: RideDynamics?,
+    )
+
+    /** Store the safety score derived from that profile (ANL-01). */
+    @Query("UPDATE rides SET score = :score WHERE id = :id")
+    suspend fun setScore(
+        id: Long,
+        score: SafetyScore?,
+    )
+
     /** Rides with a fix but no reverse-geocoded address yet — the address backfill targets these. */
     @Query(
         "SELECT * FROM rides WHERE (startLat IS NOT NULL AND startAddress IS NULL) " +
@@ -129,6 +160,9 @@ interface RideDao {
         startAddressId: Long?,
         endAddressId: Long?,
     )
+
+    @Query("SELECT * FROM rides WHERE id = :id")
+    suspend fun byId(id: Long): Ride?
 
     /** Drop a ride the recorder decided not to keep (TRK-10); its sample file goes with it. */
     @Query("DELETE FROM rides WHERE id = :id")

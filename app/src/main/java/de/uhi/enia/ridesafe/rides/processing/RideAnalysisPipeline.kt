@@ -5,6 +5,7 @@ import android.os.SystemClock
 import android.util.Log
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RideAnalysisState
+import de.uhi.enia.ridesafe.data.RideDynamics
 import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.rides.recording.LocationSample
@@ -86,6 +87,9 @@ class RideAnalysisContext(
 
     /** The ride's driving events, freshly detected or loaded from storage. */
     var events: List<RideEvent>? = null
+
+    /** The ride's dynamics profile, freshly accumulated or restored from the ride row. */
+    var dynamics: RideDynamics? = null
 }
 
 /**
@@ -151,14 +155,22 @@ interface RideStage {
  * *that* constraint is already shared: the GPS is Kalman-filtered once, in pass one, and pass two
  * reuses those fixes instead of filtering again.
  *
+ * Efficiency profiling joins pass two rather than adding a fourth: it reads the same filtered
+ * fixes detection is already being handed, so riding along costs nothing, while a pass of its own
+ * would re-read the file whenever both stages are due.
+ *
+ * Scoring is the third pass and reads no samples at all: it derives from the profile detection left
+ * behind, so re-tuning the score costs one query per ride and no file is opened. That is what makes
+ * calibrating it practical.
+ *
  * ponytail: a stage that needs its own pass adds a list here; one that fits an existing pass costs
- * nothing. A pure-derivation stage (the safety score, next) belongs in a third pass with
- * [RideStage.needsSamples] false, so bumping it re-derives from stored events with no file read.
+ * nothing.
  */
 private fun analysisPasses(db: RidesafeDatabase): List<List<RideStage>> =
     listOf(
         listOf(RouteStage(db), RideEndpointStage(db), ForwardAxisStage()),
-        listOf(RideEventStage(db)),
+        listOf(RideEventStage(db), EcoStage(db)),
+        listOf(ScoreStage(db)),
     )
 
 /**

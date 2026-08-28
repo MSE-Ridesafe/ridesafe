@@ -62,6 +62,7 @@ fun VehicleDetailScreen(
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    showBack: Boolean = true,
     modifier: Modifier = Modifier,
     onLinkBluetooth: (BtDevice) -> Unit = {},
     onUnlinkBluetooth: (String) -> Unit = {},
@@ -85,11 +86,13 @@ fun VehicleDetailScreen(
                         containerColor = Color.Transparent,
                     ),
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        MaterialSymbol(
-                            symbolName = "arrow_back",
-                            contentDescription = stringResource(R.string.action_back),
-                        )
+                    if (showBack) {
+                        IconButton(onClick = onBack) {
+                            MaterialSymbol(
+                                symbolName = "arrow_back",
+                                contentDescription = stringResource(R.string.action_back),
+                            )
+                        }
                     }
                 },
                 actions = {

@@ -17,7 +17,10 @@ enum class MergeCheck {
  * Aggregated metrics for a merged ride, recomputed from its stops (MRG-05). Distance/duration are
  * summed over the stops (never spanning the parked gaps between them, MRG-07); average speed is total
  * distance over total moving duration (not a mean of per-stop speeds); top speed is the max across
- * stops. Endpoints come straight from the first stop's start and the last stop's end.
+ * stops. Endpoints come straight from the first stop's start and the last stop's end. [eco] adds up
+ * the stops' efficiency profiles bucket by bucket (ANL-03), so the trip's eco level is derived from
+ * the whole trip's driving at read time — aggregates sum, levels don't, same rule the safety score
+ * follows when pooling rides.
  */
 data class MergedSummary(
     val stopCount: Int,
@@ -29,6 +32,7 @@ data class MergedSummary(
     val endEpochMs: Long?,
     val startAddress: String?,
     val endAddress: String?,
+    val eco: RideEco? = null,
 )
 
 /** Summarize a merged ride from its stops (any order; sorted here by start time). */
@@ -47,6 +51,10 @@ fun summarizeMerge(stops: List<Ride>): MergedSummary {
     val movingSec = movingDurationMs / 1000.0
     val avgSpeed = if (totalDistance != null && movingSec > 0) totalDistance / movingSec else null
 
+    // Same best-effort rule as the distances: a stop still being analysed contributes nothing rather
+    // than voiding the trip's profile, and a trip where none of them is done yet has no profile at all.
+    val eco = ordered.mapNotNull { it.eco }.reduceOrNull { a, b -> a + b }
+
     return MergedSummary(
         stopCount = ordered.size,
         distanceMeters = totalDistance,
@@ -57,6 +65,7 @@ fun summarizeMerge(stops: List<Ride>): MergedSummary {
         endEpochMs = last.endedAtEpochMs,
         startAddress = first.startAddress,
         endAddress = last.endAddress,
+        eco = eco,
     )
 }
 
