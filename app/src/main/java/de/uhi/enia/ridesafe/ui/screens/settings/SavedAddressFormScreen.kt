@@ -8,7 +8,9 @@ import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -79,6 +81,8 @@ import de.uhi.enia.ridesafe.rides.processing.forwardGeocode
 import de.uhi.enia.ridesafe.rides.processing.reverseGeocode
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.map.MapLoadingIndicator
+import de.uhi.enia.ridesafe.ui.components.map.rememberIsOnline
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatShortDistance
 import kotlinx.coroutines.delay
@@ -314,21 +318,35 @@ fun SavedAddressFormScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
                 modifier = Modifier.fillMaxWidth().height(260.dp),
             ) {
-                GoogleMap(
-                    modifier = Modifier.fillMaxSize(),
-                    cameraPositionState = cameraPositionState,
-                    uiSettings = MapUiSettings(tiltGesturesEnabled = false, mapToolbarEnabled = false, zoomControlsEnabled = false),
-                    onMapClick = { point = it },
-                ) {
-                    point?.let { p ->
-                        Marker(state = markerState, draggable = true, title = stringResource(R.string.saved_address_marker))
-                        Circle(
-                            center = p,
-                            radius = radius.toDouble(),
-                            strokeColor = MaterialTheme.colorScheme.primary,
-                            strokeWidth = 4f,
-                            fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                        )
+                var mapLoaded by remember { mutableStateOf(false) }
+                val online = rememberIsOnline()
+                Box(Modifier.fillMaxSize()) {
+                    GoogleMap(
+                        modifier = Modifier.fillMaxSize(),
+                        cameraPositionState = cameraPositionState,
+                        uiSettings = MapUiSettings(tiltGesturesEnabled = false, mapToolbarEnabled = false, zoomControlsEnabled = false),
+                        onMapClick = { point = it },
+                        onMapLoaded = { mapLoaded = true },
+                    ) {
+                        point?.let { p ->
+                            Marker(state = markerState, draggable = true, title = stringResource(R.string.saved_address_marker))
+                            Circle(
+                                center = p,
+                                radius = radius.toDouble(),
+                                strokeColor = MaterialTheme.colorScheme.primary,
+                                strokeWidth = 4f,
+                                fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            )
+                        }
+                    }
+                    // This picker has no loading cover of its own, so online it looks exactly as it
+                    // always has. The cover only steps in while there is no network and no map yet —
+                    // the one case that otherwise shows a blank grid that still takes pin taps.
+                    if (!online && !mapLoaded) {
+                        Box(
+                            modifier = Modifier.matchParentSize().background(MaterialTheme.colorScheme.surfaceBright),
+                            contentAlignment = Alignment.Center,
+                        ) { MapLoadingIndicator() }
                     }
                 }
             }

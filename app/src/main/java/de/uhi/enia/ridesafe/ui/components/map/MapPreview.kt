@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,6 +24,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 /** The card preview's height — tall enough to read a route, short enough to scroll past. */
 val MapPreviewHeight = 300.dp
@@ -66,7 +66,7 @@ fun MapPreview(
 ) {
     var settled by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        delay(TRANSITION_SETTLE_MS)
+        delay(TRANSITION_SETTLE_MS.milliseconds)
         settled = true
     }
     var mapLoaded by remember { mutableStateOf(false) }
@@ -113,7 +113,7 @@ fun MapPreview(
                                 .alpha(coverAlpha)
                                 .background(MaterialTheme.colorScheme.surfaceBright),
                         contentAlignment = Alignment.Center,
-                    ) { CircularProgressIndicator() }
+                    ) { MapLoadingIndicator() }
                 }
             }
         }
