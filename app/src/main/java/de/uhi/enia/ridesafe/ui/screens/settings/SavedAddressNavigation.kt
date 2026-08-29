@@ -33,7 +33,7 @@ fun EntryProviderScope<NavKey>.savedAddressEntries(
     viewModel: SavedAddressViewModel,
     showBack: Boolean,
     onOpen: (NavKey) -> Unit,
-    onBack: () -> Unit,
+    onBack: (NavKey) -> Unit,
 ) {
     entry<SavedAddressesRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         val addresses by viewModel.addresses.collectAsState()
@@ -41,7 +41,7 @@ fun EntryProviderScope<NavKey>.savedAddressEntries(
             addresses = addresses,
             onAdd = { kind -> onOpen(AddSavedAddressRoute(kind.name)) },
             onEdit = { id -> onOpen(EditSavedAddressRoute(id)) },
-            onBack = onBack,
+            onBack = { onBack(SavedAddressesRoute) },
             showBack = showBack,
         )
     }
@@ -51,9 +51,9 @@ fun EntryProviderScope<NavKey>.savedAddressEntries(
             presetKind = SavedPlaceKind.valueOf(key.kind),
             onSave = {
                 viewModel.add(it)
-                onBack()
+                onBack(key)
             },
-            onBack = onBack,
+            onBack = { onBack(key) },
         )
     }
     entry<EditSavedAddressRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) { key ->
@@ -65,12 +65,12 @@ fun EntryProviderScope<NavKey>.savedAddressEntries(
                 presetKind = loaded.kind,
                 onSave = {
                     viewModel.update(it)
-                    onBack()
+                    onBack(key)
                 },
-                onBack = onBack,
+                onBack = { onBack(key) },
                 onDelete = {
                     viewModel.delete(loaded)
-                    onBack()
+                    onBack(key)
                 },
             )
         }

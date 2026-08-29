@@ -32,7 +32,9 @@ private const val RIDES_SCENE = "rides"
 
 /**
  * Rides tab entries: list -> detail. Navigation goes through [onOpen]/[onBack] (the caller
- * mutates the rides back stack and resets the tab-switch flag, so these transitions slide).
+ * mutates the rides back stack and resets the tab-switch flag, so these transitions slide);
+ * [onBack] carries the closing screen's own key, so a back event that outruns recomposition
+ * cannot pop the screen underneath it.
  * [viewModel] is one app-scoped instance shared by both screens; its Room
  * [kotlinx.coroutines.flow.Flow] is the source of truth.
  *
@@ -47,7 +49,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
     selectedKey: String?,
     showBack: Boolean,
     onOpen: (NavKey) -> Unit,
-    onBack: () -> Unit,
+    onBack: (NavKey) -> Unit,
 ) {
     entry<RidesRoute>(
         metadata =
@@ -84,7 +86,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
         val analysis by viewModel.analysisProgress.collectAsState()
         // Merged entries carry their stops, so flattening covers every ride a job can point at.
         val rides = remember(entries) { entries.flatMap { it.rides }.associateBy { it.id } }
-        AnalysisQueueScreen(progress = analysis, rides = rides, onBack = onBack, showBack = showBack)
+        AnalysisQueueScreen(progress = analysis, rides = rides, onBack = { onBack(AnalysisQueueRoute) }, showBack = showBack)
     }
     entry<MergedRideDetailRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = RIDES_SCENE)) { key ->
         val stops by viewModel.groupStops(key.groupId).collectAsState(initial = null)
@@ -97,7 +99,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             stops = stops,
             segments = segments,
             rideEvents = groupEvents,
-            onBack = onBack,
+            onBack = { onBack(key) },
             showBack = showBack,
             onUnmergeAll = { viewModel.unmergeAll(key.groupId) },
             onUnmerge = { viewModel.unmerge(key.groupId, it) },
@@ -124,7 +126,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             startPlace = startPlace,
             endPlace = endPlace,
             analysisProgress = analysisProgress,
-            onBack = onBack,
+            onBack = { onBack(key) },
             showBack = showBack,
         )
     }

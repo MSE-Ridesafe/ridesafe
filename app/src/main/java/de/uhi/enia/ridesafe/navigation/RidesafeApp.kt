@@ -93,6 +93,20 @@ private fun openFromList(
 }
 
 /**
+ * Pops [key] — a screen asking to close itself. A no-op unless [key] is still what is showing:
+ * back events can arrive faster than recomposition swaps the screen (a double-tapped back arrow,
+ * or a tap landing during the pop animation), and an unguarded second pop would take the screen
+ * *underneath* with it — or empty the stack entirely, which NavDisplay rejects with
+ * "NavDisplay backstack cannot be empty" and brings the whole app down.
+ */
+private fun popOwn(
+    stack: MutableList<NavKey>,
+    key: NavKey,
+) {
+    if (stack.size > 1 && stack.lastOrNull() == key) stack.removeLastOrNull()
+}
+
+/**
  * App shell: adaptive navigation suite (bottom bar / rail / drawer) wrapping a
  * [NavDisplay]. Each tab owns a [rememberNavBackStack]; the selected tab decides which
  * stack [NavDisplay] renders, so switching tabs preserves each tab's in-tab navigation.
@@ -265,7 +279,11 @@ fun RidesafeApp() {
                             sceneStrategies = listOf(listDetail),
                             onBack = {
                                 isTabSwitch = false
-                                stacks.getValue(current).removeLastOrNull()
+                                // Never pops the tab root: two system backs can land in the same
+                                // frame, before recomposition deregisters the callback, and the
+                                // second would empty the stack ("backstack cannot be empty").
+                                val stack = stacks.getValue(current)
+                                if (stack.size > 1) stack.removeLastOrNull()
                             },
                             // Sub-route nav: new screen slides in, previous fades out at the same speed;
                             // back mirrors it (top slides out, revealed screen fades in). Tab switches are
@@ -300,9 +318,9 @@ fun RidesafeApp() {
                                             isTabSwitch = false
                                             openFromList(ridesStack, it)
                                         },
-                                        onBack = {
+                                        onBack = { key ->
                                             isTabSwitch = false
-                                            ridesStack.removeLastOrNull()
+                                            popOwn(ridesStack, key)
                                         },
                                     )
                                     garageEntries(
@@ -319,9 +337,9 @@ fun RidesafeApp() {
                                                 openFromList(garageStack, key)
                                             }
                                         },
-                                        onBack = {
+                                        onBack = { key ->
                                             isTabSwitch = false
-                                            garageStack.removeLastOrNull()
+                                            popOwn(garageStack, key)
                                         },
                                         onPopToGarage = {
                                             isTabSwitch = false
@@ -342,9 +360,9 @@ fun RidesafeApp() {
                                                 settingsStack.add(key)
                                             }
                                         },
-                                        onBack = {
+                                        onBack = { key ->
                                             isTabSwitch = false
-                                            settingsStack.removeLastOrNull()
+                                            popOwn(settingsStack, key)
                                         },
                                     )
                                 },

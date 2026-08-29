@@ -30,7 +30,9 @@ private const val GARAGE_SCENE = "garage"
 /**
  * Garage tab entries: list -> detail -> edit, plus add. Navigation goes through [onOpen] /
  * [onBack] (the caller mutates the garage back stack and resets the tab-switch flag, so
- * these transitions slide); [onPopToGarage] returns straight to the list after a delete,
+ * these transitions slide). [onBack] carries the closing screen's own key, so a back event that
+ * outruns recomposition cannot pop the screen underneath it; [onPopToGarage] returns straight
+ * to the list after a delete,
  * regardless of how deep the stack is. [viewModel] is a single app-scoped instance shared
  * by all screens, so an insert/edit/delete propagates via its Room
  * [kotlinx.coroutines.flow.Flow].
@@ -47,7 +49,7 @@ fun EntryProviderScope<NavKey>.garageEntries(
     selectedId: Long?,
     showBack: Boolean,
     onOpen: (NavKey) -> Unit,
-    onBack: () -> Unit,
+    onBack: (NavKey) -> Unit,
     onPopToGarage: () -> Unit,
 ) {
     entry<GarageRoute>(
@@ -70,7 +72,7 @@ fun EntryProviderScope<NavKey>.garageEntries(
         val vehicle by viewModel.vehicle(key.id).collectAsState(initial = null)
         VehicleDetailScreen(
             vehicle = vehicle,
-            onBack = onBack,
+            onBack = { onBack(key) },
             showBack = showBack,
             onEdit = { onOpen(EditVehicleRoute(key.id)) },
             onDelete = {
@@ -86,9 +88,9 @@ fun EntryProviderScope<NavKey>.garageEntries(
             existing = null,
             onSave = { vehicle, makePrimary ->
                 viewModel.addVehicle(vehicle, makePrimary)
-                onBack()
+                onBack(AddVehicleRoute)
             },
-            onBack = onBack,
+            onBack = { onBack(AddVehicleRoute) },
         )
     }
     entry<EditVehicleRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = GARAGE_SCENE)) { key ->
@@ -99,9 +101,9 @@ fun EntryProviderScope<NavKey>.garageEntries(
                 existing = loaded,
                 onSave = { updated, makePrimary ->
                     viewModel.updateVehicle(updated, makePrimary)
-                    onBack()
+                    onBack(key)
                 },
-                onBack = onBack,
+                onBack = { onBack(key) },
                 onDelete = {
                     viewModel.deleteVehicle(loaded)
                     onPopToGarage()
