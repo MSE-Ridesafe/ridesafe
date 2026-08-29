@@ -470,4 +470,19 @@
     <string name="placeholder_select_ride">Fahrt auswählen, um Details zu sehen</string>
     <string name="placeholder_select_vehicle">Fahrzeug auswählen, um Details zu sehen</string>
     <string name="placeholder_select_setting">Einstellung auswählen</string>
+
+    <!-- First-launch onboarding (ONB). -->
+    <string name="onboarding_step_progress">Schritt %1$d von %2$d</string>
+    <string name="onboarding_skip_step">Überspringen</string>
+    <string name="onboarding_leave">Einführung verlassen</string>
+    <string name="onboarding_welcome_title">Willkommen bei Ridesafe</string>
+    <string name="onboarding_welcome_message">Dein Fahrtenbuch mit Sicherheits- und Öko-Auswertung. Richte die wichtigsten Dinge in wenigen Minuten ein — jeder Schritt lässt sich überspringen.</string>
+    <string name="onboarding_feature_rides_title">Fahrten aufzeichnen</string>
+    <string name="onboarding_feature_rides_body">Automatisch über das Bluetooth deines Autos oder mit einem Tipp.</string>
+    <string name="onboarding_feature_scores_title">Sicherheits- und Öko-Bewertung</string>
+    <string name="onboarding_feature_scores_body">Sieh, wie sicher und effizient du fährst.</string>
+    <string name="onboarding_feature_privacy_title">Alles bleibt auf deinem Handy</string>
+    <string name="onboarding_feature_privacy_body">Fahrten, Orte und Fahrzeuge werden nur auf diesem Gerät gespeichert — es gibt keinen Server.</string>
+    <string name="onboarding_welcome_start">Ridesafe einrichten</string>
+    <string name="onboarding_welcome_skip">Vorerst überspringen</string>
 </resources>

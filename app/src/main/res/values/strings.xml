@@ -470,4 +470,19 @@
     <string name="placeholder_select_ride">Select a ride to see its details</string>
     <string name="placeholder_select_vehicle">Select a vehicle to see its details</string>
     <string name="placeholder_select_setting">Select a setting</string>
+
+    <!-- First-launch onboarding (ONB). -->
+    <string name="onboarding_step_progress">Step %1$d of %2$d</string>
+    <string name="onboarding_skip_step">Skip</string>
+    <string name="onboarding_leave">Leave the introduction</string>
+    <string name="onboarding_welcome_title">Welcome to Ridesafe</string>
+    <string name="onboarding_welcome_message">Your driving logbook with safety and eco insights. Set up the essentials in a couple of minutes — every step can be skipped.</string>
+    <string name="onboarding_feature_rides_title">Record your rides</string>
+    <string name="onboarding_feature_rides_body">Automatically via your car\'s Bluetooth, or with one tap.</string>
+    <string name="onboarding_feature_scores_title">Safety and eco scores</string>
+    <string name="onboarding_feature_scores_body">See how safely and efficiently you drive.</string>
+    <string name="onboarding_feature_privacy_title">Everything stays on your phone</string>
+    <string name="onboarding_feature_privacy_body">Rides, places and vehicles are stored only on this device — there is no server.</string>
+    <string name="onboarding_welcome_start">Set up Ridesafe</string>
+    <string name="onboarding_welcome_skip">Skip for now</string>
 </resources>
