@@ -11,7 +11,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import de.uhi.enia.ridesafe.navigation.RidesafeApp
+import de.uhi.enia.ridesafe.ui.onboarding.OnboardingGate
 import de.uhi.enia.ridesafe.ui.screens.settings.SettingsFade
 import de.uhi.enia.ridesafe.ui.theme.RidesafeTheme
 import de.uhi.enia.ridesafe.ui.theme.resolvedDarkTheme
@@ -41,7 +41,8 @@ class MainActivity : ComponentActivity() {
                 // transition belongs to whichever activity comes back — this one.
                 LaunchedEffect(Unit) { SettingsFade.resumeFadeIn() }
                 Box(Modifier.graphicsLayer { alpha = SettingsFade.alpha }) {
-                    RidesafeApp()
+                    // First launch shows the onboarding wizard instead of the app (ONB-01).
+                    OnboardingGate()
                 }
             }
         }

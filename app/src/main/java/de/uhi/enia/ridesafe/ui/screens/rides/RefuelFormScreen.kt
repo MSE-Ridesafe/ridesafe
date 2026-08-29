@@ -198,6 +198,8 @@ fun RefuelFormScreen(
             }.orEmpty()
 
     fun save() {
+        // Latch against a double-tapped save firing twice before the disabled button catches up.
+        if (saving) return
         showErrors = true
         saveFailed = false
         val vehicle = vehicles.firstOrNull { it.id == selectedVehicleId }

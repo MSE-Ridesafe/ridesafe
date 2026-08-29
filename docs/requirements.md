@@ -42,14 +42,14 @@ externally — all analytics and safety scoring happen locally.
 
 | ID     | P | Requirement                                                                                                  | Status      | Related                        |
 |--------|---|--------------------------------------------------------------------------------------------------------------|-------------|--------------------------------|
-| GAR-01 | M | Ridesafe shall provide a Garage page.                                                                        | Draft       | DR-VEH, NAV-01                 |
-| GAR-02 | M | The Garage shall let the user create a vehicle.                                                              | Draft       | DR-VEH                         |
+| GAR-01 | M | Ridesafe shall provide a Garage page.                                                                        | Draft       | DR-VEH, NAV-01, ONB-01                 |
+| GAR-02 | M | The Garage shall let the user create a vehicle.                                                              | Draft       | DR-VEH, ONB-02                         |
 | GAR-03 | M | The Garage shall let the user edit an existing vehicle.                                                      | Implemented | DR-VEH                         |
 | GAR-04 | M | The Garage shall let the user delete a vehicle.                                                              | Implemented | DR-VEH, UX-01                  |
 | GAR-05 | M | The Garage shall display a list of vehicles showing key fields (make, model, license plate, primary marker). | Draft       | DR-VEH                         |
 | GAR-06 | M | The Garage shall display a detailed view of a vehicle showing all its fields.                                | Draft       | DR-VEH                         |
 | GAR-07 | M | The Garage shall let the user designate exactly one vehicle as the primary vehicle.                          | Draft       | DR-RID, DR-VEH, TRK-02, TRK-08 |
-| GAR-08 | M | The Garage shall let the user map one or more paired Bluetooth devices to a vehicle for auto-detection.      | Implemented | DR-VEH, TRK-02, TRK-08         |
+| GAR-08 | M | The Garage shall let the user map one or more paired Bluetooth devices to a vehicle for auto-detection.      | Implemented | DR-VEH, ONB-03, TRK-02, TRK-08         |
 
 ### 3.3 Logbook (rides)
 
@@ -82,7 +82,7 @@ externally — all analytics and safety scoring happen locally.
 | TRK-04 | M | During recording, Ridesafe shall sample motion sensors (accelerometer/gyroscope) alongside GPS to support safety scoring.                                                                             | Proposed    | ANL-01, ANL-03, DR-RID                                                 |
 | TRK-05 | S | Ridesafe shall keep recording reliably while the app is in the background or the screen is off.                                                                                                       | Proposed    | NFR-05, NFR-06, NFR-08, TRK-01                                         |
 | TRK-06 | S | Ridesafe shall tolerate temporary GPS signal loss (e.g. tunnels) without ending a ride prematurely.                                                                                                   | Proposed    | TRK-01                                                                 |
-| TRK-07 | M | Ridesafe shall provide the ability to start ride recording manually when automatic ride detection is not available, failed, or disabled by the user                                                   | Proposed    | SET-06, TRK-02                                                         |
+| TRK-07 | M | Ridesafe shall provide the ability to start ride recording manually when automatic ride detection is not available, failed, or disabled by the user                                                   | Proposed    | ONB-06, SET-06, TRK-02                                                         |
 | TRK-08 | M | Ridesafe shall identify the current vehicle from its mapped Bluetooth device(s) to assign rides correctly and avoid recording rides taken as a passenger in foreign vehicles.                         | Proposed    | DR-VEH, GAR-07, GAR-08, SET-06, TRK-02, TRK-03                         |
 | TRK-09 | S | Ridesafe shall continue an ongoing ride when the same vehicle reconnects within a short grace period after its Bluetooth disconnect, rather than ending the ride and starting a new one.              | Implemented | SET-10, TRK-01, TRK-02, TRK-05, TRK-06, TRK-08, TRK-10                 |
 | TRK-10 | S | Ridesafe shall discard a recorded ride shorter than a minimum length (30 s by default) instead of logging it, so a Bluetooth blip or a move within the driveway leaves no trace.                      | Implemented | LOG-02, TRK-01, TRK-02, TRK-09, SET-11                                 |
@@ -136,7 +136,7 @@ end-to-end until recording (TRK-01, DR-RID) exists.
 | DSH-03 | S | The Dashboard shall show mileage trend visualizations.                          | Draft  | ANL-02, DSH-05         |
 | DSH-04 | S | The Dashboard shall show driving-behavior / safety visualizations.              | Draft  | ANL-01, DSH-06         |
 | DSH-05 | C | The Dashboard shall show monthly mileage summaries.                             | Draft  | ANL-02, DSH-02, DSH-03 |
-| DSH-06 | C | The Dashboard shall show the current driver safety score.                       | Draft  | ANL-01, DSH-04         |
+| DSH-06 | C | The Dashboard shall show the current driver safety score.                       | Draft  | ANL-01, DSH-04, ONB-06         |
 
 ### 3.6 Analytics & safety
 
@@ -147,9 +147,9 @@ the phone already has.*
 
 | ID     | P | Requirement                                                                                                                                                                                      | Status      | Related                                                |
 |--------|---|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------|--------------------------------------------------------|
-| ANL-01 | M | Ridesafe shall compute a driver safety score from GPS and motion-sensor data (harsh braking, hard acceleration, cornering).                                                                      | Implemented | ANL-05, DR-RID, DSH-04, DSH-06, GRP-02, LOG-15, TRK-01, TRK-04 |
+| ANL-01 | M | Ridesafe shall compute a driver safety score from GPS and motion-sensor data (harsh braking, hard acceleration, cornering).                                                                      | Implemented | ANL-05, DR-RID, DSH-04, DSH-06, GRP-02, LOG-15, ONB-06, TRK-01, TRK-04 |
 | ANL-02 | M | Ridesafe shall compute mileage statistics.                                                                                                                                                       | Draft       | DR-RID, DSH-02, DSH-03, DSH-05, GRP-02, LOG-13, SET-07 |
-| ANL-03 | S | Ridesafe shall provide fuel-efficiency insights from GPS and motion-sensor data (favouring steady moderate speed over stop-and-go, gentle acceleration, and gentle braking / gliding to a stop). | Draft       | ANL-06, SET-08, TRK-04                                 |
+| ANL-03 | S | Ridesafe shall provide fuel-efficiency insights from GPS and motion-sensor data (favouring steady moderate speed over stop-and-go, gentle acceleration, and gentle braking / gliding to a stop). | Draft       | ANL-06, ONB-06, SET-08, TRK-04                                 |
 | ANL-04 | S | Ridesafe shall provide vehicle-usage statistics across the user's vehicles.                                                                                                                      | Draft       | DR-RID, DR-VEH                                         |
 | ANL-05 | C | Ridesafe shall provide a per-ride safety ranking/comparison.                                                                                                                                     | Draft       | ANL-01                                                 |
 | ANL-06 | C | Ridesafe shall estimate fuel cost per ride/period.                                                                                                                                               | Draft       | ANL-03, ANL-07, CST-02, DR-VEH, SET-08                 |
@@ -191,12 +191,12 @@ the phone already has.*
 
 | ID     | P | Requirement                                                                                                            | Status      | Related                |
 |--------|---|------------------------------------------------------------------------------------------------------------------------|-------------|------------------------|
-| SET-01 | M | Ridesafe shall provide a Settings page.                                                                                | Draft       | ADR-01, ADR-03, NAV-01 |
+| SET-01 | M | Ridesafe shall provide a Settings page.                                                                                | Draft       | ADR-01, ADR-03, NAV-01, ONB-07 |
 | SET-02 | M | Ridesafe shall follow the system theme (light/dark) by default.                                                        | Draft       | NFR-10, NFR-12, SET-03 |
 | SET-03 | S | Settings shall let the user override the theme (light / dark / follow system).                                         | Draft       | SET-02                 |
 | SET-04 | M | Ridesafe shall follow the system language by default, falling back to English when the system language is unsupported. | Draft       | NFR-11, SET-05         |
 | SET-05 | S | Settings shall let the user switch the app language between German and English.                                        | Draft       | NFR-11, SET-04         |
-| SET-06 | M | Settings shall let the user set automatic recording: off (default), paired vehicles only, or any vehicle (unassigned). | Implemented | NFR-05, TRK-02, TRK-07, TRK-08 |
+| SET-06 | M | Settings shall let the user set automatic recording: off (default), paired vehicles only, or any vehicle (unassigned). | Implemented | NFR-05, ONB-04, TRK-02, TRK-07, TRK-08 |
 | SET-07 | S | Settings shall let the user choose speed units (mph / km/h).                                                           | Draft       | ANL-02, SET-08         |
 | SET-08 | C | Settings shall let the user choose distance and fuel-economy units, applied consistently across the app.               | Proposed    | ANL-03, ANL-06, SET-07 |
 | SET-09 | C | Settings shall let the user turn grouping reminders on or off.                                                         | Proposed    | NOT-01                 |
@@ -207,11 +207,11 @@ the phone already has.*
 
 | ID     | P | Requirement                                                                                                                                                                                                                                                                                           | Status   | Related                                |
 |--------|---|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|----------------------------------------|
-| ADR-01 | M | Ridesafe shall let the user save named addresses ("places"), each anchored to an exact GPS point.                                                                                                                                                                                                     | Proposed | ADR-03, DR-ADR, SET-01                 |
+| ADR-01 | M | Ridesafe shall let the user save named addresses ("places"), each anchored to an exact GPS point.                                                                                                                                                                                                     | Proposed | ADR-03, DR-ADR, ONB-05, SET-01                 |
 | ADR-02 | M | Each saved address shall have a recognition radius around its GPS point (default 100 m, maximum 500 m) defining its parking/arrival area.                                                                                                                                                             | Proposed | ADR-07, DR-ADR                         |
 | ADR-03 | M | Ridesafe shall provide a screen to add, edit, and delete saved addresses.                                                                                                                                                                                                                             | Proposed | DR-ADR, SET-01, UX-01                  |
 | ADR-04 | M | The address editor shall let the user set the GPS point (drag a map pin, use current location, or take a ride endpoint) and adjust the radius.                                                                                                                                                        | Proposed | ADR-02, DR-ADR, LOG-10, NFR-02         |
-| ADR-05 | M | Ridesafe shall provide shortcuts to create a Home, Work, and School address with fixed icons, each of which may exist at most once.                                                                                                                                                                   | Proposed | ADR-01, DR-ADR                         |
+| ADR-05 | M | Ridesafe shall provide shortcuts to create a Home, Work, and School address with fixed icons, each of which may exist at most once.                                                                                                                                                                   | Proposed | ADR-01, DR-ADR, ONB-05                         |
 | ADR-06 | S | For custom addresses, Ridesafe shall let the user assign an icon from a curated set of Material Symbols.                                                                                                                                                                                              | Proposed | ADR-01, NFR-10                         |
 | ADR-07 | M | When a ride's start or end point lies within a saved address's radius, Ridesafe shall recognize that endpoint as that address; on overlap, the nearest center wins.                                                                                                                                   | Proposed | ADR-02, DR-ADR, DR-RID, LOG-02, LOG-03 |
 | ADR-08 | M | In the Logbook list, Ridesafe shall show the matched address's label in place of the raw address for a recognized ride endpoint.                                                                                                                                                                      | Proposed | ADR-07, LOG-02                         |
@@ -231,6 +231,35 @@ the phone already has.*
   the editor pre-filled with that GPS point (ADR-04).
 - **Matching is computed live** at display time (recommended): editing or deleting a place instantly
   re-labels past rides with no stored back-reference to clean up — see open question 7.
+
+### 3.13 Onboarding
+
+| ID     | P | Requirement                                                                                                                                                                                     | Status      | Related                                        |
+|--------|---|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------|------------------------------------------------|
+| ONB-01 | S | On first launch with an empty garage, Ridesafe shall guide the user through initial setup in a full-screen step wizard shown before the main app; an installation that already has vehicles shall skip it silently. | Implemented | GAR-01, ONB-02, ONB-04, ONB-05, ONB-06, ONB-07 |
+| ONB-02 | S | The onboarding shall let the user create their first vehicle, using the Garage's add form.                                                                                                       | Implemented | GAR-02, ONB-01, ONB-03                         |
+| ONB-03 | S | The onboarding shall let the user map paired Bluetooth devices to the vehicle created in it.                                                                                                    | Implemented | GAR-08, ONB-02                                 |
+| ONB-04 | S | The onboarding shall offer enabling automatic recording (paired vehicles only) and shall request the permissions it needs only after the user opts in.                                          | Implemented | NFR-05, ONB-01, SET-06                         |
+| ONB-05 | S | The onboarding shall let the user create a first saved place, preset to the Home shortcut.                                                                                                      | Implemented | ADR-01, ADR-05, ONB-01                         |
+| ONB-06 | S | The onboarding shall explain manual ride recording and the safety and eco scores, using the app's real score visuals with clearly labelled sample data.                                         | Implemented | ANL-01, ANL-03, DSH-06, ONB-01, TRK-07         |
+| ONB-07 | S | Every onboarding step shall be individually skippable, the whole flow shall be leavable at any point, and Settings shall let the user replay it.                                                | Implemented | ONB-01, SET-01                                 |
+
+#### Onboarding — UX / entry points
+
+- **Wizard, not coach marks:** a full-screen step flow shown *instead of* the app (hosted above the
+  navigation shell in MainActivity), embedding the real forms — vehicle add (GAR-02), the address
+  editor (ADR-03/04) — so onboarding creates exactly what those screens would. Steps that act on the
+  created car (ONB-03/04) drop out when the car step is skipped.
+- **One bar, one back:** the embedded forms render chromeless inside the wizard — no own app bar,
+  their save pinned full-width at the bottom like every step's primary action — so the wizard header
+  is the only bar and back exists exactly once (its arrow, mirrored by the system back gesture);
+  skipping forward lives only in the header. Returning to the car step re-opens the created car for
+  editing (GAR-03) rather than offering a second blank form.
+- **Permissions stay opt-in:** nothing is requested up front (the NFR-05/SET-06 rule); flipping the
+  auto-record switch applies the paired-only mode and surfaces the same permission card Settings
+  uses, including the background-location settings deep-link.
+- **Replay:** Settings → Help → "Show the introduction again" re-enters the same wizard; the
+  completed flag is not cleared, so abandoning a replay leaves nothing behind.
 
 ---
 
@@ -316,7 +345,7 @@ the phone already has.*
 | NFR-02 | M | Ridesafe may fetch map tiles / geocoding from public map APIs for display only, and shall not upload stored trip/location data to them beyond the minimum needed to render the requested view.                                      | Proposed | LOG-10, NFR-01, NFR-07                          |
 | NFR-03 | M | All entities (vehicles, rides, groups, costs, settings) shall be persisted in a local on-device database.                                                                                                                           | Draft    | DR-COST, DR-GRP, DR-RID, DR-VEH, EXP-04, NFR-01 |
 | NFR-04 | M | Ridesafe shall be a native Android app implemented in Jetpack Compose, compiling against and targeting Android SDK 37 with a minimum supported SDK of 34.                                                                           | Proposed | NFR-10, NFR-12, NFR-13, NFR-14                  |
-| NFR-05 | M | Ridesafe shall request and gracefully handle location (foreground + background), activity-recognition, and notification permissions, including rationale screens, and shall surface any still-missing permission at the top of Settings and as a badge on the Settings tab. | Implemented | NAV-01, NOT-02, SET-06, TRK-01, TRK-02, TRK-03, TRK-05 |
+| NFR-05 | M | Ridesafe shall request and gracefully handle location (foreground + background), activity-recognition, and notification permissions, including rationale screens, and shall surface any still-missing permission at the top of Settings and as a badge on the Settings tab. | Implemented | NAV-01, NOT-02, ONB-04, SET-06, TRK-01, TRK-02, TRK-03, TRK-05 |
 | NFR-06 | M | An in-progress ride recording shall survive app restarts/crashes without losing already-recorded data.                                                                                                                              | Proposed | TRK-01, TRK-05                                  |
 | NFR-07 | M | All core features except map-tile display shall work without an internet connection.                                                                                                                                                | Proposed | NFR-01, NFR-02                                  |
 | NFR-08 | S | Continuous tracking shall minimize battery drain (adaptive sampling, pause when stationary).                                                                                                                                        | Proposed | TRK-01, TRK-05                                  |

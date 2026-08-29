@@ -56,16 +56,16 @@
     <string name="settings_backup_import_checking">Sicherung wird geprüft…</string>
     <string name="settings_backup_import_importing">Sicherung wird importiert…</string>
     <string name="settings_backup_import_confirm_title">Diese Sicherung importieren?</string>
-    <string name="settings_backup_import_confirm_message">Diese Sicherung enthält:\n\n• %1$d Fahrten\n• %2$d Fahrzeuge\n• %3$d Orte\n• %4$d Tankvorgänge\n\nIhre vorhandenen Daten bleiben erhalten und nur fehlende Einträge werden importiert.</string>
+    <string name="settings_backup_import_confirm_message">Diese Sicherung enthält:\n\n• %1$d Fahrten\n• %2$d Fahrzeuge\n• %3$d Orte\n• %4$d Tankvorgänge\n\nDeine vorhandenen Daten bleiben erhalten und nur fehlende Einträge werden importiert.</string>
     <string name="settings_backup_import_confirm">Importieren</string>
     <string name="settings_backup_import_success_title">Sicherung importiert</string>
     <string name="settings_backup_import_success_message">Aus dieser Sicherung importiert:\n\n• %1$d Fahrten (%5$d bereits vorhanden)\n• %2$d Fahrzeuge (%6$d bereits vorhanden)\n• %3$d Orte (%7$d bereits vorhanden)\n• %4$d Tankvorgänge (%8$d bereits vorhanden)</string>
     <string name="settings_backup_import_error_title">Sicherung konnte nicht importiert werden</string>
     <string name="settings_backup_import_error_message">Das Archiv wurde nicht verändert oder konnte nicht sicher wiederhergestellt werden. %1$s</string>
     <string name="settings_units_title">Entfernungseinheit</string>
-    <string name="settings_units_detail_description">Wählen Sie, wie Strecken und Fahrtdaten in Ridesafe angezeigt werden.</string>
+    <string name="settings_units_detail_description">Wähle, wie Strecken und Fahrtdaten in Ridesafe angezeigt werden.</string>
     <string name="settings_currency_title">Währung</string>
-    <string name="settings_currency_detail_description">Wählen Sie die Währung für die Eingabe und Anzeige von Tankkosten.</string>
+    <string name="settings_currency_detail_description">Wähle die Währung für die Eingabe und Anzeige von Tankkosten.</string>
     <string name="currency_us_dollar">US-Dollar ($)</string>
     <string name="currency_british_pound">Britisches Pfund (£)</string>
     <string name="currency_swiss_franc">Schweizer Franken (CHF)</string>
@@ -76,14 +76,14 @@
     <string name="sample_distance_label">Beispielentfernung: %1$s</string>
 
     <string name="settings_theme_title">Design</string>
-    <string name="settings_theme_detail_description">Wählen Sie, ob Ridesafe hell oder dunkel dargestellt wird oder der Systemeinstellung folgt.</string>
+    <string name="settings_theme_detail_description">Wähle, ob Ridesafe hell oder dunkel dargestellt wird oder der Systemeinstellung folgt.</string>
     <string name="theme_system">Systemstandard</string>
     <string name="theme_light">Hell</string>
     <string name="theme_dark">Dunkel</string>
 
     <string name="settings_auto_track_title">Automatische Fahrtaufzeichnung</string>
-    <string name="settings_auto_track_detail_description">Wählen Sie, wann Ridesafe Fahrten im Hintergrund aufzeichnen darf.</string>
-    <string name="settings_language_detail_description">Wählen Sie die Sprache für App-Beschriftungen, Einstellungen und Meldungen.</string>
+    <string name="settings_auto_track_detail_description">Wähle, wann Ridesafe Fahrten im Hintergrund aufzeichnen darf.</string>
+    <string name="settings_language_detail_description">Wähle die Sprache für App-Beschriftungen, Einstellungen und Meldungen.</string>
     <string name="auto_track_off">Aus</string>
     <string name="auto_track_paired">Nur gekoppelte Fahrzeuge</string>
     <string name="auto_track_any">Beliebiges Fahrzeug</string>
@@ -107,11 +107,11 @@
     <string name="permissions_card_message">Einige Funktionen arbeiten erst, wenn diese erteilt sind. Zum Erlauben antippen.</string>
     <string name="permissions_missing_badge">Berechtigungen fehlen</string>
     <string name="permission_location_title">Standort</string>
-    <string name="permission_location_rationale">Zeichnet die GPS-Route Ihrer Fahrten auf.</string>
+    <string name="permission_location_rationale">Zeichnet die GPS-Route deiner Fahrten auf.</string>
     <string name="permission_background_location_title">Standort im Hintergrund</string>
-    <string name="permission_background_location_rationale">Zeichnet weiter auf, wenn die App geschlossen oder der Bildschirm aus ist. W\u00e4hlen Sie \u201eImmer zulassen\u201c.</string>
+    <string name="permission_background_location_rationale">Zeichnet weiter auf, wenn die App geschlossen oder der Bildschirm aus ist. W\u00e4hle \u201eImmer zulassen\u201c.</string>
     <string name="permission_bluetooth_title">Bluetooth-Ger\u00e4te in der N\u00e4he</string>
-    <string name="permission_bluetooth_rationale">Erkennt das Bluetooth Ihres Autos, um Fahrten automatisch zu starten und zu beenden.</string>
+    <string name="permission_bluetooth_rationale">Erkennt das Bluetooth deines Autos, um Fahrten automatisch zu starten und zu beenden.</string>
     <string name="permission_activity_title">K\u00f6rperliche Aktivit\u00e4t</string>
     <string name="permission_activity_rationale">Erkennt Autofahrten in Fahrzeugen ohne Bluetooth-Kopplung.</string>
     <string name="permission_notifications_title">Benachrichtigungen</string>
@@ -472,4 +472,42 @@
     <string name="placeholder_select_ride">Fahrt auswählen, um Details zu sehen</string>
     <string name="placeholder_select_vehicle">Fahrzeug auswählen, um Details zu sehen</string>
     <string name="placeholder_select_setting">Einstellung auswählen</string>
+
+    <!-- First-launch onboarding (ONB). -->
+    <string name="onboarding_step_progress">Schritt %1$d von %2$d</string>
+    <string name="onboarding_skip_step">Überspringen</string>
+    <string name="onboarding_leave">Einführung verlassen</string>
+    <string name="onboarding_welcome_title">Willkommen bei Ridesafe</string>
+    <string name="onboarding_welcome_message">Dein Fahrtenbuch mit Sicherheits- und Öko-Auswertung. Richte die wichtigsten Dinge in wenigen Minuten ein — jeder Schritt lässt sich überspringen.</string>
+    <string name="onboarding_feature_rides_title">Fahrten aufzeichnen</string>
+    <string name="onboarding_feature_rides_body">Automatisch über das Bluetooth deines Autos oder mit einem Tipp.</string>
+    <string name="onboarding_feature_scores_title">Sicherheits- und Öko-Bewertung</string>
+    <string name="onboarding_feature_scores_body">Sieh, wie sicher und effizient du fährst.</string>
+    <string name="onboarding_feature_privacy_title">Alles bleibt auf deinem Handy</string>
+    <string name="onboarding_feature_privacy_body">Fahrten, Orte und Fahrzeuge werden nur auf diesem Gerät gespeichert — es gibt keinen Server.</string>
+    <string name="onboarding_welcome_start">Ridesafe einrichten</string>
+    <string name="onboarding_welcome_skip">Vorerst überspringen</string>
+    <string name="onboarding_continue">Weiter</string>
+    <string name="onboarding_car_intro">Jede Fahrt gehört zu einem Fahrzeug. Leg dein Auto in der Garage an — du kannst es dort jederzeit bearbeiten.</string>
+    <string name="onboarding_bluetooth_title">Dein Auto erkennen</string>
+    <string name="onboarding_bluetooth_body">Verknüpfe das Bluetooth deines Autos, damit Ridesafe erkennt, wann du damit fährst, und Fahrten automatisch zuordnet. Wähle aus den bereits mit diesem Handy gekoppelten Geräten — du musst dafür nicht im Auto sitzen.</string>
+    <string name="onboarding_autotrack_title">Fahrten automatisch aufzeichnen</string>
+    <string name="onboarding_autotrack_body">Mit automatischer Aufzeichnung beginnt eine Fahrt, sobald sich dein verknüpftes Gerät verbindet, und endet, wenn du parkst — ganz ohne Tippen. Dafür sind einige Berechtigungen nötig, die nach dem Aktivieren unten erscheinen. Alles davon lässt sich später in den Einstellungen ändern.</string>
+    <string name="onboarding_autotrack_toggle">Automatische Aufzeichnung aktivieren</string>
+    <string name="onboarding_place_intro">Benenne die Orte, an denen du parkst — Fahrten zeigen dann \"Zuhause\" oder \"Arbeit\" statt einer Straßenadresse. Beginne mit deinem Zuhause.</string>
+    <string name="onboarding_recording_title">So werden Fahrten aufgezeichnet</string>
+    <string name="onboarding_recording_body">Fahrten werden mit GPS und Bewegungssensoren aufgezeichnet und nach dem Ende direkt auf deinem Handy ausgewertet.</string>
+    <string name="onboarding_recording_auto_title">Automatisch</string>
+    <string name="onboarding_recording_auto_body">Mit automatischer Aufzeichnung starten und enden Fahrten mit dem Bluetooth deines Autos.</string>
+    <string name="onboarding_recording_manual_title">Manuell</string>
+    <string name="onboarding_recording_manual_body">Tippe auf \"%1$s\" im Home-Tab — für Autos ohne verknüpftes Gerät oder wann immer du willst.</string>
+    <string name="onboarding_recording_stop_title">Während der Aufzeichnung</string>
+    <string name="onboarding_recording_stop_body">Eine schwebende Leiste zeigt die laufende Fahrt auf jedem Bildschirm; dort beendest du sie bei der Ankunft.</string>
+    <string name="onboarding_scores_title">Deine Fahr-Bewertungen</string>
+    <string name="onboarding_scores_body">Jede ausgewertete Fahrt erhält eine Sicherheitsbewertung — Bremsen, Beschleunigen und Kurvenfahren, jeweils 0–100 — und eine Effizienzstufe für ruhiges, sparsames Fahren. Beides baut sich mit der Zeit auf deinem Dashboard auf.</string>
+    <string name="onboarding_scores_sample_note">Beispielansicht — deine eigenen Werte erscheinen nach deinen ersten aufgezeichneten Fahrten.</string>
+    <string name="onboarding_done_cta">Los geht\'s</string>
+    <string name="settings_category_help">Hilfe</string>
+    <string name="settings_onboarding_replay_title">Einführung erneut anzeigen</string>
+    <string name="settings_onboarding_replay_summary">Die Ersteinrichtung noch einmal durchlaufen</string>
 </resources>
