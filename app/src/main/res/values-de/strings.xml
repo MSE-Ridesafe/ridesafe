@@ -4,9 +4,7 @@
     <string name="nav_rides">Fahrten</string>
     <string name="nav_garage">Garage</string>
     <string name="nav_settings">Einstellungen</string>
-    
-    <string name="greeting_hello">Hallo %1$s!</string>
-    
+
     <string name="settings_language_title">App-Sprache</string>
     
     <string name="language_system">Systemstandard</string>
@@ -21,7 +19,6 @@
     <string name="home_unknown_vehicle">Fahrzeug</string>
     <string name="home_add_vehicle_hint">F&#252;ge ein Fahrzeug in der Garage hinzu</string>
     <string name="recording_active_ride">Aktive Fahrt</string>
-    <string name="home_started_at">Gestartet bei %1$s</string>
     <string name="home_vehicle_fuel_consumption">Kraftstoffverbrauch</string>
     <string name="home_total_distance">Gesamte Strecke</string>
     <string name="home_total_travel_time">Gesamte Fahrzeit</string>
@@ -73,7 +70,6 @@
     <string name="unit_system_automatic">Automatisch (Basierend auf Sprache)</string>
     <string name="unit_system_metric">Metrisch (Kilometer)</string>
     <string name="unit_system_imperial">Imperial (Meilen)</string>
-    <string name="sample_distance_label">Beispielentfernung: %1$s</string>
 
     <string name="settings_theme_title">Design</string>
     <string name="settings_theme_detail_description">Wähle, ob Ridesafe hell oder dunkel dargestellt wird oder der Systemeinstellung folgt.</string>
@@ -124,7 +120,6 @@
     <string name="action_delete">Löschen</string>
     <string name="action_cancel">Abbrechen</string>
     <string name="action_clear">Leeren</string>
-    <string name="action_close">Schließen</string>
     <string name="garage_add_vehicle">Fahrzeug hinzufügen</string>
     <string name="garage_edit_vehicle">Fahrzeug bearbeiten</string>
     <string name="garage_delete_vehicle">Fahrzeug löschen</string>
@@ -200,10 +195,7 @@
     <string name="refuel_error_total">Gib einen nicht negativen Preis mit den Nachkommastellen der Währung ein.</string>
     <string name="refuel_error_odometer">Gib einen nicht negativen Kilometerstand ein.</string>
     <string name="refuel_save_failed">Der Tankvorgang konnte nicht gespeichert werden. Deine Eingaben bleiben erhalten; versuche es erneut.</string>
-    <string name="refuel_row_amount_price">%1$s L · %2$s</string>
     <string name="refuel_price_per_liter_value">%1$s/L</string>
-    <string name="refuel_action_add_to_ride">Tankvorgang zur Fahrt hinzufügen</string>
-    <string name="refuel_action_remove_from_ride">Von Fahrt entfernen</string>
     <string name="refuel_attached_success">Tankvorgang zur Fahrt hinzugefügt.</string>
     <string name="refuel_detached_success">Tankvorgang von der Fahrt entfernt.</string>
     <string name="ride_merge_success">Fahrten zusammengeführt.</string>
@@ -220,7 +212,6 @@
     <string name="rides_empty_message">Aufgezeichnete Fahrten und Tankvorgänge erscheinen hier.</string>
     <string name="ride_day_today">Heute</string>
     <string name="ride_day_yesterday">Gestern</string>
-    <string name="ride_max_speed_short">max. %1$s</string>
     <string name="ride_open">Fahrt öffnen</string>
     <string name="ride_start_marker">Start</string>
     <string name="ride_end_marker">Ziel</string>
@@ -238,10 +229,6 @@
         <item quantity="other">%d Ereignisse</item>
     </plurals>
     <string name="ride_detail_section_distance">Strecke</string>
-    <string name="ride_detail_from">Von</string>
-    <string name="ride_detail_to">Nach</string>
-    <string name="ride_detail_start">Start</string>
-    <string name="ride_detail_end">Ende</string>
     <string name="ride_detail_duration">Dauer</string>
     <string name="ride_stat_avg_speed">Ø Geschw.</string>
     <string name="ride_stat_max_speed">Max. Geschw.</string>
@@ -332,10 +319,7 @@
     <string name="ride_journey_section">Streckenverlauf</string>
     <string name="ride_action_manage_stops">Stopps verwalten</string>
     <string name="action_done">Fertig</string>
-    <string name="ride_merged_parked_note">Abfahrt %1$s · %2$s geparkt</string>
-    <string name="ride_merged_stops_section">Stopps</string>
     <string name="ride_stop_label">Stopp %1$d</string>
-    <string name="ride_stop_select">Stopp zum Trennen auswählen</string>
     <string name="ride_merged_unmerge_hint">Nur der erste oder letzte Stopp kann entfernt werden.</string>
     <string name="ride_action_unmerge_all">Alle trennen</string>
     <string name="ride_action_unmerge_selected">Trennen (%1$d)</string>
@@ -363,7 +347,6 @@
     <string name="saved_address_edit_title">Ort bearbeiten</string>
     <string name="saved_address_label">Bezeichnung</string>
     <string name="saved_address_search">Adresse suchen</string>
-    <string name="saved_address_search_failed">Keine Adresse gefunden</string>
     <string name="saved_address_search_clear">Suche löschen</string>
     <string name="saved_address_search_recent">Letzte Suchanfragen</string>
     <string name="saved_address_search_more_characters">Gib mindestens drei Zeichen ein.</string>
