@@ -27,16 +27,6 @@ fun safetyScoreForRides(
     weights: ScoreWeights = ScoreWeights(),
 ): SafetyScore? = aggregateScore(rides.mapNotNull { it.score }, weights)
 
-/**
- * The headline figure. It moves slowly once there is a year of driving behind it, which is the
- * point: it is meant to describe a driver rather than a drive. Recent progress is what the rolling
- * week and the current month are for.
- */
-fun allTimeSafetyScore(
-    rides: List<Ride>,
-    weights: ScoreWeights = ScoreWeights(),
-): SafetyScore? = safetyScoreForRides(rides, weights)
-
 /** One calendar month, matching how [journeyTotalsForMonth] slices mileage. */
 fun safetyScoreForMonth(
     rides: List<Ride>,
