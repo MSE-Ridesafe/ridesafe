@@ -49,7 +49,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import de.uhi.enia.ridesafe.R
@@ -58,7 +57,6 @@ import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.rides.trigger.BluetoothDevices
 import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.ui.theme.RidesafeTheme
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatOdometer
 
@@ -452,16 +450,3 @@ internal fun BluetoothPickerDialog(
     )
 }
 
-@Preview
-@Composable
-private fun VehicleDetailPreview() {
-    RidesafeTheme {
-        VehicleDetailScreen(
-            vehicle = previewVehicles.first(),
-            onBack = {},
-            onEdit = {},
-            onDelete = {},
-            onChooseImage = {},
-        )
-    }
-}

@@ -54,7 +54,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -80,7 +79,6 @@ import de.uhi.enia.ridesafe.ui.screens.garage.TrackingCard
 import de.uhi.enia.ridesafe.ui.screens.garage.VehicleFormScreen
 import de.uhi.enia.ridesafe.ui.screens.settings.SavedAddressFormScreen
 import de.uhi.enia.ridesafe.ui.screens.settings.SavedAddressViewModel
-import de.uhi.enia.ridesafe.ui.theme.RidesafeTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -795,18 +793,4 @@ private fun FeatureRow(
     }
 }
 
-@Preview
-@Composable
-private fun WelcomePreview() {
-    RidesafeTheme {
-        WelcomePage(onStart = {}, onSkipAll = {})
-    }
-}
 
-@Preview
-@Composable
-private fun ScoresPreview() {
-    RidesafeTheme {
-        ScoresPage(onFinish = {})
-    }
-}

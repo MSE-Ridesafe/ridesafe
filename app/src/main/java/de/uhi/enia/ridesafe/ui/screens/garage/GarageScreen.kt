@@ -39,13 +39,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.ui.theme.RidesafeTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -239,14 +237,4 @@ private fun EmptyGarage(modifier: Modifier = Modifier) {
     }
 }
 
-@Preview
-@Composable
-private fun GarageScreenPreview() {
-    RidesafeTheme { GarageScreen(vehicles = previewVehicles, onVehicleClick = {}, onAddVehicle = {}) }
-}
 
-@Preview
-@Composable
-private fun GarageEmptyPreview() {
-    RidesafeTheme { GarageScreen(vehicles = emptyList(), onVehicleClick = {}, onAddVehicle = {}) }
-}

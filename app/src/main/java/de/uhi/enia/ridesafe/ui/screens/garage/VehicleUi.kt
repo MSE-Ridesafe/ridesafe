@@ -25,7 +25,7 @@ fun FuelType.labelRes(): Int =
  */
 fun Vehicle.displayTitle(): String = if (name.isBlank()) "$make $model" else "$make $model \"${name.trim()}\""
 
-/** Sample data for @Preview composables only. */
+/** Sample vehicles for tests. */
 internal val previewVehicles =
     listOf(
         Vehicle(

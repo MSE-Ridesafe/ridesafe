@@ -41,13 +41,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.FuelType
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.ui.theme.RidesafeTheme
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.usesMetric
 import kotlin.math.roundToInt
@@ -423,23 +421,4 @@ private fun FuelTypeDropdown(
     }
 }
 
-@Preview
-@Composable
-private fun AddVehiclePreview() {
-    RidesafeTheme {
-        VehicleFormScreen(existing = null, onSave = { _, _ -> }, onBack = {})
-    }
-}
 
-@Preview
-@Composable
-private fun EditVehiclePreview() {
-    RidesafeTheme {
-        VehicleFormScreen(
-            existing = previewVehicles.first(),
-            onSave = { _, _ -> },
-            onBack = {},
-            onDelete = {},
-        )
-    }
-}
