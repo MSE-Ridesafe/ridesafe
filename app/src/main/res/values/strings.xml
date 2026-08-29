@@ -304,7 +304,6 @@
     <string name="saved_address_search_more_characters">Enter at least three characters.</string>
     <string name="saved_address_search_no_results">No matching addresses found. Try including the city or postal code.</string>
     <string name="saved_address_search_already_saved">Already saved as %1$s</string>
-    <string name="saved_address_choose_on_map">Choose on map</string>
     <string name="saved_address_use_location">Use my location</string>
     <string name="saved_address_location_unavailable">Couldn\'t get your location</string>
     <string name="saved_address_radius">Recognition radius</string>

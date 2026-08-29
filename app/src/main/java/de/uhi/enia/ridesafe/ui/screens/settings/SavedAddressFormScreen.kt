@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -30,7 +32,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.FilledIconButton
@@ -41,7 +42,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -59,9 +59,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -103,25 +106,12 @@ private const val RADIUS_DEFAULT = 100
 private const val RADIUS_STEPS = 18 // 25 m increments across 25..500
 private const val SEARCH_DEBOUNCE_MS = 400L
 private const val SEARCH_MIN_LENGTH = 3
+private const val SEARCH_SUGGESTION_LIMIT = 5
 private const val SEARCH_HISTORY_PREFS = "saved_address_search"
 private const val SEARCH_HISTORY_KEY = "recent_queries"
 
 // Camera fallback when adding a place with no point yet (roughly the centre of Germany).
 private val FALLBACK_CENTER = LatLng(51.1657, 10.4515)
-
-@Composable
-private fun SearchAction(
-    symbolName: String,
-    title: String,
-    onClick: () -> Unit,
-) {
-    ListItem(
-        headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        leadingContent = { MaterialSymbol(symbolName = symbolName, contentDescription = null) },
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-        modifier = Modifier.clickable(onClick = onClick),
-    )
-}
 
 private fun loadRecentAddressSearches(context: android.content.Context): List<String> =
     runCatching {
@@ -130,7 +120,7 @@ private fun loadRecentAddressSearches(context: android.content.Context): List<St
                 .getSharedPreferences(SEARCH_HISTORY_PREFS, android.content.Context.MODE_PRIVATE)
                 .getString(SEARCH_HISTORY_KEY, null) ?: return@runCatching emptyList()
         val array = JSONArray(encoded)
-        (0 until array.length()).mapNotNull { array.optString(it).trim().ifBlank { null } }
+        (0 until array.length()).mapNotNull { array.optString(it).trim().ifBlank { null } }.take(SEARCH_SUGGESTION_LIMIT)
     }.getOrDefault(emptyList())
 
 private fun recordRecentAddressSearch(
@@ -141,7 +131,7 @@ private fun recordRecentAddressSearch(
     val updated =
         (listOf(trimmed) + loadRecentAddressSearches(context).filterNot { it.equals(trimmed, ignoreCase = true) })
             .filter(String::isNotBlank)
-            .take(5)
+            .take(SEARCH_SUGGESTION_LIMIT)
     context
         .getSharedPreferences(SEARCH_HISTORY_PREFS, android.content.Context.MODE_PRIVATE)
         .edit()
@@ -214,6 +204,7 @@ fun SavedAddressFormScreen(
 ) {
     val unitSystem = currentUnitSystem()
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val hasFixedLabel = presetKind.hasFixedLabel
 
@@ -305,7 +296,7 @@ fun SavedAddressFormScreen(
         delay(SEARCH_DEBOUNCE_MS)
         val near = point
         searchResults =
-            forwardGeocodeSuggestions(context, query)
+            forwardGeocodeSuggestions(context, query, limit = SEARCH_SUGGESTION_LIMIT)
                 .sortedBy { result ->
                     near?.let { haversineMeters(it.latitude, it.longitude, result.latitude, result.longitude) }
                         ?: Double.MAX_VALUE
@@ -321,6 +312,7 @@ fun SavedAddressFormScreen(
         recenterTo = selected
         search = shortAddress(result.address)
         searchActive = false
+        focusManager.clearFocus()
         keyboard?.hide()
         recentSearches = recordRecentAddressSearch(context, search)
     }
@@ -383,141 +375,138 @@ fun SavedAddressFormScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (hasFixedLabel) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    MaterialSymbol(symbolName = icon, contentDescription = null)
-                    Text(shortcutLabel, style = MaterialTheme.typography.titleLarge)
-                }
-            } else {
-                OutlinedTextField(
-                    value = label,
-                    onValueChange = { label = it },
-                    label = { Text(stringResource(R.string.saved_address_label)) },
-                    leadingIcon =
-                        if (presetKind == SavedPlaceKind.GAS_STATION) {
-                            { MaterialSymbol(symbolName = "local_gas_station", contentDescription = null) }
-                        } else {
-                            null
-                        },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-
-            DockedSearchBar(
-                inputField = {
-                    SearchBarDefaults.InputField(
-                        query = search,
-                        onQueryChange = { search = it },
-                        onSearch = {
-                            searchActive = true
-                            keyboard?.hide()
-                        },
-                        expanded = searchActive,
-                        onExpandedChange = { searchActive = it },
-                        placeholder = { Text(stringResource(R.string.saved_address_search)) },
-                        leadingIcon = { MaterialSymbol(symbolName = "search", contentDescription = null) },
-                        trailingIcon = {
-                            when {
-                                searchLoading -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                                search.isNotEmpty() -> {
-                                    IconButton(onClick = { search = "" }) {
-                                        MaterialSymbol(
-                                            symbolName = "close",
-                                            contentDescription = stringResource(R.string.saved_address_search_clear),
-                                        )
-                                    }
-                                }
-                            }
-                        },
+            if (!searchActive) {
+                if (hasFixedLabel) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        MaterialSymbol(symbolName = icon, contentDescription = null)
+                        Text(shortcutLabel, style = MaterialTheme.typography.titleLarge)
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = label,
+                        onValueChange = { label = it },
+                        label = { Text(stringResource(R.string.saved_address_label)) },
+                        leadingIcon =
+                            if (presetKind == SavedPlaceKind.GAS_STATION) {
+                                { MaterialSymbol(symbolName = "local_gas_station", contentDescription = null) }
+                            } else {
+                                null
+                            },
+                        singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                },
-                expanded = searchActive,
-                onExpandedChange = { searchActive = it },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (search.isBlank()) {
-                    SearchAction(
-                        symbolName = "my_location",
-                        title = stringResource(R.string.saved_address_use_location),
-                        onClick = {
-                            searchActive = false
-                            requestLocate()
-                        },
-                    )
-                    SearchAction(
-                        symbolName = "map",
-                        title = stringResource(R.string.saved_address_choose_on_map),
-                        onClick = {
-                            searchActive = false
-                            keyboard?.hide()
-                            openMapPicker()
-                        },
-                    )
-                    if (recentSearches.isNotEmpty()) {
-                        Text(
-                            text = stringResource(R.string.saved_address_search_recent),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
-                        )
-                        recentSearches.forEach { recent ->
-                            SearchAction(
-                                symbolName = "history",
-                                title = recent,
-                                onClick = { search = recent },
-                            )
-                        }
-                    }
-                } else if (search.trim().length < SEARCH_MIN_LENGTH) {
-                    Text(
-                        text = stringResource(R.string.saved_address_search_more_characters),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(16.dp),
-                    )
-                } else if (!searchLoading && searchCompleted && searchResults.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.saved_address_search_no_results),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(16.dp),
-                    )
-                } else {
-                    searchResults.forEach { result ->
-                        val lines = addressLines(result.address)
-                        val matched = findExistingSavedPlace(result, savedAddresses, existing?.id)
-                        val distance =
-                            point?.let {
-                                formatShortDistance(
-                                    haversineMeters(it.latitude, it.longitude, result.latitude, result.longitude),
-                                    unitSystem,
+                }
+            }
+
+            OutlinedTextField(
+                value = search,
+                onValueChange = { search = it },
+                label = { Text(stringResource(R.string.saved_address_search)) },
+                leadingIcon = { MaterialSymbol(symbolName = "search", contentDescription = null) },
+                trailingIcon = {
+                    when {
+                        searchLoading -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        search.isNotEmpty() -> {
+                            IconButton(onClick = { search = "" }) {
+                                MaterialSymbol(
+                                    symbolName = "close",
+                                    contentDescription = stringResource(R.string.saved_address_search_clear),
                                 )
                             }
-                        ListItem(
-                            headlineContent = {
-                                Text(lines.first, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            },
-                            supportingContent = {
-                                Column {
-                                    listOfNotNull(lines.second, distance).takeIf { it.isNotEmpty() }?.let {
-                                        Text(it.joinToString(" · "), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    }
-                                    matched?.let {
-                                        Text(
-                                            text = stringResource(R.string.saved_address_search_already_saved, it.label),
-                                            color = MaterialTheme.colorScheme.primary,
+                        }
+                    }
+                },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions =
+                    KeyboardActions(
+                        onSearch = {
+                            if (search.trim().length >= SEARCH_MIN_LENGTH) {
+                                recentSearches = recordRecentAddressSearch(context, search)
+                            }
+                            keyboard?.hide()
+                        },
+                    ),
+                singleLine = true,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .onFocusChanged { if (it.isFocused) searchActive = true },
+            )
+
+            if (searchActive) {
+                Surface(
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    tonalElevation = 2.dp,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column {
+                        if (search.isBlank()) {
+                            if (recentSearches.isNotEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.saved_address_search_recent),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
+                                )
+                                recentSearches.forEach { recent ->
+                                    ListItem(
+                                        headlineContent = { Text(recent, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                        leadingContent = { MaterialSymbol(symbolName = "history", contentDescription = null) },
+                                        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                                        modifier = Modifier.clickable { search = recent },
+                                    )
+                                }
+                            }
+                        } else if (search.trim().length < SEARCH_MIN_LENGTH) {
+                            Text(
+                                text = stringResource(R.string.saved_address_search_more_characters),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        } else if (!searchLoading && searchCompleted && searchResults.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.saved_address_search_no_results),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        } else {
+                            searchResults.forEach { result ->
+                                val lines = addressLines(result.address)
+                                val matched = findExistingSavedPlace(result, savedAddresses, existing?.id)
+                                val distance =
+                                    point?.let {
+                                        formatShortDistance(
+                                            haversineMeters(it.latitude, it.longitude, result.latitude, result.longitude),
+                                            unitSystem,
                                         )
                                     }
-                                }
-                            },
-                            leadingContent = { MaterialSymbol(symbolName = "location_on", contentDescription = null) },
-                            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                            modifier = Modifier.clickable { chooseSearchResult(result) },
-                        )
+                                ListItem(
+                                    headlineContent = { Text(lines.first, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    supportingContent = {
+                                        Column {
+                                            listOfNotNull(lines.second, distance).takeIf { it.isNotEmpty() }?.let {
+                                                Text(it.joinToString(" · "), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            }
+                                            matched?.let {
+                                                Text(
+                                                    text = stringResource(R.string.saved_address_search_already_saved, it.label),
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                )
+                                            }
+                                        }
+                                    },
+                                    leadingContent = { MaterialSymbol(symbolName = "location_on", contentDescription = null) },
+                                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                                    modifier = Modifier.clickable { chooseSearchResult(result) },
+                                )
+                            }
+                        }
                     }
                 }
             }
 
+            if (!searchActive) {
             Card(
                 shape = MaterialTheme.shapes.extraLarge,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
@@ -622,6 +611,7 @@ fun SavedAddressFormScreen(
                 }
             }
         }
+    }
     }
 
     if (showMapPicker) {

@@ -308,7 +308,6 @@
     <string name="saved_address_search_more_characters">Gib mindestens drei Zeichen ein.</string>
     <string name="saved_address_search_no_results">Keine passende Adresse gefunden. Ergänze Ort oder Postleitzahl.</string>
     <string name="saved_address_search_already_saved">Bereits als %1$s gespeichert</string>
-    <string name="saved_address_choose_on_map">Auf der Karte auswählen</string>
     <string name="saved_address_use_location">Meinen Standort verwenden</string>
     <string name="saved_address_location_unavailable">Standort konnte nicht ermittelt werden</string>
     <string name="saved_address_radius">Erkennungsradius</string>
