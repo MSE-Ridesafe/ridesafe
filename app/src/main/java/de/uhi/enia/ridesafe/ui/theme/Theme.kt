@@ -33,9 +33,18 @@ private val LightColorScheme =
      */
     )
 
+/** The theme setting resolved to dark or light, live — the caller recomposes when it changes. */
+@Composable
+fun resolvedDarkTheme(): Boolean =
+    when (ThemePrefs.get(LocalContext.current)) {
+        ThemeSetting.LIGHT -> false
+        ThemeSetting.DARK -> true
+        ThemeSetting.SYSTEM -> isSystemInDarkTheme()
+    }
+
 @Composable
 fun RidesafeTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = resolvedDarkTheme(),
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit,

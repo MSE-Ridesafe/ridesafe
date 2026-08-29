@@ -75,6 +75,12 @@
     <string name="unit_system_imperial">Imperial (Meilen)</string>
     <string name="sample_distance_label">Beispielentfernung: %1$s</string>
 
+    <string name="settings_theme_title">Design</string>
+    <string name="settings_theme_detail_description">Wählen Sie, ob Ridesafe hell oder dunkel dargestellt wird oder der Systemeinstellung folgt.</string>
+    <string name="theme_system">Systemstandard</string>
+    <string name="theme_light">Hell</string>
+    <string name="theme_dark">Dunkel</string>
+
     <string name="settings_auto_track_title">Automatische Fahrtaufzeichnung</string>
     <string name="settings_auto_track_detail_description">Wählen Sie, wann Ridesafe Fahrten im Hintergrund aufzeichnen darf.</string>
     <string name="settings_language_detail_description">Wählen Sie die Sprache für App-Beschriftungen, Einstellungen und Meldungen.</string>

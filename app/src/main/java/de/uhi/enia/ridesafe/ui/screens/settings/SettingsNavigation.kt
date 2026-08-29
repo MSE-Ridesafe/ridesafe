@@ -14,6 +14,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object SettingsLanguageRoute : NavKey
 
+@Serializable data object SettingsThemeRoute : NavKey
+
 @Serializable data object SettingsUnitsRoute : NavKey
 
 @Serializable data object SettingsCurrencyRoute : NavKey
@@ -33,6 +35,7 @@ internal const val SETTINGS_SCENE = "settings"
 internal val SettingsMenuRoutes: Set<NavKey> =
     setOf(
         SettingsLanguageRoute,
+        SettingsThemeRoute,
         SettingsUnitsRoute,
         SettingsCurrencyRoute,
         SavedAddressesRoute,
@@ -66,7 +69,9 @@ fun EntryProviderScope<NavKey>.settingsEntries(
     ) {
         ListPaneFocusSink {
             SettingsScreen(
+                selected = selected,
                 onOpenLanguage = { onOpen(SettingsLanguageRoute) },
+                onOpenTheme = { onOpen(SettingsThemeRoute) },
                 onOpenUnits = { onOpen(SettingsUnitsRoute) },
                 onOpenCurrency = { onOpen(SettingsCurrencyRoute) },
                 onOpenAutoTrack = { onOpen(SettingsAutoTrackRoute) },
@@ -74,7 +79,6 @@ fun EntryProviderScope<NavKey>.settingsEntries(
                 onOpenMinRideLength = { onOpen(SettingsMinRideLengthRoute) },
                 onOpenSavedAddresses = { onOpen(SavedAddressesRoute) },
                 onOpenBackupImport = { onOpen(SettingsBackupImportRoute) },
-                selected = selected,
             )
         }
     }
@@ -86,6 +90,12 @@ fun EntryProviderScope<NavKey>.settingsEntries(
     )
     entry<SettingsLanguageRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         LanguageSettingsScreen(onBack = { onBack(SettingsLanguageRoute) }, showBack = showBack)
+    }
+    entry<SettingsThemeRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
+        ThemeSettingsScreen(
+            onBack = { onBack(SettingsThemeRoute) },
+            showBack = showBack,
+        )
     }
     entry<SettingsUnitsRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         UnitSettingsScreen(
