@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Signature:package of the hosts allowed to drive the car app (RidesafeCarAppService).
+  Copied from androidx.car.app's hosts_allowlist_sample, which the library keeps private; the
+  official guidance is to own this list yourself. Re-check it when bumping androidx.car.app.
+
+  Android Auto only — Ridesafe ships no Automotive OS build, so the AAOS template-host entries
+  from the sample are left out. Add them back if it ever runs on a car's own head unit.
+-->
+<resources>
+    <string-array name="car_hosts_allowlist" translatable="false">
+        <!-- Android Auto (com.google.android.projection.gearhead) -->
+        <item>fdb00c43dbde8b51cb312aa81d3b5fa17713adb94b28f598d77f8eb89daceedf,
+            com.google.android.projection.gearhead</item>
+        <item>70811a3eacfd2e83e18da9bfede52df16ce91f2e69a44d21f18ab66991130771,
+            com.google.android.projection.gearhead</item>
+        <item>1975b2f17177bc89a5dff31f9e64a6cae281a53dc1d1d59b1d147fe1c82afa00,
+            com.google.android.projection.gearhead</item>
+    </string-array>
+</resources>

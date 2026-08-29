@@ -51,6 +51,14 @@ android {
     buildFeatures {
         compose = true
     }
+
+    // In-app language switching (see Context.inAppLanguage) needs every language in the base
+    // module; splitting by language would require Play Core to download them on demand.
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
 }
 
 dependencies {

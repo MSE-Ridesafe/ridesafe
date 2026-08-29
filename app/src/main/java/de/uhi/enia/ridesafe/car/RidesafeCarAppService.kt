@@ -53,7 +53,7 @@ class RidesafeCarAppService : CarAppService() {
         } else {
             HostValidator
                 .Builder(applicationContext)
-                .addAllowedHosts(androidx.car.app.R.array.hosts_allowlist_sample)
+                .addAllowedHosts(R.array.car_hosts_allowlist)
                 .build()
         }
 
