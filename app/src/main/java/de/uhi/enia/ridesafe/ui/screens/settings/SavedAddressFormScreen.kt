@@ -23,22 +23,25 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -59,7 +62,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -80,23 +83,95 @@ import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
 import de.uhi.enia.ridesafe.data.fixedIcon
 import de.uhi.enia.ridesafe.data.hasFixedLabel
-import de.uhi.enia.ridesafe.rides.processing.forwardGeocode
+import de.uhi.enia.ridesafe.data.haversineMeters
+import de.uhi.enia.ridesafe.rides.processing.AddressSearchResult
+import de.uhi.enia.ridesafe.rides.processing.addressLines
+import de.uhi.enia.ridesafe.rides.processing.forwardGeocodeSuggestions
 import de.uhi.enia.ridesafe.rides.processing.reverseGeocode
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatShortDistance
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import org.json.JSONArray
+import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val RADIUS_MIN = 25f
 private const val RADIUS_MAX = 500f
 private const val RADIUS_DEFAULT = 100
 private const val RADIUS_STEPS = 18 // 25 m increments across 25..500
+private const val SEARCH_DEBOUNCE_MS = 400L
+private const val SEARCH_MIN_LENGTH = 3
+private const val SEARCH_HISTORY_PREFS = "saved_address_search"
+private const val SEARCH_HISTORY_KEY = "recent_queries"
 
 // Camera fallback when adding a place with no point yet (roughly the centre of Germany).
 private val FALLBACK_CENTER = LatLng(51.1657, 10.4515)
+
+@Composable
+private fun SearchAction(
+    symbolName: String,
+    title: String,
+    onClick: () -> Unit,
+) {
+    ListItem(
+        headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        leadingContent = { MaterialSymbol(symbolName = symbolName, contentDescription = null) },
+        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        modifier = Modifier.clickable(onClick = onClick),
+    )
+}
+
+private fun loadRecentAddressSearches(context: android.content.Context): List<String> =
+    runCatching {
+        val encoded =
+            context
+                .getSharedPreferences(SEARCH_HISTORY_PREFS, android.content.Context.MODE_PRIVATE)
+                .getString(SEARCH_HISTORY_KEY, null) ?: return@runCatching emptyList()
+        val array = JSONArray(encoded)
+        (0 until array.length()).mapNotNull { array.optString(it).trim().ifBlank { null } }
+    }.getOrDefault(emptyList())
+
+private fun recordRecentAddressSearch(
+    context: android.content.Context,
+    query: String,
+): List<String> {
+    val trimmed = query.trim()
+    val updated =
+        (listOf(trimmed) + loadRecentAddressSearches(context).filterNot { it.equals(trimmed, ignoreCase = true) })
+            .filter(String::isNotBlank)
+            .take(5)
+    context
+        .getSharedPreferences(SEARCH_HISTORY_PREFS, android.content.Context.MODE_PRIVATE)
+        .edit()
+        .putString(SEARCH_HISTORY_KEY, JSONArray(updated).toString())
+        .apply()
+    return updated
+}
+
+private fun findExistingSavedPlace(
+    result: AddressSearchResult,
+    savedAddresses: List<SavedAddress>,
+    editedId: Long?,
+): SavedAddress? {
+    val normalizedResult = normalizeSearchAddress(result.address)
+    return savedAddresses
+        .asSequence()
+        .filterNot { it.id == editedId }
+        .map { saved -> saved to haversineMeters(saved.latitude, saved.longitude, result.latitude, result.longitude) }
+        .filter { (saved, distance) ->
+            val sameAddress =
+                saved.address
+                    ?.let(::normalizeSearchAddress)
+                    ?.takeIf(String::isNotEmpty) == normalizedResult
+            sameAddress || distance <= 15.0
+        }.minByOrNull { it.second }
+        ?.first
+}
+
+private fun normalizeSearchAddress(value: String): String =
+    value.filter(Char::isLetterOrDigit).uppercase(Locale.ROOT)
 
 /** Curated Material Symbols offered for a custom place (ADR-06); the full font is thousands of glyphs. */
 private val CURATED_PLACE_ICONS =
@@ -131,6 +206,7 @@ private val CURATED_PLACE_ICONS =
 fun SavedAddressFormScreen(
     existing: SavedAddress?,
     presetKind: SavedPlaceKind,
+    savedAddresses: List<SavedAddress> = emptyList(),
     onSave: (SavedAddress) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -138,7 +214,6 @@ fun SavedAddressFormScreen(
 ) {
     val unitSystem = currentUnitSystem()
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     val hasFixedLabel = presetKind.hasFixedLabel
 
@@ -152,7 +227,11 @@ fun SavedAddressFormScreen(
     var icon by rememberSaveable { mutableStateOf(existing?.icon ?: presetKind.fixedIcon() ?: DEFAULT_PLACE_ICON) }
     var resolvedAddress by remember { mutableStateOf(existing?.address) }
     var search by rememberSaveable { mutableStateOf("") }
-    var searchFailed by remember { mutableStateOf(false) }
+    var searchActive by rememberSaveable { mutableStateOf(false) }
+    var searchResults by remember { mutableStateOf(emptyList<AddressSearchResult>()) }
+    var searchLoading by remember { mutableStateOf(false) }
+    var searchCompleted by remember { mutableStateOf(false) }
+    var recentSearches by remember { mutableStateOf(loadRecentAddressSearches(context)) }
     var locationFailed by remember { mutableStateOf(false) }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
     var showMapPicker by rememberSaveable { mutableStateOf(false) }
@@ -213,21 +292,37 @@ fun SavedAddressFormScreen(
         if (granted) locate() else locationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
     }
 
-    fun runSearch() {
-        keyboard?.hide()
+    LaunchedEffect(search, searchActive) {
         val query = search.trim()
-        if (query.isEmpty()) return
-        scope.launch {
-            val result = forwardGeocode(context, query)
-            if (result != null) {
-                val found = LatLng(result.first, result.second)
-                point = found
-                recenterTo = found
-                searchFailed = false
-            } else {
-                searchFailed = true
-            }
+        if (!searchActive || query.length < SEARCH_MIN_LENGTH) {
+            searchResults = emptyList()
+            searchLoading = false
+            searchCompleted = false
+            return@LaunchedEffect
         }
+        searchLoading = true
+        searchCompleted = false
+        delay(SEARCH_DEBOUNCE_MS)
+        val near = point
+        searchResults =
+            forwardGeocodeSuggestions(context, query)
+                .sortedBy { result ->
+                    near?.let { haversineMeters(it.latitude, it.longitude, result.latitude, result.longitude) }
+                        ?: Double.MAX_VALUE
+                }
+        searchLoading = false
+        searchCompleted = true
+    }
+
+    fun chooseSearchResult(result: AddressSearchResult) {
+        val selected = LatLng(result.latitude, result.longitude)
+        point = selected
+        resolvedAddress = result.address
+        recenterTo = selected
+        search = shortAddress(result.address)
+        searchActive = false
+        keyboard?.hide()
+        recentSearches = recordRecentAddressSearch(context, search)
     }
 
     val canSave = point != null && label.isNotBlank()
@@ -309,25 +404,119 @@ fun SavedAddressFormScreen(
                 )
             }
 
-            OutlinedTextField(
-                value = search,
-                onValueChange = {
-                    search = it
-                    searchFailed = false
+            DockedSearchBar(
+                inputField = {
+                    SearchBarDefaults.InputField(
+                        query = search,
+                        onQueryChange = { search = it },
+                        onSearch = {
+                            searchActive = true
+                            keyboard?.hide()
+                        },
+                        expanded = searchActive,
+                        onExpandedChange = { searchActive = it },
+                        placeholder = { Text(stringResource(R.string.saved_address_search)) },
+                        leadingIcon = { MaterialSymbol(symbolName = "search", contentDescription = null) },
+                        trailingIcon = {
+                            when {
+                                searchLoading -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                search.isNotEmpty() -> {
+                                    IconButton(onClick = { search = "" }) {
+                                        MaterialSymbol(
+                                            symbolName = "close",
+                                            contentDescription = stringResource(R.string.saved_address_search_clear),
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 },
-                label = { Text(stringResource(R.string.saved_address_search)) },
-                singleLine = true,
-                isError = searchFailed,
-                supportingText = if (searchFailed) ({ Text(stringResource(R.string.saved_address_search_failed)) }) else null,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { runSearch() }),
-                trailingIcon = {
-                    IconButton(onClick = ::runSearch) {
-                        MaterialSymbol(symbolName = "search", contentDescription = stringResource(R.string.saved_address_search))
-                    }
-                },
+                expanded = searchActive,
+                onExpandedChange = { searchActive = it },
                 modifier = Modifier.fillMaxWidth(),
-            )
+            ) {
+                if (search.isBlank()) {
+                    SearchAction(
+                        symbolName = "my_location",
+                        title = stringResource(R.string.saved_address_use_location),
+                        onClick = {
+                            searchActive = false
+                            requestLocate()
+                        },
+                    )
+                    SearchAction(
+                        symbolName = "map",
+                        title = stringResource(R.string.saved_address_choose_on_map),
+                        onClick = {
+                            searchActive = false
+                            keyboard?.hide()
+                            openMapPicker()
+                        },
+                    )
+                    if (recentSearches.isNotEmpty()) {
+                        Text(
+                            text = stringResource(R.string.saved_address_search_recent),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
+                        )
+                        recentSearches.forEach { recent ->
+                            SearchAction(
+                                symbolName = "history",
+                                title = recent,
+                                onClick = { search = recent },
+                            )
+                        }
+                    }
+                } else if (search.trim().length < SEARCH_MIN_LENGTH) {
+                    Text(
+                        text = stringResource(R.string.saved_address_search_more_characters),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                } else if (!searchLoading && searchCompleted && searchResults.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.saved_address_search_no_results),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                } else {
+                    searchResults.forEach { result ->
+                        val lines = addressLines(result.address)
+                        val matched = findExistingSavedPlace(result, savedAddresses, existing?.id)
+                        val distance =
+                            point?.let {
+                                formatShortDistance(
+                                    haversineMeters(it.latitude, it.longitude, result.latitude, result.longitude),
+                                    unitSystem,
+                                )
+                            }
+                        ListItem(
+                            headlineContent = {
+                                Text(lines.first, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            },
+                            supportingContent = {
+                                Column {
+                                    listOfNotNull(lines.second, distance).takeIf { it.isNotEmpty() }?.let {
+                                        Text(it.joinToString(" · "), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                    matched?.let {
+                                        Text(
+                                            text = stringResource(R.string.saved_address_search_already_saved, it.label),
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                    }
+                                }
+                            },
+                            leadingContent = { MaterialSymbol(symbolName = "location_on", contentDescription = null) },
+                            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                            modifier = Modifier.clickable { chooseSearchResult(result) },
+                        )
+                    }
+                }
+            }
 
             Card(
                 shape = MaterialTheme.shapes.extraLarge,

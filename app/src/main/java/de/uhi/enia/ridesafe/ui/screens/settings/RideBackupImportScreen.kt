@@ -194,10 +194,14 @@ internal fun RideBackupImportScreen(
                     Text(
                         stringResource(
                             R.string.settings_backup_import_success_message,
-                            current.result.rides,
-                            current.result.vehicles,
-                            current.result.savedAddresses,
-                            current.result.refuels,
+                            current.result.rides.imported,
+                            current.result.vehicles.imported,
+                            current.result.savedAddresses.imported,
+                            current.result.refuels.imported,
+                            current.result.rides.alreadyPresent,
+                            current.result.vehicles.alreadyPresent,
+                            current.result.savedAddresses.alreadyPresent,
+                            current.result.refuels.alreadyPresent,
                         ),
                     )
                 },

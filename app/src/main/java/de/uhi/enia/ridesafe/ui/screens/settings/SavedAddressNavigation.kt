@@ -38,9 +38,11 @@ fun EntryProviderScope<NavKey>.savedAddressEntries(
         )
     }
     entry<AddSavedAddressRoute> { key ->
+        val addresses by viewModel.addresses.collectAsState()
         SavedAddressFormScreen(
             existing = null,
             presetKind = SavedPlaceKind.valueOf(key.kind),
+            savedAddresses = addresses,
             onSave = {
                 viewModel.add(it)
                 onBack()
@@ -51,10 +53,12 @@ fun EntryProviderScope<NavKey>.savedAddressEntries(
     entry<EditSavedAddressRoute> { key ->
         // Render only once the address has loaded — the form snapshots its initial fields.
         val address by viewModel.address(key.id).collectAsState(initial = null)
+        val addresses by viewModel.addresses.collectAsState()
         address?.let { loaded ->
             SavedAddressFormScreen(
                 existing = loaded,
                 presetKind = loaded.kind,
+                savedAddresses = addresses,
                 onSave = {
                     viewModel.update(it)
                     onBack()

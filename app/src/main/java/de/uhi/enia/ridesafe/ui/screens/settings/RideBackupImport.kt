@@ -31,6 +31,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
 import java.util.UUID
 import java.util.Locale
 import java.util.zip.ZipFile
@@ -44,11 +45,26 @@ data class RideBackupImportPreview(
     val refuels: Int,
 )
 
+data class RideBackupImportCount(
+    val imported: Int,
+    val alreadyPresent: Int,
+)
+
 data class RideBackupImportResult(
-    val rides: Int,
-    val vehicles: Int,
-    val savedAddresses: Int,
-    val refuels: Int,
+    val rides: RideBackupImportCount,
+    val vehicles: RideBackupImportCount,
+    val savedAddresses: RideBackupImportCount,
+    val refuels: RideBackupImportCount,
+)
+
+private data class RideImportMapping(
+    val ids: Map<Long, Long>,
+    val insertedArchiveIds: Set<Long>,
+)
+
+private data class EntityImportMapping(
+    val ids: Map<Long, Long>,
+    val insertedArchiveIds: Set<Long>,
 )
 
 internal fun interface ImportFilePublisher {
@@ -98,23 +114,30 @@ internal class RideBackupImporter(
                 val stagedFiles = extractIncludedFiles(archive, manifest, staging)
                 val token = UUID.randomUUID().toString().replace("-", "")
                 val sampleNames = manifest.rides.associate { it.archiveId to "ride_import_${token}_${it.archiveId}.ndjson.gz" }
-                val importedCounts = db.withTransaction {
-                    val vehicleIds = insertVehicles(manifest)
-                    val addressIds = insertAddresses(manifest)
-                    val rideIds = insertRides(manifest, vehicleIds, addressIds, sampleNames)
-                    restoreMergeGroups(manifest, rideIds)
-                    insertEvents(manifest, rideIds)
-                    insertAnalysisStates(manifest, rideIds)
-                    insertRefuels(manifest, vehicleIds, rideIds)
-                    publishFiles(manifest, stagedFiles, rideIds, sampleNames, published)
-                    vehicleIds.values.toSet().size to addressIds.values.toSet().size
+                val result = db.withTransaction {
+                    val vehicleImport = insertVehicles(manifest)
+                    val addressImport = insertAddresses(manifest)
+                    val rideImport = insertRides(manifest, vehicleImport.ids, addressImport.ids, sampleNames)
+                    restoreMergeGroups(manifest, rideImport.ids)
+                    insertEvents(manifest, rideImport.ids, rideImport.insertedArchiveIds)
+                    insertAnalysisStates(manifest, rideImport.ids, rideImport.insertedArchiveIds)
+                    val importedRefuels = insertRefuels(manifest, vehicleImport.ids, rideImport.ids)
+                    publishFiles(
+                        manifest,
+                        stagedFiles,
+                        rideImport.ids,
+                        sampleNames,
+                        rideImport.insertedArchiveIds,
+                        published,
+                    )
+                    RideBackupImportResult(
+                        rides = importCount(manifest.rides.size, rideImport.insertedArchiveIds.size),
+                        vehicles = importCount(manifest.vehicles.size, vehicleImport.insertedArchiveIds.size),
+                        savedAddresses = importCount(manifest.savedAddresses.size, addressImport.insertedArchiveIds.size),
+                        refuels = importCount(manifest.refuels.size, importedRefuels),
+                    )
                 }
-                RideBackupImportResult(
-                    manifest.rides.size,
-                    importedCounts.first,
-                    importedCounts.second,
-                    manifest.refuels.size,
-                )
+                result
             } catch (failure: Exception) {
                 published.forEach { it.delete() }
                 throw failure
@@ -123,7 +146,7 @@ internal class RideBackupImporter(
             }
         }
 
-    private suspend fun insertVehicles(manifest: RideBackupManifest): Map<Long, Long> {
+    private suspend fun insertVehicles(manifest: RideBackupManifest): EntityImportMapping {
         val dao = db.vehicleDao()
         val existing = dao.all().toMutableList()
         val primaryArchiveId =
@@ -140,6 +163,7 @@ internal class RideBackupImporter(
                 compareBy<BackupVehicle>({ it.archiveId != primaryArchiveId }, { vehicleFreshness(it, manifest) }, { it.archiveId }),
             )
         val mappings = mutableMapOf<Long, Long>()
+        val insertedArchiveIds = mutableSetOf<Long>()
         ordered.forEach { archived ->
             val matched = findMatchingVehicle(archived, existing)
             if (matched == null) {
@@ -147,6 +171,7 @@ internal class RideBackupImporter(
                 val id = dao.insert(inserted)
                 existing += inserted.copy(id = id)
                 mappings[archived.archiveId] = id
+                insertedArchiveIds += archived.archiveId
             } else {
                 val resolved = resolveVehicleConflict(matched, archived, manifest)
                 if (resolved != matched) {
@@ -156,13 +181,14 @@ internal class RideBackupImporter(
                 mappings[archived.archiveId] = matched.id
             }
         }
-        return mappings
+        return EntityImportMapping(mappings, insertedArchiveIds)
     }
 
-    private suspend fun insertAddresses(manifest: RideBackupManifest): Map<Long, Long> {
+    private suspend fun insertAddresses(manifest: RideBackupManifest): EntityImportMapping {
         val dao = db.savedAddressDao()
         val existing = dao.all().toMutableList()
         val mappings = mutableMapOf<Long, Long>()
+        val insertedArchiveIds = mutableSetOf<Long>()
         manifest.savedAddresses.forEach { archived ->
             val matches = existing.filter { it.matches(archived) }.sortedBy(SavedAddress::id)
             val retained = matches.firstOrNull()
@@ -171,6 +197,7 @@ internal class RideBackupImporter(
                 val id = dao.insert(inserted)
                 existing += inserted.copy(id = id)
                 mappings[archived.archiveId] = id
+                insertedArchiveIds += archived.archiveId
             } else {
                 // Repair duplicates made by older importer versions. All existing ride references
                 // are moved before the redundant address rows are removed.
@@ -185,7 +212,7 @@ internal class RideBackupImporter(
                 mappings[archived.archiveId] = retained.id
             }
         }
-        return mappings
+        return EntityImportMapping(mappings, insertedArchiveIds)
     }
 
     private suspend fun insertRides(
@@ -193,18 +220,71 @@ internal class RideBackupImporter(
         vehicleIds: Map<Long, Long>,
         addressIds: Map<Long, Long>,
         sampleNames: Map<Long, String>,
-    ): Map<Long, Long> =
-        manifest.rides.associate { archived ->
-            archived.archiveId to
-                db.rideDao().insert(
+    ): RideImportMapping {
+        val dao = db.rideDao()
+        val existing = dao.all()
+        val byUuid = existing.associateBy { it.rideUuid.lowercase(Locale.ROOT) }.toMutableMap()
+        val fallbackHashes =
+            manifest.rides
+                .filter { archived ->
+                    archived.rideUuid?.lowercase(Locale.ROOT)?.let(byUuid::containsKey) != true
+                }
+                .mapNotNull { manifest.file(it.archiveId, "raw_samples").sha256?.lowercase(Locale.ROOT) }
+                .toSet()
+        val byRawHash = existingRidesByRawHash(existing, fallbackHashes).toMutableMap()
+        val mappings = mutableMapOf<Long, Long>()
+        val inserted = mutableSetOf<Long>()
+
+        manifest.rides.forEach { archived ->
+            val matched =
+                archived.rideUuid?.let { byUuid[it.lowercase(Locale.ROOT)] }
+                    ?: manifest
+                        .file(archived.archiveId, "raw_samples")
+                        .sha256
+                        ?.lowercase(Locale.ROOT)
+                        ?.let(byRawHash::get)
+            if (matched != null) {
+                mappings[archived.archiveId] = matched.id
+            } else {
+                val entity =
                     archived.toEntity(
                         vehicleId = archived.vehicleArchiveId?.let(vehicleIds::getValue),
                         startAddressId = archived.startSavedAddressArchiveId?.let(addressIds::getValue),
                         endAddressId = archived.endSavedAddressArchiveId?.let(addressIds::getValue),
                         sampleFile = sampleNames.getValue(archived.archiveId),
-                    ),
-                )
+                    )
+                val id = dao.insert(entity)
+                val persisted = entity.copy(id = id)
+                mappings[archived.archiveId] = id
+                inserted += archived.archiveId
+                byUuid[persisted.rideUuid.lowercase(Locale.ROOT)] = persisted
+                manifest
+                    .file(archived.archiveId, "raw_samples")
+                    .sha256
+                    ?.lowercase(Locale.ROOT)
+                    ?.let { byRawHash.putIfAbsent(it, persisted) }
+            }
         }
+        return RideImportMapping(mappings, inserted)
+    }
+
+    /** Raw samples are required and content-addressed, making their hash a safe legacy identity. */
+    private suspend fun existingRidesByRawHash(
+        rides: List<Ride>,
+        wantedHashes: Set<String>,
+    ): Map<String, Ride> {
+        if (wantedHashes.isEmpty()) return emptyMap()
+        val root = ridesDir(app).canonicalFile
+        val matches = mutableMapOf<String, Ride>()
+        rides.filter { it.endedAtEpochMs != null }.sortedBy(Ride::id).forEach { ride ->
+            coroutineContext.ensureActive()
+            val candidate = runCatching { File(root, ride.sampleFile).canonicalFile }.getOrNull()
+            if (candidate?.parentFile != root || !candidate.isFile) return@forEach
+            val hash = sha256(candidate)
+            if (hash in wantedHashes) matches.putIfAbsent(hash, ride)
+        }
+        return matches
+    }
 
     private suspend fun restoreMergeGroups(manifest: RideBackupManifest, rideIds: Map<Long, Long>) {
         manifest.mergeGroups.forEach { group ->
@@ -213,10 +293,13 @@ internal class RideBackupImporter(
         }
     }
 
-    private suspend fun insertEvents(manifest: RideBackupManifest, rideIds: Map<Long, Long>) {
-        if (manifest.rideEvents.isEmpty()) return
-        db.rideEventDao().insertAll(
-            manifest.rideEvents.map { event ->
+    private suspend fun insertEvents(
+        manifest: RideBackupManifest,
+        rideIds: Map<Long, Long>,
+        insertedRideArchiveIds: Set<Long>,
+    ) {
+        val events =
+            manifest.rideEvents.filter { it.rideArchiveId in insertedRideArchiveIds }.map { event ->
                 RideEvent(
                     rideId = rideIds.getValue(event.rideArchiveId),
                     type = RideEventType.valueOf(event.type),
@@ -229,17 +312,22 @@ internal class RideBackupImporter(
                     lat = event.lat,
                     lon = event.lon,
                 )
-            },
-        )
+            }
+        if (events.isNotEmpty()) db.rideEventDao().insertAll(events)
     }
 
-    private suspend fun insertAnalysisStates(manifest: RideBackupManifest, rideIds: Map<Long, Long>) {
+    private suspend fun insertAnalysisStates(
+        manifest: RideBackupManifest,
+        rideIds: Map<Long, Long>,
+        insertedRideArchiveIds: Set<Long>,
+    ) {
         val routesAvailable =
             manifest.files
                 .filter { it.role == "processed_route" && it.status == "included" }
                 .map(BackupFile::rideArchiveId)
                 .toSet()
         manifest.analysisStates
+            .filter { it.rideArchiveId in insertedRideArchiveIds }
             .filterNot {
                 it.stage == "route" &&
                     (manifest.processingVersions.route != ROUTE_VERSION || it.rideArchiveId !in routesAvailable)
@@ -253,9 +341,12 @@ internal class RideBackupImporter(
         manifest: RideBackupManifest,
         vehicleIds: Map<Long, Long>,
         rideIds: Map<Long, Long>,
-    ) {
+    ): Int {
+        val dao = db.refuelDao()
+        val existing = dao.all().toMutableList()
+        var insertedCount = 0
         manifest.refuels.forEach { refuel ->
-            db.refuelDao().insert(
+            val candidate =
                 Refuel(
                     vehicleId = vehicleIds.getValue(refuel.vehicleArchiveId),
                     timestampEpochMs = refuel.timestampEpochMs,
@@ -265,9 +356,14 @@ internal class RideBackupImporter(
                     odometerMeters = refuel.odometerMeters,
                     isFullTank = refuel.isFullTank,
                     journeyAnchorRideId = refuel.journeyAnchorRideArchiveId?.let(rideIds::getValue),
-                ),
-            )
+                )
+            if (existing.any { it.hasSameImportIdentity(candidate) }) return@forEach
+
+            val id = dao.insert(candidate)
+            existing += candidate.copy(id = id)
+            insertedCount++
         }
+        return insertedCount
     }
 
     private suspend fun publishFiles(
@@ -275,10 +371,11 @@ internal class RideBackupImporter(
         staged: Map<String, File>,
         rideIds: Map<Long, Long>,
         sampleNames: Map<Long, String>,
+        insertedRideArchiveIds: Set<Long>,
         published: MutableList<File>,
     ) {
         val destinationDirectory = ridesDir(app).apply { mkdirs() }
-        manifest.rides.forEach { ride ->
+        manifest.rides.filter { it.archiveId in insertedRideArchiveIds }.forEach { ride ->
             coroutineContext.ensureActive()
             val raw = manifest.file(ride.archiveId, "raw_samples")
             publish(staged.getValue(raw.path), File(destinationDirectory, sampleNames.getValue(ride.archiveId)), published)
@@ -293,6 +390,20 @@ internal class RideBackupImporter(
     private suspend fun publish(source: File, destination: File, published: MutableList<File>) {
         filePublisher.publish(source, destination)
         published += destination
+    }
+
+    private suspend fun sha256(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().buffered().use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                coroutineContext.ensureActive()
+                val count = input.read(buffer)
+                if (count < 0) break
+                digest.update(buffer, 0, count)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
     }
 
     private suspend fun extractIncludedFiles(
@@ -335,15 +446,16 @@ private suspend fun copyCancellable(input: java.io.InputStream, output: java.io.
 }
 
 /**
- * Stable UUID is authoritative. Plate/Bluetooth matching exists only for legacy archives that did
- * not yet carry that identity. Ambiguous evidence deliberately creates a separate garage entry.
+ * Prefer stable UUID identity. If independently migrated databases assigned different UUIDs to the
+ * same pre-existing car, fall back to unambiguous plate/Bluetooth evidence. Ambiguous evidence
+ * deliberately creates a separate garage entry.
  */
 internal fun findMatchingVehicle(
     archived: BackupVehicle,
     existing: List<Vehicle>,
 ): Vehicle? {
     archived.vehicleUuid?.let { uuid ->
-        return existing.singleOrNull { it.vehicleUuid.equals(uuid, ignoreCase = true) }
+        existing.singleOrNull { it.vehicleUuid.equals(uuid, ignoreCase = true) }?.let { return it }
     }
 
     val plate = normalizeLicensePlate(archived.licensePlate)
@@ -378,16 +490,14 @@ private val singletonSavedPlaceKinds =
     setOf(SavedPlaceKind.HOME, SavedPlaceKind.WORK, SavedPlaceKind.SCHOOL)
 
 /**
- * Home/Work/School are product-level singletons. Other place types may legitimately share a postal
- * address, so they additionally require the same label; coordinates cover legacy null-address rows.
+ * Home/Work/School are product-level singletons. Other places match within their type by normalized
+ * postal address or nearby coordinates; labels are presentation and may have been renamed.
  */
 private fun SavedAddress.matches(archived: BackupSavedAddress): Boolean {
     val archivedKind = SavedPlaceKind.valueOf(archived.kind)
     if (kind != archivedKind) return false
     if (kind in singletonSavedPlaceKinds) return true
 
-    val sameLabel = normalizeSavedPlaceText(label) == normalizeSavedPlaceText(archived.label)
-    if (!sameLabel) return false
     val localAddress = address?.let(::normalizeSavedPlaceText).orEmpty()
     val archivedAddress = archived.address?.let(::normalizeSavedPlaceText).orEmpty()
     val sameKnownAddress = localAddress.isNotEmpty() && localAddress == archivedAddress
@@ -473,6 +583,23 @@ private fun resolveVehicleConflict(
 private fun RideBackupManifest.preview() =
     RideBackupImportPreview(createdAtEpochMs, rides.size, vehicles.size, savedAddresses.size, refuels.size)
 
+private fun importCount(total: Int, imported: Int) =
+    RideBackupImportCount(imported = imported, alreadyPresent = total - imported)
+
+/**
+ * Refuel archives do not yet carry UUIDs, so their immutable business fields form their identity.
+ * The journey anchor is a mutable relationship and must not turn a moved/detached refuel into a
+ * second refuel during import.
+ */
+private fun Refuel.hasSameImportIdentity(other: Refuel): Boolean =
+    vehicleId == other.vehicleId &&
+        timestampEpochMs == other.timestampEpochMs &&
+        fuelAmountMilliliters == other.fuelAmountMilliliters &&
+        totalPriceMinor == other.totalPriceMinor &&
+        currencyCode.equals(other.currencyCode, ignoreCase = true) &&
+        odometerMeters == other.odometerMeters &&
+        isFullTank == other.isFullTank
+
 private fun RideBackupManifest.file(rideId: Long, role: String): BackupFile =
     files.single { it.rideArchiveId == rideId && it.role == role }
 
@@ -498,4 +625,5 @@ private fun BackupRide.toEntity(
     endAddress = endAddress,
     startAddressId = startAddressId,
     endAddressId = endAddressId,
+    rideUuid = rideUuid ?: UUID.randomUUID().toString(),
 )

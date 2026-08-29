@@ -374,8 +374,8 @@ class RidesViewModel(
 
     /**
      * Permanently remove the selected logical entries. A merged entry supplies every physical ride
-     * id in the group. Refuels are independent records: deleting a ride only detaches its linked
-     * refuels; a refuel is deleted only when its own id is explicitly selected.
+     * id in the group, and every refuel anchored to one of those rides belongs to the deletion.
+     * Standalone refuels are deleted only when their own ids are explicitly selected.
      */
     fun deleteEntries(
         rideIds: List<Long>,
@@ -386,23 +386,28 @@ class RidesViewModel(
         require(distinctRideIds.isNotEmpty() || distinctRefuelIds.isNotEmpty())
 
         RideDataCoordinator.withRides(distinctRideIds) {
-            val ridesToDelete = if (distinctRideIds.isEmpty()) emptyList() else rideDao.byIds(distinctRideIds)
-            val refuelsToDelete = if (distinctRefuelIds.isEmpty()) emptyList() else refuelDao.byIds(distinctRefuelIds)
-            require(ridesToDelete.size == distinctRideIds.size)
-            require(refuelsToDelete.size == distinctRefuelIds.size)
-            // The recorder owns active rides and their open streams; they cannot be deleted here.
-            require(ridesToDelete.all { it.endedAtEpochMs != null })
+            val ridesToDelete = db.withTransaction {
+                val rides = if (distinctRideIds.isEmpty()) emptyList() else rideDao.byIds(distinctRideIds)
+                val explicitlySelectedRefuels =
+                    if (distinctRefuelIds.isEmpty()) emptyList() else refuelDao.byIds(distinctRefuelIds)
+                val attachedRefuels =
+                    if (distinctRideIds.isEmpty()) emptyList() else refuelDao.forJourneyAnchors(distinctRideIds)
 
-            db.withTransaction {
-                if (distinctRideIds.isNotEmpty()) {
-                    refuelDao.clearJourneyAnchorsForRides(distinctRideIds)
-                }
-                if (distinctRefuelIds.isNotEmpty()) {
-                    refuelDao.deleteByIds(distinctRefuelIds)
+                require(rides.size == distinctRideIds.size)
+                require(explicitlySelectedRefuels.size == distinctRefuelIds.size)
+                // The recorder owns active rides and their open streams; they cannot be deleted here.
+                require(rides.all { it.endedAtEpochMs != null })
+
+                val allRefuelIds =
+                    (distinctRefuelIds + attachedRefuels.map { it.id }).distinct()
+                if (allRefuelIds.isNotEmpty()) {
+                    refuelDao.deleteByIds(allRefuelIds)
                 }
                 if (distinctRideIds.isNotEmpty()) {
                     rideDao.deleteByIds(distinctRideIds)
                 }
+
+                rides
             }
 
             // Database rows are the source of truth. Clean up their private sample and derived

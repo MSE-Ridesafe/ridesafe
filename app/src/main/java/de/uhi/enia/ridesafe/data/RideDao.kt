@@ -22,6 +22,9 @@ interface RideDao {
     @Query("SELECT * FROM rides WHERE id IN (:ids)")
     suspend fun byIds(ids: List<Long>): List<Ride>
 
+    @Query("SELECT * FROM rides WHERE rideUuid IN (:uuids)")
+    suspend fun byUuids(uuids: List<String>): List<Ride>
+
     /** The stops of a merged ride (MRG-01), in chronological order — the merged detail's source of truth. */
     @Query("SELECT * FROM rides WHERE mergeGroupId = :groupId ORDER BY startedAtEpochMs ASC")
     fun observeGroup(groupId: Long): Flow<List<Ride>>

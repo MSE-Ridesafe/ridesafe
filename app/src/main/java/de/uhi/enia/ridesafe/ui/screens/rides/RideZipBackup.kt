@@ -140,6 +140,8 @@ internal data class BackupRide(
     val endAddress: String? = null,
     val startSavedAddressArchiveId: Long? = null,
     val endSavedAddressArchiveId: Long? = null,
+    /** Null only for archives produced before stable ride identity was introduced. */
+    val rideUuid: String? = null,
 )
 
 @Serializable
@@ -458,6 +460,12 @@ internal object RideBackupArchiveValidator {
             fail("Archive compatibility contract is missing or unsupported")
         }
         unique(manifest.rides.map(BackupRide::archiveId), "ride IDs")
+        manifest.rides.forEach { ride ->
+            ride.rideUuid?.let { uuid ->
+                if (runCatching { java.util.UUID.fromString(uuid) }.isFailure) fail("Invalid ride UUID")
+            }
+        }
+        unique(manifest.rides.mapNotNull(BackupRide::rideUuid).map(String::lowercase), "ride UUIDs")
         unique(manifest.vehicles.map(BackupVehicle::archiveId), "vehicle IDs")
         unique(manifest.savedAddresses.map(BackupSavedAddress::archiveId), "saved-address IDs")
         unique(manifest.rideEvents.map(BackupRideEvent::archiveId), "event IDs")
@@ -622,9 +630,24 @@ private fun fail(message: String): Nothing = throw RideBackupValidationException
 
 private fun Ride.toBackup() =
     BackupRide(
-        id, vehicleId, mergeGroupId, startedAtEpochMs, startedElapsedNanos,
-        requireNotNull(endedAtEpochMs), startLat, startLon, endLat, endLon, distanceMeters,
-        avgSpeedMps, maxSpeedMps, startAddress, endAddress, startAddressId, endAddressId,
+        archiveId = id,
+        vehicleArchiveId = vehicleId,
+        mergeGroupArchiveId = mergeGroupId,
+        startedAtEpochMs = startedAtEpochMs,
+        startedElapsedNanos = startedElapsedNanos,
+        endedAtEpochMs = requireNotNull(endedAtEpochMs),
+        startLat = startLat,
+        startLon = startLon,
+        endLat = endLat,
+        endLon = endLon,
+        distanceMeters = distanceMeters,
+        avgSpeedMps = avgSpeedMps,
+        maxSpeedMps = maxSpeedMps,
+        startAddress = startAddress,
+        endAddress = endAddress,
+        startSavedAddressArchiveId = startAddressId,
+        endSavedAddressArchiveId = endAddressId,
+        rideUuid = rideUuid,
     )
 
 private fun Vehicle.toBackup() =

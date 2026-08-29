@@ -27,7 +27,7 @@ directly. Logical selection IDs are likewise archive-local.
 
 `logicalSelections` partitions all exported rides and preserves which physical rides formed each
 selected logbook entry. `mergeGroups` records ordered membership independently of logical selection.
-Each ride optionally references one vehicle, one merge group, and saved start/end addresses. Events
+Each ride has a stable `rideUuid` and optionally references one vehicle, one merge group, and saved start/end addresses. Events
 and analysis states reference a ride. Refuels reference a vehicle and optionally their selected
 journey anchor. Bluetooth devices are owned values nested in their vehicle.
 
@@ -98,6 +98,13 @@ normalized nonblank license plate or Bluetooth hardware address identifies exact
 vehicle. Conflicting or ambiguous legacy evidence never auto-merges. Legacy mileage resolves to the
 greater value. If the garage is empty, the archived primary (or first archived vehicle) becomes
 primary.
+
+Physical rides carry a stable `rideUuid`. Import maps an archived ride to the existing row with the
+same UUID and keeps the destination database ID. If no UUID match exists, the required raw-sample
+SHA-256 is used as a content-identity fallback; this safely recognizes pre-UUID archives and the same
+pre-existing ride after independent database migrations. Reused rides do not publish another raw or
+route file and do not duplicate analysis states or detected events. Only newly inserted rides are
+reported in the import result.
 
 Saved places are remapped rather than blindly inserted. Home, Work and School match their existing
 singleton kind. Custom places and gas stations match only when their normalized label and postal

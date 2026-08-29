@@ -11,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.serialization.json.Json
 
 private val deviceJson = Json { ignoreUnknownKeys = true }
-const val RIDESAFE_DATABASE_VERSION = 18
+const val RIDESAFE_DATABASE_VERSION = 19
 
 class Converters {
     @TypeConverter
@@ -361,6 +361,22 @@ val MIGRATION_17_18 =
         }
     }
 
+/** Adds archive-stable identity to every physical ride while retaining all local relationships. */
+val MIGRATION_18_19 =
+    object : Migration(18, 19) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE rides ADD COLUMN rideUuid TEXT NOT NULL DEFAULT ''")
+            db.execSQL(
+                "UPDATE rides SET rideUuid = lower(" +
+                    "hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || " +
+                    "substr(hex(randomblob(2)), 2) || '-' || " +
+                    "substr('89ab', abs(random() % 4) + 1, 1) || substr(hex(randomblob(2)), 2) || '-' || " +
+                    "hex(randomblob(6))) WHERE rideUuid = ''",
+            )
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_rides_rideUuid ON rides(rideUuid)")
+        }
+    }
+
 @Database(
     entities = [
         Vehicle::class,
@@ -415,6 +431,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_15_16,
                         MIGRATION_16_17,
                         MIGRATION_17_18,
+                        MIGRATION_18_19,
                     ).build()
                     .also { instance = it }
             }

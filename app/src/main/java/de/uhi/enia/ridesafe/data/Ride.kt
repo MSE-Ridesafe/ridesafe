@@ -1,7 +1,10 @@
 package de.uhi.enia.ridesafe.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
+import java.util.UUID
 
 /**
  * A recorded ride (entity DR-RID), holding only the summary that ride recording produces;
@@ -39,7 +42,10 @@ import androidx.room.PrimaryKey
  * ponytail: notes/tags/purpose/safety score (DR-RID, ANL-01) are written by later UI/analysis
  * layers, not recording — add the columns via an ALTER-TABLE migration when those land.
  */
-@Entity(tableName = "rides")
+@Entity(
+    tableName = "rides",
+    indices = [Index(value = ["rideUuid"], unique = true)],
+)
 data class Ride(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val vehicleId: Long? = null,
@@ -59,4 +65,6 @@ data class Ride(
     val endAddress: String? = null,
     val startAddressId: Long? = null,
     val endAddressId: Long? = null,
+    /** Stable identity across exports/imports; numeric [id] remains local to this database. */
+    @ColumnInfo(defaultValue = "''") val rideUuid: String = UUID.randomUUID().toString(),
 )
