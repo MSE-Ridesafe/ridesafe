@@ -4,6 +4,9 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
@@ -85,11 +88,16 @@ fun EntryProviderScope<NavKey>.garageEntries(
         )
     }
     entry<AddVehicleRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = GARAGE_SCENE)) {
+        // Latch against a double-tapped save inserting the vehicle twice.
+        var saved by remember { mutableStateOf(false) }
         VehicleFormScreen(
             existing = null,
             onSave = { vehicle, makePrimary ->
-                viewModel.addVehicle(vehicle, makePrimary)
-                onBack(AddVehicleRoute)
+                if (!saved) {
+                    saved = true
+                    viewModel.addVehicle(vehicle, makePrimary)
+                    onBack(AddVehicleRoute)
+                }
             },
             onBack = { onBack(AddVehicleRoute) },
         )
