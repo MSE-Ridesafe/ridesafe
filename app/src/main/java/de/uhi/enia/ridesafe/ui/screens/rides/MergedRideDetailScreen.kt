@@ -52,8 +52,6 @@ import de.uhi.enia.ridesafe.domain.safetyScoreForRides
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
-import de.uhi.enia.ridesafe.ui.components.Stat
-import de.uhi.enia.ridesafe.ui.components.StatGrid
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDurationMs
@@ -154,6 +152,16 @@ fun MergedRideDetailScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // The trip in numbers, same headline readout as a single ride's (duration = moving time).
+            RideStatsReadout(
+                distance =
+                    summary.distanceMeters?.let { formatDistance(it, unitSystem) }
+                        ?: stringResource(R.string.value_not_set),
+                duration = formatDurationMs(summary.movingDurationMs),
+                avgSpeed = summary.avgSpeedMps?.let { formatSpeed(context, it, unitSystem) },
+                maxSpeed = formatSpeed(context, summary.maxSpeedMps, unitSystem),
+            )
+
             RouteMapCard(segments = segments, rideEvents = rideEvents)
 
             MergedJourneyCard(
@@ -162,44 +170,6 @@ fun MergedRideDetailScreen(
                 onOpenRefuel = onOpenRefuel,
                 onUnmergeAll = onUnmergeAll,
                 onUnmerge = onUnmerge,
-            )
-
-            // The trip in numbers, same tiles as a single ride's: distance the hero, moving time
-            // second, the speeds sharing a tertiary row.
-            StatGrid(
-                rows =
-                    listOf(
-                        listOf(
-                            Stat(
-                                icon = "route",
-                                label = stringResource(R.string.ride_detail_section_distance),
-                                value =
-                                    summary.distanceMeters?.let { formatDistance(it, unitSystem) }
-                                        ?: stringResource(R.string.value_not_set),
-                            ),
-                        ),
-                        listOf(
-                            Stat(
-                                icon = "schedule",
-                                label = stringResource(R.string.ride_detail_duration),
-                                value = formatDurationMs(summary.movingDurationMs),
-                            ),
-                        ),
-                        listOfNotNull(
-                            summary.avgSpeedMps?.let {
-                                Stat(
-                                    icon = "avg_pace",
-                                    label = stringResource(R.string.ride_stat_avg_speed),
-                                    value = formatSpeed(context, it, unitSystem),
-                                )
-                            },
-                            Stat(
-                                icon = "speed",
-                                label = stringResource(R.string.ride_stat_max_speed),
-                                value = formatSpeed(context, summary.maxSpeedMps, unitSystem),
-                            ),
-                        ),
-                    ),
             )
 
             // The whole trip's score: the stops' penalties and exposure summed, mapped once — never

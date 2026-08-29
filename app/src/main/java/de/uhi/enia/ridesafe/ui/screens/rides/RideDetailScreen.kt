@@ -49,8 +49,6 @@ import de.uhi.enia.ridesafe.rides.processing.addressLines
 import de.uhi.enia.ridesafe.rides.processing.latLngDistanceMeters
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
-import de.uhi.enia.ridesafe.ui.components.Stat
-import de.uhi.enia.ridesafe.ui.components.StatGrid
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDuration
@@ -60,8 +58,8 @@ import de.uhi.enia.ridesafe.util.formatSpeed
 import de.uhi.enia.ridesafe.util.formatTimeOfDay
 
 /**
- * Ride detail: the recorded route drawn on a Google Map, the journey, its numbers as stat tiles,
- * then the safety/eco judgments.
+ * Ride detail: the trip's numbers as a headline readout, the recorded route on a Google Map, the
+ * journey, then the safety/eco judgments.
  * [route] is null while it's still loading; empty when the ride recorded no GPS. Distance and average
  * speed come from the persisted [Ride.distanceMeters]/[Ride.avgSpeedMps] (filled by the processing
  * pass ANL-02); they fall back to computing from [route] only for a ride not processed yet, where
@@ -129,40 +127,13 @@ fun RideDetailScreen(
             if (analysisProgress != null) {
                 AnalysisNoticeCard(progress = analysisProgress)
             }
-            // Hierarchy by row: distance is the hero, duration second, the speeds share a
-            // tertiary row.
-            StatGrid(
-                rows =
-                    listOf(
-                        listOf(
-                            Stat(
-                                icon = "route",
-                                label = stringResource(R.string.ride_detail_section_distance),
-                                value =
-                                    distanceMeters?.let { formatDistance(it, unitSystem) }
-                                        ?: stringResource(R.string.value_not_set),
-                            ),
-                        ),
-                        listOfNotNull(
-                            formatDuration(ride.startedAtEpochMs, ride.endedAtEpochMs)?.let {
-                                Stat(icon = "schedule", label = stringResource(R.string.ride_detail_duration), value = it)
-                            },
-                        ),
-                        listOfNotNull(
-                            avgMps?.let {
-                                Stat(
-                                    icon = "avg_pace",
-                                    label = stringResource(R.string.ride_stat_avg_speed),
-                                    value = formatSpeed(context, it, unitSystem),
-                                )
-                            },
-                            Stat(
-                                icon = "speed",
-                                label = stringResource(R.string.ride_stat_max_speed),
-                                value = formatSpeed(context, ride.maxSpeedMps, unitSystem),
-                            ),
-                        ),
-                    ),
+            RideStatsReadout(
+                distance =
+                    distanceMeters?.let { formatDistance(it, unitSystem) }
+                        ?: stringResource(R.string.value_not_set),
+                duration = formatDuration(ride.startedAtEpochMs, ride.endedAtEpochMs),
+                avgSpeed = avgMps?.let { formatSpeed(context, it, unitSystem) },
+                maxSpeed = formatSpeed(context, ride.maxSpeedMps, unitSystem),
             )
             RouteMapCard(segments = route?.let { listOf(it) }, rideEvents = rideEvents)
 
