@@ -76,6 +76,23 @@ private const val SLIDE_MS = 250 // sub-route slide + matching fade-out of the p
 private const val FADE_MS = 250 // quick cross-fade between tabs
 
 /**
+ * Opens [key] from a tab's list pane: whatever detail run is showing gets replaced, not stacked
+ * under it. On two panes the list stays tappable beside an open detail, so pushing on every tap
+ * would grow the stack without bound — each stale detail alive in memory, and every one of them
+ * an extra back press once the window drops to a single pane. Tapping the already-open route is
+ * a no-op, which keeps that detail's state. The stack never grows past list + one open screen
+ * (+ a form pushed from *inside* the detail pane, which callers add directly).
+ */
+private fun openFromList(
+    stack: MutableList<NavKey>,
+    key: NavKey,
+) {
+    if (stack.lastOrNull() == key) return
+    while (stack.size > 1) stack.removeLastOrNull()
+    stack.add(key)
+}
+
+/**
  * App shell: adaptive navigation suite (bottom bar / rail / drawer) wrapping a
  * [NavDisplay]. Each tab owns a [rememberNavBackStack]; the selected tab decides which
  * stack [NavDisplay] renders, so switching tabs preserves each tab's in-tab navigation.
@@ -137,10 +154,8 @@ fun RidesafeApp() {
         }
     var current by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
 
-    // What each tab's list pane marks as open: the *deepest* route the list knows how to mark.
-    // Opening a second detail pushes rather than replaces (that is what the pane scaffold expects),
-    // so reading a fixed depth would freeze on whichever was opened first. Searching from the top
-    // down also still finds "Saved addresses" while its editor sits a level deeper.
+    // What each tab's list pane marks as open: the deepest route the list knows how to mark —
+    // searched from the top so "Saved addresses" stays lit while its editor sits a level deeper.
     val openRide =
         when (val key = ridesStack.lastOrNull { it is RideDetailRoute || it is MergedRideDetailRoute }) {
             is RideDetailRoute -> "r${key.id}"
@@ -283,7 +298,7 @@ fun RidesafeApp() {
                                         showBack = !twoPane,
                                         onOpen = {
                                             isTabSwitch = false
-                                            ridesStack.add(it)
+                                            openFromList(ridesStack, it)
                                         },
                                         onBack = {
                                             isTabSwitch = false
@@ -294,9 +309,15 @@ fun RidesafeApp() {
                                         viewModel = garageViewModel,
                                         selectedId = openVehicle,
                                         showBack = !twoPane,
-                                        onOpen = {
+                                        onOpen = { key ->
                                             isTabSwitch = false
-                                            garageStack.add(it)
+                                            // The edit form opens from inside the detail pane and
+                                            // stacks on top of its vehicle; the rest is list-level.
+                                            if (key is EditVehicleRoute) {
+                                                garageStack.add(key)
+                                            } else {
+                                                openFromList(garageStack, key)
+                                            }
                                         },
                                         onBack = {
                                             isTabSwitch = false
@@ -311,9 +332,15 @@ fun RidesafeApp() {
                                         savedAddressViewModel = savedAddressViewModel,
                                         selected = openSetting,
                                         showBack = !twoPane,
-                                        onOpen = {
+                                        onOpen = { key ->
                                             isTabSwitch = false
-                                            settingsStack.add(it)
+                                            // The address editor opens from inside the detail pane
+                                            // and stacks on top of its list; menu taps are list-level.
+                                            if (key in SettingsMenuRoutes) {
+                                                openFromList(settingsStack, key)
+                                            } else {
+                                                settingsStack.add(key)
+                                            }
                                         },
                                         onBack = {
                                             isTabSwitch = false
