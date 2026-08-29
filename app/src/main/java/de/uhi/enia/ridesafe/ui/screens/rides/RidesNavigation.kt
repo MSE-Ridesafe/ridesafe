@@ -103,7 +103,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             )
         }
     }
-    entry<AddRefuelRoute> { key ->
+    entry<AddRefuelRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = RIDES_SCENE)) { key ->
         val vehicles by viewModel.vehicles.collectAsState()
         RefuelFormScreen(
             vehicles = vehicles,
@@ -111,19 +111,19 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             onBack = { onBack(key) },
         )
     }
-    entry<EditRefuelRoute> { key ->
+    entry<EditRefuelRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = RIDES_SCENE)) { key ->
         val loaded by produceState<Result<de.uhi.enia.ridesafe.data.Refuel?>?>(initialValue = null, key.id) {
             value = runCatching { viewModel.refuel(key.id) }
         }
         when (val result = loaded) {
             null -> {
-                RefuelLoadingScreen(onBack = { onBack(key) })
+                RefuelLoadingScreen(onBack = { onBack(key) }, showBack = showBack)
             }
 
             else -> {
                 val refuel = result.getOrNull()
                 if (refuel == null) {
-                    RefuelUnavailableScreen(onBack = { onBack(key) })
+                    RefuelUnavailableScreen(onBack = { onBack(key) }, showBack = showBack)
                 } else {
                     val vehicles by viewModel.vehicles.collectAsState()
                     RefuelFormScreen(

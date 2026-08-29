@@ -461,6 +461,7 @@ fun RidesScreen(
                                                             row = nested,
                                                             selectionMode = selectionMode,
                                                             selected = key in selected,
+                                                            isOpen = key == selectedKey,
                                                             nested = true,
                                                             onClick = {
                                                                 if (selectionMode) toggle(key) else onOpenRefuel(nested.refuel.id)
@@ -479,6 +480,7 @@ fun RidesScreen(
                                                     row = timelineEntry.row,
                                                     selectionMode = selectionMode,
                                                     selected = timelineEntry.stableKey in selected,
+                                                    isOpen = timelineEntry.stableKey == selectedKey,
                                                     onClick = {
                                                         if (selectionMode) {
                                                             toggle(timelineEntry.stableKey)
@@ -990,6 +992,8 @@ internal fun RefuelTimelineRow(
     onLongClick: () -> Unit,
     nested: Boolean = false,
     showVehicle: Boolean = true,
+    // True while this refuel's editor fills the detail pane, mirroring LogbookRow's tint.
+    isOpen: Boolean = false,
 ) {
     val context = LocalContext.current
     // Regional conventions, not the in-app language's likely region (SET-07).
@@ -1008,7 +1012,11 @@ internal fun RefuelTimelineRow(
             Modifier
                 .then(if (nested) Modifier.padding(start = 24.dp) else Modifier)
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        colors =
+            ListItemDefaults.colors(
+                containerColor =
+                    if (isOpen) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+            ),
         leadingContent = {
             if (selectionMode) {
                 SelectionCircle(selected)

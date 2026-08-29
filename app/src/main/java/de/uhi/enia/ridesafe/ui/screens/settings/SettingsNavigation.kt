@@ -34,10 +34,12 @@ internal val SettingsMenuRoutes: Set<NavKey> =
     setOf(
         SettingsLanguageRoute,
         SettingsUnitsRoute,
+        SettingsCurrencyRoute,
         SavedAddressesRoute,
         SettingsAutoTrackRoute,
         SettingsReconnectGraceRoute,
         SettingsMinRideLengthRoute,
+        SettingsBackupImportRoute,
     )
 
 /**
@@ -82,7 +84,6 @@ fun EntryProviderScope<NavKey>.settingsEntries(
         onOpen = onOpen,
         onBack = onBack,
     )
-    // TODO: Add "showBack" and metadata for SettingsCurrencyRoute and SettingsBackupImportRoute
     entry<SettingsLanguageRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         LanguageSettingsScreen(onBack = { onBack(SettingsLanguageRoute) }, showBack = showBack)
     }
@@ -92,8 +93,8 @@ fun EntryProviderScope<NavKey>.settingsEntries(
             showBack = showBack,
         )
     }
-    entry<SettingsCurrencyRoute> { key ->
-        CurrencySettingsScreen(onBack = { onBack(key) })
+    entry<SettingsCurrencyRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) { key ->
+        CurrencySettingsScreen(onBack = { onBack(key) }, showBack = showBack)
     }
 
     entry<SettingsAutoTrackRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
@@ -114,7 +115,7 @@ fun EntryProviderScope<NavKey>.settingsEntries(
             showBack = showBack,
         )
     }
-    entry<SettingsBackupImportRoute> { key ->
-        RideBackupImportScreen(onBack = { onBack(key) })
+    entry<SettingsBackupImportRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) { key ->
+        RideBackupImportScreen(onBack = { onBack(key) }, showBack = showBack)
     }
 }

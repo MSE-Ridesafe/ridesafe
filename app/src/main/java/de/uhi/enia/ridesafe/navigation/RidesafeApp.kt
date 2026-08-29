@@ -62,6 +62,7 @@ import de.uhi.enia.ridesafe.ui.screens.garage.garageEntries
 import de.uhi.enia.ridesafe.ui.screens.home.HomeRoute
 import de.uhi.enia.ridesafe.ui.screens.home.HomeViewModel
 import de.uhi.enia.ridesafe.ui.screens.home.homeEntries
+import de.uhi.enia.ridesafe.ui.screens.rides.EditRefuelRoute
 import de.uhi.enia.ridesafe.ui.screens.rides.MergedRideDetailRoute
 import de.uhi.enia.ridesafe.ui.screens.rides.RideDetailRoute
 import de.uhi.enia.ridesafe.ui.screens.rides.RidesRoute
@@ -172,11 +173,13 @@ fun RidesafeApp() {
     // What each tab's list pane marks as open: the deepest route the list knows how to mark —
     // searched from the top so "Saved addresses" stays lit while its editor sits a level deeper.
     val openRide =
-        when (val key = ridesStack.lastOrNull { it is RideDetailRoute || it is MergedRideDetailRoute }) {
+        when (val key = ridesStack.lastOrNull { it is RideDetailRoute || it is MergedRideDetailRoute || it is EditRefuelRoute }) {
+            // Each maps to the matching TimelineEntry.stableKey.
             is RideDetailRoute -> "r${key.id}"
 
-            // matches LogbookEntry.key
             is MergedRideDetailRoute -> "g${key.groupId}"
+
+            is EditRefuelRoute -> "f${key.id}"
 
             else -> null
         }
@@ -323,9 +326,17 @@ fun RidesafeApp() {
                                         selectedKey = openRide,
                                         showBack = !twoPane,
                                         selectionDismissRequests = ridesTabReselections,
-                                        onOpen = {
+                                        onOpen = { key ->
                                             isTabSwitch = false
-                                            openFromList(ridesStack, it)
+                                            // A refuel opened while a ride detail is showing came
+                                            // from inside that detail (its attached-refuels list):
+                                            // it stacks so back returns to the ride. Everything
+                                            // else this tab opens is list-level and replaces.
+                                            val top = ridesStack.lastOrNull()
+                                            val overDetail =
+                                                key is EditRefuelRoute &&
+                                                    (top is RideDetailRoute || top is MergedRideDetailRoute)
+                                            if (overDetail) ridesStack.add(key) else openFromList(ridesStack, key)
                                         },
                                         onBack = { key ->
                                             isTabSwitch = false
