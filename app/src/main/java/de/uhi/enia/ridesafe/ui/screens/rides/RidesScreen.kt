@@ -230,9 +230,7 @@ fun RidesScreen(
                 onExportResultConsumed()
             }
 
-            RideExportState.Idle, RideExportState.Exporting -> {
-                Unit
-            }
+            RideExportState.Idle, RideExportState.Exporting -> {}
         }
     }
 
@@ -243,10 +241,10 @@ fun RidesScreen(
     val operationError = stringResource(R.string.refuel_association_error)
     val deleteError = stringResource(R.string.ride_delete_error)
     LaunchedEffect(logbookOperationState) {
-        when (val state = logbookOperationState) {
+        when (logbookOperationState) {
             is LogbookOperationState.Success -> {
                 val message =
-                    when (state.operation) {
+                    when (logbookOperationState.operation) {
                         LogbookOperation.ATTACHED -> attachSuccess
                         LogbookOperation.DETACHED -> detachSuccess
                         LogbookOperation.MERGED -> mergeSuccess
@@ -268,9 +266,7 @@ fun RidesScreen(
                 snackbarHostState.showSnackbar(message)
             }
 
-            LogbookOperationState.Idle, LogbookOperationState.Running -> {
-                Unit
-            }
+            LogbookOperationState.Idle, LogbookOperationState.Running -> {}
         }
     }
 

@@ -55,43 +55,6 @@ suspend fun reverseGeocode(
 }
 
 /**
- * Forward-geocodes a free-text [query] to a coordinate via the native [Geocoder] (async API), for
- * the saved-address editor's search field (ADR-04). Null when geocoding is unavailable, errors,
- * times out, the query is blank, or nothing resolves. Like [reverseGeocode] this hits a backend over
- * the network, so it fails gracefully (null) when offline — a deliberate networked exception.
- */
-suspend fun forwardGeocode(
-    context: Context,
-    query: String,
-): Pair<Double, Double>? {
-    if (!Geocoder.isPresent() || query.isBlank()) return null
-    val geocoder = Geocoder(context)
-    return withTimeoutOrNull(10_000.milliseconds) {
-        suspendCancellableCoroutine { cont ->
-            try {
-                geocoder.getFromLocationName(
-                    query,
-                    1,
-                    object : Geocoder.GeocodeListener {
-                        override fun onGeocode(addresses: MutableList<Address>) {
-                            if (cont.isActive) {
-                                cont.resume(addresses.firstOrNull()?.let { it.latitude to it.longitude })
-                            }
-                        }
-
-                        override fun onError(errorMessage: String?) {
-                            if (cont.isActive) cont.resume(null)
-                        }
-                    },
-                )
-            } catch (_: Exception) {
-                if (cont.isActive) cont.resume(null)
-            }
-        }
-    }
-}
-
-/**
  * Returns explicit choices for the saved-place docked search bar. Results are de-duplicated because
  * platform geocoders sometimes return the same street result with slightly different metadata.
  */

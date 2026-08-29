@@ -240,8 +240,6 @@ internal fun RideBackupImportScreen(
             )
         }
 
-        else -> {
-            Unit
-        }
+        else -> {}
     }
 }

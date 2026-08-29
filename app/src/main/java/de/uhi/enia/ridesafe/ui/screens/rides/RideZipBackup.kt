@@ -24,9 +24,9 @@ import de.uhi.enia.ridesafe.rides.processing.ROUTE_VERSION
 import de.uhi.enia.ridesafe.rides.processing.processedRouteFile
 import de.uhi.enia.ridesafe.rides.recording.RideSample
 import de.uhi.enia.ridesafe.rides.recording.ridesDir
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.intOrNull
@@ -43,7 +43,6 @@ import java.util.zip.GZIPInputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
-import kotlin.coroutines.coroutineContext
 
 internal const val RIDE_BACKUP_FORMAT_ID = "de.uhi.enia.ridesafe.selected-rides"
 internal const val RIDE_BACKUP_FORMAT_VERSION = 1
@@ -270,9 +269,9 @@ internal class RideZipBackup(
                     RideBackupArchiveValidator.validateManifest(manifest)
                     RideBackupArchive(manifest, sources)
                 }
-            coroutineContext.ensureActive()
+            currentCoroutineContext().ensureActive()
             writeRideBackupZip(destination, archive.manifest, archive.sources)
-            coroutineContext.ensureActive()
+            currentCoroutineContext().ensureActive()
             RideBackupArchiveValidator.validate(destination)
         } finally {
             snapshotDirectory.deleteRecursively()
@@ -312,7 +311,7 @@ internal class RideZipBackup(
     ): List<RideBackupSourceFile> {
         val sources = mutableListOf<RideBackupSourceFile>()
         for (ride in rides) {
-            coroutineContext.ensureActive()
+            currentCoroutineContext().ensureActive()
             val rawSource = File(ridesDir(app), ride.sampleFile)
             if (!rawSource.isFile) throw RideBackupValidationException("Required raw samples are missing for ride ${ride.id}")
             sources += snapshotIncludedFile(ride.id, RAW_ROLE, rawSource, directory)
@@ -427,7 +426,7 @@ internal suspend fun writeRideBackupZip(
     manifest: RideBackupManifest,
     sources: List<RideBackupSourceFile>,
 ) {
-    coroutineContext.ensureActive()
+    currentCoroutineContext().ensureActive()
     RideBackupArchiveValidator.validateManifest(manifest)
     val included = sources.filter { it.metadata.status == INCLUDED }.associateBy { it.metadata.path }
     require(included.size == sources.count { it.metadata.status == INCLUDED }) { "Duplicate source paths" }
@@ -442,7 +441,7 @@ internal suspend fun writeRideBackupZip(
     ZipOutputStream(BufferedOutputStream(destination.outputStream())).use { zip ->
         putBytes(zip, MANIFEST_ENTRY, encodeRideBackupManifest(manifest).toByteArray(Charsets.UTF_8))
         for (file in manifest.files.filter { it.status == INCLUDED }.sortedBy(BackupFile::path)) {
-            coroutineContext.ensureActive()
+            currentCoroutineContext().ensureActive()
             val source = included.getValue(file.path)
             val entry = ZipEntry(file.path).apply { time = 0L }
             if (file.contentEncoding == "gzip") {
@@ -736,7 +735,7 @@ private suspend fun copyCancellable(
 ) {
     val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
     while (true) {
-        coroutineContext.ensureActive()
+        currentCoroutineContext().ensureActive()
         val count = input.read(buffer)
         if (count < 0) break
         output.write(buffer, 0, count)

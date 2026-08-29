@@ -37,6 +37,7 @@ import de.uhi.enia.ridesafe.util.formattingLocale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -239,7 +240,7 @@ class RideExporter(
                 db.savedAddressDao().byIds(savedAddressIds).associateBy(SavedAddress::id)
             }
 
-        coroutineContext.ensureActive()
+        currentCoroutineContext().ensureActive()
         return buildExportJourneys(
             requests,
             ridesById.values.toList(),

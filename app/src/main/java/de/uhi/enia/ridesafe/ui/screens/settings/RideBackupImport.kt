@@ -25,6 +25,7 @@ import de.uhi.enia.ridesafe.ui.screens.rides.BackupVehicle
 import de.uhi.enia.ridesafe.ui.screens.rides.RideBackupArchiveValidator
 import de.uhi.enia.ridesafe.ui.screens.rides.RideBackupManifest
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -163,7 +164,7 @@ internal class RideBackupImporter(
         // invariant even if multiple legacy archive records collapse onto the same physical car.
         val ordered =
             manifest.vehicles.sortedWith(
-                compareBy<BackupVehicle>({ it.archiveId != primaryArchiveId }, { vehicleFreshness(it, manifest) }, { it.archiveId }),
+                compareBy({ it.archiveId != primaryArchiveId }, { vehicleFreshness(it, manifest) }, { it.archiveId }),
             )
         val mappings = mutableMapOf<Long, Long>()
         val insertedArchiveIds = mutableSetOf<Long>()
@@ -279,7 +280,7 @@ internal class RideBackupImporter(
         val root = ridesDir(app).canonicalFile
         val matches = mutableMapOf<String, Ride>()
         rides.filter { it.endedAtEpochMs != null }.sortedBy(Ride::id).forEach { ride ->
-            coroutineContext.ensureActive()
+            currentCoroutineContext().ensureActive()
             val candidate = runCatching { File(root, ride.sampleFile).canonicalFile }.getOrNull()
             if (candidate?.parentFile != root || !candidate.isFile) return@forEach
             val hash = sha256(candidate)
@@ -380,7 +381,7 @@ internal class RideBackupImporter(
     ) {
         val destinationDirectory = ridesDir(app).apply { mkdirs() }
         manifest.rides.filter { it.archiveId in insertedRideArchiveIds }.forEach { ride ->
-            coroutineContext.ensureActive()
+            currentCoroutineContext().ensureActive()
             val raw = manifest.file(ride.archiveId, "raw_samples")
             publish(staged.getValue(raw.path), File(destinationDirectory, sampleNames.getValue(ride.archiveId)), published)
             val route = manifest.file(ride.archiveId, "processed_route")
@@ -412,7 +413,7 @@ internal class RideBackupImporter(
         file.inputStream().buffered().use { input ->
             val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
             while (true) {
-                coroutineContext.ensureActive()
+                currentCoroutineContext().ensureActive()
                 val count = input.read(buffer)
                 if (count < 0) break
                 digest.update(buffer, 0, count)
@@ -430,7 +431,7 @@ internal class RideBackupImporter(
             manifest.files
                 .filter { it.status == "included" }
                 .mapIndexed { index, descriptor ->
-                    coroutineContext.ensureActive()
+                    currentCoroutineContext().ensureActive()
                     val target = File(staging, "entry_$index")
                     zip.getInputStream(zip.getEntry(descriptor.path)).use { input ->
                         target.outputStream().buffered().use { output -> copyCancellable(input, output) }
@@ -461,7 +462,7 @@ private suspend fun copyCancellable(
 ) {
     val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
     while (true) {
-        coroutineContext.ensureActive()
+        currentCoroutineContext().ensureActive()
         val count = input.read(buffer)
         if (count < 0) return
         output.write(buffer, 0, count)

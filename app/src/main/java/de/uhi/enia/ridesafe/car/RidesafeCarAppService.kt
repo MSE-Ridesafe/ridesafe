@@ -35,6 +35,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Ridesafe on the Android Auto screen (TRK-07): start a ride, stop it, throw it away, and see how
@@ -104,7 +105,7 @@ private class RideControlScreen(
                         invalidate()
                         // Idle: paint once and wait for the next start/stop instead of polling.
                         if (running == null) break
-                        delay(1_000) // ponytail: 1 Hz is the coarsest tick a seconds display can have
+                        delay(1_000.milliseconds) // ponytail: 1 Hz is the coarsest tick a seconds display can have
                     }
                 }
             }
