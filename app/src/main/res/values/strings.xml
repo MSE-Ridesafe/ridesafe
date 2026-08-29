@@ -505,4 +505,7 @@
     <string name="onboarding_scores_body">Every analyzed ride earns a safety score — braking, acceleration and cornering, each 0–100 — and an efficiency level for smooth, economical driving. Both build up on your dashboard over time.</string>
     <string name="onboarding_scores_sample_note">Sample preview — your own scores appear after your first recorded rides.</string>
     <string name="onboarding_done_cta">Get started</string>
+    <string name="settings_category_help">Help</string>
+    <string name="settings_onboarding_replay_title">Show the introduction again</string>
+    <string name="settings_onboarding_replay_summary">Replay the first-launch setup</string>
 </resources>

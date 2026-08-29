@@ -59,6 +59,7 @@ import de.uhi.enia.ridesafe.rides.trigger.AutoTrackMode
 import de.uhi.enia.ridesafe.rides.trigger.AutoTrackPrefs
 import de.uhi.enia.ridesafe.rides.trigger.applyAutoTrackMode
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.onboarding.OnboardingPrefs
 import de.uhi.enia.ridesafe.ui.theme.ThemePrefs
 import de.uhi.enia.ridesafe.ui.theme.ThemeSetting
 import de.uhi.enia.ridesafe.util.CurrencyPrefs
@@ -210,6 +211,21 @@ fun SettingsScreen(
                         subtitle = stringResource(R.string.settings_backup_import_summary),
                         isOpen = selected == SettingsBackupImportRoute,
                         onClick = onOpenBackupImport,
+                    )
+                }
+            }
+            item {
+                SettingsCategoryHeader(text = stringResource(R.string.settings_category_help))
+            }
+            item {
+                SettingsGroupCard {
+                    // An action, not a sub-screen: the wizard replaces the whole app UI (ONB-07).
+                    SettingsListItem(
+                        iconName = "school",
+                        title = stringResource(R.string.settings_onboarding_replay_title),
+                        subtitle = stringResource(R.string.settings_onboarding_replay_summary),
+                        isOpen = false,
+                        onClick = { OnboardingPrefs.replayRequested = true },
                     )
                 }
             }
