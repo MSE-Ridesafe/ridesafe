@@ -489,4 +489,7 @@
     <string name="onboarding_car_intro">Jede Fahrt gehört zu einem Fahrzeug. Leg dein Auto in der Garage an — du kannst es dort jederzeit bearbeiten.</string>
     <string name="onboarding_bluetooth_title">Dein Auto erkennen</string>
     <string name="onboarding_bluetooth_body">Verknüpfe das Bluetooth deines Autos, damit Ridesafe erkennt, wann du damit fährst, und Fahrten automatisch zuordnet. Wähle aus den bereits mit diesem Handy gekoppelten Geräten — du musst dafür nicht im Auto sitzen.</string>
+    <string name="onboarding_autotrack_title">Fahrten automatisch aufzeichnen</string>
+    <string name="onboarding_autotrack_body">Mit automatischer Aufzeichnung beginnt eine Fahrt, sobald sich dein verknüpftes Gerät verbindet, und endet, wenn du parkst — ganz ohne Tippen. Dafür sind einige Berechtigungen nötig, die nach dem Aktivieren unten erscheinen. Alles davon lässt sich später in den Einstellungen ändern.</string>
+    <string name="onboarding_autotrack_toggle">Automatische Aufzeichnung aktivieren</string>
 </resources>

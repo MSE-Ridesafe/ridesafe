@@ -27,10 +27,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -52,13 +55,19 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.VehicleDao
 import de.uhi.enia.ridesafe.navigation.RidesafeApp
 import de.uhi.enia.ridesafe.permissions.AppPermission
+import de.uhi.enia.ridesafe.permissions.PermissionAlertCard
+import de.uhi.enia.ridesafe.permissions.PermissionState
+import de.uhi.enia.ridesafe.rides.trigger.AutoTrackMode
+import de.uhi.enia.ridesafe.rides.trigger.AutoTrackPrefs
 import de.uhi.enia.ridesafe.rides.trigger.BluetoothDevices
+import de.uhi.enia.ridesafe.rides.trigger.applyAutoTrackMode
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.screens.garage.BluetoothPickerDialog
 import de.uhi.enia.ridesafe.ui.screens.garage.TrackingCard
@@ -78,15 +87,19 @@ enum class OnboardingStep {
     WELCOME,
     CAR,
     BLUETOOTH,
+    AUTO_TRACK,
 }
 
+/** The steps that act on the created car, and so drop out when the car step was skipped. */
+private val VehicleBoundSteps = setOf(OnboardingStep.BLUETOOTH, OnboardingStep.AUTO_TRACK)
+
 /**
- * The steps for the current state — pure so the sequencing is unit-testable. The Bluetooth
- * step maps devices *to a vehicle* (GAR-08), so without a created car it has nothing to act on
- * and drops out; skipping the car step therefore skips it too.
+ * The steps for the current state — pure so the sequencing is unit-testable. The Bluetooth and
+ * auto-record steps act *on a vehicle* (GAR-08 mapping, TRK-02 detection), so without a created
+ * car they have nothing to work with; skipping the car step therefore skips them too.
  */
 fun onboardingSteps(hasVehicle: Boolean): List<OnboardingStep> =
-    OnboardingStep.entries.filter { hasVehicle || it != OnboardingStep.BLUETOOTH }
+    OnboardingStep.entries.filter { hasVehicle || it !in VehicleBoundSteps }
 
 /** The step after [current], or null when [current] is the last — i.e. advancing finishes. */
 fun stepAfter(
@@ -212,6 +225,8 @@ fun OnboardingFlow(onFinished: () -> Unit) {
                             vehicleId = requireNotNull(vehicleId),
                             onContinue = ::advance,
                         )
+
+                    OnboardingStep.AUTO_TRACK -> AutoTrackPage(onContinue = ::advance)
                 }
             }
         }
@@ -433,6 +448,59 @@ private fun BluetoothPage(
             },
             onDismiss = { showPicker = false },
         )
+    }
+}
+
+/**
+ * ONB-04: opt into automatic recording (SET-06) — the one step that requests permissions, and
+ * only after the user flips the switch, keeping the app's ask-when-enabled rule (NFR-05). The
+ * existing Settings alert card handles the actual granting: request order, the settings
+ * deep-link for background location, and the spent-dialog fallback. Enabling picks the
+ * PAIRED_ONLY mode (the SET-06 default recommendation); the mode screen in Settings has the rest.
+ */
+@Composable
+private fun AutoTrackPage(onContinue: () -> Unit) {
+    val context = LocalContext.current
+    val enabled = AutoTrackPrefs.get(context) != AutoTrackMode.OFF
+
+    // Grants can land in the system settings app (background location); re-read on return.
+    LifecycleResumeEffect(enabled) {
+        PermissionState.refresh(context)
+        onPauseOrDispose { }
+    }
+
+    StepPage(primaryLabel = stringResource(R.string.onboarding_continue), onPrimary = onContinue) {
+        StepIntro(
+            symbolName = "autoplay",
+            title = stringResource(R.string.onboarding_autotrack_title),
+            body = stringResource(R.string.onboarding_autotrack_body),
+        )
+        Card(
+            shape = MaterialTheme.shapes.extraLarge,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.onboarding_autotrack_toggle),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = { turnOn ->
+                        applyAutoTrackMode(context, if (turnOn) AutoTrackMode.PAIRED_ONLY else AutoTrackMode.OFF)
+                        PermissionState.refresh(context)
+                    },
+                )
+            }
+        }
+        // Renders only while something is missing, so granting everything clears the page down
+        // to its switch — the built-in "you're done" signal.
+        PermissionAlertCard()
     }
 }
 

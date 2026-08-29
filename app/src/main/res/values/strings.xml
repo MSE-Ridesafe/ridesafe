@@ -489,4 +489,7 @@
     <string name="onboarding_car_intro">Every ride belongs to a vehicle. Add your car to the garage — you can edit it there anytime.</string>
     <string name="onboarding_bluetooth_title">Recognize your car</string>
     <string name="onboarding_bluetooth_body">Link your car\'s Bluetooth so Ridesafe can tell when you\'re driving it and assign rides automatically. Pick from the devices already paired with this phone — you don\'t need to be in the car.</string>
+    <string name="onboarding_autotrack_title">Record rides automatically</string>
+    <string name="onboarding_autotrack_body">With automatic recording on, a ride starts when your linked device connects and ends when you park — no taps needed. It requires a few permissions, which appear below once enabled. You can change all of this in Settings later.</string>
+    <string name="onboarding_autotrack_toggle">Enable automatic recording</string>
 </resources>
