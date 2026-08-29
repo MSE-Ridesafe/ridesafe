@@ -200,6 +200,8 @@ fun SavedAddressFormScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onDelete: (() -> Unit)? = null,
+    // The onboarding shows a back arrow here: its onBack retreats a step, not a close.
+    navigationSymbol: String = "close",
 ) {
     val unitSystem = currentUnitSystem()
     val context = LocalContext.current
@@ -353,7 +355,7 @@ fun SavedAddressFormScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        MaterialSymbol(symbolName = "close", contentDescription = stringResource(R.string.action_back))
+                        MaterialSymbol(symbolName = navigationSymbol, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 actions = {

@@ -57,6 +57,8 @@ private const val KM_PER_MILE = 1.609344
 /**
  * Add/edit form for a vehicle. [existing] null = add mode (GAR-02); non-null = edit mode
  * (GAR-03), with fields pre-filled and a delete action wired through [onDelete] (GAR-04).
+ * [navigationSymbol] lets a host restyle the cancel affordance — the onboarding shows a back
+ * arrow, since there [onBack] retreats a step rather than closing a screen.
  */
 @Composable
 fun VehicleFormScreen(
@@ -65,6 +67,7 @@ fun VehicleFormScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onDelete: (() -> Unit)? = null,
+    navigationSymbol: String = "close",
 ) {
     val unitSystem = currentUnitSystem()
     val metric = usesMetric(unitSystem)
@@ -134,7 +137,7 @@ fun VehicleFormScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         MaterialSymbol(
-                            symbolName = "close",
+                            symbolName = navigationSymbol,
                             contentDescription = stringResource(R.string.action_back),
                         )
                     }

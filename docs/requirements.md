@@ -250,6 +250,10 @@ the phone already has.*
   navigation shell in MainActivity), embedding the real forms — vehicle add (GAR-02), the address
   editor (ADR-03/04) — so onboarding creates exactly what those screens would. Steps that act on the
   created car (ONB-03/04) drop out when the car step is skipped.
+- **Back is one mechanic worn three ways:** the header's arrow, the embedded forms' cancel (restyled
+  as a back arrow inside the wizard), and the system back gesture all retreat one step; skipping
+  forward lives only in the header. Returning to the car step re-opens the created car for editing
+  (GAR-03) rather than offering a second blank form.
 - **Permissions stay opt-in:** nothing is requested up front (the NFR-05/SET-06 rule); flipping the
   auto-record switch applies the paired-only mode and surfaces the same permission card Settings
   uses, including the background-location settings deep-link.

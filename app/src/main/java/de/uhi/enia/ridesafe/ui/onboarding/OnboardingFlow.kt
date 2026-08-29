@@ -81,6 +81,7 @@ import de.uhi.enia.ridesafe.ui.screens.settings.SavedAddressFormScreen
 import de.uhi.enia.ridesafe.ui.screens.settings.SavedAddressViewModel
 import de.uhi.enia.ridesafe.ui.theme.RidesafeTheme
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
 // Matches the app shell's sub-route slide (RidesafeApp.SLIDE_MS) so the wizard moves like the app.
@@ -165,8 +166,10 @@ fun OnboardingGate() {
 /**
  * First-launch setup wizard (ONB-01): welcome, then one step per setup flow, every one of them
  * skippable (ONB-07). Steps embed the app's real forms rather than re-implementing them, so
- * whatever is created here is exactly what the matching screen would have created. [onFinished]
- * fires on completing, on skipping out, and on the header's close — finishing is the only exit.
+ * whatever is created here is exactly what the matching screen would have created. Backwards
+ * navigation is one mechanic worn three ways — the header's arrow, the embedded forms' cancel,
+ * and the system back gesture all retreat one step. [onFinished] fires on completing, on
+ * skipping out, and on the header's close — finishing is the only exit.
  */
 @Composable
 fun OnboardingFlow(onFinished: () -> Unit) {
@@ -189,6 +192,13 @@ fun OnboardingFlow(onFinished: () -> Unit) {
         stepAfter(from, hasVehicle = vehicleId != null)?.let { step = it } ?: onFinished()
     }
 
+    // The same guard in the other direction — the header's arrow and the embedded forms'
+    // cancel both retreat one step, mirroring what the system back gesture does.
+    fun retreatFrom(from: OnboardingStep) {
+        if (step != from) return
+        stepBefore(from, hasVehicle = vehicleId != null)?.let { step = it }
+    }
+
     // System back walks the wizard, not out of the app, except on the first step. A stale
     // second back is harmless here: before the first step it resolves to null and stops.
     BackHandler(enabled = step != OnboardingStep.WELCOME) {
@@ -203,6 +213,7 @@ fun OnboardingFlow(onFinished: () -> Unit) {
                 WizardHeader(
                     steps = onboardingSteps(hasVehicle = vehicleId != null),
                     current = shown,
+                    onBack = { retreatFrom(shown) },
                     onSkip = { advanceFrom(shown) },
                     onClose = onFinished,
                 )
@@ -230,18 +241,25 @@ fun OnboardingFlow(onFinished: () -> Unit) {
 
                     OnboardingStep.CAR ->
                         CarPage(
+                            vehicleDao = vehicleDao,
+                            vehicleId = vehicleId,
                             onSave = { vehicle, makePrimary ->
                                 if (!savingCar) {
                                     savingCar = true
                                     scope.launch {
-                                        vehicleId = vehicleDao.addVehicle(vehicle, makePrimary)
+                                        if (vehicle.id == 0L) {
+                                            vehicleId = vehicleDao.addVehicle(vehicle, makePrimary)
+                                        } else {
+                                            // A back-visit edits the created car (GAR-03 path).
+                                            vehicleDao.updateVehicle(vehicle, makePrimary)
+                                        }
                                         // Advance only once the row exists — the next step reads it.
                                         advanceFrom(OnboardingStep.CAR)
                                         savingCar = false
                                     }
                                 }
                             },
-                            onSkip = { advanceFrom(OnboardingStep.CAR) },
+                            onBack = { retreatFrom(OnboardingStep.CAR) },
                         )
 
                     OnboardingStep.BLUETOOTH ->
@@ -256,7 +274,7 @@ fun OnboardingFlow(onFinished: () -> Unit) {
                     OnboardingStep.PLACE ->
                         PlacePage(
                             onSaved = { advanceFrom(OnboardingStep.PLACE) },
-                            onSkip = { advanceFrom(OnboardingStep.PLACE) },
+                            onBack = { retreatFrom(OnboardingStep.PLACE) },
                         )
 
                     OnboardingStep.RECORDING -> RecordingPage(onContinue = { advanceFrom(OnboardingStep.RECORDING) })
@@ -268,11 +286,12 @@ fun OnboardingFlow(onFinished: () -> Unit) {
     }
 }
 
-/** Step dots, a skip and a leave-the-flow close — the wizard's one row of chrome (ONB-07). */
+/** Back arrow, step dots, a skip and a leave-the-flow close — the wizard's one row of chrome (ONB-07). */
 @Composable
 private fun WizardHeader(
     steps: List<OnboardingStep>,
     current: OnboardingStep,
+    onBack: () -> Unit,
     onSkip: () -> Unit,
     onClose: () -> Unit,
 ) {
@@ -280,11 +299,21 @@ private fun WizardHeader(
     val progressLabel = stringResource(R.string.onboarding_step_progress, position, steps.size)
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
     ) {
+        IconButton(onClick = onBack) {
+            MaterialSymbol(
+                symbolName = "arrow_back",
+                contentDescription = stringResource(R.string.action_back),
+            )
+        }
         Row(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.weight(1f).semantics { contentDescription = progressLabel },
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .padding(start = 8.dp)
+                    .semantics { contentDescription = progressLabel },
         ) {
             steps.forEach { s ->
                 Box(
@@ -397,14 +426,23 @@ private fun WelcomePage(
 
 /**
  * ONB-02: create the first car (GAR-02) with the garage's real add form, so the fields, the
- * validation and the primary handling are exactly the Garage tab's. The form's own close (its
- * cancel) skips the step.
+ * validation and the primary handling are exactly the Garage tab's. The form's cancel wears a
+ * back arrow and retreats a step; skipping forward lives in the header. Coming back after
+ * saving re-opens the created car for editing (GAR-03) — a second blank form here would only
+ * mint duplicate cars. Renders nothing for the frames the re-opened car takes to load, since
+ * the form snapshots its initial fields.
  */
 @Composable
 private fun CarPage(
+    vehicleDao: VehicleDao,
+    vehicleId: Long?,
     onSave: (vehicle: Vehicle, makePrimary: Boolean) -> Unit,
-    onSkip: () -> Unit,
+    onBack: () -> Unit,
 ) {
+    val existing by remember(vehicleId) {
+        vehicleId?.let { vehicleDao.observe(it) } ?: flowOf(null)
+    }.collectAsState(initial = null)
+    if (vehicleId != null && existing == null) return
     Column(Modifier.fillMaxSize()) {
         Text(
             text = stringResource(R.string.onboarding_car_intro),
@@ -413,9 +451,10 @@ private fun CarPage(
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
         )
         VehicleFormScreen(
-            existing = null,
+            existing = existing,
             onSave = onSave,
-            onBack = onSkip,
+            onBack = onBack,
+            navigationSymbol = "arrow_back",
             modifier = Modifier.weight(1f),
         )
     }
@@ -548,7 +587,7 @@ private fun AutoTrackPage(onContinue: () -> Unit) {
 @Composable
 private fun PlacePage(
     onSaved: () -> Unit,
-    onSkip: () -> Unit,
+    onBack: () -> Unit,
 ) {
     val viewModel: SavedAddressViewModel = viewModel()
     val addresses by viewModel.addresses.collectAsState()
@@ -577,7 +616,8 @@ private fun PlacePage(
                     onSaved()
                 }
             },
-            onBack = onSkip,
+            onBack = onBack,
+            navigationSymbol = "arrow_back",
             modifier = Modifier.weight(1f),
         )
     }
