@@ -83,7 +83,7 @@ import de.uhi.enia.ridesafe.util.formatDuration
 import de.uhi.enia.ridesafe.util.formatDurationMs
 import de.uhi.enia.ridesafe.util.formatTimeOfDay
 import de.uhi.enia.ridesafe.util.formattingLocale
-import de.uhi.enia.ridesafe.util.rideDay
+import de.uhi.enia.ridesafe.util.toLocalDate
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.time.LocalDate
@@ -374,7 +374,7 @@ fun RidesScreen(
                 // One card per calendar day; entries arrive newest-first, so insertion order gives newest day
                 // first, newest entry first within each day.
                 val groups =
-                    remember(visibleTimeline) { visibleTimeline.groupByTo(LinkedHashMap()) { rideDay(it.sortEpochMs) } }
+                    remember(visibleTimeline) { visibleTimeline.groupByTo(LinkedHashMap()) { it.sortEpochMs.toLocalDate() } }
                 val today = LocalDate.now()
 
                 LazyColumn(

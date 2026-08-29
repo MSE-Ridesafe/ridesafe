@@ -3,8 +3,8 @@ package de.uhi.enia.ridesafe.domain
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.SafetyScore
 import de.uhi.enia.ridesafe.rides.processing.score.aggregateScore
+import de.uhi.enia.ridesafe.util.toLocalDate
 import java.time.DayOfWeek
-import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
@@ -98,5 +98,3 @@ fun allTimeSafetyScoreHistory(
         aggregateScore(soFar)?.let { day to it.total }
     }
 }
-
-private fun Long.toLocalDate(zone: ZoneId): LocalDate = Instant.ofEpochMilli(this).atZone(zone).toLocalDate()

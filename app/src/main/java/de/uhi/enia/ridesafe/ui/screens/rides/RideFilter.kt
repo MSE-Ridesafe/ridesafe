@@ -6,7 +6,7 @@ import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.util.formatDuration
 import de.uhi.enia.ridesafe.util.formatDurationMs
 import de.uhi.enia.ridesafe.util.formatTimeOfDay
-import de.uhi.enia.ridesafe.util.rideDay
+import de.uhi.enia.ridesafe.util.toLocalDate
 import java.text.Normalizer
 import java.util.Locale
 
@@ -228,7 +228,7 @@ private fun dateTerms(
             epochMs,
             DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_NUMERIC_DATE or DateUtils.FORMAT_SHOW_YEAR,
         )
-    return "$long $numeric ${rideDay(epochMs)}"
+    return "$long $numeric ${epochMs.toLocalDate()}"
 }
 
 private fun MutableList<String>.put(value: String?) {

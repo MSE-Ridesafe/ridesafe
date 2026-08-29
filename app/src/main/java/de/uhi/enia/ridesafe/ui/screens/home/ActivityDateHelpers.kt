@@ -1,11 +1,13 @@
 package de.uhi.enia.ridesafe.ui.screens.home
 
 import android.text.format.DateFormat
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 
-fun startOfCalendarWeek(day: LocalDate): LocalDate = day.minusDays((day.dayOfWeek.value - 1).toLong())
+fun startOfCalendarWeek(day: LocalDate): LocalDate = day.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 
 fun buildSevenDayActivity(
     activityByDay: Map<LocalDate, ActivityBar>,

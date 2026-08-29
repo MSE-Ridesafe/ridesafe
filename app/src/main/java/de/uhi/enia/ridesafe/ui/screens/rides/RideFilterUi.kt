@@ -76,7 +76,7 @@ import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
-import de.uhi.enia.ridesafe.util.rideDay
+import de.uhi.enia.ridesafe.util.toLocalDate
 import de.uhi.enia.ridesafe.util.usesMetric
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -442,7 +442,7 @@ fun RideFilterSheet(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     DateBoundButton(
                         label = stringResource(R.string.rides_filter_date_from),
-                        day = filter.fromEpochMs?.let { rideDay(it) },
+                        day = filter.fromEpochMs?.let { it.toLocalDate() },
                         modifier = Modifier.weight(1f),
                         // Inclusive lower bound: the picked day from its first millisecond.
                         onPicked = { onFilterChange(filter.copy(fromEpochMs = it?.startOfDayMs())) },
@@ -450,7 +450,7 @@ fun RideFilterSheet(
                     DateBoundButton(
                         label = stringResource(R.string.rides_filter_date_to),
                         // Stored exclusive (start of the next day), so the day picked is the one before.
-                        day = filter.toEpochMs?.let { rideDay(it - 1) },
+                        day = filter.toEpochMs?.let { (it - 1).toLocalDate() },
                         modifier = Modifier.weight(1f),
                         onPicked = { onFilterChange(filter.copy(toEpochMs = it?.plusDays(1)?.startOfDayMs())) },
                     )
@@ -716,8 +716,8 @@ private fun dateChipLabel(
     context: Context,
     filter: RideFilter,
 ): String {
-    val from = filter.fromEpochMs?.let { formatFilterDate(context, rideDay(it)) }
-    val to = filter.toEpochMs?.let { formatFilterDate(context, rideDay(it - 1)) }
+    val from = filter.fromEpochMs?.let { formatFilterDate(context, it.toLocalDate()) }
+    val to = filter.toEpochMs?.let { formatFilterDate(context, (it - 1).toLocalDate()) }
     return when {
         from != null && to != null -> context.getString(R.string.rides_filter_chip_date_range, from, to)
         from != null -> context.getString(R.string.rides_filter_chip_date_from, from)
