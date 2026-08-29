@@ -6,6 +6,7 @@ import de.uhi.enia.ridesafe.rides.recording.ServiceRideRecorder
 import de.uhi.enia.ridesafe.rides.trigger.AutoTrackPrefs
 import de.uhi.enia.ridesafe.rides.trigger.AutoTracking
 import de.uhi.enia.ridesafe.rides.trigger.applyAutoTrackMode
+import de.uhi.enia.ridesafe.util.localeAppContext
 
 /**
  * Re-arms activity recognition on process start (the Bluetooth ACL receiver is a manifest
@@ -15,6 +16,8 @@ import de.uhi.enia.ridesafe.rides.trigger.applyAutoTrackMode
 class RidesafeApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        // Lets the context-free formatters ask LocaleManager for the device locale (SET-07/08).
+        localeAppContext = this
         applyAutoTrackMode(this, AutoTrackPrefs.get(this))
         // Wire the auto-tracking trigger to ride recording: a mapped-device connect/disconnect now
         // starts/stops a foreground recording service (TRK-01/TRK-05).

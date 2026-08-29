@@ -33,6 +33,7 @@ import de.uhi.enia.ridesafe.util.UnitPrefs
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDurationMs
+import de.uhi.enia.ridesafe.util.formattingLocale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -494,7 +495,7 @@ private class AndroidRideExportValueFormatter(
     context: Context,
     private val units: UnitSystemSetting,
 ) : RideExportValueFormatter {
-    private val locale = context.resources.configuration.locales[0] ?: Locale.getDefault()
+    private val locale = formattingLocale()
     private val dateFormat = DateFormat.getDateInstance(DateFormat.MEDIUM, locale)
     private val timeFormat = DateFormat.getTimeInstance(DateFormat.SHORT, locale)
 
@@ -689,7 +690,7 @@ internal class RidePdfReport(
 
     private fun localizedDate(date: Date): String = DateFormat.getDateInstance(DateFormat.MEDIUM, locale()).format(date)
 
-    private fun locale(): Locale = context.resources.configuration.locales[0] ?: Locale.getDefault()
+    private fun locale(): Locale = formattingLocale()
 
     private inner class PageWriter(
         private val document: PdfDocument,

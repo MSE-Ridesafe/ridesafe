@@ -16,7 +16,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -30,7 +29,6 @@ import de.uhi.enia.ridesafe.util.formatOdometer
 fun VehicleCard(vehicle: Vehicle?) {
     val unitSystem = currentUnitSystem()
     val context = LocalContext.current
-    val locale = LocalLocale.current.platformLocale
     Card(
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
@@ -81,7 +79,7 @@ fun VehicleCard(vehicle: Vehicle?) {
                     )
                     InfoChip(
                         label = stringResource(R.string.home_vehicle_fuel_consumption),
-                        value = formatFuelConsumption(context, vehicle.fuelEconomy, locale),
+                        value = formatFuelConsumption(context, vehicle.fuelEconomy),
                         modifier = Modifier.weight(1f),
                     )
                 }

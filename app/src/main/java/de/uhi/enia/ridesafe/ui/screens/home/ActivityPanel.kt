@@ -29,12 +29,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.util.formattingLocale
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -43,7 +43,9 @@ import java.time.LocalDate
 fun ActivitySection(activityByDay: Map<LocalDate, ActivityBar>) {
     var selectedMetric by rememberSaveable { mutableStateOf(ActivityChartMetric.DISTANCE) }
     var startDayOffset by rememberSaveable { mutableStateOf(0) }
-    val locale = LocalLocale.current.platformLocale
+    // The region's conventions, not the in-app language's — a device set to English in
+    // Germany still reads "25.08." here (see docs/regional-formatting.md).
+    val locale = formattingLocale()
     val today = LocalDate.now()
     val initialMonday = startOfCalendarWeek(today)
     val selectedStartDay = initialMonday.plusDays(startDayOffset.toLong())

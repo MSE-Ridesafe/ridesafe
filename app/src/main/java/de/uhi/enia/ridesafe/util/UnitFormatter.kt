@@ -66,21 +66,6 @@ object UnitPrefs {
 @Composable
 fun currentUnitSystem(): UnitSystemSetting = UnitPrefs.get(LocalContext.current)
 
-fun getFormattingLocale(setting: UnitSystemSetting): java.util.Locale =
-    if (setting == UnitSystemSetting.AUTOMATIC) {
-        val systemLocales =
-            android.content.res.Resources
-                .getSystem()
-                .configuration.locales
-        if (!systemLocales.isEmpty) {
-            systemLocales.get(0)
-        } else {
-            java.util.Locale.getDefault()
-        }
-    } else {
-        java.util.Locale.getDefault()
-    }
-
 fun isMetric(locale: java.util.Locale): Boolean {
     val msExtension = locale.getUnicodeLocaleType("ms")
     if (msExtension != null) {
@@ -97,14 +82,14 @@ fun usesMetric(setting: UnitSystemSetting): Boolean =
     when (setting) {
         UnitSystemSetting.METRIC -> true
         UnitSystemSetting.IMPERIAL -> false
-        UnitSystemSetting.AUTOMATIC -> isMetric(getFormattingLocale(setting))
+        UnitSystemSetting.AUTOMATIC -> isMetric(formattingLocale())
     }
 
 fun formatDistance(
     meters: Double,
     setting: UnitSystemSetting,
 ): String {
-    val formatLocale = getFormattingLocale(setting)
+    val formatLocale = formattingLocale()
     val isMetric = usesMetric(setting)
     val (value, unit) =
         if (isMetric) {
@@ -129,7 +114,7 @@ fun formatShortDistance(
     meters: Double,
     setting: UnitSystemSetting,
 ): String {
-    val formatLocale = getFormattingLocale(setting)
+    val formatLocale = formattingLocale()
     val (value, unit) =
         if (usesMetric(setting)) {
             meters.roundToLong() to MeasureUnit.METER
@@ -149,7 +134,7 @@ fun formatSpeed(
     metersPerSecond: Double,
     setting: UnitSystemSetting,
 ): String {
-    val formatLocale = getFormattingLocale(setting)
+    val formatLocale = formattingLocale()
     val (value, unitRes) =
         if (usesMetric(setting)) {
             metersPerSecond * 3.6 to R.string.unit_kmh
@@ -167,7 +152,7 @@ fun formatOdometer(
     kilometers: Int,
     setting: UnitSystemSetting,
 ): String {
-    val formatLocale = getFormattingLocale(setting)
+    val formatLocale = formattingLocale()
     val (value, unit) =
         if (usesMetric(setting)) {
             kilometers.toLong() to MeasureUnit.KILOMETER

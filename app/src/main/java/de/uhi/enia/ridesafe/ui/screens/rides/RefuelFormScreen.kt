@@ -56,6 +56,7 @@ import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 import de.uhi.enia.ridesafe.util.currentCurrencySetting
 import de.uhi.enia.ridesafe.util.currentUnitSystem
+import de.uhi.enia.ridesafe.util.formattingLocale
 import de.uhi.enia.ridesafe.util.usesMetric
 import java.text.DateFormat
 import java.text.NumberFormat
@@ -126,7 +127,8 @@ fun RefuelFormScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val locale = context.resources.configuration.locales[0] ?: Locale.getDefault()
+    // Regional conventions, not the in-app language's likely region (SET-07).
+    val locale = formattingLocale()
     val currency = currentCurrencySetting().currency
     val fractionDigits = currency.defaultFractionDigits.takeIf { it >= 0 } ?: 2
     val unitSystem = currentUnitSystem()
