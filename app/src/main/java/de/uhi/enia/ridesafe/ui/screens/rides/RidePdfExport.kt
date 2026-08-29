@@ -108,10 +108,6 @@ data class CompletedRideExport(
     val format: RideExportFormat = RideExportFormat.PDF,
 )
 
-fun interface ExportCompletionNotifier {
-    fun notify(saved: SavedRideExport)
-}
-
 sealed interface RideExportState {
     data object Idle : RideExportState
 
@@ -176,7 +172,6 @@ fun exportRequests(
 /** Orchestrates the one-shot automatic export without introducing a repository layer. */
 class RideExporter(
     private val app: Application,
-    private val notifier: ExportCompletionNotifier = AndroidExportCompletionNotifier(app),
 ) {
     private val db = RidesafeDatabase.getInstance(app)
 
@@ -198,7 +193,7 @@ class RideExporter(
                 coroutineContext.ensureActive()
                 val saved = saveToDownloads(app, temp, exportDate, format)
                 // A failed notification must never fail a successful publish.
-                runCatching { notifier.notify(saved) }
+                runCatching { notifyExportComplete(app, saved) }
                     .onFailure { Log.w("RideExport", "Could not post export notification", it) }
                 CompletedRideExport(saved.fileName, saved.uri.toString(), saved.format)
             } finally {
@@ -393,64 +388,60 @@ internal fun buildOpenExportIntent(saved: SavedRideExport): Intent =
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
 
-private class AndroidExportCompletionNotifier(
-    private val context: Context,
-) : ExportCompletionNotifier {
-    override fun notify(saved: SavedRideExport) {
-        if (
-            notificationsAllowed(
-                permissionGranted = AppPermission.NOTIFICATIONS.isGranted(context),
-                notificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled(),
-            )
-        ) {
-            post(saved)
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun post(saved: SavedRideExport) {
-        val manager = context.getSystemService<NotificationManager>() ?: return
-        manager.createNotificationChannel(
-            NotificationChannel(
-                EXPORT_CHANNEL_ID,
-                context.getString(R.string.ride_export_channel_name),
-                NotificationManager.IMPORTANCE_LOW,
-            ),
+@SuppressLint("MissingPermission")
+private fun notifyExportComplete(
+    context: Context,
+    saved: SavedRideExport,
+) {
+    if (
+        !notificationsAllowed(
+            permissionGranted = AppPermission.NOTIFICATIONS.isGranted(context),
+            notificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled(),
         )
-        val openIntent =
-            buildOpenExportIntent(saved)
-                .takeIf { it.resolveActivity(context.packageManager) != null }
-        val contentIntent =
-            openIntent?.let {
-                PendingIntent.getActivity(
-                    context,
-                    exportPendingIntentRequestCode(saved.fileName, saved.uri.toString()),
-                    it,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                )
-            }
-        val builder =
-            NotificationCompat
-                .Builder(context, EXPORT_CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_export)
-                .setContentTitle(context.getString(R.string.ride_export_notification_title))
-                .setContentText(context.getString(R.string.ride_export_notification_body, saved.fileName))
-                .setStyle(
-                    NotificationCompat
-                        .BigTextStyle()
-                        .bigText(context.getString(R.string.ride_export_notification_body, saved.fileName)),
-                ).setAutoCancel(true)
-                .setContentIntent(contentIntent)
-        if (contentIntent != null) {
-            builder.addAction(
-                R.drawable.ic_export,
-                context.getString(R.string.ride_export_notification_open),
-                contentIntent,
+    ) {
+        return
+    }
+    val manager = context.getSystemService<NotificationManager>() ?: return
+    manager.createNotificationChannel(
+        NotificationChannel(
+            EXPORT_CHANNEL_ID,
+            context.getString(R.string.ride_export_channel_name),
+            NotificationManager.IMPORTANCE_LOW,
+        ),
+    )
+    val openIntent =
+        buildOpenExportIntent(saved)
+            .takeIf { it.resolveActivity(context.packageManager) != null }
+    val contentIntent =
+        openIntent?.let {
+            PendingIntent.getActivity(
+                context,
+                exportPendingIntentRequestCode(saved.fileName, saved.uri.toString()),
+                it,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
         }
-        val notification = builder.build()
-        NotificationManagerCompat.from(context).notify(saved.fileName.hashCode(), notification)
+    val builder =
+        NotificationCompat
+            .Builder(context, EXPORT_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_export)
+            .setContentTitle(context.getString(R.string.ride_export_notification_title))
+            .setContentText(context.getString(R.string.ride_export_notification_body, saved.fileName))
+            .setStyle(
+                NotificationCompat
+                    .BigTextStyle()
+                    .bigText(context.getString(R.string.ride_export_notification_body, saved.fileName)),
+            ).setAutoCancel(true)
+            .setContentIntent(contentIntent)
+    if (contentIntent != null) {
+        builder.addAction(
+            R.drawable.ic_export,
+            context.getString(R.string.ride_export_notification_open),
+            contentIntent,
+        )
     }
+    val notification = builder.build()
+    NotificationManagerCompat.from(context).notify(saved.fileName.hashCode(), notification)
 }
 
 internal interface RideExportValueFormatter {
