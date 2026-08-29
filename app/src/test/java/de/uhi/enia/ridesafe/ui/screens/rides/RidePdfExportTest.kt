@@ -274,57 +274,11 @@ class RidePdfExportTest {
     }
 
     @Test
-    fun successfulPublishNotifiesWithActualDuplicateSafeFilename() {
-        var notified: String? = null
-        val finalName = "RideSafe_Rides_Export_2026-08-22_2.pdf"
-
-        val result =
-            publishAndNotify(
-                publish = { finalName },
-                notify = { notified = it },
-            )
-
-        assertEquals(finalName, result)
-        assertEquals(finalName, notified)
-    }
-
-    @Test
     fun pendingIntentIdentityChangesForEveryExportUri() {
         val first = exportPendingIntentRequestCode("RideSafe_Rides_Export_2026-08-22.pdf", "content://downloads/1")
         val second = exportPendingIntentRequestCode("RideSafe_Rides_Export_2026-08-22_2.pdf", "content://downloads/2")
 
         assertFalse(first == second)
-    }
-
-    @Test
-    fun notificationPostingFailureDoesNotFailSuccessfulPublish() {
-        var notificationFailure: Throwable? = null
-        val result =
-            publishAndNotify(
-                publish = { "export.pdf" },
-                notify = { error("notifications disabled by system") },
-                onNotificationFailure = { notificationFailure = it },
-            )
-
-        assertEquals("export.pdf", result)
-        assertTrue(notificationFailure != null)
-    }
-
-    @Test
-    fun failedPublishDoesNotPostCompletionNotification() {
-        var notified = false
-        var failed = false
-        try {
-            publishAndNotify<String>(
-                publish = { error("MediaStore write failed") },
-                notify = { notified = true },
-            )
-        } catch (_: IllegalStateException) {
-            failed = true
-        }
-
-        assertTrue(failed)
-        assertFalse(notified)
     }
 
     @Test

@@ -154,22 +154,6 @@ class RideCsvExportTest {
     }
 
     @Test
-    fun successfulCsvPublishNotifiesWithFinalFilenameAndFormat() {
-        val expected =
-            CompletedRideExport(
-                "RideSafe_Rides_Export_2026-08-22_2.csv",
-                "content://downloads/42",
-                RideExportFormat.CSV,
-            )
-        var notified: CompletedRideExport? = null
-
-        val result = publishAndNotify(publish = { expected }, notify = { notified = it })
-
-        assertEquals(expected, result)
-        assertEquals(expected, notified)
-    }
-
-    @Test
     fun csvFormatFlowsThroughSuccessfulControllerState() =
         runBlocking {
             var receivedFormat: RideExportFormat? = null

@@ -196,12 +196,10 @@ class RideExporter(
                     RideExportFormat.ZIP -> RideZipBackup(app, db).write(temp, requests)
                 }
                 coroutineContext.ensureActive()
-                val saved =
-                    publishAndNotify(
-                        publish = { saveToDownloads(app, temp, exportDate, format) },
-                        notify = notifier::notify,
-                        onNotificationFailure = { Log.w("RideExport", "Could not post export notification", it) },
-                    )
+                val saved = saveToDownloads(app, temp, exportDate, format)
+                // A failed notification must never fail a successful publish.
+                runCatching { notifier.notify(saved) }
+                    .onFailure { Log.w("RideExport", "Could not post export notification", it) }
                 CompletedRideExport(saved.fileName, saved.uri.toString(), saved.format)
             } finally {
                 if (!temp.delete() && temp.exists()) temp.deleteOnExit()
@@ -373,16 +371,6 @@ internal fun saveToDownloads(
         resolver.delete(uri, null, null)
         throw failure
     }
-}
-
-internal fun <T> publishAndNotify(
-    publish: () -> T,
-    notify: (T) -> Unit,
-    onNotificationFailure: (Throwable) -> Unit = {},
-): T {
-    val published = publish()
-    runCatching { notify(published) }.onFailure(onNotificationFailure)
-    return published
 }
 
 internal fun notificationsAllowed(
