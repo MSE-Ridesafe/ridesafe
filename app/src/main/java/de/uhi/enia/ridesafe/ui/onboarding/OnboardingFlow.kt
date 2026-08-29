@@ -177,14 +177,20 @@ fun OnboardingFlow(onFinished: () -> Unit) {
     var step by rememberSaveable { mutableStateOf(OnboardingStep.WELCOME) }
     // The car created by the car step, which the Bluetooth step maps devices onto.
     var vehicleId by rememberSaveable { mutableStateOf<Long?>(null) }
+    // Latch against a double-tapped save inserting the car twice while the first insert runs.
+    var savingCar by remember { mutableStateOf(false) }
 
-    // Read the id state inside the helpers rather than capturing a derived val, so a step
-    // saved mid-flow can never advance against a stale step list.
-    fun advance() {
-        stepAfter(step, hasVehicle = vehicleId != null)?.let { step = it } ?: onFinished()
+    // Advances only while [from] is still the showing step: a double-tapped skip or a save
+    // event outracing recomposition would otherwise advance twice and swallow a step — the
+    // same defence the app shell's popOwn() applies to its back stack. Callers pass the step
+    // their page was composed for, never the live value.
+    fun advanceFrom(from: OnboardingStep) {
+        if (step != from) return
+        stepAfter(from, hasVehicle = vehicleId != null)?.let { step = it } ?: onFinished()
     }
 
-    // System back walks the wizard, not out of the app, except on the first step.
+    // System back walks the wizard, not out of the app, except on the first step. A stale
+    // second back is harmless here: before the first step it resolves to null and stops.
     BackHandler(enabled = step != OnboardingStep.WELCOME) {
         stepBefore(step, hasVehicle = vehicleId != null)?.let { step = it }
     }
@@ -193,10 +199,11 @@ fun OnboardingFlow(onFinished: () -> Unit) {
         Column(Modifier.padding(innerPadding).fillMaxSize()) {
             // The welcome page carries its own start/skip choice; the header would double it.
             if (step != OnboardingStep.WELCOME) {
+                val shown = step
                 WizardHeader(
                     steps = onboardingSteps(hasVehicle = vehicleId != null),
-                    current = step,
-                    onSkip = ::advance,
+                    current = shown,
+                    onSkip = { advanceFrom(shown) },
                     onClose = onFinished,
                 )
             }
@@ -215,38 +222,46 @@ fun OnboardingFlow(onFinished: () -> Unit) {
                 label = "onboardingStep",
             ) { target ->
                 when (target) {
-                    OnboardingStep.WELCOME -> WelcomePage(onStart = ::advance, onSkipAll = onFinished)
+                    OnboardingStep.WELCOME ->
+                        WelcomePage(
+                            onStart = { advanceFrom(OnboardingStep.WELCOME) },
+                            onSkipAll = onFinished,
+                        )
 
                     OnboardingStep.CAR ->
                         CarPage(
                             onSave = { vehicle, makePrimary ->
-                                scope.launch {
-                                    vehicleId = vehicleDao.addVehicle(vehicle, makePrimary)
-                                    // Advance only once the row exists — the next step reads it.
-                                    stepAfter(OnboardingStep.CAR, hasVehicle = true)?.let { step = it }
+                                if (!savingCar) {
+                                    savingCar = true
+                                    scope.launch {
+                                        vehicleId = vehicleDao.addVehicle(vehicle, makePrimary)
+                                        // Advance only once the row exists — the next step reads it.
+                                        advanceFrom(OnboardingStep.CAR)
+                                        savingCar = false
+                                    }
                                 }
                             },
-                            onSkip = ::advance,
+                            onSkip = { advanceFrom(OnboardingStep.CAR) },
                         )
 
                     OnboardingStep.BLUETOOTH ->
                         BluetoothPage(
                             vehicleDao = vehicleDao,
                             vehicleId = requireNotNull(vehicleId),
-                            onContinue = ::advance,
+                            onContinue = { advanceFrom(OnboardingStep.BLUETOOTH) },
                         )
 
-                    OnboardingStep.AUTO_TRACK -> AutoTrackPage(onContinue = ::advance)
+                    OnboardingStep.AUTO_TRACK -> AutoTrackPage(onContinue = { advanceFrom(OnboardingStep.AUTO_TRACK) })
 
                     OnboardingStep.PLACE ->
                         PlacePage(
-                            onSaved = ::advance,
-                            onSkip = ::advance,
+                            onSaved = { advanceFrom(OnboardingStep.PLACE) },
+                            onSkip = { advanceFrom(OnboardingStep.PLACE) },
                         )
 
-                    OnboardingStep.RECORDING -> RecordingPage(onContinue = ::advance)
+                    OnboardingStep.RECORDING -> RecordingPage(onContinue = { advanceFrom(OnboardingStep.RECORDING) })
 
-                    OnboardingStep.SCORES -> ScoresPage(onFinish = ::advance)
+                    OnboardingStep.SCORES -> ScoresPage(onFinish = { advanceFrom(OnboardingStep.SCORES) })
                 }
             }
         }
@@ -537,6 +552,8 @@ private fun PlacePage(
 ) {
     val viewModel: SavedAddressViewModel = viewModel()
     val addresses by viewModel.addresses.collectAsState()
+    // Latch against a double-tapped save inserting the place twice.
+    var saved by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
         Text(
             text = stringResource(R.string.onboarding_place_intro),
@@ -554,8 +571,11 @@ private fun PlacePage(
                 },
             savedAddresses = addresses,
             onSave = {
-                viewModel.add(it)
-                onSaved()
+                if (!saved) {
+                    saved = true
+                    viewModel.add(it)
+                    onSaved()
+                }
             },
             onBack = onSkip,
             modifier = Modifier.weight(1f),
@@ -697,6 +717,14 @@ private fun FeatureRow(
 @Composable
 private fun WelcomePreview() {
     RidesafeTheme {
-        OnboardingFlow(onFinished = {})
+        WelcomePage(onStart = {}, onSkipAll = {})
+    }
+}
+
+@Preview
+@Composable
+private fun ScoresPreview() {
+    RidesafeTheme {
+        ScoresPage(onFinish = {})
     }
 }
