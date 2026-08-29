@@ -72,8 +72,6 @@ fun totalJourneyDistanceMeters(journeys: List<LogicalRideJourney>): Double = jou
 
 fun totalJourneyTravelDurationMillis(journeys: List<LogicalRideJourney>): Long = journeys.sumOf { it.travelDurationMillis }
 
-fun totalJourneyCount(journeys: List<LogicalRideJourney>): Int = journeys.size
-
 fun journeyTotalsForMonth(
     journeys: List<LogicalRideJourney>,
     month: YearMonth,
@@ -86,7 +84,7 @@ fun journeyTotalsForMonth(
     return JourneyPeriodTotals(
         distanceMeters = totalJourneyDistanceMeters(monthJourneys),
         durationMillis = totalJourneyTravelDurationMillis(monthJourneys),
-        journeyCount = totalJourneyCount(monthJourneys),
+        journeyCount = monthJourneys.size,
     )
 }
 

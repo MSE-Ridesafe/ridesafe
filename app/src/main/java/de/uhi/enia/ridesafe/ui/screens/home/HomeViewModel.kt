@@ -21,7 +21,6 @@ import de.uhi.enia.ridesafe.domain.monthlySafetyScores
 import de.uhi.enia.ridesafe.domain.safetyScoreForMonth
 import de.uhi.enia.ridesafe.domain.safetyScoreForRides
 import de.uhi.enia.ridesafe.domain.safetyScoreForRollingWeek
-import de.uhi.enia.ridesafe.domain.totalJourneyCount
 import de.uhi.enia.ridesafe.domain.totalJourneyDistanceMeters
 import de.uhi.enia.ridesafe.domain.totalJourneyTravelDurationMillis
 import de.uhi.enia.ridesafe.domain.weeklySafetyScores
@@ -87,7 +86,7 @@ class HomeViewModel(
                 vehicles = vehicles,
                 totalDistanceMeters = totalJourneyDistanceMeters(logicalJourneys),
                 totalDurationMillis = totalJourneyTravelDurationMillis(logicalJourneys),
-                totalRecordedRides = totalJourneyCount(logicalJourneys),
+                totalRecordedRides = logicalJourneys.size,
                 currentMonthDistanceMeters = currentMonthTotals.distanceMeters,
                 currentMonthDurationMillis = currentMonthTotals.durationMillis,
                 currentMonthRecordedRides = currentMonthTotals.journeyCount,

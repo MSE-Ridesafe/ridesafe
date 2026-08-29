@@ -52,7 +52,7 @@ class RideJourneyAggregationTest {
         val highlights = calculateJourneyHighlights(journeys, zone)
 
         assertEquals(2, journeys.size)
-        assertEquals(2, totalJourneyCount(journeys))
+        assertEquals(2, journeys.size)
         assertEquals(30_000.0, totalJourneyDistanceMeters(journeys), 0.001)
         assertEquals(30 * 60_000L, totalJourneyTravelDurationMillis(journeys))
         assertEquals(20_000.0, highlights.longestRideMeters!!, 0.001)
@@ -71,7 +71,7 @@ class RideJourneyAggregationTest {
         val journeys = logicalRideJourneys(rides)
 
         assertEquals(1, journeys.size)
-        assertEquals(1, totalJourneyCount(journeys))
+        assertEquals(1, journeys.size)
         assertEquals("g1", journeys.single().key)
         assertEquals(30_000.0, journeys.single().distanceMeters!!, 0.001)
         assertEquals(30 * 60_000L, journeys.single().travelDurationMillis)
@@ -91,7 +91,7 @@ class RideJourneyAggregationTest {
         val highlights = calculateJourneyHighlights(journeys, zone)
 
         assertEquals(2, journeys.size)
-        assertEquals(2, totalJourneyCount(journeys))
+        assertEquals(2, journeys.size)
         assertEquals(70_000.0, totalJourneyDistanceMeters(journeys), 0.001)
         assertEquals(45 * 60_000L, totalJourneyTravelDurationMillis(journeys))
         assertEquals(40_000.0, highlights.longestRideMeters!!, 0.001)
@@ -109,7 +109,7 @@ class RideJourneyAggregationTest {
         val journeys = logicalRideJourneys(rides)
 
         assertEquals(1, journeys.size)
-        assertEquals(1, totalJourneyCount(journeys))
+        assertEquals(1, journeys.size)
         assertEquals(30_000.0, totalJourneyDistanceMeters(journeys), 0.001)
         assertFalse(journeys.any { it.key == "r1" || it.key == "r2" })
     }
@@ -141,7 +141,7 @@ class RideJourneyAggregationTest {
         val activity = journeyActivityByDay(journeys, zone)
         val monthTotals = journeyTotalsForMonth(journeys, YearMonth.of(2026, 7), zone)
 
-        assertEquals(0, totalJourneyCount(journeys))
+        assertEquals(0, journeys.size)
         assertEquals(0.0, totalJourneyDistanceMeters(journeys), 0.001)
         assertEquals(0L, totalJourneyTravelDurationMillis(journeys))
         assertEquals(0.0, monthTotals.distanceMeters, 0.001)
