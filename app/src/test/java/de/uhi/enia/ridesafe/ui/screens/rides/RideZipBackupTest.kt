@@ -169,7 +169,7 @@ class RideZipBackupTest {
             val releaseAnalysis = CompletableDeferred<Unit>()
             val analysis =
                 launch {
-                    RideDataCoordinator.withRide(42) {
+                    RideDataCoordinator.withRides(listOf(42)) {
                         analysisEntered.complete(Unit)
                         releaseAnalysis.await()
                     }

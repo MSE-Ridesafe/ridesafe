@@ -298,7 +298,7 @@ class RideAnalysisPipeline(
     }
 
     private suspend fun runRide(ride: Ride) {
-        RideDataCoordinator.withRide(ride.id) { runRideCoordinated(ride) }
+        RideDataCoordinator.withRides(listOf(ride.id)) { runRideCoordinated(ride) }
     }
 
     private suspend fun runRideCoordinated(ride: Ride) {
