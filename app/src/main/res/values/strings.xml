@@ -238,17 +238,14 @@
         <item quantity="one">%d event</item>
         <item quantity="other">%d events</item>
     </plurals>
-    <string name="ride_detail_section_summary">Summary</string>
-    <string name="ride_detail_section_speed">Speed</string>
     <string name="ride_detail_section_distance">Distance</string>
     <string name="ride_detail_from">From</string>
     <string name="ride_detail_to">To</string>
     <string name="ride_detail_start">Start</string>
     <string name="ride_detail_end">End</string>
     <string name="ride_detail_duration">Duration</string>
-    <string name="ride_detail_max_speed">Max speed</string>
-    <string name="ride_detail_avg_speed">Average speed</string>
-    <string name="ride_detail_total_distance">Total distance</string>
+    <string name="ride_stat_avg_speed">Avg speed</string>
+    <string name="ride_stat_max_speed">Max speed</string>
     <string name="ride_detail_no_gps">No GPS recorded for this ride</string>
 
     <!-- Efficiency (ANL-03): the 0-3 eco level and the time-by-regime breakdown. No numbers by design. -->

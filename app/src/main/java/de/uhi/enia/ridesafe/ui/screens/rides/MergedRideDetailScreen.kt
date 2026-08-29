@@ -50,7 +50,6 @@ import de.uhi.enia.ridesafe.data.canUnmergeSelection
 import de.uhi.enia.ridesafe.data.summarizeMerge
 import de.uhi.enia.ridesafe.domain.safetyScoreForRides
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
-import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
 import de.uhi.enia.ridesafe.util.currentUnitSystem
@@ -69,6 +68,7 @@ import de.uhi.enia.ridesafe.util.formatTimeOfDay
  */
 @Composable
 fun MergedRideDetailScreen(
+    modifier: Modifier = Modifier,
     stops: List<Ride>?,
     segments: List<List<LatLng>>?,
     rideEvents: List<RideEvent>,
@@ -78,7 +78,6 @@ fun MergedRideDetailScreen(
     onUnmergeAll: () -> Unit,
     onUnmerge: (stopIds: List<Long>) -> Unit,
     showBack: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     val unitSystem = currentUnitSystem()
     val context = LocalContext.current
@@ -153,6 +152,16 @@ fun MergedRideDetailScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // The trip in numbers, same headline readout as a single ride's (duration = moving time).
+            RideStatsReadout(
+                distance =
+                    summary.distanceMeters?.let { formatDistance(it, unitSystem) }
+                        ?: stringResource(R.string.value_not_set),
+                duration = formatDurationMs(summary.movingDurationMs),
+                avgSpeed = summary.avgSpeedMps?.let { formatSpeed(context, it, unitSystem) },
+                maxSpeed = formatSpeed(context, summary.maxSpeedMps, unitSystem),
+            )
+
             RouteMapCard(segments = segments, rideEvents = rideEvents)
 
             MergedJourneyCard(
@@ -166,30 +175,6 @@ fun MergedRideDetailScreen(
             // The whole trip's score: the stops' penalties and exposure summed, mapped once — never
             // an average of their scores (see SafetyScoreWindows). Hidden when no stop was scoreable.
             safetyScoreForRides(stops)?.let { SafetyScoreCard(score = it) }
-
-            DetailCard(
-                title = stringResource(R.string.ride_detail_section_summary),
-                rows =
-                    listOf(
-                        stringResource(R.string.ride_detail_total_distance) to
-                            (
-                                summary.distanceMeters?.let { formatDistance(it, unitSystem) }
-                                    ?: stringResource(R.string.value_not_set)
-                            ),
-                        stringResource(R.string.ride_detail_duration) to formatDurationMs(summary.movingDurationMs),
-                    ),
-            )
-
-            DetailCard(
-                title = stringResource(R.string.ride_detail_section_speed),
-                rows =
-                    listOfNotNull(
-                        stringResource(R.string.ride_detail_max_speed) to formatSpeed(context, summary.maxSpeedMps, unitSystem),
-                        summary.avgSpeedMps?.let {
-                            stringResource(R.string.ride_detail_avg_speed) to formatSpeed(context, it, unitSystem)
-                        },
-                    ),
-            )
 
             // The trip's efficiency, same card as a single ride's — the aggregates add up across
             // stops and the level is derived once from the whole trip's driving (MRG-05 rule).
@@ -348,51 +333,6 @@ private fun MergedJourneyCard(
         }
     }
 }
-
-/**
- * The places timeline for a merged ride (N+1 waypoints for N legs): origin, one waypoint per parked
- * boundary, then the destination. A boundary waypoint is labeled with the more reliable next-leg
- * start address (falling back to the previous leg's end), its arrival time, and a "left … · parked …"
- * note — collapsing the two "unrelated" fixes into one place for a readable trip (MRG-07).
- */
-private fun buildPlaces(
-    context: android.content.Context,
-    stops: List<Ride>,
-): List<JourneyStop> =
-    buildList {
-        val first = stops.first()
-        add(
-            JourneyStop(
-                address = first.startAddress,
-                time =
-                    formatTimeOfDay(
-                        context,
-                        first.startedAtEpochMs,
-                    ),
-            ),
-        )
-        for (i in 0 until stops.size - 1) {
-            val arrive = stops[i]
-            val depart = stops[i + 1]
-            val note =
-                arrive.endedAtEpochMs?.let { arrivedMs ->
-                    context.getString(
-                        R.string.ride_merged_parked_note,
-                        formatTimeOfDay(context, depart.startedAtEpochMs),
-                        formatDurationMs(depart.startedAtEpochMs - arrivedMs),
-                    )
-                }
-            add(
-                JourneyStop(
-                    address = depart.startAddress ?: arrive.endAddress,
-                    time = arrive.endedAtEpochMs?.let { formatTimeOfDay(context, it) },
-                    note = note,
-                ),
-            )
-        }
-        val last = stops.last()
-        add(JourneyStop(address = last.endAddress, time = last.endedAtEpochMs?.let { formatTimeOfDay(context, it) }))
-    }
 
 @Composable
 private fun StopRow(

@@ -237,17 +237,14 @@
         <item quantity="one">%d Ereignis</item>
         <item quantity="other">%d Ereignisse</item>
     </plurals>
-    <string name="ride_detail_section_summary">Übersicht</string>
-    <string name="ride_detail_section_speed">Geschwindigkeit</string>
     <string name="ride_detail_section_distance">Strecke</string>
     <string name="ride_detail_from">Von</string>
     <string name="ride_detail_to">Nach</string>
     <string name="ride_detail_start">Start</string>
     <string name="ride_detail_end">Ende</string>
     <string name="ride_detail_duration">Dauer</string>
-    <string name="ride_detail_max_speed">Höchstgeschwindigkeit</string>
-    <string name="ride_detail_avg_speed">Durchschnittsgeschwindigkeit</string>
-    <string name="ride_detail_total_distance">Gesamtstrecke</string>
+    <string name="ride_stat_avg_speed">Ø Geschw.</string>
+    <string name="ride_stat_max_speed">Max. Geschw.</string>
     <string name="ride_detail_no_gps">Für diese Fahrt wurde kein GPS aufgezeichnet</string>
 
     <!-- Effizienz (ANL-03): Öko-Stufe 0-3 und die Zeitaufteilung nach Fahrsituation. Bewusst ohne Zahlen. -->

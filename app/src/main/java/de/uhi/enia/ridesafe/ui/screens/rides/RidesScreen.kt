@@ -2,7 +2,6 @@
 
 package de.uhi.enia.ridesafe.ui.screens.rides
 
-import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -21,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -66,6 +64,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.MergeCheck
 import de.uhi.enia.ridesafe.data.SavedAddress
@@ -73,6 +72,8 @@ import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.rides.recording.RecordingStatus
+import de.uhi.enia.ridesafe.ui.components.ListGroupItem
+import de.uhi.enia.ridesafe.ui.components.ListGroupItemGap
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.RECORDING_BAR_INSET
 import de.uhi.enia.ridesafe.util.currentCurrencySetting
@@ -90,6 +91,7 @@ import java.time.LocalDate
 
 @Composable
 fun RidesScreen(
+    modifier: Modifier = Modifier,
     timeline: List<TimelineEntry>,
     analysis: RideAnalysisProgress,
     exportState: RideExportState,
@@ -110,11 +112,10 @@ fun RidesScreen(
     onExport: (List<RideExportRequest>, RideExportFormat) -> Unit,
     onExportResultConsumed: () -> Unit,
     onAddRefuel: () -> Unit,
-    selectionDismissRequests: State<Int>,
     // The entry whose detail pane is showing (LogbookEntry.key). Null on a phone, where the detail
     // covers the list rather than sitting beside it.
+    selectionDismissRequests: State<Int>,
     selectedKey: String? = null,
-    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -206,7 +207,7 @@ fun RidesScreen(
                 val saved =
                     SavedRideExport(
                         fileName = exportState.export.fileName,
-                        uri = Uri.parse(exportState.export.contentUri),
+                        uri = exportState.export.contentUri.toUri(),
                         format = exportState.export.format,
                     )
                 val openIntent = buildOpenExportIntent(saved)
@@ -414,63 +415,60 @@ fun RidesScreen(
                             DayHeader(text = formatDayHeader(context, day, today))
                         }
                         item(key = "c$day") {
-                            Card(
-                                shape = MaterialTheme.shapes.extraLarge,
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Column {
-                                    dayEntries.forEachIndexed { index, timelineEntry ->
-                                        if (index > 0) {
-                                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-                                        }
+                            Column(verticalArrangement = Arrangement.spacedBy(ListGroupItemGap)) {
+                                dayEntries.forEachIndexed { index, timelineEntry ->
+                                    ListGroupItem(index = index, count = dayEntries.size) {
                                         when (timelineEntry) {
                                             is TimelineEntry.RideEntry -> {
                                                 val entry = timelineEntry.entry
-                                                LogbookRow(
-                                                    entry = entry,
-                                                    selectionMode = selectionMode,
-                                                    selected = entry.key in selected,
-                                                    isOpen = entry.key == selectedKey,
-                                                    onClick = {
-                                                        if (selectionMode) {
-                                                            toggle(entry.key)
-                                                        } else {
-                                                            when (entry) {
-                                                                is LogbookEntry.Single -> onOpenRide(entry.row.ride.id)
-                                                                is LogbookEntry.Merged -> onOpenMerged(entry.groupId)
+                                                // A ride and its attached refuels share one list segment —
+                                                // the indented divider keeps reading as "attached".
+                                                Column {
+                                                    LogbookRow(
+                                                        entry = entry,
+                                                        selectionMode = selectionMode,
+                                                        selected = entry.key in selected,
+                                                        isOpen = entry.key == selectedKey,
+                                                        onClick = {
+                                                            if (selectionMode) {
+                                                                toggle(entry.key)
+                                                            } else {
+                                                                when (entry) {
+                                                                    is LogbookEntry.Single -> onOpenRide(entry.row.ride.id)
+                                                                    is LogbookEntry.Merged -> onOpenMerged(entry.groupId)
+                                                                }
                                                             }
+                                                        },
+                                                        onLongClick = {
+                                                            selectionMode = true
+                                                            toggle(entry.key)
+                                                        },
+                                                    )
+                                                    // Keep the compact main timeline focused on the combined
+                                                    // journey summary. Its associated Refuels remain available
+                                                    // in the combined-ride detail timeline.
+                                                    if (entry is LogbookEntry.Single) {
+                                                        timelineEntry.refuels.forEach { nested ->
+                                                            HorizontalDivider(
+                                                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                                                modifier = Modifier.padding(start = 40.dp),
+                                                            )
+                                                            val key = "f${nested.refuel.id}"
+                                                            RefuelTimelineRow(
+                                                                row = nested,
+                                                                selectionMode = selectionMode,
+                                                                selected = key in selected,
+                                                                isOpen = key == selectedKey,
+                                                                nested = true,
+                                                                onClick = {
+                                                                    if (selectionMode) toggle(key) else onOpenRefuel(nested.refuel.id)
+                                                                },
+                                                                onLongClick = {
+                                                                    selectionMode = true
+                                                                    toggle(key)
+                                                                },
+                                                            )
                                                         }
-                                                    },
-                                                    onLongClick = {
-                                                        selectionMode = true
-                                                        toggle(entry.key)
-                                                    },
-                                                )
-                                                // Keep the compact main timeline focused on the combined
-                                                // journey summary. Its associated Refuels remain available
-                                                // in the combined-ride detail timeline.
-                                                if (entry is LogbookEntry.Single) {
-                                                    timelineEntry.refuels.forEach { nested ->
-                                                        HorizontalDivider(
-                                                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                                            modifier = Modifier.padding(start = 40.dp),
-                                                        )
-                                                        val key = "f${nested.refuel.id}"
-                                                        RefuelTimelineRow(
-                                                            row = nested,
-                                                            selectionMode = selectionMode,
-                                                            selected = key in selected,
-                                                            isOpen = key == selectedKey,
-                                                            nested = true,
-                                                            onClick = {
-                                                                if (selectionMode) toggle(key) else onOpenRefuel(nested.refuel.id)
-                                                            },
-                                                            onLongClick = {
-                                                                selectionMode = true
-                                                                toggle(key)
-                                                            },
-                                                        )
                                                     }
                                                 }
                                             }

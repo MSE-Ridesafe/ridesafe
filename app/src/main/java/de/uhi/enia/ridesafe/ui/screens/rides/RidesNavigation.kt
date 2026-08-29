@@ -93,13 +93,13 @@ fun EntryProviderScope<NavKey>.ridesEntries(
                 onMerge = viewModel::merge,
                 onUnmerge = viewModel::unmergeAll,
                 onDelete = viewModel::deleteEntries,
-                selectedKey = selectedKey,
-                onAddRefuel = { onOpen(AddRefuelRoute) },
-                onExport = viewModel::export,
                 logbookOperationState = logbookOperationState,
                 onLogbookOperationResultConsumed = viewModel::consumeLogbookOperationResult,
+                onExport = viewModel::export,
                 onExportResultConsumed = viewModel::consumeExportResult,
+                onAddRefuel = { onOpen(AddRefuelRoute) },
                 selectionDismissRequests = selectionDismissRequests,
+                selectedKey = selectedKey,
             )
         }
     }
@@ -155,12 +155,12 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             stops = stops,
             segments = segments,
             rideEvents = groupEvents,
-            onBack = { onBack(key) },
             refuels = refuels,
             onOpenRefuel = { onOpen(EditRefuelRoute(it)) },
-            showBack = showBack,
+            onBack = { onBack(key) },
             onUnmergeAll = { viewModel.unmergeAll(key.groupId) },
             onUnmerge = { viewModel.unmerge(key.groupId, it) },
+            showBack = showBack,
         )
     }
     entry<RideDetailRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = RIDES_SCENE)) { key ->

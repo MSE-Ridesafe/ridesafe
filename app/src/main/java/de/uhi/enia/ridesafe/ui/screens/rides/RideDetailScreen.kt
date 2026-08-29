@@ -47,7 +47,6 @@ import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.haversineMeters
 import de.uhi.enia.ridesafe.rides.processing.addressLines
 import de.uhi.enia.ridesafe.rides.processing.latLngDistanceMeters
-import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
 import de.uhi.enia.ridesafe.util.currentUnitSystem
@@ -59,7 +58,8 @@ import de.uhi.enia.ridesafe.util.formatSpeed
 import de.uhi.enia.ridesafe.util.formatTimeOfDay
 
 /**
- * Ride detail: the recorded route drawn on a Google Map, plus summary/speed/distance cards.
+ * Ride detail: the trip's numbers as a headline readout, the recorded route on a Google Map, the
+ * journey, then the safety/eco judgments.
  * [route] is null while it's still loading; empty when the ride recorded no GPS. Distance and average
  * speed come from the persisted [Ride.distanceMeters]/[Ride.avgSpeedMps] (filled by the processing
  * pass ANL-02); they fall back to computing from [route] only for a ride not processed yet, where
@@ -71,6 +71,7 @@ import de.uhi.enia.ridesafe.util.formatTimeOfDay
  */
 @Composable
 fun RideDetailScreen(
+    modifier: Modifier = Modifier,
     ride: Ride?,
     route: List<LatLng>?,
     rideEvents: List<RideEvent>,
@@ -81,7 +82,6 @@ fun RideDetailScreen(
     onOpenRefuel: (Long) -> Unit,
     onBack: () -> Unit,
     showBack: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     val unitSystem = currentUnitSystem()
     val context = LocalContext.current
@@ -127,7 +127,14 @@ fun RideDetailScreen(
             if (analysisProgress != null) {
                 AnalysisNoticeCard(progress = analysisProgress)
             }
-
+            RideStatsReadout(
+                distance =
+                    distanceMeters?.let { formatDistance(it, unitSystem) }
+                        ?: stringResource(R.string.value_not_set),
+                duration = formatDuration(ride.startedAtEpochMs, ride.endedAtEpochMs),
+                avgSpeed = avgMps?.let { formatSpeed(context, it, unitSystem) },
+                maxSpeed = formatSpeed(context, ride.maxSpeedMps, unitSystem),
+            )
             RouteMapCard(segments = route?.let { listOf(it) }, rideEvents = rideEvents)
 
             // Build each stop, folding in a matched saved place (ADR-09): show "<address>, <dist> from
@@ -167,8 +174,11 @@ fun RideDetailScreen(
                             endPlace,
                         ),
                     ),
-                duration = formatDuration(ride.startedAtEpochMs, ride.endedAtEpochMs),
             )
+
+            // The ride in numbers, right under where it went: how far and how long, then how fast.
+            // Duration lives here rather than in the journey card's footer, so the trip's magnitude
+            // reads in one glance before the safety/eco judgments below.
 
             // The score sits directly under the map that shows its events (ANL-01). Three states:
             // scored; analysed but unscoreable (too little measurable driving — say so rather than
@@ -177,6 +187,10 @@ fun RideDetailScreen(
                 ?: ride.dynamics?.let {
                     SafetyScoreCard(score = null, emptyText = stringResource(R.string.ride_score_unscoreable))
                 }
+
+            // Absent for a ride still being analysed and for one with no usable track — "no
+            // profile", not "a perfectly efficient drive". Kinematic, so it needs no vehicle.
+            ride.eco?.let { EcoCard(eco = it) }
 
             if (refuels.isNotEmpty()) {
                 Card(
@@ -207,33 +221,6 @@ fun RideDetailScreen(
                     }
                 }
             }
-
-            DetailCard(
-                title = stringResource(R.string.ride_detail_section_speed),
-                rows =
-                    listOfNotNull(
-                        stringResource(R.string.ride_detail_max_speed) to formatSpeed(context, ride.maxSpeedMps, unitSystem),
-                        avgMps?.let {
-                            stringResource(R.string.ride_detail_avg_speed) to formatSpeed(context, it, unitSystem)
-                        },
-                    ),
-            )
-
-            DetailCard(
-                title = stringResource(R.string.ride_detail_section_distance),
-                rows =
-                    listOf(
-                        stringResource(R.string.ride_detail_total_distance) to
-                            (
-                                distanceMeters?.let { formatDistance(it, unitSystem) }
-                                    ?: stringResource(R.string.value_not_set)
-                            ),
-                    ),
-            )
-
-            // Absent for a ride still being analysed and for one with no usable track — "no
-            // profile", not "a perfectly efficient drive". Kinematic, so it needs no vehicle.
-            ride.eco?.let { EcoCard(eco = it) }
         }
     }
 }
@@ -264,17 +251,14 @@ data class JourneyStop(
  * detail's origin -> destination view.
  */
 @Composable
-fun JourneyCard(
-    stops: List<JourneyStop>,
-    duration: String?,
-) {
+fun JourneyCard(stops: List<JourneyStop>) {
     if (stops.isEmpty()) return
     Card(
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        JourneyTimeline(stops = stops, duration = duration, modifier = Modifier.padding(20.dp))
+        JourneyTimeline(stops = stops, modifier = Modifier.padding(20.dp))
     }
 }
 
@@ -287,7 +271,6 @@ fun JourneyCard(
 @Composable
 fun JourneyTimeline(
     stops: List<JourneyStop>,
-    duration: String?,
     modifier: Modifier = Modifier,
 ) {
     if (stops.isEmpty()) return
@@ -321,25 +304,6 @@ fun JourneyTimeline(
                 distanceLabel = stop.distanceLabel,
                 exactMatch = stop.exactMatch,
             )
-        }
-        if (duration != null) {
-            Spacer(Modifier.size(4.dp))
-            // Bottom-left total time: schedule icon then duration, not aligned to the timeline columns.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                MaterialSymbol(
-                    symbolName = "schedule",
-                    contentDescription = stringResource(R.string.ride_detail_duration),
-                    size = 16.dp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = duration,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
         }
     }
 }
