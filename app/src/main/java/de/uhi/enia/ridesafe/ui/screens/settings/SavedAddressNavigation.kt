@@ -72,11 +72,10 @@ fun EntryProviderScope<NavKey>.savedAddressEntries(
                     onBack(key)
                 },
                 onBack = { onBack(key) },
-                onDelete = {
-                    viewModel.delete(loaded)
-                    onBack(key)
-                },
-            )
+            ) {
+                viewModel.delete(loaded)
+                onBack(key)
+            }
         }
     }
 }
