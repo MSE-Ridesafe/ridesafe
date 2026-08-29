@@ -8,6 +8,7 @@ import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,7 +55,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -93,6 +94,8 @@ import de.uhi.enia.ridesafe.rides.processing.forwardGeocodeSuggestions
 import de.uhi.enia.ridesafe.rides.processing.reverseGeocode
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.map.MapLoadingIndicator
+import de.uhi.enia.ridesafe.ui.components.map.rememberIsOnline
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatShortDistance
 import kotlinx.coroutines.delay
@@ -110,7 +113,7 @@ private const val SEARCH_SUGGESTION_LIMIT = 5
 private const val SEARCH_HISTORY_PREFS = "saved_address_search"
 private const val SEARCH_HISTORY_KEY = "recent_queries"
 
-// Camera fallback when adding a place with no point yet (roughly the centre of Germany).
+// Camera fallback when adding a place with no point yet (roughly the center of Germany).
 private val FALLBACK_CENTER = LatLng(51.1657, 10.4515)
 
 private fun loadRecentAddressSearches(context: android.content.Context): List<String> =
@@ -134,9 +137,9 @@ private fun recordRecentAddressSearch(
             .take(SEARCH_SUGGESTION_LIMIT)
     context
         .getSharedPreferences(SEARCH_HISTORY_PREFS, android.content.Context.MODE_PRIVATE)
-        .edit()
-        .putString(SEARCH_HISTORY_KEY, JSONArray(updated).toString())
-        .apply()
+        .edit {
+            putString(SEARCH_HISTORY_KEY, JSONArray(updated).toString())
+        }
     return updated
 }
 
@@ -193,12 +196,12 @@ private val CURATED_PLACE_ICONS =
  */
 @Composable
 fun SavedAddressFormScreen(
+    modifier: Modifier = Modifier,
     existing: SavedAddress?,
     presetKind: SavedPlaceKind,
     savedAddresses: List<SavedAddress> = emptyList(),
     onSave: (SavedAddress) -> Unit,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier,
     onDelete: (() -> Unit)? = null,
 ) {
     val unitSystem = currentUnitSystem()
@@ -241,6 +244,7 @@ fun SavedAddressFormScreen(
         pickerCameraPositionState.position = CameraPosition.fromLatLngZoom(center, zoom)
         showMapPicker = true
     }
+    val online = rememberIsOnline()
     // Recenter the camera when the point jumps via search / my-location (not on drag or tap).
     var recenterTo by remember { mutableStateOf<LatLng?>(null) }
     LaunchedEffect(recenterTo) {
@@ -292,7 +296,7 @@ fun SavedAddressFormScreen(
         }
         searchLoading = true
         searchCompleted = false
-        delay(SEARCH_DEBOUNCE_MS)
+        delay(SEARCH_DEBOUNCE_MS.milliseconds)
         val near = point
         searchResults =
             forwardGeocodeSuggestions(context, query, limit = SEARCH_SUGGESTION_LIMIT)
@@ -514,6 +518,7 @@ fun SavedAddressFormScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
                     modifier = Modifier.fillMaxWidth().height(260.dp),
                 ) {
+                    var mapLoaded by remember { mutableStateOf(false) }
                     Box(Modifier.fillMaxSize()) {
                         GoogleMap(
                             modifier = Modifier.fillMaxSize(),
@@ -527,6 +532,7 @@ fun SavedAddressFormScreen(
                                     mapToolbarEnabled = false,
                                     zoomControlsEnabled = false,
                                 ),
+                            onMapLoaded = { mapLoaded = true },
                         ) {
                             point?.let { p ->
                                 Circle(
@@ -554,6 +560,16 @@ fun SavedAddressFormScreen(
                                     .matchParentSize()
                                     .clickable(onClickLabel = stringResource(R.string.saved_address_map_open), onClick = ::openMapPicker),
                         )
+                        // The preview has no loading cover of its own, so online it looks exactly as
+                        // it always has; this only steps in while there is no network and no map yet.
+                        // It draws over the pin but under nothing clickable, so the tap-to-open
+                        // overlay beneath keeps working.
+                        if (!online && !mapLoaded) {
+                            Box(
+                                modifier = Modifier.matchParentSize().background(MaterialTheme.colorScheme.surfaceBright),
+                                contentAlignment = Alignment.Center,
+                            ) { MapLoadingIndicator() }
+                        }
                     }
                 }
 
@@ -630,6 +646,7 @@ fun SavedAddressFormScreen(
                 color = MaterialTheme.colorScheme.surface,
             ) {
                 Box(Modifier.fillMaxSize()) {
+                    var mapLoaded by remember { mutableStateOf(false) }
                     GoogleMap(
                         modifier = Modifier.fillMaxSize(),
                         cameraPositionState = pickerCameraPositionState,
@@ -639,6 +656,7 @@ fun SavedAddressFormScreen(
                                 mapToolbarEnabled = false,
                                 zoomControlsEnabled = false,
                             ),
+                        onMapLoaded = { mapLoaded = true },
                     ) {
                         Circle(
                             center = pickerCameraPositionState.position.target,
@@ -659,6 +677,15 @@ fun SavedAddressFormScreen(
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.align(Alignment.Center).offset(y = (-28).dp),
                     )
+
+                    // Covers the blank map and the pin while offline; the app bar stays above it so
+                    // closing the picker keeps working without a connection.
+                    if (!online && !mapLoaded) {
+                        Box(
+                            modifier = Modifier.matchParentSize().background(MaterialTheme.colorScheme.surfaceBright),
+                            contentAlignment = Alignment.Center,
+                        ) { MapLoadingIndicator() }
+                    }
 
                     TopAppBar(
                         title = { Text(stringResource(R.string.saved_address_map_picker_title)) },

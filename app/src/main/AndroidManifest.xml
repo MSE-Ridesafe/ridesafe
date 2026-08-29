@@ -16,8 +16,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Google Maps tiles for the ride route view. -->
+    <!-- Google Maps tiles for the ride route view; NETWORK_STATE so maps can say "offline" instead of spinning. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Lets RideSafe detect viewers before offering Open file in export feedback. -->
     <queries>

@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -210,15 +209,20 @@ internal fun MapSurface(
                             .alpha(coverAlpha)
                             .background(MaterialTheme.colorScheme.surfaceBright),
                     contentAlignment = Alignment.Center,
-                ) { CircularProgressIndicator() }
+                ) { MapLoadingIndicator() }
             }
         }
     }
 
     // Reveal the map anyway if it never reports itself loaded, so this can't sit on a spinner.
-    // Long enough not to pre-empt a slow first load, which reveals a half-tiled map.
-    LaunchedEffect(Unit) {
-        delay(6_000.milliseconds)
-        markLoaded()
+    // Long enough not to pre-empt a slow first load, which reveals a half-tiled map. Offline the
+    // clock doesn't run at all: revealing would swap the cover's "no internet" notice for a blank
+    // map, and the map can't finish loading until a connection is back anyway.
+    val online = rememberIsOnline()
+    LaunchedEffect(online) {
+        if (online) {
+            delay(6_000.milliseconds)
+            markLoaded()
+        }
     }
 }
