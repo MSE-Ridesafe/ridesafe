@@ -63,6 +63,27 @@
             </intent-filter>
         </activity>
 
+        <!-- Android Auto (TRK-07): a phone app that projects a car screen; nothing here targets
+             Android Automotive OS. 5 is the car API level Action.setEnabled needs, and every
+             current Android Auto host is well above it. -->
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="5" />
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
+        <service
+            android:name=".car.RidesafeCarAppService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <!-- POI is the closest of the categories a car app may declare; a ride logger has
+                     none of its own, which is also why this is not Play-publishable. -->
+                <category android:name="androidx.car.app.category.POI" />
+            </intent-filter>
+        </service>
+
         <!-- Hosts ride recording in the foreground so it survives backgrounding / a cold trigger (TRK-05). -->
         <service
             android:name=".rides.recording.RideRecordingService"

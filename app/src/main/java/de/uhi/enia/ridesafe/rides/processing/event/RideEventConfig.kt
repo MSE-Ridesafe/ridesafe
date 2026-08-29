@@ -63,7 +63,7 @@ data class DirectionThresholds(
  * tuning workflow, and it is why events store their measured magnitudes rather than a verdict:
  * anything decidable at read time should be, and never costs a re-analysis.
  *
- * @property braking Braking thresholds. Keeps a force bypass, since a 0.5 g stop is harsh however
+ * @property braking Braking thresholds. Keeps a force bypass, since a 0.45 g stop is harsh however
  * gently it was applied.
  *
  * @property acceleration Acceleration thresholds. Lower bypass and lower jerk gate than braking,
@@ -147,9 +147,9 @@ data class DirectionThresholds(
  * a scattered, meaningless average gets used as the vehicle's forward direction.
  */
 data class RideEventConfig(
-    val braking: DirectionThresholds = DirectionThresholds(1.0, 0.7, 0.25, 0.50),
-    val acceleration: DirectionThresholds = DirectionThresholds(0.8, 0.55, 0.25, 0.35),
-    val cornering: DirectionThresholds = DirectionThresholds(1.0, 0.7, 0.30, null),
+    val braking: DirectionThresholds = DirectionThresholds(0.9, 0.65, 0.25, 0.45),
+    val acceleration: DirectionThresholds = DirectionThresholds(0.7, 0.5, 0.25, 0.32),
+    val cornering: DirectionThresholds = DirectionThresholds(0.9, 0.65, 0.30, null),
     val jerkBaselineMs: Long = 100,
     val minDurationMs: Long = 250,
     val mergeGapMs: Long = 500,

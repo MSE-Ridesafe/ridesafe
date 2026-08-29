@@ -10,8 +10,10 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.serialization.json.Json
 
-private val deviceJson = Json { ignoreUnknownKeys = true }
-const val RIDESAFE_DATABASE_VERSION = 20
+const val RIDESAFE_DATABASE_VERSION = 23
+
+/** JSON for the small owned values kept in a single column (BT devices, eco, dynamics, score). */
+private val columnJson = Json { ignoreUnknownKeys = true }
 
 class Converters {
     @TypeConverter
@@ -21,10 +23,10 @@ class Converters {
     fun stringToFuelType(value: String): FuelType = FuelType.valueOf(value)
 
     @TypeConverter
-    fun devicesToString(value: List<BtDevice>): String = deviceJson.encodeToString(value)
+    fun devicesToString(value: List<BtDevice>): String = columnJson.encodeToString(value)
 
     @TypeConverter
-    fun stringToDevices(value: String): List<BtDevice> = if (value.isBlank()) emptyList() else deviceJson.decodeFromString(value)
+    fun stringToDevices(value: String): List<BtDevice> = if (value.isBlank()) emptyList() else columnJson.decodeFromString(value)
 
     @TypeConverter
     fun placeKindToString(value: SavedPlaceKind): String = value.name
@@ -37,6 +39,28 @@ class Converters {
 
     @TypeConverter
     fun stringToRideEventType(value: String): RideEventType = RideEventType.valueOf(value)
+
+    @TypeConverter
+    fun ecoToString(value: RideEco?): String? = value?.let { columnJson.encodeToString(it) }
+
+    // A blob written by a build whose RideEco had different fields reads as "no profile", and the
+    // pipeline derives it again — cheaper than a migration for a value that is regenerable anyway.
+    @TypeConverter
+    fun stringToEco(value: String?): RideEco? = value?.let { runCatching { columnJson.decodeFromString<RideEco>(it) }.getOrNull() }
+
+    @TypeConverter
+    fun dynamicsToString(value: RideDynamics?): String? = value?.let { columnJson.encodeToString(it) }
+
+    @TypeConverter
+    fun stringToDynamics(value: String?): RideDynamics? =
+        value?.let { runCatching { columnJson.decodeFromString<RideDynamics>(it) }.getOrNull() }
+
+    @TypeConverter
+    fun scoreToString(value: SafetyScore?): String? = value?.let { columnJson.encodeToString(it) }
+
+    @TypeConverter
+    fun stringToScore(value: String?): SafetyScore? =
+        value?.let { runCatching { columnJson.decodeFromString<SafetyScore>(it) }.getOrNull() }
 }
 
 /** Adds Vehicle.bluetoothAddresses (GAR-08) without dropping existing vehicles (NFR-06). */
@@ -287,9 +311,53 @@ private val MIGRATION_12_13 =
         }
     }
 
-/** Adds independently persisted refueling history without modifying any existing table or row. */
-val MIGRATION_13_14 =
+/**
+ * Adds Ride.fuel, the VT-Micro fuel estimate (ANL-03). Additive and empty: no ride has one, so every
+ * ride is missing the `fuel` analysis stamp and the pipeline derives it on next launch from the raw
+ * sample files that have been recorded all along. Nothing needs re-recording, and no other stage is
+ * invalidated — which is the whole point of stamping stages separately.
+ */
+private val MIGRATION_13_14 =
     object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE rides ADD COLUMN fuel TEXT")
+        }
+    }
+
+/**
+ * Adds the driving-dynamics profile and the safety score (ANL-01). Both are left null: no stamp
+ * exists for the score stage, and the event stage's stamp is behind the build that writes profiles,
+ * so the pipeline derives both on next launch from sample files that have been recorded all along.
+ * Nothing needs re-recording.
+ */
+private val MIGRATION_14_15 =
+    object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE rides ADD COLUMN dynamics TEXT")
+            db.execSQL("ALTER TABLE rides ADD COLUMN score TEXT")
+        }
+    }
+
+/**
+ * Replaces the never-displayed VT-Micro fuel estimate with the efficiency profile (ANL-03): the
+ * absolute-litres approach was dropped before it shipped a release, in favour of a car-independent
+ * eco level derived from kinematic aggregates. The `fuel` column and its `ride_analysis` stamps go
+ * — additive-only would leave a dead column and orphaned stamps forever — and `eco` starts empty,
+ * so the pipeline derives every ride's profile from the raw sample files on next launch.
+ * minSdk 34 means SQLite 3.39+, so DROP COLUMN needs no table rebuild (same as MIGRATION_12_13).
+ */
+private val MIGRATION_15_16 =
+    object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE rides DROP COLUMN fuel")
+            db.execSQL("ALTER TABLE rides ADD COLUMN eco TEXT")
+            db.execSQL("DELETE FROM ride_analysis WHERE stage = 'fuel'")
+        }
+    }
+
+/** Adds independently persisted refueling history without modifying any existing table or row. */
+val MIGRATION_16_17 =
+    object : Migration(16, 17) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL(
                 "CREATE TABLE IF NOT EXISTS refuels (" +
@@ -311,8 +379,8 @@ val MIGRATION_13_14 =
     }
 
 /** Adds an optional physical-ride anchor used to resolve a Refuel's current logical journey. */
-val MIGRATION_14_15 =
-    object : Migration(14, 15) {
+val MIGRATION_17_18 =
+    object : Migration(17, 18) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE refuels ADD COLUMN journeyAnchorRideId INTEGER")
             db.execSQL(
@@ -322,8 +390,8 @@ val MIGRATION_14_15 =
     }
 
 /** Allows a Refuel station to reference a Saved Place while preserving custom station text. */
-val MIGRATION_15_16 =
-    object : Migration(15, 16) {
+val MIGRATION_18_19 =
+    object : Migration(18, 19) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE refuels ADD COLUMN stationSavedAddressId INTEGER")
             db.execSQL(
@@ -333,8 +401,8 @@ val MIGRATION_15_16 =
     }
 
 /** Removes obsolete Refuel station/address data while preserving every fuel and cost field. */
-val MIGRATION_16_17 =
-    object : Migration(16, 17) {
+val MIGRATION_19_20 =
+    object : Migration(19, 20) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("DROP INDEX IF EXISTS index_refuels_stationSavedAddressId")
             db.execSQL("ALTER TABLE refuels DROP COLUMN stationSavedAddressId")
@@ -343,8 +411,8 @@ val MIGRATION_16_17 =
     }
 
 /** Adds archive-stable vehicle identity and modification time without changing any relationships. */
-val MIGRATION_17_18 =
-    object : Migration(17, 18) {
+val MIGRATION_20_21 =
+    object : Migration(20, 21) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE vehicles ADD COLUMN vehicleUuid TEXT NOT NULL DEFAULT ''")
             db.execSQL("ALTER TABLE vehicles ADD COLUMN updatedAtEpochMs INTEGER NOT NULL DEFAULT 0")
@@ -362,8 +430,8 @@ val MIGRATION_17_18 =
     }
 
 /** Adds archive-stable identity to every physical ride while retaining all local relationships. */
-val MIGRATION_18_19 =
-    object : Migration(18, 19) {
+val MIGRATION_21_22 =
+    object : Migration(21, 22) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE rides ADD COLUMN rideUuid TEXT NOT NULL DEFAULT ''")
             db.execSQL(
@@ -378,8 +446,8 @@ val MIGRATION_18_19 =
     }
 
 /** Adds optional, manually maintained vehicle specifications without requiring an external API. */
-val MIGRATION_19_20 =
-    object : Migration(19, 20) {
+val MIGRATION_22_23 =
+    object : Migration(22, 23) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE vehicles ADD COLUMN vehicleType TEXT")
             db.execSQL("ALTER TABLE vehicles ADD COLUMN engine TEXT")
@@ -388,14 +456,7 @@ val MIGRATION_19_20 =
     }
 
 @Database(
-    entities = [
-        Vehicle::class,
-        Ride::class,
-        SavedAddress::class,
-        RideEvent::class,
-        RideAnalysisState::class,
-        Refuel::class,
-    ],
+    entities = [Vehicle::class, Ride::class, SavedAddress::class, RideEvent::class, RideAnalysisState::class, Refuel::class],
     version = RIDESAFE_DATABASE_VERSION,
     exportSchema = false,
 )
@@ -443,6 +504,9 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_17_18,
                         MIGRATION_18_19,
                         MIGRATION_19_20,
+                        MIGRATION_20_21,
+                        MIGRATION_21_22,
+                        MIGRATION_22_23,
                     ).build()
                     .also { instance = it }
             }

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tells Android Auto that Ridesafe brings a templated car app (see .car.RidesafeCarAppService). -->
+<automotiveApp>
+    <uses name="template" />
+</automotiveApp>

@@ -144,8 +144,8 @@ class RidesViewModel(
         // change that set, so the pipeline can't re-trigger itself.
         viewModelScope.launch {
             rideDao
-                .observeAll()
-                .map { rides -> rides.filter { it.endedAtEpochMs != null }.map(Ride::id).toSet() }
+                .observeFinished()
+                .map { rides -> rides.map(Ride::id).toSet() }
                 .distinctUntilChanged()
                 .collect {
                     pipeline.runPending()
@@ -167,16 +167,42 @@ class RidesViewModel(
         rematchRides(rideDao, savedAddressDao)
     }
 
+    /** The garage (DR-VEH), for the filter sheet's vehicle dropdown (LOG-07). */
+    val vehicles: StateFlow<List<Vehicle>> =
+        vehicleDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     /** Saved places (DR-ADR), exposed so the detail screen can resolve a ride's matched endpoints. */
     val savedAddresses: StateFlow<List<SavedAddress>> =
         savedAddressDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    val vehicles: StateFlow<List<Vehicle>> =
-        vehicleDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    /** Rides carrying at least one detected driving event (ANL-01), for the logbook's events filter. */
+    val ridesWithEvents: StateFlow<Set<Long>> =
+        rideEventDao
+            .observeRideIdsWithEvents()
+            .map { it.toSet() }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
-    /** Rides (newest first) joined to their vehicle name and the saved places their endpoints matched. */
+    private val _filter = MutableStateFlow(RideFilter())
+
+    /**
+     * The logbook's search + filter criteria (LOG-06, LOG-07, LOG-11 … LOG-15). Kept in the
+     * ViewModel, not the screen: the list entry leaves composition while a ride detail is open, so
+     * screen-local state would drop the user's filters every time they looked at a ride and came
+     * back. It is deliberately not persisted — a fresh launch starts on the whole logbook.
+     */
+    val filter: StateFlow<RideFilter> = _filter.asStateFlow()
+
+    fun setFilter(value: RideFilter) {
+        _filter.value = value
+    }
+
+    /**
+     * Finished rides (newest first) joined to their vehicle name and the saved places their endpoints
+     * matched. The ride being recorded right now is deliberately absent — it only becomes a logbook
+     * entry once it is finalized; the dashboard is where a running ride is shown live.
+     */
     private val rides: Flow<List<RideRow>> =
-        combine(rideDao.observeAll(), vehicles, savedAddressDao.observeAll()) { rides, vehicles, addresses ->
+        combine(rideDao.observeFinished(), vehicles, savedAddressDao.observeAll()) { rides, vehicles, addresses ->
             val names = vehicles.associate { it.id to it.displayTitle() }
             val places = addresses.associateBy { it.id }
             rides.map {

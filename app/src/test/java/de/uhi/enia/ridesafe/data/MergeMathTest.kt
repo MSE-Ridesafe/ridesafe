@@ -15,6 +15,7 @@ class MergeMathTest {
         durMin: Long,
         distanceM: Double? = null,
         maxMps: Double = 0.0,
+        eco: RideEco? = null,
     ) = Ride(
         id = id,
         vehicleId = vehicle,
@@ -24,6 +25,7 @@ class MergeMathTest {
         distanceMeters = distanceM,
         maxSpeedMps = maxMps,
         sampleFile = "r$id.ndjson.gz",
+        eco = eco,
     )
 
     @Test
@@ -49,6 +51,29 @@ class MergeMathTest {
         val s = summarizeMerge(listOf(ride(1, startMin = 0, durMin = 5), ride(2, startMin = 10, durMin = 5)))
         assertNull(s.distanceMeters)
         assertNull(s.avgSpeedMps)
+    }
+
+    /**
+     * A trip's efficiency profile is its stops' profiles added up bucket by bucket (ANL-03), and a
+     * stop still waiting on analysis contributes nothing rather than voiding the trip's profile —
+     * the same best-effort rule the distances follow.
+     */
+    @Test
+    fun ecoProfileSumsAcrossStopsBucketByBucket() {
+        val a = ride(1, startMin = 0, durMin = 10, eco = RideEco(500.0, 50.0, 100.0, 350.0, 50.0, 6000.0, 120.0, 90.0, 30.0))
+        val b = ride(2, startMin = 30, durMin = 10, eco = RideEco(400.0, 100.0, 80.0, 280.0, 40.0, 4000.0, 80.0, 60.0, 10.0))
+
+        val summed = summarizeMerge(listOf(b, a)).eco!!
+        assertEquals(900.0, summed.movingSeconds, 1e-9)
+        assertEquals(150.0, summed.idleSeconds, 1e-9)
+        assertEquals(10_000.0, summed.meters, 1e-9)
+        assertEquals(200.0, summed.brakeJPerKg, 1e-9)
+        assertEquals(40.0, summed.hardAccelJPerKg, 1e-9)
+
+        // One stop analysed, one not: the trip reports what it has rather than nothing.
+        assertEquals(6000.0, summarizeMerge(listOf(a, ride(3, startMin = 60, durMin = 10))).eco!!.meters, 1e-9)
+        // Nothing analysed at all is no profile, not an empty one.
+        assertNull(summarizeMerge(listOf(ride(4, startMin = 0, durMin = 5), ride(5, startMin = 10, durMin = 5))).eco)
     }
 
     @Test

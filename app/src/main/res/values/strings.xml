@@ -20,7 +20,7 @@
     <string name="home_no_primary_vehicle">No primary vehicle</string>
     <string name="home_unknown_vehicle">Vehicle</string>
     <string name="home_add_vehicle_hint">Add a vehicle in Garage</string>
-    <string name="home_active_ride">Active ride</string>
+    <string name="recording_active_ride">Active ride</string>
     <string name="home_started_at">Started at %1$s</string>
     <string name="home_vehicle_fuel_consumption">Fuel consumption</string>
     <string name="home_total_distance">Total Distance</string>
@@ -43,6 +43,8 @@
     <string name="home_activity_metric_distance">Distance</string>
     <string name="home_activity_metric_time">Travel time</string>
     <string name="home_activity_metric_cost">Cost</string>
+    <string name="home_activity_period_week">Week</string>
+    <string name="home_activity_period_month">Month</string>
 
     <string name="settings_category_preferences">Preferences</string>
     <string name="settings_category_ride_recording">Ride recording</string>
@@ -115,6 +117,7 @@
     <string name="action_edit">Edit</string>
     <string name="action_delete">Delete</string>
     <string name="action_cancel">Cancel</string>
+    <string name="action_clear">Clear</string>
     <string name="action_close">Close</string>
     <string name="garage_add_vehicle">Add vehicle</string>
     <string name="garage_edit_vehicle">Edit vehicle</string>
@@ -239,7 +242,48 @@
     <string name="ride_detail_avg_speed">Average speed</string>
     <string name="ride_detail_total_distance">Total distance</string>
     <string name="ride_detail_no_gps">No GPS recorded for this ride</string>
+
+    <!-- Efficiency (ANL-03): the 0-3 eco level and the time-by-regime breakdown. No numbers by design. -->
+    <string name="ride_detail_section_eco">Efficiency</string>
+    <string name="ride_eco_level_3">Very efficient</string>
+    <string name="ride_eco_level_2">Efficient</string>
+    <string name="ride_eco_level_1">Moderately efficient</string>
+    <string name="ride_eco_level_0">Inefficient</string>
+    <!-- Coaching one-liners under the level label. Encouraging at every level, never scolding. -->
+    <string name="ride_eco_sub_3">As efficient as it gets!</string>
+    <string name="ride_eco_sub_2">Just shy of perfect.</string>
+    <string name="ride_eco_sub_1">A little more gliding goes a long way.</string>
+    <string name="ride_eco_sub_0">Small changes, big difference.</string>
+    <!-- Screen-reader reading of the segmented bar, e.g. "Efficiency level 2 of 3". -->
+    <string name="ride_eco_level_a11y">Efficiency level %1$d of %2$d</string>
+    <string name="ride_eco_idle">Idling</string>
+    <string name="ride_eco_accelerating">Accelerating</string>
+    <string name="ride_eco_cruising">Cruising</string>
+    <string name="ride_eco_braking">Braking</string>
+    <!-- Screen-reader reading of one breakdown slice, e.g. "Braking: 12% of the ride". -->
+    <string name="ride_eco_bucket_a11y">%1$s: %2$d%% of the ride</string>
+    <!-- Sub-header over the per-regime breakdown rows. -->
+    <string name="ride_eco_breakdown_title">Where the time went</string>
+    <string name="ride_eco_note">Based on braking, idling and acceleration patterns. Gliding to a stop counts as cruising.</string>
     <string name="ride_address_unknown">Unknown location</string>
+
+    <!-- Safety score (ANL-01): 0–100 gauges from the ride's driving-dynamics profile. -->
+    <string name="safety_score_title">Safety score</string>
+    <string name="safety_score_total">Overall</string>
+    <string name="safety_score_braking">Braking</string>
+    <string name="safety_score_acceleration">Acceleration</string>
+    <string name="safety_score_cornering">Cornering</string>
+    <!-- Accessibility: gauge label, then its value. -->
+    <string name="safety_score_gauge">%1$s: %2$d of 100</string>
+    <string name="ride_score_unscoreable">Not enough measurable driving to score this ride.</string>
+    <string name="home_score_period_all">All time</string>
+    <string name="home_score_empty">No scored rides in this period.</string>
+    <string name="home_eco_empty">No rated rides for this selection yet.</string>
+    <!-- Chart subtitle per period, and the calendar-week label under a weekly bar. -->
+    <string name="home_score_dev_week">Score development over the past weeks</string>
+    <string name="home_score_dev_month">Score development over the past months</string>
+    <string name="home_score_dev_all">Score development overall</string>
+    <string name="score_week_label">W%1$d</string>
 
     <!-- Ride merging (§3.8) -->
     <string name="ride_merged_label">Merged</string>
@@ -331,6 +375,11 @@
     <string name="place_kind_gas_station">Gas station</string>
     <string name="place_kind_custom">Custom place</string>
 
+    <!-- Manual ride recording (TRK-07) -->
+    <string name="home_record_start">Start ride</string>
+    <string name="home_record_stop">Stop ride</string>
+    <string name="home_record_failed">Couldn\'t start recording</string>
+
     <string name="recording_channel_name">Ride recording</string>
     <string name="recording_notification_title">Recording ride</string>
     <string name="recording_notification_text">Tracking your trip in the background.</string>
@@ -345,5 +394,74 @@
     <string name="analysis_queue_empty_title">All rides analyzed</string>
     <string name="analysis_queue_empty_message">Nothing is being processed right now.</string>
     <string name="analysis_detail_notice_title">Analysis in progress</string>
-    <string name="analysis_detail_notice_message">Distance, route and driving events aren\'t available for this ride yet or may be incomplete.</string>
+    <string name="analysis_detail_notice_message">Distance, route, driving events and scores aren\'t available for this ride yet or may be incomplete.</string>
+
+    <!-- Logbook search & filters (LOG-06, LOG-07, LOG-11 … LOG-15) -->
+    <string name="rides_search_hint">Search rides</string>
+    <string name="rides_search_clear">Clear search</string>
+    <string name="rides_filter_open">Filters</string>
+    <string name="rides_filter_title">Filter rides</string>
+    <string name="rides_filter_reset">Reset</string>
+    <plurals name="rides_filter_apply">
+        <item quantity="one">Show %1$d ride</item>
+        <item quantity="other">Show %1$d rides</item>
+    </plurals>
+    <string name="rides_filter_vehicle">Vehicle</string>
+    <string name="rides_filter_vehicle_any">All vehicles</string>
+    <string name="rides_filter_start_place">Start place</string>
+    <string name="rides_filter_end_place">End place</string>
+    <string name="rides_filter_place_any">Any place</string>
+    <string name="rides_filter_date">Date range</string>
+    <string name="rides_filter_date_from">From</string>
+    <string name="rides_filter_date_to">To</string>
+    <string name="rides_filter_labeled_value">%1$s: %2$s</string>
+    <string name="rides_filter_date_any">Any</string>
+    <string name="rides_filter_distance">Distance</string>
+    <string name="rides_filter_distance_min">Min. (%1$s)</string>
+    <string name="rides_filter_distance_max">Max. (%1$s)</string>
+    <string name="rides_filter_trip_type">Trip type</string>
+    <string name="rides_filter_trip_any">All</string>
+    <string name="rides_filter_trip_single">Single rides</string>
+    <string name="rides_filter_trip_merged">Merged trips</string>
+    <string name="rides_filter_events">Only rides with driving events</string>
+    <string name="rides_filter_clear_all">Clear filters</string>
+    <string name="rides_filter_chip_remove">Remove filter</string>
+    <string name="rides_filter_chip_start">Start: %1$s</string>
+    <string name="rides_filter_chip_end">End: %1$s</string>
+    <string name="rides_filter_chip_date_range">%1$s – %2$s</string>
+    <string name="rides_filter_chip_date_from">From %1$s</string>
+    <string name="rides_filter_chip_date_until">Until %1$s</string>
+    <string name="rides_filter_chip_distance_range">%1$s – %2$s</string>
+    <string name="rides_filter_chip_distance_min">From %1$s</string>
+    <string name="rides_filter_chip_distance_max">Up to %1$s</string>
+    <string name="rides_filter_chip_events">Driving events</string>
+    <string name="rides_no_matches_title">No rides match</string>
+    <string name="rides_no_matches_message">Try another search term, or loosen the filters.</string>
+
+    <!-- Android Auto car screen (TRK-07) -->
+    <string name="car_vehicle">Vehicle</string>
+    <string name="car_no_vehicle">No vehicle</string>
+    <string name="car_no_ride_vehicle">—</string>
+    <string name="car_not_recording">Not recording</string>
+    <string name="car_start">Start ride</string>
+    <string name="car_stop">Stop ride</string>
+    <string name="car_discard">Discard</string>
+    <string name="car_start_failed">Can\'t start — check Ridesafe on your phone</string>
+    <string name="car_pick_vehicle">Which vehicle?</string>
+    <string name="car_ride_finished">Ride finished</string>
+    <string name="car_result_saved">Ride saved · %1$s</string>
+    <string name="car_result_too_short">Too short — not saved (%1$s)</string>
+    <string name="car_done">Done</string>
+    <string name="car_delete">Delete ride</string>
+    <string name="car_delete_confirm">Delete this ride?</string>
+    <string name="car_keep">Keep</string>
+    <string name="car_deleted">Ride deleted</string>
+    <string name="car_discard_confirm">Discard this ride? It won\'t be saved.</string>
+    <string name="car_discarded">Ride discarded</string>
+    <string name="car_events_channel_name">Ride events</string>
+    <string name="car_notify_started">Recording started</string>
+    <!-- Two-pane (tablet) empty detail pane. -->
+    <string name="placeholder_select_ride">Select a ride to see its details</string>
+    <string name="placeholder_select_vehicle">Select a vehicle to see its details</string>
+    <string name="placeholder_select_setting">Select a setting</string>
 </resources>

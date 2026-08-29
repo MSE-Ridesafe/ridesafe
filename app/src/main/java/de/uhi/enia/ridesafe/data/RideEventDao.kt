@@ -19,6 +19,10 @@ interface RideEventDao {
     )
     fun observeForGroup(groupId: Long): Flow<List<RideEvent>>
 
+    /** Ride ids with at least one detected event (ANL-01) — the logbook's "has events" filter. */
+    @Query("SELECT DISTINCT rideId FROM ride_events")
+    fun observeRideIdsWithEvents(): Flow<List<Long>>
+
     @Insert
     suspend fun insertAll(events: List<RideEvent>)
 

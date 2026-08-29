@@ -46,6 +46,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -67,10 +68,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.MergeCheck
-import de.uhi.enia.ridesafe.data.canMerge
+import de.uhi.enia.ridesafe.data.SavedAddress
+import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
+import de.uhi.enia.ridesafe.rides.recording.RecordingStatus
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.RECORDING_BAR_INSET
 import de.uhi.enia.ridesafe.util.currentCurrencySetting
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDayHeader
@@ -89,6 +93,11 @@ fun RidesScreen(
     timeline: List<TimelineEntry>,
     analysis: RideAnalysisProgress,
     exportState: RideExportState,
+    vehicles: List<Vehicle>,
+    places: List<SavedAddress>,
+    ridesWithEvents: Set<Long>,
+    filter: RideFilter,
+    onFilterChange: (RideFilter) -> Unit,
     onOpenRide: (Long) -> Unit,
     onOpenMerged: (Long) -> Unit,
     onOpenRefuel: (Long) -> Unit,
@@ -102,6 +111,9 @@ fun RidesScreen(
     onExportResultConsumed: () -> Unit,
     onAddRefuel: () -> Unit,
     selectionDismissRequests: State<Int>,
+    // The entry whose detail pane is showing (LogbookEntry.key). Null on a phone, where the detail
+    // covers the list rather than sitting beside it.
+    selectedKey: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -109,6 +121,11 @@ fun RidesScreen(
     val exportSuccessMessage = stringResource(R.string.ride_export_success)
     val exportErrorMessage = stringResource(R.string.ride_export_error)
     val openFileLabel = stringResource(R.string.ride_export_notification_open)
+
+    // Both floating overlays live in the same bottom corner, so the analysis bar (and the list
+    // under it) step up over the app shell's recording bar while a ride runs.
+    val recording by RecordingStatus.running.collectAsState()
+    val recordingInset = if (recording != null) RECORDING_BAR_INSET else 0.dp
 
     var selectionMode by rememberSaveable { mutableStateOf(false) }
     var handledSelectionDismissRequest by rememberSaveable {
@@ -123,12 +140,35 @@ fun RidesScreen(
         rememberSaveable(
             stateSaver = listSaver(save = { it.toList() }, restore = { it.toSet() }),
         ) { mutableStateOf(emptySet<String>()) }
+    var filtersOpen by rememberSaveable { mutableStateOf(false) }
 
-    val selectAllKeys = remember(timeline) { timelineSelectionKeys(timeline) }
-    val liveKeys = remember(timeline) { visibleTimelineSelectionKeys(timeline) }
+    // Each entry's searchable text, built once per data change; a keystroke then only scans it.
+    // Only built while a query is active: applyFilter never reads it otherwise, and skipping it keeps
+    // the list's first composition cheap — which is the frame the detail-close animation runs on.
+    val searchActive = filter.query.isNotBlank()
+    val index = remember(entries, context, searchActive) { if (searchActive) searchIndex(context, entries) else emptyMap() }
+    val visibleTimeline =
+        remember(timeline, filter, index, ridesWithEvents) {
+            if (!filter.isActive) {
+                timeline
+            } else {
+                val keys = entries.applyFilter(filter, index, ridesWithEvents).mapTo(hashSetOf()) { it.key }
+                // The search and the filters speak the language of rides (vehicle, places, distance…),
+                // so an active filter keeps only the matching rides. A refuel attached to a shown ride
+                // stays with it; standalone refuel rows have no way to match and drop out.
+                timeline.filter { it is TimelineEntry.RideEntry && it.stableKey in keys }
+            }
+        }
+
+    // Selection tracks what is on screen: a ride hidden by the filter counts as deselected, so
+    // "select all" means all the *shown* rides and no invisible ride can be swept into a merge.
+    val selectAllKeys = remember(visibleTimeline) { timelineSelectionKeys(visibleTimeline) }
+    val liveKeys = remember(visibleTimeline) { visibleTimelineSelectionKeys(visibleTimeline) }
     val selected = selectedKeys.intersect(liveKeys)
     val selectedRideEntries = remember(timeline, selected) { selectedRideLogbookEntries(timeline, selected) }
     val selectedRefuelRecords = remember(timeline, selected) { selectedRefuels(timeline, selected) }
+    // Contiguity (MRG-02) is judged against every ride, not the shown ones: a filtered-out ride
+    // between two selected ones still breaks the run, and merging across it would be wrong.
     val allRides = remember(entries) { entries.flatMap { it.rides } }
     val mixedMergeCheck =
         remember(selectedRideEntries, selectedRefuelRecords, allRides) {
@@ -291,120 +331,167 @@ fun RidesScreen(
                 }
             },
         ) { innerPadding ->
-            if (timeline.isEmpty()) {
-                EmptyRides(
-                    modifier =
-                        Modifier
-                            .padding(innerPadding)
-                            .fillMaxSize()
-                            .padding(32.dp),
-                )
-                return@Scaffold
-            }
-
-            // One card per calendar day; entries arrive newest-first, so insertion order gives newest day
-            // first, newest entry first within each day.
-            val groups =
-                remember(timeline) { timeline.groupByTo(LinkedHashMap()) { rideDay(it.sortEpochMs) } }
-            val today = LocalDate.now()
-
-            LazyColumn(
+            Column(
                 modifier =
                     Modifier
                         .padding(innerPadding)
                         .fillMaxSize(),
-                // Nothing reserves space for the floating status bar, so the list leaves room for it
-                // itself — otherwise the last ride of the logbook can never be scrolled out from under it.
-                contentPadding =
-                    PaddingValues(
-                        start = 16.dp,
-                        end = 16.dp,
-                        top = 16.dp,
-                        bottom = if (analysis.running) 88.dp else 16.dp,
-                    ),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                groups.forEach { (day, dayEntries) ->
-                    item(key = "h$day") {
-                        DayHeader(text = formatDayHeader(context, day, today))
+                if (timeline.isEmpty()) {
+                    // An empty logbook has nothing to search, so the search bar stays away entirely.
+                    EmptyRides(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(32.dp),
+                    )
+                    return@Column
+                }
+
+                // Search and filters describe rides; a refuel-only timeline offers nothing to search.
+                if (entries.isNotEmpty()) {
+                    RideSearchBar(
+                        query = filter.query,
+                        activeFilterCount = filter.activeFilterCount,
+                        onQueryChange = { onFilterChange(filter.copy(query = it)) },
+                        onOpenFilters = { filtersOpen = true },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
+                if (visibleTimeline.isEmpty()) {
+                    // Nothing matched, so there is no list to scroll the chips away with — and they
+                    // are the way back out, so here they stay put.
+                    ActiveFilterChips(
+                        filter = filter,
+                        vehicles = vehicles,
+                        places = places,
+                        onFilterChange = onFilterChange,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                    NoMatchingRides(
+                        onClear = { onFilterChange(RideFilter()) },
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(32.dp),
+                    )
+                    return@Column
+                }
+
+                // One card per calendar day; entries arrive newest-first, so insertion order gives newest day
+                // first, newest entry first within each day.
+                val groups =
+                    remember(visibleTimeline) { visibleTimeline.groupByTo(LinkedHashMap()) { rideDay(it.sortEpochMs) } }
+                val today = LocalDate.now()
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    // Nothing reserves space for the floating status bar, so the list leaves room for it
+                    // itself — otherwise the last ride of the logbook can never be scrolled out from under it.
+                    contentPadding =
+                        PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 8.dp,
+                            bottom = (if (analysis.running) 88.dp else 16.dp) + recordingInset,
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    // The chips are the list's first row rather than a bar above it, so a long set
+                    // of them scrolls away under the search bar instead of permanently costing the
+                    // user rides off the bottom of the screen. The filter button keeps its badge, so
+                    // "something is filtered" is still visible once they are gone.
+                    item(key = "chips") {
+                        ActiveFilterChips(
+                            filter = filter,
+                            vehicles = vehicles,
+                            places = places,
+                            onFilterChange = onFilterChange,
+                        )
                     }
-                    item(key = "c$day") {
-                        Card(
-                            shape = MaterialTheme.shapes.extraLarge,
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Column {
-                                dayEntries.forEachIndexed { index, timelineEntry ->
-                                    if (index > 0) {
-                                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-                                    }
-                                    when (timelineEntry) {
-                                        is TimelineEntry.RideEntry -> {
-                                            val entry = timelineEntry.entry
-                                            LogbookRow(
-                                                entry = entry,
-                                                selectionMode = selectionMode,
-                                                selected = entry.key in selected,
-                                                onClick = {
-                                                    if (selectionMode) {
-                                                        toggle(entry.key)
-                                                    } else {
-                                                        when (entry) {
-                                                            is LogbookEntry.Single -> onOpenRide(entry.row.ride.id)
-                                                            is LogbookEntry.Merged -> onOpenMerged(entry.groupId)
+                    groups.forEach { (day, dayEntries) ->
+                        item(key = "h$day") {
+                            DayHeader(text = formatDayHeader(context, day, today))
+                        }
+                        item(key = "c$day") {
+                            Card(
+                                shape = MaterialTheme.shapes.extraLarge,
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Column {
+                                    dayEntries.forEachIndexed { index, timelineEntry ->
+                                        if (index > 0) {
+                                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
+                                        }
+                                        when (timelineEntry) {
+                                            is TimelineEntry.RideEntry -> {
+                                                val entry = timelineEntry.entry
+                                                LogbookRow(
+                                                    entry = entry,
+                                                    selectionMode = selectionMode,
+                                                    selected = entry.key in selected,
+                                                    isOpen = entry.key == selectedKey,
+                                                    onClick = {
+                                                        if (selectionMode) {
+                                                            toggle(entry.key)
+                                                        } else {
+                                                            when (entry) {
+                                                                is LogbookEntry.Single -> onOpenRide(entry.row.ride.id)
+                                                                is LogbookEntry.Merged -> onOpenMerged(entry.groupId)
+                                                            }
                                                         }
+                                                    },
+                                                    onLongClick = {
+                                                        selectionMode = true
+                                                        toggle(entry.key)
+                                                    },
+                                                )
+                                                // Keep the compact main timeline focused on the combined
+                                                // journey summary. Its associated Refuels remain available
+                                                // in the combined-ride detail timeline.
+                                                if (entry is LogbookEntry.Single) {
+                                                    timelineEntry.refuels.forEach { nested ->
+                                                        HorizontalDivider(
+                                                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                                            modifier = Modifier.padding(start = 40.dp),
+                                                        )
+                                                        val key = "f${nested.refuel.id}"
+                                                        RefuelTimelineRow(
+                                                            row = nested,
+                                                            selectionMode = selectionMode,
+                                                            selected = key in selected,
+                                                            nested = true,
+                                                            onClick = {
+                                                                if (selectionMode) toggle(key) else onOpenRefuel(nested.refuel.id)
+                                                            },
+                                                            onLongClick = {
+                                                                selectionMode = true
+                                                                toggle(key)
+                                                            },
+                                                        )
                                                     }
-                                                },
-                                                onLongClick = {
-                                                    selectionMode = true
-                                                    toggle(entry.key)
-                                                },
-                                            )
-                                            // Keep the compact main timeline focused on the combined
-                                            // journey summary. Its associated Refuels remain available
-                                            // in the combined-ride detail timeline.
-                                            if (entry is LogbookEntry.Single) {
-                                                timelineEntry.refuels.forEach { nested ->
-                                                    HorizontalDivider(
-                                                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                                        modifier = Modifier.padding(start = 40.dp),
-                                                    )
-                                                    val key = "f${nested.refuel.id}"
-                                                    RefuelTimelineRow(
-                                                        row = nested,
-                                                        selectionMode = selectionMode,
-                                                        selected = key in selected,
-                                                        nested = true,
-                                                        onClick = {
-                                                            if (selectionMode) toggle(key) else onOpenRefuel(nested.refuel.id)
-                                                        },
-                                                        onLongClick = {
-                                                            selectionMode = true
-                                                            toggle(key)
-                                                        },
-                                                    )
                                                 }
                                             }
-                                        }
 
-                                        is TimelineEntry.RefuelEntry -> {
-                                            RefuelTimelineRow(
-                                                row = timelineEntry.row,
-                                                selectionMode = selectionMode,
-                                                selected = timelineEntry.stableKey in selected,
-                                                onClick = {
-                                                    if (selectionMode) {
+                                            is TimelineEntry.RefuelEntry -> {
+                                                RefuelTimelineRow(
+                                                    row = timelineEntry.row,
+                                                    selectionMode = selectionMode,
+                                                    selected = timelineEntry.stableKey in selected,
+                                                    onClick = {
+                                                        if (selectionMode) {
+                                                            toggle(timelineEntry.stableKey)
+                                                        } else {
+                                                            onOpenRefuel(timelineEntry.row.refuel.id)
+                                                        }
+                                                    },
+                                                    onLongClick = {
+                                                        selectionMode = true
                                                         toggle(timelineEntry.stableKey)
-                                                    } else {
-                                                        onOpenRefuel(timelineEntry.row.refuel.id)
-                                                    }
-                                                },
-                                                onLongClick = {
-                                                    selectionMode = true
-                                                    toggle(timelineEntry.stableKey)
-                                                },
-                                            )
+                                                    },
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -420,7 +507,8 @@ fun RidesScreen(
             modifier =
                 Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .padding(bottom = recordingInset),
         )
         if (exportState == RideExportState.Exporting) {
             Box(
@@ -441,6 +529,16 @@ fun RidesScreen(
                     }
                 }
             }
+        }
+        if (filtersOpen) {
+            RideFilterSheet(
+                filter = filter,
+                vehicles = vehicles,
+                places = places,
+                matchCount = visibleTimeline.count { it is TimelineEntry.RideEntry },
+                onFilterChange = onFilterChange,
+                onDismiss = { filtersOpen = false },
+            )
         }
     }
     pendingExportRequests?.let { requests ->
@@ -791,6 +889,7 @@ private fun LogbookRow(
     entry: LogbookEntry,
     selectionMode: Boolean,
     selected: Boolean,
+    isOpen: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
@@ -846,7 +945,11 @@ private fun LogbookRow(
                 onClick = onClick,
                 onLongClick = onLongClick,
             ),
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        colors =
+            ListItemDefaults.colors(
+                containerColor =
+                    if (isOpen) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+            ),
         leadingContent = {
             if (selectionMode) {
                 SelectionCircle(selected = selected)
@@ -961,6 +1064,45 @@ private fun rideTimeRange(
         append(formatTimeOfDay(context, startMs))
         endMs?.let { append(" – ").append(formatTimeOfDay(context, it)) }
     }
+
+/**
+ * The search/filter came up empty — deliberately distinct from an empty logbook (there *are* rides,
+ * they just don't match), and it offers the way back out rather than leaving the user to hunt for it.
+ */
+@Composable
+private fun NoMatchingRides(
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        MaterialSymbol(
+            symbolName = "search_off",
+            contentDescription = null,
+            size = 64.dp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.size(16.dp))
+        Text(
+            text = stringResource(R.string.rides_no_matches_title),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Spacer(Modifier.size(4.dp))
+        Text(
+            text = stringResource(R.string.rides_no_matches_message),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.size(16.dp))
+        TextButton(onClick = onClear) {
+            Text(stringResource(R.string.rides_filter_clear_all))
+        }
+    }
+}
 
 @Composable
 private fun EmptyRides(modifier: Modifier = Modifier) {

@@ -88,6 +88,8 @@ class RideRecordingEngine(
      */
     private data class End(
         val done: CompletableDeferred<Boolean>? = null,
+        val immediate: Boolean = false,
+        val drop: Boolean = false,
     ) : Cmd
 
     /** The reconnect grace ran out: no car came back, so finalize and drop the tail. */
@@ -107,7 +109,7 @@ class RideRecordingEngine(
                 runCatching {
                     when (cmd) {
                         is Start -> startSession(cmd.vehicleId)
-                        is End -> endSession(cmd.done)
+                        is End -> endSession(cmd.done, cmd.immediate, cmd.drop)
                         Expire -> expireGrace()
                         Recover -> recover()
                     }
@@ -132,10 +134,16 @@ class RideRecordingEngine(
      * End the trip and suspend until its fate is settled — used by [RideRecordingService].
      * Returns true once the ride is finalized, false if the same car reconnected within the
      * grace and recording continues, in which case the caller must keep the service running.
+     * [immediate] skips the grace: a stop the user asked for by hand (TRK-07) is the end of the
+     * ride, there is no car coming back. [drop] throws the ride away instead of logging it — the
+     * driver was a passenger, or the trip was never meant to be in the logbook.
      */
-    suspend fun endAndAwait(): Boolean {
+    suspend fun endAndAwait(
+        immediate: Boolean = false,
+        drop: Boolean = false,
+    ): Boolean {
         val done = CompletableDeferred<Boolean>()
-        commands.send(End(done))
+        commands.send(End(done, immediate, drop))
         return done.await()
     }
 
@@ -169,11 +177,19 @@ class RideRecordingEngine(
             stopSession()
             finishEnd(stopped = false)
         }
-        session = Session(vehicleId).also { it.start() }
+        session =
+            Session(vehicleId).also {
+                it.start()
+                RecordingStatus.onStarted(it.startedElapsedNanos, vehicleId)
+            }
     }
 
     /** The trip ended: keep recording into the tail buffer and give the car [reconnectGraceMs] to return. */
-    private suspend fun endSession(done: CompletableDeferred<Boolean>?) {
+    private suspend fun endSession(
+        done: CompletableDeferred<Boolean>?,
+        immediate: Boolean,
+        drop: Boolean,
+    ) {
         pendingEnd?.complete(false) // superseded: this waiter now owns the stop decision
         pendingEnd = done
         val s = session
@@ -182,9 +198,10 @@ class RideRecordingEngine(
             finishEnd(stopped = true)
             return
         }
-        if (reconnectGraceMs <= 0) {
-            // Grace turned off (SET-10): the disconnect is the end of the ride, full stop.
-            stopSession()
+        if (reconnectGraceMs <= 0 || immediate) {
+            // Grace turned off (SET-10), or the user ended the ride by hand (TRK-07): either way
+            // this is the end of the ride, full stop — no waiting for a car to come back.
+            stopSession(drop)
             finishEnd(stopped = true)
             return
         }
@@ -192,7 +209,7 @@ class RideRecordingEngine(
         s.beginEnding()
         graceJob =
             scope.launch {
-                delay(reconnectGraceMs)
+                delay(reconnectGraceMs.milliseconds)
                 commands.send(Expire)
             }
     }
@@ -210,16 +227,17 @@ class RideRecordingEngine(
         pendingEnd = null
     }
 
-    private suspend fun stopSession() {
+    private suspend fun stopSession(drop: Boolean = false) {
         val s = session
         if (s == null) {
             Log.w(TAG, "stop ignored: not recording")
             return
         }
         session = null
+        RecordingStatus.onStopped()
         graceJob?.cancel()
         graceJob = null
-        s.stop()
+        s.stop(drop)
     }
 
     private suspend fun recover() {
@@ -262,7 +280,7 @@ class RideRecordingEngine(
         val vehicleId: Long?,
     ) {
         private val startedAtEpochMs = System.currentTimeMillis()
-        private val startedElapsedNanos = SystemClock.elapsedRealtimeNanos()
+        val startedElapsedNanos = SystemClock.elapsedRealtimeNanos()
         private val fileName = "ride_$startedElapsedNanos.ndjson.gz"
         private val channel = Channel<RideSample>(Channel.UNLIMITED)
         private val stats = RideStats()
@@ -313,7 +331,7 @@ class RideRecordingEngine(
             Log.i(TAG, "recording ride $rideId -> $fileName (vehicle=$vehicleId)")
         }
 
-        suspend fun stop() {
+        suspend fun stop(drop: Boolean = false) {
             // Stop the sources, but first drain the sensor FIFO so the last batched samples aren't
             // lost, then close the channel and drain the writer.
             locationCallback?.let { fusedClient.removeLocationUpdates(it) }
@@ -327,8 +345,16 @@ class RideRecordingEngine(
             // is also what makes the length a real one, unpadded by the reconnect grace.
             val endedAt = endedAtEpochMs ?: System.currentTimeMillis()
             val lengthMs = endedAt - startedAtEpochMs
+            if (drop) {
+                // The driver threw this one away from the car screen; no outcome to report back,
+                // they watched it happen.
+                discard(lengthMs, "dropped by the driver")
+                RecordingStatus.onFinished(null)
+                return
+            }
             if (minRideMs > 0 && lengthMs < minRideMs) {
-                discard(lengthMs)
+                discard(lengthMs, "shorter than the minimum")
+                RecordingStatus.onFinished(RideOutcome.TooShort(lengthMs))
                 return
             }
             // safe to read stats: writeLoop finished (join above)
@@ -341,14 +367,18 @@ class RideRecordingEngine(
                 stats.endFix?.lon,
                 stats.maxSpeedMps,
             )
+            RecordingStatus.onFinished(RideOutcome.Saved(lengthMs, rideId))
             Log.i(TAG, "stopped ride $rideId: maxSpeed=${stats.maxSpeedMps} mps")
         }
 
         /** Too short to be a trip (TRK-10): drop the row and its samples instead of logging it. */
-        private suspend fun discard(lengthMs: Long) {
+        private suspend fun discard(
+            lengthMs: Long,
+            why: String,
+        ) {
             dao.deleteById(rideId)
             File(ridesDir(appContext), fileName).delete()
-            Log.i(TAG, "discarded ride $rideId: only ${lengthMs}ms long")
+            Log.i(TAG, "discarded ride $rideId ($why): ${lengthMs}ms long")
         }
 
         // Flush the hardware FIFO so any batched motion still buffered is delivered into the channel

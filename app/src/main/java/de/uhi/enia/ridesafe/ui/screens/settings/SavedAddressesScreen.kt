@@ -70,6 +70,7 @@ fun SavedAddressesScreen(
     onAdd: (SavedPlaceKind) -> Unit,
     onEdit: (Long) -> Unit,
     onBack: () -> Unit,
+    showBack: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val existingKinds = addresses.map { it.kind }.toSet()
@@ -87,11 +88,13 @@ fun SavedAddressesScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        MaterialSymbol(
-                            symbolName = "arrow_back",
-                            contentDescription = stringResource(R.string.action_back),
-                        )
+                    if (showBack) {
+                        IconButton(onClick = onBack) {
+                            MaterialSymbol(
+                                symbolName = "arrow_back",
+                                contentDescription = stringResource(R.string.action_back),
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
