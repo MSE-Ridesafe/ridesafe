@@ -18,6 +18,14 @@
     <string name="home_no_primary_vehicle">Kein Prim&#228;rfahrzeug</string>
     <string name="home_unknown_vehicle">Fahrzeug</string>
     <string name="home_add_vehicle_hint">F&#252;ge ein Fahrzeug in der Garage hinzu</string>
+    <!-- Top-bar vehicle selector: what a tap on the title does (TalkBack action label). -->
+    <string name="home_vehicle_filter_cd">Nach Fahrzeug filtern</string>
+    <!-- "All vehicles" header card: vehicle count and the fleet's combined odometer chip. -->
+    <plurals name="home_garage_vehicle_count">
+        <item quantity="one">%d Fahrzeug</item>
+        <item quantity="other">%d Fahrzeuge</item>
+    </plurals>
+    <string name="home_garage_total_mileage">Gesamtkilometerstand</string>
     <string name="recording_active_ride">Aktive Fahrt</string>
     <string name="home_vehicle_fuel_consumption">Kraftstoffverbrauch</string>
     <string name="home_total_distance">Gesamte Strecke</string>
@@ -269,7 +277,6 @@
     <string name="ride_score_unscoreable">Zu wenig auswertbare Fahrzeit, um diese Fahrt zu bewerten.</string>
     <string name="home_score_period_all">Insgesamt</string>
     <string name="home_score_empty">Keine bewerteten Fahrten in diesem Zeitraum.</string>
-    <string name="home_eco_empty">Noch keine bewerteten Fahrten für diese Auswahl.</string>
     <!-- Diagramm-Untertitel je Zeitraum und die Kalenderwochen-Beschriftung eines Wochenbalkens. -->
     <string name="home_score_dev_week">Score-Entwicklung der letzten Wochen</string>
     <string name="home_score_dev_month">Score-Entwicklung der letzten Monate</string>

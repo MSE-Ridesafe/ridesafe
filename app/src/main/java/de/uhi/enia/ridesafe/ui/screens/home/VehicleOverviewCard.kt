@@ -1,11 +1,14 @@
 package de.uhi.enia.ridesafe.ui.screens.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -15,12 +18,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Vehicle
+import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.screens.garage.VehicleImage
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatOdometer
@@ -84,6 +90,66 @@ fun VehicleCard(vehicle: Vehicle?) {
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * The header card's "All vehicles" face: the whole garage as one entry, with the fleet's combined
+ * odometer. Rated consumption has no meaningful sum, so the chip row shrinks to the one figure
+ * that does.
+ */
+@Composable
+fun GarageSummaryCard(vehicles: List<Vehicle>) {
+    val unitSystem = currentUnitSystem()
+    Card(
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Same frame as VehicleImage's empty state, but with the Garage tab's glyph: this
+                // entry is the whole garage, not one car. (VehicleImage itself is garage-internal.)
+                Box(
+                    modifier =
+                        Modifier
+                            .size(86.dp)
+                            .clip(MaterialTheme.shapes.large)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    MaterialSymbol(
+                        symbolName = "garage_home",
+                        contentDescription = null,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        size = 43.dp,
+                    )
+                }
+                Spacer(Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = stringResource(R.string.rides_filter_vehicle_any),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = pluralStringResource(R.plurals.home_garage_vehicle_count, vehicles.size, vehicles.size),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            InfoChip(
+                label = stringResource(R.string.home_garage_total_mileage),
+                value = formatOdometer(vehicles.sumOf { it.mileageKm }, unitSystem),
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

@@ -1,6 +1,5 @@
 package de.uhi.enia.ridesafe.ui.screens.home
 
-import de.uhi.enia.ridesafe.data.RideEco
 import de.uhi.enia.ridesafe.data.SafetyScore
 import de.uhi.enia.ridesafe.data.Vehicle
 import java.time.DayOfWeek
@@ -8,8 +7,12 @@ import java.time.LocalDate
 import java.time.YearMonth
 
 data class HomeDashboardState(
-    val primaryVehicle: Vehicle? = null,
-    // The garage, primary first — the manual-start button asks which car when there is a choice (TRK-08).
+    // The dashboard's vehicle filter, already past the stale-id guard: null means "All vehicles",
+    // which also pools rides recorded without one. Only ever non-null with two or more cars in the
+    // garage — below that the top-bar selector is hidden and a filter would be invisible.
+    val selectedVehicleId: Long? = null,
+    // The garage, primary first — feeds the top-bar selector and header card, and the manual-start
+    // button asks which car when there is a choice (TRK-08).
     val vehicles: List<Vehicle> = emptyList(),
     val totalDistanceMeters: Double = 0.0,
     val totalDurationMillis: Long = 0L,
@@ -29,10 +32,10 @@ data class HomeDashboardState(
     val safetyScoreByWeek: Map<LocalDate, Int> = emptyMap(),
     val safetyScoreByMonth: Map<YearMonth, Int> = emptyMap(),
     val safetyScoreHistory: List<Pair<LocalDate, Int>> = emptyList(),
-    // The pooled efficiency profile (ANL-03) and each vehicle's own, for the dashboard's eco card
-    // and its garage filter. All-time null hides the card — nothing profiled means nothing to rate.
-    val ecoAllTime: RideEco? = null,
-    val ecoByVehicle: Map<Long, RideEco> = emptyMap(),
+    // The pooled efficiency level (ANL-03) over the current selection, for the dashboard's eco
+    // card. Null hides the card — nothing ratable means nothing to rate, same rule as the safety
+    // card. The level (not the profile) gates it: a profile can lack enough qualified data to rate.
+    val ecoLevel: Int? = null,
 )
 
 data class ActivityBar(

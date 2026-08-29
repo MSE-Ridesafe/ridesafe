@@ -11,14 +11,18 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.ListItem
@@ -29,16 +33,21 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Vehicle
@@ -52,6 +61,7 @@ import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 @Composable
 fun HomeScreen(
     state: HomeDashboardState,
+    onSelectVehicle: (Long?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -60,10 +70,20 @@ fun HomeScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        stringResource(R.string.screen_home_title),
-                        style = MaterialTheme.typography.headlineMedium,
-                    )
+                    // The title doubles as the dashboard's vehicle filter once the garage offers a
+                    // choice; with 0–1 cars there is nothing to select and the plain title stays.
+                    if (state.vehicles.size >= 2) {
+                        VehicleSelectorTitle(
+                            vehicles = state.vehicles,
+                            selectedVehicleId = state.selectedVehicleId,
+                            onSelect = onSelectVehicle,
+                        )
+                    } else {
+                        Text(
+                            stringResource(R.string.screen_home_title),
+                            style = MaterialTheme.typography.headlineMedium,
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
             )
@@ -81,9 +101,13 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                VehicleCard(
-                    vehicle = state.primaryVehicle,
-                )
+                val selectedVehicle = state.vehicles.firstOrNull { it.id == state.selectedVehicleId }
+                when {
+                    selectedVehicle != null -> VehicleCard(vehicle = selectedVehicle)
+                    state.vehicles.size >= 2 -> GarageSummaryCard(vehicles = state.vehicles)
+                    // 0–1 cars: observeAll() sorts primary first, so this is the old primary-or-first rule.
+                    else -> VehicleCard(vehicle = state.vehicles.firstOrNull())
+                }
             }
             item {
                 SummaryMetricCarousel(
@@ -109,13 +133,11 @@ fun HomeScreen(
                     )
                 }
             }
-            // Absent until a first ride is profiled, same rule as the safety card above it.
-            if (state.ecoAllTime != null) {
+            // Absent until the selection has a ratable ride, same rule as the safety card above it.
+            if (state.ecoLevel != null) {
                 item {
                     EcoSection(
-                        allVehicles = state.ecoAllTime,
-                        byVehicle = state.ecoByVehicle,
-                        vehicles = state.vehicles,
+                        level = state.ecoLevel,
                     )
                 }
             }
@@ -131,6 +153,83 @@ fun HomeScreen(
             }
         }
     }
+}
+
+/**
+ * The screen title as the dashboard's scope: one car, or the whole garage. A tap opens the choice
+ * as a plain [DropdownMenu] — deliberately not ExposedDropdownMenuBox, matching the logbook filter
+ * sheet's precedent ([de.uhi.enia.ridesafe.ui.screens.rides]'s FilterDropdown).
+ */
+@Composable
+private fun VehicleSelectorTitle(
+    vehicles: List<Vehicle>,
+    selectedVehicleId: Long?,
+    onSelect: (Long?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selected = vehicles.firstOrNull { it.id == selectedVehicleId }
+    Box {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier =
+                Modifier
+                    .clip(MaterialTheme.shapes.small)
+                    .clickable(
+                        onClickLabel = stringResource(R.string.home_vehicle_filter_cd),
+                        role = Role.DropdownList,
+                    ) { expanded = true }
+                    .minimumInteractiveComponentSize(),
+        ) {
+            Text(
+                text = selected?.displayTitle() ?: stringResource(R.string.rides_filter_vehicle_any),
+                style = MaterialTheme.typography.headlineMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                // fill = false: short titles keep the arrow snug; long ones truncate, arrow visible.
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            MaterialSymbol(symbolName = "arrow_drop_down", contentDescription = null)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            VehicleMenuItem(
+                label = stringResource(R.string.rides_filter_vehicle_any),
+                selected = selected == null,
+                onClick = {
+                    expanded = false
+                    onSelect(null)
+                },
+            )
+            vehicles.forEach { vehicle ->
+                VehicleMenuItem(
+                    label = vehicle.displayTitle(),
+                    selected = vehicle.id == selectedVehicleId,
+                    onClick = {
+                        expanded = false
+                        onSelect(vehicle.id)
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** One garage entry; the check sits trailing so unselected labels stay aligned with the selected one. */
+@Composable
+private fun VehicleMenuItem(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    DropdownMenuItem(
+        text = { Text(label) },
+        trailingIcon =
+            if (selected) {
+                { MaterialSymbol(symbolName = "check", contentDescription = null, size = 18.dp) }
+            } else {
+                null
+            },
+        onClick = onClick,
+    )
 }
 
 /**
