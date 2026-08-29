@@ -3,6 +3,7 @@ package de.uhi.enia.ridesafe.data
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import de.uhi.enia.ridesafe.util.haversineMeters
+import java.util.Locale
 
 /**
  * A user-saved address / "place" (entity DR-ADR). Anchored to an exact GPS point
@@ -71,3 +72,9 @@ fun matchAddress(
         }.minByOrNull { it.second }
         ?.first
 }
+
+/**
+ * Case- and punctuation-insensitive form used wherever two user-entered strings are compared for
+ * identity — place labels and addresses, license plates, geocoder search results.
+ */
+fun normalizeForMatching(value: String): String = value.filter(Char::isLetterOrDigit).uppercase(Locale.ROOT)

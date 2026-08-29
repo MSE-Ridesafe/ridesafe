@@ -14,6 +14,7 @@ import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
 import de.uhi.enia.ridesafe.data.Vehicle
+import de.uhi.enia.ridesafe.data.normalizeForMatching
 import de.uhi.enia.ridesafe.rides.processing.ROUTE_VERSION
 import de.uhi.enia.ridesafe.rides.processing.processedRouteFile
 import de.uhi.enia.ridesafe.rides.recording.ridesDir
@@ -469,9 +470,9 @@ internal fun findMatchingVehicle(
         existing.singleOrNull { it.vehicleUuid.equals(uuid, ignoreCase = true) }?.let { return it }
     }
 
-    val plate = normalizeLicensePlate(archived.licensePlate)
+    val plate = normalizeForMatching(archived.licensePlate)
     val plateMatches =
-        if (plate.isEmpty()) emptyList() else existing.filter { normalizeLicensePlate(it.licensePlate) == plate }
+        if (plate.isEmpty()) emptyList() else existing.filter { normalizeForMatching(it.licensePlate) == plate }
     val archivedBluetooth = archived.bluetoothDevices.mapNotNull { normalizeBluetoothAddress(it.address) }.toSet()
     val bluetoothMatches =
         if (archivedBluetooth.isEmpty()) {
@@ -501,10 +502,8 @@ internal fun findMatchingVehicle(
     }
 }
 
-internal fun normalizeLicensePlate(value: String): String = value.filter(Char::isLetterOrDigit).uppercase(Locale.ROOT)
 
-private fun normalizeBluetoothAddress(value: String): String? =
-    value.filter(Char::isLetterOrDigit).uppercase(Locale.ROOT).takeIf { it.length == 12 }
+private fun normalizeBluetoothAddress(value: String): String? = normalizeForMatching(value).takeIf { it.length == 12 }
 
 private val singletonSavedPlaceKinds =
     setOf(SavedPlaceKind.HOME, SavedPlaceKind.WORK, SavedPlaceKind.SCHOOL)
@@ -518,14 +517,13 @@ private fun SavedAddress.matches(archived: BackupSavedAddress): Boolean {
     if (kind != archivedKind) return false
     if (kind in singletonSavedPlaceKinds) return true
 
-    val localAddress = address?.let(::normalizeSavedPlaceText).orEmpty()
-    val archivedAddress = archived.address?.let(::normalizeSavedPlaceText).orEmpty()
+    val localAddress = address?.let(::normalizeForMatching).orEmpty()
+    val archivedAddress = archived.address?.let(::normalizeForMatching).orEmpty()
     val sameKnownAddress = localAddress.isNotEmpty() && localAddress == archivedAddress
     val sameCoordinates = haversineMeters(latitude, longitude, archived.latitude, archived.longitude) <= 15.0
     return sameKnownAddress || sameCoordinates
 }
 
-private fun normalizeSavedPlaceText(value: String): String = value.filter(Char::isLetterOrDigit).uppercase(Locale.ROOT)
 
 private fun BackupSavedAddress.toSavedAddress() =
     SavedAddress(

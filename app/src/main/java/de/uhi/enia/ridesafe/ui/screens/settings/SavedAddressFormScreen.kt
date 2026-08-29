@@ -87,6 +87,7 @@ import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
 import de.uhi.enia.ridesafe.data.fixedIcon
 import de.uhi.enia.ridesafe.data.hasFixedLabel
+import de.uhi.enia.ridesafe.data.normalizeForMatching
 import de.uhi.enia.ridesafe.rides.processing.AddressSearchResult
 import de.uhi.enia.ridesafe.rides.processing.addressLines
 import de.uhi.enia.ridesafe.rides.processing.forwardGeocodeSuggestions
@@ -100,7 +101,6 @@ import de.uhi.enia.ridesafe.util.formatShortDistance
 import de.uhi.enia.ridesafe.util.haversineMeters
 import kotlinx.coroutines.delay
 import org.json.JSONArray
-import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val RADIUS_MIN = 25f
@@ -148,7 +148,7 @@ private fun findExistingSavedPlace(
     savedAddresses: List<SavedAddress>,
     editedId: Long?,
 ): SavedAddress? {
-    val normalizedResult = normalizeSearchAddress(result.address)
+    val normalizedResult = normalizeForMatching(result.address)
     return savedAddresses
         .asSequence()
         .filterNot { it.id == editedId }
@@ -156,14 +156,13 @@ private fun findExistingSavedPlace(
         .filter { (saved, distance) ->
             val sameAddress =
                 saved.address
-                    ?.let(::normalizeSearchAddress)
+                    ?.let(::normalizeForMatching)
                     ?.takeIf(String::isNotEmpty) == normalizedResult
             sameAddress || distance <= 15.0
         }.minByOrNull { it.second }
         ?.first
 }
 
-private fun normalizeSearchAddress(value: String): String = value.filter(Char::isLetterOrDigit).uppercase(Locale.ROOT)
 
 /** Curated Material Symbols offered for a custom place (ADR-06); the full font is thousands of glyphs. */
 private val CURATED_PLACE_ICONS =

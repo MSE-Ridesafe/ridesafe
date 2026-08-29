@@ -7,7 +7,6 @@ import androidx.room.Query
 import androidx.room.Update
 import de.uhi.enia.ridesafe.util.haversineMeters
 import kotlinx.coroutines.flow.Flow
-import java.util.Locale
 
 @Dao
 interface SavedAddressDao {
@@ -70,16 +69,15 @@ private val singletonPlaceKinds =
 private fun SavedAddress.isEquivalentSavedPlace(other: SavedAddress): Boolean {
     if (kind != other.kind) return false
     if (kind in singletonPlaceKinds) return true
-    if (normalizePlaceText(label) != normalizePlaceText(other.label)) return false
+    if (normalizeForMatching(label) != normalizeForMatching(other.label)) return false
 
-    val firstAddress = address?.let(::normalizePlaceText).orEmpty()
-    val secondAddress = other.address?.let(::normalizePlaceText).orEmpty()
+    val firstAddress = address?.let(::normalizeForMatching).orEmpty()
+    val secondAddress = other.address?.let(::normalizeForMatching).orEmpty()
     val sameKnownAddress = firstAddress.isNotEmpty() && firstAddress == secondAddress
     val sameCoordinates = haversineMeters(latitude, longitude, other.latitude, other.longitude) <= 15.0
     return sameKnownAddress || sameCoordinates
 }
 
-private fun normalizePlaceText(value: String): String = value.filter(Char::isLetterOrDigit).uppercase(Locale.ROOT)
 
 /**
  * Re-match every ride's start/end point against the current saved addresses (ADR-07) and persist the
