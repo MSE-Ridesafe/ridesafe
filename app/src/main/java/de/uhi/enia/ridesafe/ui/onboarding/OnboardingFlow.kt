@@ -59,6 +59,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
+import de.uhi.enia.ridesafe.data.SafetyScore
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.VehicleDao
@@ -70,7 +71,9 @@ import de.uhi.enia.ridesafe.rides.trigger.AutoTrackMode
 import de.uhi.enia.ridesafe.rides.trigger.AutoTrackPrefs
 import de.uhi.enia.ridesafe.rides.trigger.BluetoothDevices
 import de.uhi.enia.ridesafe.rides.trigger.applyAutoTrackMode
+import de.uhi.enia.ridesafe.ui.components.EcoLevelDisplay
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
 import de.uhi.enia.ridesafe.ui.screens.garage.BluetoothPickerDialog
 import de.uhi.enia.ridesafe.ui.screens.garage.TrackingCard
 import de.uhi.enia.ridesafe.ui.screens.garage.VehicleFormScreen
@@ -93,6 +96,8 @@ enum class OnboardingStep {
     BLUETOOTH,
     AUTO_TRACK,
     PLACE,
+    RECORDING,
+    SCORES,
 }
 
 /** The steps that act on the created car, and so drop out when the car step was skipped. */
@@ -238,6 +243,10 @@ fun OnboardingFlow(onFinished: () -> Unit) {
                             onSaved = ::advance,
                             onSkip = ::advance,
                         )
+
+                    OnboardingStep.RECORDING -> RecordingPage(onContinue = ::advance)
+
+                    OnboardingStep.SCORES -> ScoresPage(onFinish = ::advance)
                 }
             }
         }
@@ -553,6 +562,90 @@ private fun PlacePage(
         )
     }
 }
+
+/**
+ * ONB-06: how a ride actually gets recorded — the automatic path just configured, and the manual
+ * fallback (TRK-07) for a car without a linked device or a trigger that missed.
+ */
+@Composable
+private fun RecordingPage(onContinue: () -> Unit) {
+    StepPage(primaryLabel = stringResource(R.string.onboarding_continue), onPrimary = onContinue) {
+        StepIntro(
+            symbolName = "radio_button_checked",
+            title = stringResource(R.string.onboarding_recording_title),
+            body = stringResource(R.string.onboarding_recording_body),
+        )
+        FeatureRow(
+            symbolName = "bluetooth",
+            title = stringResource(R.string.onboarding_recording_auto_title),
+            body = stringResource(R.string.onboarding_recording_auto_body),
+        )
+        FeatureRow(
+            symbolName = "play_arrow",
+            title = stringResource(R.string.onboarding_recording_manual_title),
+            body =
+                stringResource(
+                    R.string.onboarding_recording_manual_body,
+                    stringResource(R.string.home_record_start),
+                ),
+        )
+        FeatureRow(
+            symbolName = "stop_circle",
+            title = stringResource(R.string.onboarding_recording_stop_title),
+            body = stringResource(R.string.onboarding_recording_stop_body),
+        )
+    }
+}
+
+/**
+ * ONB-06: what the safety score (ANL-01/DSH-06) and eco level (ANL-03) mean, shown on the very
+ * cards the app uses — with sample values, clearly labelled as such, because a brand-new user has
+ * nothing scored yet and the dashboard hides both cards until a first ride is analyzed. Last
+ * step, so its primary action finishes the flow.
+ */
+@Composable
+private fun ScoresPage(onFinish: () -> Unit) {
+    StepPage(primaryLabel = stringResource(R.string.onboarding_done_cta), onPrimary = onFinish) {
+        StepIntro(
+            symbolName = "health_and_safety",
+            title = stringResource(R.string.onboarding_scores_title),
+            body = stringResource(R.string.onboarding_scores_body),
+        )
+        Text(
+            text = stringResource(R.string.onboarding_scores_sample_note),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        SafetyScoreCard(score = SampleScore)
+        Card(
+            shape = MaterialTheme.shapes.extraLarge,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    text = stringResource(R.string.ride_detail_section_eco),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                EcoLevelDisplay(level = 2)
+            }
+        }
+    }
+}
+
+/** Plausible mid-90s-driver values for the explainer — the penalties are display-irrelevant. */
+private val SampleScore =
+    SafetyScore(
+        total = 87,
+        braking = 84,
+        acceleration = 91,
+        cornering = 88,
+        brakingPenalty = 0.0,
+        accelerationPenalty = 0.0,
+        corneringPenalty = 0.0,
+        qualifiedSeconds = 0.0,
+    )
 
 /** The icon + title + body block that opens every explainer-style step page. */
 @Composable

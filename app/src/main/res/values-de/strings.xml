@@ -493,4 +493,16 @@
     <string name="onboarding_autotrack_body">Mit automatischer Aufzeichnung beginnt eine Fahrt, sobald sich dein verknüpftes Gerät verbindet, und endet, wenn du parkst — ganz ohne Tippen. Dafür sind einige Berechtigungen nötig, die nach dem Aktivieren unten erscheinen. Alles davon lässt sich später in den Einstellungen ändern.</string>
     <string name="onboarding_autotrack_toggle">Automatische Aufzeichnung aktivieren</string>
     <string name="onboarding_place_intro">Benenne die Orte, an denen du parkst — Fahrten zeigen dann \"Zuhause\" oder \"Arbeit\" statt einer Straßenadresse. Beginne mit deinem Zuhause.</string>
+    <string name="onboarding_recording_title">So werden Fahrten aufgezeichnet</string>
+    <string name="onboarding_recording_body">Fahrten werden mit GPS und Bewegungssensoren aufgezeichnet und nach dem Ende direkt auf deinem Handy ausgewertet.</string>
+    <string name="onboarding_recording_auto_title">Automatisch</string>
+    <string name="onboarding_recording_auto_body">Mit automatischer Aufzeichnung starten und enden Fahrten mit dem Bluetooth deines Autos.</string>
+    <string name="onboarding_recording_manual_title">Manuell</string>
+    <string name="onboarding_recording_manual_body">Tippe auf \"%1$s\" im Home-Tab — für Autos ohne verknüpftes Gerät oder wann immer du willst.</string>
+    <string name="onboarding_recording_stop_title">Während der Aufzeichnung</string>
+    <string name="onboarding_recording_stop_body">Eine schwebende Leiste zeigt die laufende Fahrt auf jedem Bildschirm; dort beendest du sie bei der Ankunft.</string>
+    <string name="onboarding_scores_title">Deine Fahr-Bewertungen</string>
+    <string name="onboarding_scores_body">Jede ausgewertete Fahrt erhält eine Sicherheitsbewertung — Bremsen, Beschleunigen und Kurvenfahren, jeweils 0–100 — und eine Effizienzstufe für ruhiges, sparsames Fahren. Beides baut sich mit der Zeit auf deinem Dashboard auf.</string>
+    <string name="onboarding_scores_sample_note">Beispielansicht — deine eigenen Werte erscheinen nach deinen ersten aufgezeichneten Fahrten.</string>
+    <string name="onboarding_done_cta">Los geht\'s</string>
 </resources>

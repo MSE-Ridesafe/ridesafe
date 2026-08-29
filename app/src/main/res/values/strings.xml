@@ -493,4 +493,16 @@
     <string name="onboarding_autotrack_body">With automatic recording on, a ride starts when your linked device connects and ends when you park — no taps needed. It requires a few permissions, which appear below once enabled. You can change all of this in Settings later.</string>
     <string name="onboarding_autotrack_toggle">Enable automatic recording</string>
     <string name="onboarding_place_intro">Name the places you park — rides then show \"Home\" or \"Work\" instead of a street address. Start with your home.</string>
+    <string name="onboarding_recording_title">How rides get recorded</string>
+    <string name="onboarding_recording_body">Rides are recorded with GPS and motion sensors, then analyzed right on your phone when they end.</string>
+    <string name="onboarding_recording_auto_title">Automatically</string>
+    <string name="onboarding_recording_auto_body">With automatic recording on, rides start and stop with your car\'s Bluetooth.</string>
+    <string name="onboarding_recording_manual_title">Manually</string>
+    <string name="onboarding_recording_manual_body">Tap \"%1$s\" on the Home tab — for cars without a linked device, or whenever you want.</string>
+    <string name="onboarding_recording_stop_title">While recording</string>
+    <string name="onboarding_recording_stop_body">A floating bar shows the running ride on every screen; stop it there when you arrive.</string>
+    <string name="onboarding_scores_title">Your driving scores</string>
+    <string name="onboarding_scores_body">Every analyzed ride earns a safety score — braking, acceleration and cornering, each 0–100 — and an efficiency level for smooth, economical driving. Both build up on your dashboard over time.</string>
+    <string name="onboarding_scores_sample_note">Sample preview — your own scores appear after your first recorded rides.</string>
+    <string name="onboarding_done_cta">Get started</string>
 </resources>
