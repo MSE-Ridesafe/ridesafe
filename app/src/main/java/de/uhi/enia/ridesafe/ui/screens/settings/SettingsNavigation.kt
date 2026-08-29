@@ -14,6 +14,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object SettingsLanguageRoute : NavKey
 
+@Serializable data object SettingsThemeRoute : NavKey
+
 @Serializable data object SettingsUnitsRoute : NavKey
 
 @Serializable data object SettingsAutoTrackRoute : NavKey
@@ -29,6 +31,7 @@ internal const val SETTINGS_SCENE = "settings"
 internal val SettingsMenuRoutes: Set<NavKey> =
     setOf(
         SettingsLanguageRoute,
+        SettingsThemeRoute,
         SettingsUnitsRoute,
         SavedAddressesRoute,
         SettingsAutoTrackRoute,
@@ -61,6 +64,7 @@ fun EntryProviderScope<NavKey>.settingsEntries(
         ListPaneFocusSink {
             SettingsScreen(
                 onOpenLanguage = { onOpen(SettingsLanguageRoute) },
+                onOpenTheme = { onOpen(SettingsThemeRoute) },
                 onOpenUnits = { onOpen(SettingsUnitsRoute) },
                 onOpenAutoTrack = { onOpen(SettingsAutoTrackRoute) },
                 onOpenReconnectGrace = { onOpen(SettingsReconnectGraceRoute) },
@@ -78,6 +82,12 @@ fun EntryProviderScope<NavKey>.settingsEntries(
     )
     entry<SettingsLanguageRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         LanguageSettingsScreen(onBack = onBack, showBack = showBack)
+    }
+    entry<SettingsThemeRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
+        ThemeSettingsScreen(
+            onBack = onBack,
+            showBack = showBack,
+        )
     }
     entry<SettingsUnitsRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         UnitSettingsScreen(

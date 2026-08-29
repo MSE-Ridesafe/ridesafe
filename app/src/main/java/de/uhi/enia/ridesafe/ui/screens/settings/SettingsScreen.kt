@@ -59,6 +59,8 @@ import de.uhi.enia.ridesafe.rides.trigger.AutoTrackMode
 import de.uhi.enia.ridesafe.rides.trigger.AutoTrackPrefs
 import de.uhi.enia.ridesafe.rides.trigger.applyAutoTrackMode
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.theme.ThemePrefs
+import de.uhi.enia.ridesafe.ui.theme.ThemeSetting
 import de.uhi.enia.ridesafe.util.UnitPrefs
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.currentUnitSystem
@@ -71,6 +73,7 @@ fun SettingsScreen(
     selected: NavKey? = null,
     modifier: Modifier = Modifier,
     onOpenLanguage: () -> Unit,
+    onOpenTheme: () -> Unit,
     onOpenUnits: () -> Unit,
     onOpenAutoTrack: () -> Unit,
     onOpenReconnectGrace: () -> Unit,
@@ -127,6 +130,14 @@ fun SettingsScreen(
                         subtitle = unitSystemLabel(unitSystem),
                         isOpen = selected == SettingsUnitsRoute,
                         onClick = onOpenUnits,
+                    )
+                    SettingsDivider()
+                    SettingsListItem(
+                        iconName = "dark_mode",
+                        title = stringResource(R.string.settings_theme_title),
+                        subtitle = themeSettingLabel(ThemePrefs.get(context)),
+                        isOpen = selected == SettingsThemeRoute,
+                        onClick = onOpenTheme,
                     )
                 }
             }
@@ -223,6 +234,41 @@ fun LanguageSettingsScreen(
                     scope.launch {
                         SettingsFade.applyAcrossRestart { localeManager.applicationLocales = locales }
                     }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+fun ThemeSettingsScreen(
+    onBack: () -> Unit,
+    showBack: Boolean = true,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val theme = ThemePrefs.get(context)
+    val options =
+        listOf(
+            ThemeSetting.SYSTEM to R.string.theme_system,
+            ThemeSetting.LIGHT to R.string.theme_light,
+            ThemeSetting.DARK to R.string.theme_dark,
+        )
+
+    SettingsSelectionScreen(
+        title = stringResource(R.string.settings_theme_title),
+        description = stringResource(R.string.settings_theme_detail_description),
+        onBack = onBack,
+        showBack = showBack,
+        modifier = modifier,
+    ) {
+        options.forEach { (option, labelRes) ->
+            SelectableSettingRow(
+                title = stringResource(labelRes),
+                selected = option == theme,
+                onClick = {
+                    scope.launch { SettingsFade.applyWhileHidden { ThemePrefs.set(context, option) } }
                 },
             )
         }
@@ -554,6 +600,16 @@ private fun currentLanguageLabel(): String {
         else -> stringResource(R.string.language_system)
     }
 }
+
+@Composable
+private fun themeSettingLabel(theme: ThemeSetting): String =
+    stringResource(
+        when (theme) {
+            ThemeSetting.SYSTEM -> R.string.theme_system
+            ThemeSetting.LIGHT -> R.string.theme_light
+            ThemeSetting.DARK -> R.string.theme_dark
+        },
+    )
 
 @Composable
 private fun unitSystemLabel(unitSystem: UnitSystemSetting): String =

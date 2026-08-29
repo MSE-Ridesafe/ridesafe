@@ -66,6 +66,12 @@
     <string name="unit_system_imperial">Imperial (Miles)</string>
     <string name="sample_distance_label">Sample Distance: %1$s</string>
 
+    <string name="settings_theme_title">App Theme</string>
+    <string name="settings_theme_detail_description">Choose whether Ridesafe appears light or dark, or follows the system setting.</string>
+    <string name="theme_system">System Default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+
     <string name="settings_auto_track_title">Automatic ride recording</string>
     <string name="settings_auto_track_detail_description">Choose when Ridesafe may start recording rides in the background.</string>
     <string name="settings_language_detail_description">Choose the language used for app labels, settings, and messages.</string>
