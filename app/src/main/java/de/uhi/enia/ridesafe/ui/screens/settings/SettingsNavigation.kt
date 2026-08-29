@@ -92,8 +92,8 @@ fun EntryProviderScope<NavKey>.settingsEntries(
             showBack = showBack,
         )
     }
-    entry<SettingsCurrencyRoute> {
-        CurrencySettingsScreen(onBack = onBack)
+    entry<SettingsCurrencyRoute> { key ->
+        CurrencySettingsScreen(onBack = { onBack(key) })
     }
 
     entry<SettingsAutoTrackRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
@@ -114,7 +114,7 @@ fun EntryProviderScope<NavKey>.settingsEntries(
             showBack = showBack,
         )
     }
-    entry<SettingsBackupImportRoute> {
-        RideBackupImportScreen(onBack = onBack)
+    entry<SettingsBackupImportRoute> { key ->
+        RideBackupImportScreen(onBack = { onBack(key) })
     }
 }
