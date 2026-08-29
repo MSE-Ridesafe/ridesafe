@@ -4,6 +4,9 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
@@ -47,13 +50,18 @@ fun EntryProviderScope<NavKey>.savedAddressEntries(
     }
     entry<AddSavedAddressRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) { key ->
         val addresses by viewModel.addresses.collectAsState()
+        // Latch against a double-tapped save inserting the place twice.
+        var saved by remember { mutableStateOf(false) }
         SavedAddressFormScreen(
             existing = null,
             presetKind = SavedPlaceKind.valueOf(key.kind),
             savedAddresses = addresses,
             onSave = {
-                viewModel.add(it)
-                onBack(key)
+                if (!saved) {
+                    saved = true
+                    viewModel.add(it)
+                    onBack(key)
+                }
             },
             onBack = { onBack(key) },
         )
@@ -72,11 +80,10 @@ fun EntryProviderScope<NavKey>.savedAddressEntries(
                     onBack(key)
                 },
                 onBack = { onBack(key) },
-                onDelete = {
-                    viewModel.delete(loaded)
-                    onBack(key)
-                },
-            )
+            ) {
+                viewModel.delete(loaded)
+                onBack(key)
+            }
         }
     }
 }

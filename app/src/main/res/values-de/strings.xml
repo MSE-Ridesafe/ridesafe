@@ -225,6 +225,8 @@
     <string name="ride_start_marker">Start</string>
     <string name="ride_end_marker">Ziel</string>
     <string name="ride_map_close">Karte schließen</string>
+    <!-- Shown in place of any map that cannot load because the device has no connection. -->
+    <string name="map_offline">Keine Internetverbindung</string>
     <string name="ride_event_braking">Starkes Bremsen</string>
     <string name="ride_event_acceleration">Starkes Beschleunigen</string>
     <string name="ride_event_cornering">Scharfes Kurvenfahren</string>

@@ -226,6 +226,8 @@
     <string name="ride_end_marker">End</string>
     <string name="ride_map_expand">Open full-screen map</string>
     <string name="ride_map_close">Close map</string>
+    <!-- Shown in place of any map that cannot load because the device has no connection. -->
+    <string name="map_offline">Not connected to the internet</string>
     <string name="ride_event_braking">Harsh braking</string>
     <string name="ride_event_acceleration">Harsh acceleration</string>
     <string name="ride_event_cornering">Harsh cornering</string>
