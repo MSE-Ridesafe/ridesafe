@@ -35,6 +35,7 @@ import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
+import java.util.HexFormat
 import java.util.Locale
 import java.util.UUID
 import java.util.zip.ZipFile
@@ -415,7 +416,7 @@ internal class RideBackupImporter(
                 digest.update(buffer, 0, count)
             }
         }
-        return digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        return HexFormat.of().formatHex(digest.digest())
     }
 
     private suspend fun extractIncludedFiles(

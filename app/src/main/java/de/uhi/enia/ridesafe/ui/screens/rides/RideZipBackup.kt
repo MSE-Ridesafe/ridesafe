@@ -36,10 +36,13 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.InputStream
+import java.io.OutputStream
 import java.nio.file.Files
+import java.security.DigestInputStream
 import java.security.MessageDigest
-import java.util.Locale
+import java.util.HexFormat
 import java.util.zip.CRC32
+import java.util.zip.CheckedInputStream
 import java.util.zip.GZIPInputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
@@ -710,16 +713,8 @@ private fun fileIntegrity(file: File): FileIntegrity = file.inputStream().use(::
 private fun streamIntegrity(input: InputStream): FileIntegrity {
     val digest = MessageDigest.getInstance("SHA-256")
     val crc = CRC32()
-    var size = 0L
-    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-    while (true) {
-        val count = input.read(buffer)
-        if (count < 0) break
-        digest.update(buffer, 0, count)
-        crc.update(buffer, 0, count)
-        size += count
-    }
-    return FileIntegrity(size, digest.digest().joinToString("") { "%02x".format(Locale.ROOT, it.toInt() and 0xff) }, crc.value)
+    val size = DigestInputStream(CheckedInputStream(input, crc), digest).copyTo(OutputStream.nullOutputStream())
+    return FileIntegrity(size, HexFormat.of().formatHex(digest.digest()), crc.value)
 }
 
 private suspend fun copyCancellable(
