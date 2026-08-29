@@ -566,14 +566,7 @@ private fun StringBuilder.appendCsvRecord(values: List<String>) {
 
 internal fun escapeCsvField(value: String): String {
     if (value.none { it == ',' || it == '"' || it == '\r' || it == '\n' }) return value
-    return buildString(value.length + 2) {
-        append('"')
-        value.forEach { character ->
-            if (character == '"') append('"')
-            append(character)
-        }
-        append('"')
-    }
+    return "\"" + value.replace("\"", "\"\"") + "\""
 }
 
 internal class RidePdfReport(
