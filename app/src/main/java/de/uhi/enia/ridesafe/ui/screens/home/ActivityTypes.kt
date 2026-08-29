@@ -5,29 +5,25 @@ import de.uhi.enia.ridesafe.R
 enum class ActivityChartMetric {
     DISTANCE,
     TRAVEL_TIME,
+    COST,
 }
-
-enum class ActivityTimeRange {
-    WEEK,
-    MONTH,
-}
-
-val ActivityTimeRange.labelRes: Int
-    get() =
-        when (this) {
-            ActivityTimeRange.WEEK -> R.string.home_activity_period_week
-            ActivityTimeRange.MONTH -> R.string.home_activity_period_month
-        }
 
 val ActivityChartMetric.labelRes: Int
     get() =
         when (this) {
             ActivityChartMetric.DISTANCE -> R.string.home_activity_metric_distance
             ActivityChartMetric.TRAVEL_TIME -> R.string.home_activity_metric_time
+            ActivityChartMetric.COST -> R.string.home_activity_metric_cost
         }
 
 fun ActivityBar.valueFor(metric: ActivityChartMetric): Double =
     when (metric) {
         ActivityChartMetric.DISTANCE -> distanceMeters
         ActivityChartMetric.TRAVEL_TIME -> durationMillis.toDouble()
+        ActivityChartMetric.COST -> costMinor.toDouble()
     }
+
+fun activityScaleMaximum(
+    activity: Collection<ActivityBar>,
+    metric: ActivityChartMetric,
+): Double = (activity.maxOfOrNull { it.valueFor(metric) } ?: 0.0).coerceAtLeast(1.0)

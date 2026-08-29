@@ -61,8 +61,11 @@ import de.uhi.enia.ridesafe.rides.trigger.applyAutoTrackMode
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.theme.ThemePrefs
 import de.uhi.enia.ridesafe.ui.theme.ThemeSetting
+import de.uhi.enia.ridesafe.util.CurrencyPrefs
+import de.uhi.enia.ridesafe.util.CurrencySetting
 import de.uhi.enia.ridesafe.util.UnitPrefs
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import de.uhi.enia.ridesafe.util.currentCurrencySetting
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import kotlinx.coroutines.launch
 
@@ -75,13 +78,16 @@ fun SettingsScreen(
     onOpenLanguage: () -> Unit,
     onOpenTheme: () -> Unit,
     onOpenUnits: () -> Unit,
+    onOpenCurrency: () -> Unit,
     onOpenAutoTrack: () -> Unit,
     onOpenReconnectGrace: () -> Unit,
     onOpenMinRideLength: () -> Unit,
     onOpenSavedAddresses: () -> Unit,
+    onOpenBackupImport: () -> Unit,
 ) {
     val context = LocalContext.current
     val unitSystem = currentUnitSystem()
+    val currency = currentCurrencySetting()
     val autoTrackMode = AutoTrackPrefs.get(context)
     val reconnectGrace = ReconnectGracePrefs.get(context)
     val minRideLength = MinRideLengthPrefs.get(context)
@@ -130,6 +136,14 @@ fun SettingsScreen(
                         subtitle = unitSystemLabel(unitSystem),
                         isOpen = selected == SettingsUnitsRoute,
                         onClick = onOpenUnits,
+                    )
+                    SettingsDivider()
+                    SettingsListItem(
+                        iconName = "payments",
+                        title = stringResource(R.string.settings_currency_title),
+                        subtitle = currencyLabel(currency),
+                        isOpen = selected == SettingsCurrencyRoute,
+                        onClick = onOpenCurrency,
                     )
                     SettingsDivider()
                     SettingsListItem(
@@ -185,6 +199,20 @@ fun SettingsScreen(
                     )
                 }
             }
+            item {
+                SettingsCategoryHeader(text = stringResource(R.string.settings_category_backup_restore))
+            }
+            item {
+                SettingsGroupCard {
+                    SettingsListItem(
+                        iconName = "settings_backup_restore",
+                        title = stringResource(R.string.settings_backup_import_title),
+                        subtitle = stringResource(R.string.settings_backup_import_summary),
+                        isOpen = selected == SettingsBackupImportRoute,
+                        onClick = onOpenBackupImport,
+                    )
+                }
+            }
         }
     }
 }
@@ -219,26 +247,25 @@ fun LanguageSettingsScreen(
         description = stringResource(R.string.settings_language_detail_description),
         onBack = onBack,
         showBack = showBack,
-        {
-            options.forEach { (tag, labelRes) ->
-                SelectableSettingRow(
-                    title = stringResource(labelRes),
-                    selected = tag == currentLang,
-                    onClick = {
-                        val locales =
-                            if (tag == "system") {
-                                LocaleList.getEmptyLocaleList()
-                            } else {
-                                LocaleList.forLanguageTags(tag)
-                            }
-                        scope.launch {
-                            SettingsFade.applyAcrossRestart { localeManager.applicationLocales = locales }
+    ) {
+        options.forEach { (tag, labelRes) ->
+            SelectableSettingRow(
+                title = stringResource(labelRes),
+                selected = tag == currentLang,
+                onClick = {
+                    val locales =
+                        if (tag == "system") {
+                            LocaleList.getEmptyLocaleList()
+                        } else {
+                            LocaleList.forLanguageTags(tag)
                         }
-                    },
-                )
-            }
-        },
-    )
+                    scope.launch {
+                        SettingsFade.applyAcrossRestart { localeManager.applicationLocales = locales }
+                    }
+                },
+            )
+        }
+    }
 }
 
 @Composable
@@ -299,18 +326,53 @@ fun UnitSettingsScreen(
         description = stringResource(R.string.settings_units_detail_description),
         onBack = onBack,
         showBack = showBack,
-        {
-            options.forEach { (option, labelRes) ->
-                SelectableSettingRow(
-                    title = stringResource(labelRes),
-                    selected = option == unitSystem,
-                    onClick = {
-                        scope.launch { SettingsFade.applyWhileHidden { UnitPrefs.set(context, option) } }
-                    },
-                )
-            }
-        },
-    )
+    ) {
+        options.forEach { (option, labelRes) ->
+            SelectableSettingRow(
+                title = stringResource(labelRes),
+                selected = option == unitSystem,
+                onClick = {
+                    scope.launch { SettingsFade.applyWhileHidden { UnitPrefs.set(context, option) } }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+fun CurrencySettingsScreen(
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit,
+    showBack: Boolean = true,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val selectedCurrency = currentCurrencySetting()
+    val options =
+        listOf(
+            CurrencySetting.US_DOLLAR to R.string.currency_us_dollar,
+            CurrencySetting.BRITISH_POUND to R.string.currency_british_pound,
+            CurrencySetting.SWISS_FRANC to R.string.currency_swiss_franc,
+            CurrencySetting.EURO to R.string.currency_euro,
+        )
+
+    SettingsSelectionScreen(
+        title = stringResource(R.string.settings_currency_title),
+        description = stringResource(R.string.settings_currency_detail_description),
+        onBack = onBack,
+        showBack = showBack,
+        modifier = modifier,
+    ) {
+        options.forEach { (option, labelRes) ->
+            SelectableSettingRow(
+                title = stringResource(labelRes),
+                selected = option == selectedCurrency,
+                onClick = {
+                    scope.launch { SettingsFade.applyWhileHidden { CurrencyPrefs.set(context, option) } }
+                },
+            )
+        }
+    }
 }
 
 @Composable
@@ -343,20 +405,19 @@ fun AutoTrackSettingsScreen(
         description = stringResource(R.string.settings_auto_track_detail_description),
         onBack = onBack,
         showBack = showBack,
-        {
-            options.forEach { (option, labelRes) ->
-                SelectableSettingRow(
-                    title = stringResource(labelRes),
-                    selected = option == autoTrackMode,
-                    onClick = {
-                        applyAutoTrackMode(context, option)
-                        val request = bundleRequest(missingPermissionsFor(context, option))
-                        if (request.isNotEmpty()) permissionLauncher.launch(request)
-                    },
-                )
-            }
-        },
-    )
+    ) {
+        options.forEach { (option, labelRes) ->
+            SelectableSettingRow(
+                title = stringResource(labelRes),
+                selected = option == autoTrackMode,
+                onClick = {
+                    applyAutoTrackMode(context, option)
+                    val request = bundleRequest(missingPermissionsFor(context, option))
+                    if (request.isNotEmpty()) permissionLauncher.launch(request)
+                },
+            )
+        }
+    }
 }
 
 @Composable
@@ -374,16 +435,15 @@ fun ReconnectGraceSettingsScreen(
         description = stringResource(R.string.settings_reconnect_grace_detail_description),
         onBack = onBack,
         showBack = showBack,
-        {
-            ReconnectGrace.entries.forEach { option ->
-                SelectableSettingRow(
-                    title = stringResource(reconnectGraceLabelRes(option)),
-                    selected = option == grace,
-                    onClick = { ReconnectGracePrefs.set(context, option) },
-                )
-            }
-        },
-    )
+    ) {
+        ReconnectGrace.entries.forEach { option ->
+            SelectableSettingRow(
+                title = stringResource(reconnectGraceLabelRes(option)),
+                selected = option == grace,
+                onClick = { ReconnectGracePrefs.set(context, option) },
+            )
+        }
+    }
 }
 
 @Composable
@@ -401,16 +461,15 @@ fun MinRideLengthSettingsScreen(
         description = stringResource(R.string.settings_min_ride_length_detail_description),
         onBack = onBack,
         showBack = showBack,
-        {
-            MinRideLength.entries.forEach { option ->
-                SelectableSettingRow(
-                    title = stringResource(minRideLengthLabelRes(option)),
-                    selected = option == minRideLength,
-                    onClick = { MinRideLengthPrefs.set(context, option) },
-                )
-            }
-        },
-    )
+    ) {
+        MinRideLength.entries.forEach { option ->
+            SelectableSettingRow(
+                title = stringResource(minRideLengthLabelRes(option)),
+                selected = option == minRideLength,
+                onClick = { MinRideLengthPrefs.set(context, option) },
+            )
+        }
+    }
 }
 
 @Composable
@@ -624,6 +683,17 @@ private fun unitSystemLabel(unitSystem: UnitSystemSetting): String =
             UnitSystemSetting.AUTOMATIC -> R.string.unit_system_automatic
             UnitSystemSetting.METRIC -> R.string.unit_system_metric
             UnitSystemSetting.IMPERIAL -> R.string.unit_system_imperial
+        },
+    )
+
+@Composable
+private fun currencyLabel(currency: CurrencySetting): String =
+    stringResource(
+        when (currency) {
+            CurrencySetting.US_DOLLAR -> R.string.currency_us_dollar
+            CurrencySetting.BRITISH_POUND -> R.string.currency_british_pound
+            CurrencySetting.SWISS_FRANC -> R.string.currency_swiss_franc
+            CurrencySetting.EURO -> R.string.currency_euro
         },
     )
 

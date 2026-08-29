@@ -18,11 +18,15 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object SettingsUnitsRoute : NavKey
 
+@Serializable data object SettingsCurrencyRoute : NavKey
+
 @Serializable data object SettingsAutoTrackRoute : NavKey
 
 @Serializable data object SettingsReconnectGraceRoute : NavKey
 
 @Serializable data object SettingsMinRideLengthRoute : NavKey
+
+@Serializable data object SettingsBackupImportRoute : NavKey
 
 /** Ties this tab's list and detail routes into one scene, distinct from the other tabs'. */
 internal const val SETTINGS_SCENE = "settings"
@@ -33,10 +37,12 @@ internal val SettingsMenuRoutes: Set<NavKey> =
         SettingsLanguageRoute,
         SettingsThemeRoute,
         SettingsUnitsRoute,
+        SettingsCurrencyRoute,
         SavedAddressesRoute,
         SettingsAutoTrackRoute,
         SettingsReconnectGraceRoute,
         SettingsMinRideLengthRoute,
+        SettingsBackupImportRoute,
     )
 
 /**
@@ -53,7 +59,7 @@ fun EntryProviderScope<NavKey>.settingsEntries(
     selected: NavKey?,
     showBack: Boolean,
     onOpen: (NavKey) -> Unit,
-    onBack: () -> Unit,
+    onBack: (NavKey) -> Unit,
 ) {
     entry<SettingsRoute>(
         metadata =
@@ -67,10 +73,13 @@ fun EntryProviderScope<NavKey>.settingsEntries(
                 onOpenLanguage = { onOpen(SettingsLanguageRoute) },
                 onOpenTheme = { onOpen(SettingsThemeRoute) },
                 onOpenUnits = { onOpen(SettingsUnitsRoute) },
+                onOpenCurrency = { onOpen(SettingsCurrencyRoute) },
                 onOpenAutoTrack = { onOpen(SettingsAutoTrackRoute) },
                 onOpenReconnectGrace = { onOpen(SettingsReconnectGraceRoute) },
                 onOpenMinRideLength = { onOpen(SettingsMinRideLengthRoute) },
-            ) { onOpen(SavedAddressesRoute) }
+                onOpenSavedAddresses = { onOpen(SavedAddressesRoute) },
+                onOpenBackupImport = { onOpen(SettingsBackupImportRoute) },
+            )
         }
     }
     savedAddressEntries(
@@ -80,36 +89,43 @@ fun EntryProviderScope<NavKey>.settingsEntries(
         onBack = onBack,
     )
     entry<SettingsLanguageRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
-        LanguageSettingsScreen(onBack = onBack, showBack = showBack)
+        LanguageSettingsScreen(onBack = { onBack(SettingsLanguageRoute) }, showBack = showBack)
     }
     entry<SettingsThemeRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         ThemeSettingsScreen(
-            onBack = onBack,
+            onBack = { onBack(SettingsThemeRoute) },
             showBack = showBack,
         )
     }
     entry<SettingsUnitsRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         UnitSettingsScreen(
-            onBack = onBack,
+            onBack = { onBack(SettingsUnitsRoute) },
             showBack = showBack,
         )
     }
+    entry<SettingsCurrencyRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) { key ->
+        CurrencySettingsScreen(onBack = { onBack(key) }, showBack = showBack)
+    }
+
     entry<SettingsAutoTrackRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         AutoTrackSettingsScreen(
-            onBack = onBack,
+            onBack = { onBack(SettingsAutoTrackRoute) },
             showBack = showBack,
         )
     }
     entry<SettingsReconnectGraceRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         ReconnectGraceSettingsScreen(
-            onBack = onBack,
+            onBack = { onBack(SettingsReconnectGraceRoute) },
             showBack = showBack,
         )
     }
     entry<SettingsMinRideLengthRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         MinRideLengthSettingsScreen(
-            onBack = onBack,
+            onBack = { onBack(SettingsMinRideLengthRoute) },
             showBack = showBack,
         )
+    }
+    entry<SettingsBackupImportRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) { key ->
+        RideBackupImportScreen(onBack = { onBack(key) }, showBack = showBack)
     }
 }

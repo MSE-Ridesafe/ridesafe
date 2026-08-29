@@ -5,7 +5,7 @@ import androidx.compose.animation.core.tween
 import kotlinx.coroutines.delay
 
 /**
- * Material fade-through for the settings that restyle the whole app — units and language.
+ * Material fade-through for settings that restyle the whole app — units, currency, and language.
  *
  * Both are read straight from their source wherever they are used, so every label on screen flips
  * the instant the setting is written. Applying the write while the UI is invisible turns that hard

@@ -8,6 +8,12 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
 
+data class AddressSearchResult(
+    val latitude: Double,
+    val longitude: Double,
+    val address: String,
+)
+
 /**
  * Reverse-geocodes a coordinate to a display address via the native [Geocoder] (async API,
  * minSdk 34), built from the result's concrete fields (see [formatAddress]) and stored
@@ -86,6 +92,54 @@ suspend fun forwardGeocode(
 }
 
 /**
+ * Returns explicit choices for the saved-place docked search bar. Results are de-duplicated because
+ * platform geocoders sometimes return the same street result with slightly different metadata.
+ */
+suspend fun forwardGeocodeSuggestions(
+    context: Context,
+    query: String,
+    limit: Int = 5,
+): List<AddressSearchResult> {
+    if (!Geocoder.isPresent() || query.isBlank() || limit <= 0) return emptyList()
+    val geocoder = Geocoder(context)
+    return withTimeoutOrNull(10_000.milliseconds) {
+        suspendCancellableCoroutine { cont ->
+            try {
+                geocoder.getFromLocationName(
+                    query,
+                    limit,
+                    object : Geocoder.GeocodeListener {
+                        override fun onGeocode(addresses: MutableList<Address>) {
+                            if (!cont.isActive) return
+                            val results =
+                                addresses
+                                    .mapNotNull { result ->
+                                        if (!result.hasLatitude() || !result.hasLongitude()) return@mapNotNull null
+                                        val display = formatAddress(result) ?: return@mapNotNull null
+                                        AddressSearchResult(result.latitude, result.longitude, display)
+                                    }.distinctBy {
+                                        Triple(
+                                            it.address.lowercase(),
+                                            (it.latitude * 100_000).toInt(),
+                                            (it.longitude * 100_000).toInt(),
+                                        )
+                                    }.take(limit)
+                            cont.resume(results)
+                        }
+
+                        override fun onError(errorMessage: String?) {
+                            if (cont.isActive) cont.resume(emptyList())
+                        }
+                    },
+                )
+            } catch (_: Exception) {
+                if (cont.isActive) cont.resume(emptyList())
+            }
+        }
+    } ?: emptyList()
+}
+
+/**
  * Builds a two-line display address from an [Address]'s concrete fields (rather than parsing a
  * formatted line): primary = street + house number, or a named place / POI name when there's no
  * street; secondary = ZIP + city. Country and admin areas are omitted. The lines are joined by a
@@ -95,12 +149,9 @@ private fun formatAddress(a: Address): String? {
     val number = a.subThoroughfare
     val primary =
         when {
-            a.featureName != null && a.featureName != number -> a.featureName
-
-            // named place / POI
             a.thoroughfare != null -> listOfNotNull(a.thoroughfare, number).joinToString(" ")
 
-            // "Hauptstraße 5"
+            // Named place / POI, used only when no street was returned.
             else -> a.featureName
         }?.trim()?.ifBlank { null }
     val secondary = listOfNotNull(a.postalCode, a.locality).joinToString(" ").trim().ifBlank { null }

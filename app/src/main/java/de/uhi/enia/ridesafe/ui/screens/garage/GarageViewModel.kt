@@ -1,6 +1,8 @@
 package de.uhi.enia.ridesafe.ui.screens.garage
 
 import android.app.Application
+import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import de.uhi.enia.ridesafe.data.BtDevice
@@ -43,8 +45,25 @@ class GarageViewModel(
         viewModelScope.launch { dao.updateVehicle(vehicle, makePrimary) }
     }
 
+    fun setVehicleImage(
+        vehicle: Vehicle,
+        sourceUri: Uri,
+    ) {
+        viewModelScope.launch {
+            runCatching {
+                storeVehicleImage(getApplication(), vehicle, sourceUri)
+                dao.update(vehicle.copy(updatedAtEpochMs = System.currentTimeMillis()))
+            }.onFailure { error ->
+                Log.e("GarageViewModel", "Unable to store the vehicle image", error)
+            }
+        }
+    }
+
     fun deleteVehicle(vehicle: Vehicle) {
-        viewModelScope.launch { dao.deleteVehicle(vehicle) }
+        viewModelScope.launch {
+            dao.deleteVehicle(vehicle)
+            deleteVehicleImage(getApplication(), vehicle)
+        }
     }
 
     /** Map/unmap a Bluetooth device to a vehicle for auto-tracking (GAR-08). */

@@ -2,8 +2,8 @@ package de.uhi.enia.ridesafe.ui.screens.home
 
 import android.content.Context
 import de.uhi.enia.ridesafe.R
+import de.uhi.enia.ridesafe.util.formattingLocale
 import java.text.NumberFormat
-import java.util.Locale
 
 fun formatCompactDuration(durationMillis: Long): String {
     val totalMinutes = (durationMillis / 60_000).coerceAtLeast(0)
@@ -33,20 +33,16 @@ fun formatLiveRideDuration(
 fun formatFuelConsumption(
     context: Context,
     fuelEconomy: Double?,
-    locale: Locale,
 ): String {
     if (fuelEconomy == null) {
         return context.getString(R.string.value_not_set)
     }
     val number =
-        NumberFormat.getNumberInstance(locale).apply {
+        NumberFormat.getNumberInstance(formattingLocale()).apply {
             minimumFractionDigits = 1
             maximumFractionDigits = 1
         }
     return "${number.format(fuelEconomy)} ${context.getString(R.string.unit_fuel_economy)}"
 }
 
-fun formatRecordedRideCount(
-    context: Context,
-    count: Int,
-): String = NumberFormat.getIntegerInstance(context.resources.configuration.locales[0]).format(count)
+fun formatRecordedRideCount(count: Int): String = NumberFormat.getIntegerInstance(formattingLocale()).format(count)
