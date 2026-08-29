@@ -1,6 +1,9 @@
 package de.uhi.enia.ridesafe.ui.onboarding
 
+import android.Manifest
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -12,6 +15,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,9 +34,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,10 +54,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
+import de.uhi.enia.ridesafe.data.Vehicle
+import de.uhi.enia.ridesafe.data.VehicleDao
 import de.uhi.enia.ridesafe.navigation.RidesafeApp
+import de.uhi.enia.ridesafe.permissions.AppPermission
+import de.uhi.enia.ridesafe.rides.trigger.BluetoothDevices
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.screens.garage.BluetoothPickerDialog
+import de.uhi.enia.ridesafe.ui.screens.garage.TrackingCard
+import de.uhi.enia.ridesafe.ui.screens.garage.VehicleFormScreen
 import de.uhi.enia.ridesafe.ui.theme.RidesafeTheme
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 // Matches the app shell's sub-route slide (RidesafeApp.SLIDE_MS) so the wizard moves like the app.
 private const val SLIDE_MS = 250
@@ -61,10 +76,17 @@ private const val SLIDE_MS = 250
  */
 enum class OnboardingStep {
     WELCOME,
+    CAR,
+    BLUETOOTH,
 }
 
-/** The steps for the current state — pure so the sequencing is unit-testable. */
-fun onboardingSteps(hasVehicle: Boolean): List<OnboardingStep> = OnboardingStep.entries.toList()
+/**
+ * The steps for the current state — pure so the sequencing is unit-testable. The Bluetooth
+ * step maps devices *to a vehicle* (GAR-08), so without a created car it has nothing to act on
+ * and drops out; skipping the car step therefore skips it too.
+ */
+fun onboardingSteps(hasVehicle: Boolean): List<OnboardingStep> =
+    OnboardingStep.entries.filter { hasVehicle || it != OnboardingStep.BLUETOOTH }
 
 /** The step after [current], or null when [current] is the last — i.e. advancing finishes. */
 fun stepAfter(
@@ -125,16 +147,23 @@ fun OnboardingGate() {
  */
 @Composable
 fun OnboardingFlow(onFinished: () -> Unit) {
-    var step by rememberSaveable { mutableStateOf(OnboardingStep.WELCOME) }
-    val hasVehicle = false
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val vehicleDao = remember { RidesafeDatabase.getInstance(context).vehicleDao() }
 
+    var step by rememberSaveable { mutableStateOf(OnboardingStep.WELCOME) }
+    // The car created by the car step, which the Bluetooth step maps devices onto.
+    var vehicleId by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    // Read the id state inside the helpers rather than capturing a derived val, so a step
+    // saved mid-flow can never advance against a stale step list.
     fun advance() {
-        stepAfter(step, hasVehicle)?.let { step = it } ?: onFinished()
+        stepAfter(step, hasVehicle = vehicleId != null)?.let { step = it } ?: onFinished()
     }
 
     // System back walks the wizard, not out of the app, except on the first step.
     BackHandler(enabled = step != OnboardingStep.WELCOME) {
-        stepBefore(step, hasVehicle)?.let { step = it }
+        stepBefore(step, hasVehicle = vehicleId != null)?.let { step = it }
     }
 
     Scaffold(containerColor = MaterialTheme.colorScheme.surfaceContainer) { innerPadding ->
@@ -142,7 +171,7 @@ fun OnboardingFlow(onFinished: () -> Unit) {
             // The welcome page carries its own start/skip choice; the header would double it.
             if (step != OnboardingStep.WELCOME) {
                 WizardHeader(
-                    steps = onboardingSteps(hasVehicle),
+                    steps = onboardingSteps(hasVehicle = vehicleId != null),
                     current = step,
                     onSkip = ::advance,
                     onClose = onFinished,
@@ -164,6 +193,25 @@ fun OnboardingFlow(onFinished: () -> Unit) {
             ) { target ->
                 when (target) {
                     OnboardingStep.WELCOME -> WelcomePage(onStart = ::advance, onSkipAll = onFinished)
+
+                    OnboardingStep.CAR ->
+                        CarPage(
+                            onSave = { vehicle, makePrimary ->
+                                scope.launch {
+                                    vehicleId = vehicleDao.addVehicle(vehicle, makePrimary)
+                                    // Advance only once the row exists — the next step reads it.
+                                    stepAfter(OnboardingStep.CAR, hasVehicle = true)?.let { step = it }
+                                }
+                            },
+                            onSkip = ::advance,
+                        )
+
+                    OnboardingStep.BLUETOOTH ->
+                        BluetoothPage(
+                            vehicleDao = vehicleDao,
+                            vehicleId = requireNotNull(vehicleId),
+                            onContinue = ::advance,
+                        )
                 }
             }
         }
@@ -213,66 +261,201 @@ private fun WizardHeader(
     }
 }
 
-/** ONB-01: the pitch — what Ridesafe does, and that all of it stays on the phone (NFR-01). */
+/**
+ * Shared page frame: scrolling body, pinned primary action, optional secondary action under it.
+ * Pinning matters — the action must stay reachable when the body outgrows a short window
+ * (landscape, split screen), where a scrolled-away button reads as a dead end.
+ */
 @Composable
-private fun WelcomePage(
-    onStart: () -> Unit,
-    onSkipAll: () -> Unit,
+private fun StepPage(
+    primaryLabel: String,
+    onPrimary: () -> Unit,
+    secondary: (@Composable ColumnScope.() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 16.dp)) {
-        // Scrolls under the pinned buttons when the window is short (landscape, split screen).
         Column(
             modifier =
                 Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Spacer(Modifier.height(32.dp))
-            MaterialSymbol(
-                symbolName = "directions_car",
-                contentDescription = null,
-                size = 64.dp,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            )
-            Text(
-                text = stringResource(R.string.onboarding_welcome_title),
-                style = MaterialTheme.typography.headlineMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Text(
-                text = stringResource(R.string.onboarding_welcome_message),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(8.dp))
-            FeatureRow(
-                symbolName = "route",
-                title = stringResource(R.string.onboarding_feature_rides_title),
-                body = stringResource(R.string.onboarding_feature_rides_body),
-            )
-            FeatureRow(
-                symbolName = "health_and_safety",
-                title = stringResource(R.string.onboarding_feature_scores_title),
-                body = stringResource(R.string.onboarding_feature_scores_body),
-            )
-            FeatureRow(
-                symbolName = "lock",
-                title = stringResource(R.string.onboarding_feature_privacy_title),
-                body = stringResource(R.string.onboarding_feature_privacy_body),
-            )
-        }
+            content = content,
+        )
         Spacer(Modifier.height(16.dp))
-        Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.onboarding_welcome_start))
+        Button(onClick = onPrimary, modifier = Modifier.fillMaxWidth()) {
+            Text(primaryLabel)
         }
-        TextButton(onClick = onSkipAll, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Text(stringResource(R.string.onboarding_welcome_skip))
+        secondary?.invoke(this)
+    }
+}
+
+/** ONB-01: the pitch — what Ridesafe does, and that all of it stays on the phone (NFR-01). */
+@Composable
+private fun WelcomePage(
+    onStart: () -> Unit,
+    onSkipAll: () -> Unit,
+) {
+    StepPage(
+        primaryLabel = stringResource(R.string.onboarding_welcome_start),
+        onPrimary = onStart,
+        secondary = {
+            TextButton(onClick = onSkipAll, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                Text(stringResource(R.string.onboarding_welcome_skip))
+            }
+        },
+    ) {
+        Spacer(Modifier.height(32.dp))
+        MaterialSymbol(
+            symbolName = "directions_car",
+            contentDescription = null,
+            size = 64.dp,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
+        Text(
+            text = stringResource(R.string.onboarding_welcome_title),
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            text = stringResource(R.string.onboarding_welcome_message),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(8.dp))
+        FeatureRow(
+            symbolName = "route",
+            title = stringResource(R.string.onboarding_feature_rides_title),
+            body = stringResource(R.string.onboarding_feature_rides_body),
+        )
+        FeatureRow(
+            symbolName = "health_and_safety",
+            title = stringResource(R.string.onboarding_feature_scores_title),
+            body = stringResource(R.string.onboarding_feature_scores_body),
+        )
+        FeatureRow(
+            symbolName = "lock",
+            title = stringResource(R.string.onboarding_feature_privacy_title),
+            body = stringResource(R.string.onboarding_feature_privacy_body),
+        )
+    }
+}
+
+/**
+ * ONB-02: create the first car (GAR-02) with the garage's real add form, so the fields, the
+ * validation and the primary handling are exactly the Garage tab's. The form's own close (its
+ * cancel) skips the step.
+ */
+@Composable
+private fun CarPage(
+    onSave: (vehicle: Vehicle, makePrimary: Boolean) -> Unit,
+    onSkip: () -> Unit,
+) {
+    Column(Modifier.fillMaxSize()) {
+        Text(
+            text = stringResource(R.string.onboarding_car_intro),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+        )
+        VehicleFormScreen(
+            existing = null,
+            onSave = onSave,
+            onBack = onSkip,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+/**
+ * ONB-03: map paired Bluetooth devices to the created car (GAR-08) — the key to auto-detection
+ * (TRK-02) and to assigning rides to the right vehicle (TRK-08). Reuses the garage's tracking
+ * card and picker, including the request-on-tap for BLUETOOTH_CONNECT.
+ */
+@Composable
+private fun BluetoothPage(
+    vehicleDao: VehicleDao,
+    vehicleId: Long,
+    onContinue: () -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val vehicle by vehicleDao.observe(vehicleId).collectAsState(initial = null)
+    var showPicker by rememberSaveable { mutableStateOf(false) }
+    val bluetoothPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) showPicker = true
         }
+
+    StepPage(primaryLabel = stringResource(R.string.onboarding_continue), onPrimary = onContinue) {
+        StepIntro(
+            symbolName = "bluetooth",
+            title = stringResource(R.string.onboarding_bluetooth_title),
+            body = stringResource(R.string.onboarding_bluetooth_body),
+        )
+        TrackingCard(
+            devices = vehicle?.bluetoothDevices.orEmpty(),
+            onLink = {
+                if (AppPermission.BLUETOOTH.isGranted(context)) {
+                    showPicker = true
+                } else {
+                    bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                }
+            },
+            onRemove = { address ->
+                vehicle?.let { v ->
+                    scope.launch {
+                        vehicleDao.update(v.copy(bluetoothDevices = v.bluetoothDevices.filterNot { it.address == address }))
+                    }
+                }
+            },
+        )
+    }
+
+    if (showPicker) {
+        val linkedAddresses =
+            vehicle
+                ?.bluetoothDevices
+                .orEmpty()
+                .map { it.address }
+                .toSet()
+        BluetoothPickerDialog(
+            devices = BluetoothDevices.bonded(context).filterNot { it.address in linkedAddresses },
+            onPick = { device ->
+                showPicker = false
+                vehicle?.let { v ->
+                    scope.launch { vehicleDao.update(v.copy(bluetoothDevices = v.bluetoothDevices + device)) }
+                }
+            },
+            onDismiss = { showPicker = false },
+        )
+    }
+}
+
+/** The icon + title + body block that opens every explainer-style step page. */
+@Composable
+private fun StepIntro(
+    symbolName: String,
+    title: String,
+    body: String,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        MaterialSymbol(
+            symbolName = symbolName,
+            contentDescription = null,
+            size = 48.dp,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(text = title, style = MaterialTheme.typography.headlineSmall)
+        Text(
+            text = body,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

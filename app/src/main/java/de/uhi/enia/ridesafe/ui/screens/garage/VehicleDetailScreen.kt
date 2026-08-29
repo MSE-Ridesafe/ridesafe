@@ -335,7 +335,7 @@ private fun Vehicle.makeAndModel(): String = "$make $model".trim()
 
 /** Linked Bluetooth devices for auto-tracking (GAR-08): list with remove + a link action. */
 @Composable
-private fun TrackingCard(
+internal fun TrackingCard(
     devices: List<BtDevice>,
     onLink: () -> Unit,
     onRemove: (String) -> Unit,
@@ -407,7 +407,7 @@ private fun TrackingCard(
 
 /** Picks from the phone's paired Bluetooth devices (GAR-08) — no need to be in the car. */
 @Composable
-private fun BluetoothPickerDialog(
+internal fun BluetoothPickerDialog(
     devices: List<BluetoothDevices.Entry>,
     onPick: (BtDevice) -> Unit,
     onDismiss: () -> Unit,

@@ -485,4 +485,8 @@
     <string name="onboarding_feature_privacy_body">Rides, places and vehicles are stored only on this device — there is no server.</string>
     <string name="onboarding_welcome_start">Set up Ridesafe</string>
     <string name="onboarding_welcome_skip">Skip for now</string>
+    <string name="onboarding_continue">Continue</string>
+    <string name="onboarding_car_intro">Every ride belongs to a vehicle. Add your car to the garage — you can edit it there anytime.</string>
+    <string name="onboarding_bluetooth_title">Recognize your car</string>
+    <string name="onboarding_bluetooth_body">Link your car\'s Bluetooth so Ridesafe can tell when you\'re driving it and assign rides automatically. Pick from the devices already paired with this phone — you don\'t need to be in the car.</string>
 </resources>
