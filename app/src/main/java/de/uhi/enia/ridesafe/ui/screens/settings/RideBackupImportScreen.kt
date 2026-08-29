@@ -109,6 +109,7 @@ internal class RideBackupImportViewModel(
 @Composable
 internal fun RideBackupImportScreen(
     onBack: () -> Unit,
+    showBack: Boolean = true,
     modifier: Modifier = Modifier,
     importViewModel: RideBackupImportViewModel = viewModel(),
 ) {
@@ -125,8 +126,10 @@ internal fun RideBackupImportScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_backup_import_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !busy) {
-                        MaterialSymbol("arrow_back", stringResource(R.string.action_back))
+                    if (showBack) {
+                        IconButton(onClick = onBack, enabled = !busy) {
+                            MaterialSymbol("arrow_back", stringResource(R.string.action_back))
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),

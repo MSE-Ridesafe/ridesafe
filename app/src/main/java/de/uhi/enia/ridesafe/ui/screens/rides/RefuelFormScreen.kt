@@ -71,17 +71,19 @@ import java.util.Locale
 @Composable
 fun RefuelLoadingScreen(
     onBack: () -> Unit,
+    showBack: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
-    RefuelStateScreen(onBack = onBack, modifier = modifier) { CircularProgressIndicator() }
+    RefuelStateScreen(onBack = onBack, showBack = showBack, modifier = modifier) { CircularProgressIndicator() }
 }
 
 @Composable
 fun RefuelUnavailableScreen(
     onBack: () -> Unit,
+    showBack: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
-    RefuelStateScreen(onBack = onBack, modifier = modifier) {
+    RefuelStateScreen(onBack = onBack, showBack = showBack, modifier = modifier) {
         Text(
             stringResource(R.string.refuel_not_found),
             style = MaterialTheme.typography.bodyLarge,
@@ -93,6 +95,7 @@ fun RefuelUnavailableScreen(
 @Composable
 private fun RefuelStateScreen(
     onBack: () -> Unit,
+    showBack: Boolean,
     modifier: Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -104,8 +107,10 @@ private fun RefuelStateScreen(
                 title = { Text(stringResource(R.string.refuel_edit)) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        MaterialSymbol(symbolName = "close", contentDescription = stringResource(R.string.action_back))
+                    if (showBack) {
+                        IconButton(onClick = onBack) {
+                            MaterialSymbol(symbolName = "close", contentDescription = stringResource(R.string.action_back))
+                        }
                     }
                 },
             )

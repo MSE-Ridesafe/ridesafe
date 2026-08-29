@@ -39,7 +39,9 @@ private const val RIDES_SCENE = "rides"
 
 /**
  * Rides tab entries: list -> detail. Navigation goes through [onOpen]/[onBack] (the caller
- * mutates the rides back stack and resets the tab-switch flag, so these transitions slide).
+ * mutates the rides back stack and resets the tab-switch flag, so these transitions slide);
+ * [onBack] carries the closing screen's own key, so a back event that outruns recomposition
+ * cannot pop the screen underneath it.
  * [viewModel] is one app-scoped instance shared by both screens; its Room
  * [kotlinx.coroutines.flow.Flow] is the source of truth.
  *
@@ -55,7 +57,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
     showBack: Boolean,
     selectionDismissRequests: State<Int>,
     onOpen: (NavKey) -> Unit,
-    onBack: () -> Unit,
+    onBack: (NavKey) -> Unit,
 ) {
     entry<RidesRoute>(
         metadata =
@@ -101,34 +103,34 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             )
         }
     }
-    entry<AddRefuelRoute> {
+    entry<AddRefuelRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = RIDES_SCENE)) { key ->
         val vehicles by viewModel.vehicles.collectAsState()
         RefuelFormScreen(
             vehicles = vehicles,
             onSave = viewModel::addRefuel,
-            onBack = onBack,
+            onBack = { onBack(key) },
         )
     }
-    entry<EditRefuelRoute> { key ->
+    entry<EditRefuelRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = RIDES_SCENE)) { key ->
         val loaded by produceState<Result<de.uhi.enia.ridesafe.data.Refuel?>?>(initialValue = null, key.id) {
             value = runCatching { viewModel.refuel(key.id) }
         }
         when (val result = loaded) {
             null -> {
-                RefuelLoadingScreen(onBack = onBack)
+                RefuelLoadingScreen(onBack = { onBack(key) }, showBack = showBack)
             }
 
             else -> {
                 val refuel = result.getOrNull()
                 if (refuel == null) {
-                    RefuelUnavailableScreen(onBack = onBack)
+                    RefuelUnavailableScreen(onBack = { onBack(key) }, showBack = showBack)
                 } else {
                     val vehicles by viewModel.vehicles.collectAsState()
                     RefuelFormScreen(
                         vehicles = vehicles,
                         existing = refuel,
                         onSave = viewModel::updateRefuel,
-                        onBack = onBack,
+                        onBack = { onBack(key) },
                     )
                 }
             }
@@ -139,7 +141,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
         val analysis by viewModel.analysisProgress.collectAsState()
         // Merged entries carry their stops, so flattening covers every ride a job can point at.
         val rides = remember(entries) { entries.flatMap { it.rides }.associateBy { it.id } }
-        AnalysisQueueScreen(progress = analysis, rides = rides, onBack = onBack, showBack = showBack)
+        AnalysisQueueScreen(progress = analysis, rides = rides, onBack = { onBack(AnalysisQueueRoute) }, showBack = showBack)
     }
     entry<MergedRideDetailRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = RIDES_SCENE)) { key ->
         val stops by viewModel.groupStops(key.groupId).collectAsState(initial = null)
@@ -153,9 +155,9 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             stops = stops,
             segments = segments,
             rideEvents = groupEvents,
+            onBack = { onBack(key) },
             refuels = refuels,
             onOpenRefuel = { onOpen(EditRefuelRoute(it)) },
-            onBack = onBack,
             showBack = showBack,
             onUnmergeAll = { viewModel.unmergeAll(key.groupId) },
             onUnmerge = { viewModel.unmerge(key.groupId, it) },
@@ -185,7 +187,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             analysisProgress = analysisProgress,
             refuels = refuels,
             onOpenRefuel = { onOpen(EditRefuelRoute(it)) },
-            onBack = onBack,
+            onBack = { onBack(key) },
             showBack = showBack,
         )
     }

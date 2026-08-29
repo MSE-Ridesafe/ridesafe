@@ -295,6 +295,7 @@ fun UnitSettingsScreen(
 @Composable
 fun CurrencySettingsScreen(
     onBack: () -> Unit,
+    showBack: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -312,6 +313,7 @@ fun CurrencySettingsScreen(
         title = stringResource(R.string.settings_currency_title),
         description = stringResource(R.string.settings_currency_detail_description),
         onBack = onBack,
+        showBack = showBack,
         modifier = modifier,
     ) {
         options.forEach { (option, labelRes) ->

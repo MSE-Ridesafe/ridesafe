@@ -34,10 +34,12 @@ internal val SettingsMenuRoutes: Set<NavKey> =
     setOf(
         SettingsLanguageRoute,
         SettingsUnitsRoute,
+        SettingsCurrencyRoute,
         SavedAddressesRoute,
         SettingsAutoTrackRoute,
         SettingsReconnectGraceRoute,
         SettingsMinRideLengthRoute,
+        SettingsBackupImportRoute,
     )
 
 /**
@@ -54,7 +56,7 @@ fun EntryProviderScope<NavKey>.settingsEntries(
     selected: NavKey?,
     showBack: Boolean,
     onOpen: (NavKey) -> Unit,
-    onBack: () -> Unit,
+    onBack: (NavKey) -> Unit,
 ) {
     entry<SettingsRoute>(
         metadata =
@@ -82,39 +84,38 @@ fun EntryProviderScope<NavKey>.settingsEntries(
         onOpen = onOpen,
         onBack = onBack,
     )
-    // TODO: Add "showBack" and metadata for SettingsCurrencyRoute and SettingsBackupImportRoute
     entry<SettingsLanguageRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
-        LanguageSettingsScreen(onBack = onBack, showBack = showBack)
+        LanguageSettingsScreen(onBack = { onBack(SettingsLanguageRoute) }, showBack = showBack)
     }
     entry<SettingsUnitsRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         UnitSettingsScreen(
-            onBack = onBack,
+            onBack = { onBack(SettingsUnitsRoute) },
             showBack = showBack,
         )
     }
-    entry<SettingsCurrencyRoute> {
-        CurrencySettingsScreen(onBack = onBack)
+    entry<SettingsCurrencyRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) { key ->
+        CurrencySettingsScreen(onBack = { onBack(key) }, showBack = showBack)
     }
 
     entry<SettingsAutoTrackRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         AutoTrackSettingsScreen(
-            onBack = onBack,
+            onBack = { onBack(SettingsAutoTrackRoute) },
             showBack = showBack,
         )
     }
     entry<SettingsReconnectGraceRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         ReconnectGraceSettingsScreen(
-            onBack = onBack,
+            onBack = { onBack(SettingsReconnectGraceRoute) },
             showBack = showBack,
         )
     }
     entry<SettingsMinRideLengthRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         MinRideLengthSettingsScreen(
-            onBack = onBack,
+            onBack = { onBack(SettingsMinRideLengthRoute) },
             showBack = showBack,
         )
     }
-    entry<SettingsBackupImportRoute> {
-        RideBackupImportScreen(onBack = onBack)
+    entry<SettingsBackupImportRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) { key ->
+        RideBackupImportScreen(onBack = { onBack(key) }, showBack = showBack)
     }
 }
