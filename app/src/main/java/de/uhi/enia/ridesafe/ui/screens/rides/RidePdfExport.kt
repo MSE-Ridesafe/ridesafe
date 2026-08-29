@@ -192,7 +192,7 @@ class RideExporter(
                 val exportDate = LocalDate.now()
                 when (format) {
                     RideExportFormat.PDF -> RidePdfReport(app).write(temp, loadJourneys(requests), exportDate, UnitPrefs.get(app))
-                    RideExportFormat.CSV -> RideCsvReport().write(temp, loadJourneys(requests), UnitPrefs.get(app))
+                    RideExportFormat.CSV -> writeRideCsv(temp, loadJourneys(requests), UnitPrefs.get(app))
                     RideExportFormat.ZIP -> RideZipBackup(app, db).write(temp, requests)
                 }
                 coroutineContext.ensureActive()
@@ -491,15 +491,13 @@ private class AndroidRideExportValueFormatter(
     override fun distance(distanceMeters: Double?): String = distanceMeters?.let { formatDistance(it, units) } ?: "Unavailable"
 }
 
-internal class RideCsvReport {
-    fun write(
-        file: File,
-        journeys: List<RideExportJourney>,
-        units: UnitSystemSetting,
-    ) {
-        val csv = buildRideCsv(journeys, AndroidRideExportValueFormatter(units))
-        file.outputStream().bufferedWriter(Charsets.UTF_8).use { it.write(csv) }
-    }
+internal fun writeRideCsv(
+    file: File,
+    journeys: List<RideExportJourney>,
+    units: UnitSystemSetting,
+) {
+    val csv = buildRideCsv(journeys, AndroidRideExportValueFormatter(units))
+    file.outputStream().bufferedWriter(Charsets.UTF_8).use { it.write(csv) }
 }
 
 private val csvHeader =
