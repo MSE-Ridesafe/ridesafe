@@ -155,12 +155,12 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             stops = stops,
             segments = segments,
             rideEvents = groupEvents,
-            onBack = { onBack(key) },
             refuels = refuels,
             onOpenRefuel = { onOpen(EditRefuelRoute(it)) },
-            showBack = showBack,
+            onBack = { onBack(key) },
             onUnmergeAll = { viewModel.unmergeAll(key.groupId) },
             onUnmerge = { viewModel.unmerge(key.groupId, it) },
+            showBack = showBack,
         )
     }
     entry<RideDetailRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = RIDES_SCENE)) { key ->

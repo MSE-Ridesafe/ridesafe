@@ -71,6 +71,7 @@ import de.uhi.enia.ridesafe.util.formatTimeOfDay
  */
 @Composable
 fun RideDetailScreen(
+    modifier: Modifier = Modifier,
     ride: Ride?,
     route: List<LatLng>?,
     rideEvents: List<RideEvent>,
@@ -81,7 +82,6 @@ fun RideDetailScreen(
     onOpenRefuel: (Long) -> Unit,
     onBack: () -> Unit,
     showBack: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     val unitSystem = currentUnitSystem()
     val context = LocalContext.current

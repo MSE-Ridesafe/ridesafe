@@ -68,6 +68,7 @@ import de.uhi.enia.ridesafe.util.formatTimeOfDay
  */
 @Composable
 fun MergedRideDetailScreen(
+    modifier: Modifier = Modifier,
     stops: List<Ride>?,
     segments: List<List<LatLng>>?,
     rideEvents: List<RideEvent>,
@@ -77,7 +78,6 @@ fun MergedRideDetailScreen(
     onUnmergeAll: () -> Unit,
     onUnmerge: (stopIds: List<Long>) -> Unit,
     showBack: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     val unitSystem = currentUnitSystem()
     val context = LocalContext.current
@@ -333,51 +333,6 @@ private fun MergedJourneyCard(
         }
     }
 }
-
-/**
- * The places timeline for a merged ride (N+1 waypoints for N legs): origin, one waypoint per parked
- * boundary, then the destination. A boundary waypoint is labeled with the more reliable next-leg
- * start address (falling back to the previous leg's end), its arrival time, and a "left … · parked …"
- * note — collapsing the two "unrelated" fixes into one place for a readable trip (MRG-07).
- */
-private fun buildPlaces(
-    context: android.content.Context,
-    stops: List<Ride>,
-): List<JourneyStop> =
-    buildList {
-        val first = stops.first()
-        add(
-            JourneyStop(
-                address = first.startAddress,
-                time =
-                    formatTimeOfDay(
-                        context,
-                        first.startedAtEpochMs,
-                    ),
-            ),
-        )
-        for (i in 0 until stops.size - 1) {
-            val arrive = stops[i]
-            val depart = stops[i + 1]
-            val note =
-                arrive.endedAtEpochMs?.let { arrivedMs ->
-                    context.getString(
-                        R.string.ride_merged_parked_note,
-                        formatTimeOfDay(context, depart.startedAtEpochMs),
-                        formatDurationMs(depart.startedAtEpochMs - arrivedMs),
-                    )
-                }
-            add(
-                JourneyStop(
-                    address = depart.startAddress ?: arrive.endAddress,
-                    time = arrive.endedAtEpochMs?.let { formatTimeOfDay(context, it) },
-                    note = note,
-                ),
-            )
-        }
-        val last = stops.last()
-        add(JourneyStop(address = last.endAddress, time = last.endedAtEpochMs?.let { formatTimeOfDay(context, it) }))
-    }
 
 @Composable
 private fun StopRow(
