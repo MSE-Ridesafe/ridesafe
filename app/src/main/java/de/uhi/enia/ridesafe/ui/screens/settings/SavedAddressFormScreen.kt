@@ -87,7 +87,6 @@ import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
 import de.uhi.enia.ridesafe.data.fixedIcon
 import de.uhi.enia.ridesafe.data.hasFixedLabel
-import de.uhi.enia.ridesafe.data.haversineMeters
 import de.uhi.enia.ridesafe.rides.processing.AddressSearchResult
 import de.uhi.enia.ridesafe.rides.processing.addressLines
 import de.uhi.enia.ridesafe.rides.processing.forwardGeocodeSuggestions
@@ -98,6 +97,7 @@ import de.uhi.enia.ridesafe.ui.components.map.MapLoadingIndicator
 import de.uhi.enia.ridesafe.ui.components.map.rememberIsOnline
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatShortDistance
+import de.uhi.enia.ridesafe.util.haversineMeters
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import java.util.Locale

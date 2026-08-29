@@ -1,5 +1,6 @@
 package de.uhi.enia.ridesafe.rides.recording
 
+import de.uhi.enia.ridesafe.util.haversineMeters
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

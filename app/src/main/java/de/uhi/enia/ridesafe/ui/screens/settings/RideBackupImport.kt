@@ -14,7 +14,6 @@ import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
 import de.uhi.enia.ridesafe.data.Vehicle
-import de.uhi.enia.ridesafe.data.haversineMeters
 import de.uhi.enia.ridesafe.rides.processing.ROUTE_VERSION
 import de.uhi.enia.ridesafe.rides.processing.processedRouteFile
 import de.uhi.enia.ridesafe.rides.recording.ridesDir
@@ -25,6 +24,7 @@ import de.uhi.enia.ridesafe.ui.screens.rides.BackupVehicle
 import de.uhi.enia.ridesafe.ui.screens.rides.RideBackupArchiveValidator
 import de.uhi.enia.ridesafe.ui.screens.rides.RideBackupManifest
 import de.uhi.enia.ridesafe.util.copyCancellable
+import de.uhi.enia.ridesafe.util.haversineMeters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive

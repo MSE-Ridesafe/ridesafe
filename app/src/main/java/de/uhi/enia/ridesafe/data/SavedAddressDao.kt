@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import de.uhi.enia.ridesafe.util.haversineMeters
 import kotlinx.coroutines.flow.Flow
 import java.util.Locale
 

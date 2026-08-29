@@ -13,8 +13,8 @@ import de.uhi.enia.ridesafe.rides.processing.score.scoreRide
 import de.uhi.enia.ridesafe.rides.recording.LocationSample
 import de.uhi.enia.ridesafe.rides.recording.MotionSample
 import de.uhi.enia.ridesafe.rides.recording.MotionSensor
-import de.uhi.enia.ridesafe.rides.recording.haversineMeters
 import de.uhi.enia.ridesafe.rides.recording.trackDistanceMeters
+import de.uhi.enia.ridesafe.util.haversineMeters
 
 const val AXIS_VERSION = 1
 const val EVENTS_VERSION = 10

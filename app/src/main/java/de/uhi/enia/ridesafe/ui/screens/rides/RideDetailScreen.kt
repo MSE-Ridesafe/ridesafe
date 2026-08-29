@@ -44,7 +44,6 @@ import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.SavedAddress
-import de.uhi.enia.ridesafe.data.haversineMeters
 import de.uhi.enia.ridesafe.rides.processing.addressLines
 import de.uhi.enia.ridesafe.rides.processing.latLngDistanceMeters
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
@@ -56,6 +55,7 @@ import de.uhi.enia.ridesafe.util.formatRideDateTime
 import de.uhi.enia.ridesafe.util.formatShortDistance
 import de.uhi.enia.ridesafe.util.formatSpeed
 import de.uhi.enia.ridesafe.util.formatTimeOfDay
+import de.uhi.enia.ridesafe.util.haversineMeters
 
 /**
  * Ride detail: the trip's numbers as a headline readout, the recorded route on a Google Map, the
