@@ -2,7 +2,6 @@
 
 package de.uhi.enia.ridesafe.ui.screens.rides
 
-import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -65,6 +64,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.MergeCheck
 import de.uhi.enia.ridesafe.data.SavedAddress
@@ -91,6 +91,7 @@ import java.time.LocalDate
 
 @Composable
 fun RidesScreen(
+    modifier: Modifier = Modifier,
     timeline: List<TimelineEntry>,
     analysis: RideAnalysisProgress,
     exportState: RideExportState,
@@ -111,11 +112,10 @@ fun RidesScreen(
     onExport: (List<RideExportRequest>, RideExportFormat) -> Unit,
     onExportResultConsumed: () -> Unit,
     onAddRefuel: () -> Unit,
-    selectionDismissRequests: State<Int>,
     // The entry whose detail pane is showing (LogbookEntry.key). Null on a phone, where the detail
     // covers the list rather than sitting beside it.
+    selectionDismissRequests: State<Int>,
     selectedKey: String? = null,
-    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -207,7 +207,7 @@ fun RidesScreen(
                 val saved =
                     SavedRideExport(
                         fileName = exportState.export.fileName,
-                        uri = Uri.parse(exportState.export.contentUri),
+                        uri = exportState.export.contentUri.toUri(),
                         format = exportState.export.format,
                     )
                 val openIntent = buildOpenExportIntent(saved)

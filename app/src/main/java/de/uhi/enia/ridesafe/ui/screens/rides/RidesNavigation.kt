@@ -93,13 +93,13 @@ fun EntryProviderScope<NavKey>.ridesEntries(
                 onMerge = viewModel::merge,
                 onUnmerge = viewModel::unmergeAll,
                 onDelete = viewModel::deleteEntries,
-                selectedKey = selectedKey,
-                onAddRefuel = { onOpen(AddRefuelRoute) },
-                onExport = viewModel::export,
                 logbookOperationState = logbookOperationState,
                 onLogbookOperationResultConsumed = viewModel::consumeLogbookOperationResult,
+                onExport = viewModel::export,
                 onExportResultConsumed = viewModel::consumeExportResult,
+                onAddRefuel = { onOpen(AddRefuelRoute) },
                 selectionDismissRequests = selectionDismissRequests,
+                selectedKey = selectedKey,
             )
         }
     }

@@ -65,12 +65,12 @@ internal fun SavedPlaceKind.labelRes(): Int =
  */
 @Composable
 fun SavedAddressesScreen(
+    modifier: Modifier = Modifier,
     addresses: List<SavedAddress>,
     onAdd: (SavedPlaceKind) -> Unit,
     onEdit: (Long) -> Unit,
     onBack: () -> Unit,
     showBack: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     val existingKinds = addresses.map { it.kind }.toSet()
     val availableShortcuts = SHORTCUT_KINDS.filter { it !in existingKinds }
