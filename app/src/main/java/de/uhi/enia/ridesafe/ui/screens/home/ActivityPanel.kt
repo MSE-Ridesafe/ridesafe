@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.util.currentCurrencySetting
 import de.uhi.enia.ridesafe.util.formattingLocale
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -52,7 +53,7 @@ fun ActivitySection(activityByDay: Map<LocalDate, ActivityBar>) {
     val weeklyBars = buildSevenDayActivity(activityByDay, selectedStartDay)
     val chartBars = buildActivityWindow(activityByDay, selectedStartDay.minusDays(1), dayCount = 9)
     val dateRange = formatActivityDateRange(weeklyBars, locale)
-    val maxValue = activityScaleMaximum(activityByDay.values, selectedMetric)
+    val maxValue = activityScaleMaximum(activityByDay.values, selectedMetric, currentCurrencySetting().currencyCode)
     val subtitle =
         stringResource(
             when (selectedMetric) {

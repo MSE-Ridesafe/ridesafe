@@ -40,7 +40,9 @@ data class ActivityBar(
     val rideCount: Int,
     val distanceMeters: Double,
     val durationMillis: Long,
-    val costMinor: Long = 0L,
+    // Keyed by ISO 4217 code: minor units of different currencies must never be added, and the
+    // chart shows only the bucket of the currently selected currency (no on-device FX rates).
+    val costMinorByCurrency: Map<String, Long> = emptyMap(),
 )
 
 data class HomeHighlights(
