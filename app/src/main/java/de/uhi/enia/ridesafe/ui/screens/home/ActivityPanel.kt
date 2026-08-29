@@ -29,45 +29,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.util.formattingLocale
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import de.uhi.enia.ridesafe.util.formattingLocale
 import java.time.LocalDate
 
 @Composable
 fun ActivitySection(activityByDay: Map<LocalDate, ActivityBar>) {
     var selectedMetric by rememberSaveable { mutableStateOf(ActivityChartMetric.DISTANCE) }
     var startDayOffset by rememberSaveable { mutableStateOf(0) }
-    val locale = LocalLocale.current.platformLocale
-    var weekOffset by rememberSaveable { mutableStateOf(0) }
-    var monthOffset by rememberSaveable { mutableStateOf(0) }
+    // The region's conventions, not the in-app language's — a device set to English in
+    // Germany still reads "25.08." here (see docs/regional-formatting.md).
+    val locale = formattingLocale()
     val today = LocalDate.now()
     val initialMonday = startOfCalendarWeek(today)
     val selectedStartDay = initialMonday.plusDays(startDayOffset.toLong())
+    val weeklyBars = buildSevenDayActivity(activityByDay, selectedStartDay)
     val chartBars = buildActivityWindow(activityByDay, selectedStartDay.minusDays(1), dayCount = 9)
     val dateRange = formatActivityDateRange(weeklyBars, locale)
     val maxValue = activityScaleMaximum(activityByDay.values, selectedMetric)
-    val selectedWeekEnd = today.plusDays(weekOffset * 7L)
-    val selectedMonth = YearMonth.from(today).plusMonths(monthOffset.toLong())
-    val weeklyBars = buildRollingWeekActivity(activityByDay, selectedWeekEnd)
-    val monthlyActivity = buildMonthActivity(activityByDay, selectedMonth)
-    val visibleData =
-        when (selectedTimeRange) {
-            ActivityTimeRange.WEEK -> weeklyBars
-            ActivityTimeRange.MONTH -> monthlyActivity
-        }
-    val dateRange = formatActivityDateRange(visibleData, formattingLocale())
-    val maxValue =
-        max(
-            1.0,
-            visibleData.maxOfOrNull { it.valueFor(selectedMetric) } ?: 0.0,
-        )
     val subtitle =
         stringResource(
             when (selectedMetric) {
