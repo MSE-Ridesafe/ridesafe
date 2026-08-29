@@ -50,9 +50,10 @@ import de.uhi.enia.ridesafe.data.canUnmergeSelection
 import de.uhi.enia.ridesafe.data.summarizeMerge
 import de.uhi.enia.ridesafe.domain.safetyScoreForRides
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
-import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
+import de.uhi.enia.ridesafe.ui.components.Stat
+import de.uhi.enia.ridesafe.ui.components.StatGrid
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDurationMs
@@ -163,33 +164,47 @@ fun MergedRideDetailScreen(
                 onUnmerge = onUnmerge,
             )
 
+            // The trip in numbers, same tiles as a single ride's: distance the hero, moving time
+            // second, the speeds sharing a tertiary row.
+            StatGrid(
+                rows =
+                    listOf(
+                        listOf(
+                            Stat(
+                                icon = "route",
+                                label = stringResource(R.string.ride_detail_section_distance),
+                                value =
+                                    summary.distanceMeters?.let { formatDistance(it, unitSystem) }
+                                        ?: stringResource(R.string.value_not_set),
+                            ),
+                        ),
+                        listOf(
+                            Stat(
+                                icon = "schedule",
+                                label = stringResource(R.string.ride_detail_duration),
+                                value = formatDurationMs(summary.movingDurationMs),
+                            ),
+                        ),
+                        listOfNotNull(
+                            summary.avgSpeedMps?.let {
+                                Stat(
+                                    icon = "avg_pace",
+                                    label = stringResource(R.string.ride_stat_avg_speed),
+                                    value = formatSpeed(context, it, unitSystem),
+                                )
+                            },
+                            Stat(
+                                icon = "speed",
+                                label = stringResource(R.string.ride_stat_max_speed),
+                                value = formatSpeed(context, summary.maxSpeedMps, unitSystem),
+                            ),
+                        ),
+                    ),
+            )
+
             // The whole trip's score: the stops' penalties and exposure summed, mapped once — never
             // an average of their scores (see SafetyScoreWindows). Hidden when no stop was scoreable.
             safetyScoreForRides(stops)?.let { SafetyScoreCard(score = it) }
-
-            DetailCard(
-                title = stringResource(R.string.ride_detail_section_summary),
-                rows =
-                    listOf(
-                        stringResource(R.string.ride_detail_total_distance) to
-                            (
-                                summary.distanceMeters?.let { formatDistance(it, unitSystem) }
-                                    ?: stringResource(R.string.value_not_set)
-                            ),
-                        stringResource(R.string.ride_detail_duration) to formatDurationMs(summary.movingDurationMs),
-                    ),
-            )
-
-            DetailCard(
-                title = stringResource(R.string.ride_detail_section_speed),
-                rows =
-                    listOfNotNull(
-                        stringResource(R.string.ride_detail_max_speed) to formatSpeed(context, summary.maxSpeedMps, unitSystem),
-                        summary.avgSpeedMps?.let {
-                            stringResource(R.string.ride_detail_avg_speed) to formatSpeed(context, it, unitSystem)
-                        },
-                    ),
-            )
 
             // The trip's efficiency, same card as a single ride's — the aggregates add up across
             // stops and the level is derived once from the whole trip's driving (MRG-05 rule).
