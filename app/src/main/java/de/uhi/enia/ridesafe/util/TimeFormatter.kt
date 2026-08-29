@@ -10,19 +10,19 @@ import java.time.ZoneId
 /** The calendar day a ride falls on, in the device's zone — the rides list's grouping key. */
 fun rideDay(epochMs: Long): LocalDate = Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()).toLocalDate()
 
-/** Locale-aware time of day, e.g. "14:32". */
+/** Time of day in the device region's conventions (12/24-h), e.g. "14:32". */
 fun formatTimeOfDay(
     context: Context,
     epochMs: Long,
-): String = DateUtils.formatDateTime(context, epochMs, DateUtils.FORMAT_SHOW_TIME)
+): String = DateUtils.formatDateTime(context.regionalFormatContext(), epochMs, DateUtils.FORMAT_SHOW_TIME)
 
-/** Locale-aware date + time, e.g. "23 Jun 2026, 14:32" — used for the detail title. */
+/** Date + time in the device region's conventions, e.g. "23 Jun 2026, 14:32" — used for the detail title. */
 fun formatRideDateTime(
     context: Context,
     epochMs: Long,
 ): String =
     DateUtils.formatDateTime(
-        context,
+        context.regionalFormatContext(),
         epochMs,
         DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_SHOW_YEAR,
     )
@@ -68,8 +68,10 @@ fun formatDayHeader(
         }
 
         else -> {
+            // Regional context for the date shape; Today/Yesterday above stay on the caller's
+            // context — they are words, not formatting.
             DateUtils.formatDateTime(
-                context,
+                context.regionalFormatContext(),
                 day.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
                 DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_SHOW_YEAR,
             )

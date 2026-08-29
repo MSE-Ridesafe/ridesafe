@@ -15,7 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
@@ -26,6 +26,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -61,6 +62,7 @@ import de.uhi.enia.ridesafe.ui.screens.garage.garageEntries
 import de.uhi.enia.ridesafe.ui.screens.home.HomeRoute
 import de.uhi.enia.ridesafe.ui.screens.home.HomeViewModel
 import de.uhi.enia.ridesafe.ui.screens.home.homeEntries
+import de.uhi.enia.ridesafe.ui.screens.rides.EditRefuelRoute
 import de.uhi.enia.ridesafe.ui.screens.rides.MergedRideDetailRoute
 import de.uhi.enia.ridesafe.ui.screens.rides.RideDetailRoute
 import de.uhi.enia.ridesafe.ui.screens.rides.RidesRoute
@@ -76,12 +78,43 @@ private const val SLIDE_MS = 250 // sub-route slide + matching fade-out of the p
 private const val FADE_MS = 250 // quick cross-fade between tabs
 
 /**
+ * Opens [key] from a tab's list pane: whatever detail run is showing gets replaced, not stacked
+ * under it. On two panes the list stays tappable beside an open detail, so pushing on every tap
+ * would grow the stack without bound — each stale detail alive in memory, and every one of them
+ * an extra back press once the window drops to a single pane. Tapping the already-open route is
+ * a no-op, which keeps that detail's state. The stack never grows past list + one open screen
+ * (+ a form pushed from *inside* the detail pane, which callers add directly).
+ */
+private fun openFromList(
+    stack: MutableList<NavKey>,
+    key: NavKey,
+) {
+    if (stack.lastOrNull() == key) return
+    while (stack.size > 1) stack.removeLastOrNull()
+    stack.add(key)
+}
+
+/**
+ * Pops [key] — a screen asking to close itself. A no-op unless [key] is still what is showing:
+ * back events can arrive faster than recomposition swaps the screen (a double-tapped back arrow,
+ * or a tap landing during the pop animation), and an unguarded second pop would take the screen
+ * *underneath* with it — or empty the stack entirely, which NavDisplay rejects with
+ * "NavDisplay backstack cannot be empty" and brings the whole app down.
+ */
+private fun popOwn(
+    stack: MutableList<NavKey>,
+    key: NavKey,
+) {
+    if (stack.size > 1 && stack.lastOrNull() == key) stack.removeLastOrNull()
+}
+
+/**
  * App shell: adaptive navigation suite (bottom bar / rail / drawer) wrapping a
  * [NavDisplay]. Each tab owns a [rememberNavBackStack]; the selected tab decides which
  * stack [NavDisplay] renders, so switching tabs preserves each tab's in-tab navigation.
  * NavDisplay supplies the native default transitions and predictive-back animation.
  *
- * Preferences are read where they are used ([UnitPrefs], [AutoTrackPrefs]) rather than passed
+ * Preferences are read where they are used ([AutoTrackPrefs]) rather than passed
  * down; back stacks are hoisted above the display so they persist across
  * every route. The garage flow's [GarageViewModel] is hoisted here too (one app-scoped
  * instance shared by its three screens), since Nav3 has no graph scope.
@@ -110,7 +143,7 @@ fun RidesafeApp() {
     // showBack = !twoPane only reaches the screens a list can open directly: pinned beside the list
     // they are already "here", so an arrow back to nothing is noise. The forms sit a level deeper
     // and keep their own cancel regardless — that X discards edits, it is not navigation.
-    val directive = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo())
+    val directive = calculatePaneScaffoldDirective(currentWindowAdaptiveInfoV2())
     val twoPane = directive.maxHorizontalPartitions > 1
     // PopLatest, not the default PopUntilScaffoldValueChange: with a placeholder filling the empty
     // detail pane, the scaffold value never changes, so the default finds nothing to pop and lets
@@ -137,16 +170,16 @@ fun RidesafeApp() {
         }
     var current by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
 
-    // What each tab's list pane marks as open: the *deepest* route the list knows how to mark.
-    // Opening a second detail pushes rather than replaces (that is what the pane scaffold expects),
-    // so reading a fixed depth would freeze on whichever was opened first. Searching from the top
-    // down also still finds "Saved addresses" while its editor sits a level deeper.
+    // What each tab's list pane marks as open: the deepest route the list knows how to mark —
+    // searched from the top so "Saved addresses" stays lit while its editor sits a level deeper.
     val openRide =
-        when (val key = ridesStack.lastOrNull { it is RideDetailRoute || it is MergedRideDetailRoute }) {
+        when (val key = ridesStack.lastOrNull { it is RideDetailRoute || it is MergedRideDetailRoute || it is EditRefuelRoute }) {
+            // Each maps to the matching TimelineEntry.stableKey.
             is RideDetailRoute -> "r${key.id}"
 
-            // matches LogbookEntry.key
             is MergedRideDetailRoute -> "g${key.groupId}"
+
+            is EditRefuelRoute -> "f${key.id}"
 
             else -> null
         }
@@ -172,6 +205,9 @@ fun RidesafeApp() {
 
     // Shared across the rides list/detail screens; Room Flow is the source of truth.
     val ridesViewModel: RidesViewModel = viewModel()
+    // Shared snapshot signal read directly by the Rides screen. Both this counter and the screen's
+    // last-handled value are saveable, so rotation cannot replay an old dismissal.
+    val ridesTabReselections = rememberSaveable { mutableIntStateOf(0) }
 
     // Shared dashboard state sourced from vehicles and rides.
     val homeViewModel: HomeViewModel = viewModel()
@@ -220,8 +256,12 @@ fun RidesafeApp() {
                                 },
                             selected = isSelected,
                             onClick = {
-                                isTabSwitch = true
-                                current = dest
+                                if (isSelected) {
+                                    if (dest == AppDestinations.RIDES) ridesTabReselections.intValue++
+                                } else {
+                                    isTabSwitch = true
+                                    current = dest
+                                }
                             },
                         )
                     }
@@ -250,7 +290,11 @@ fun RidesafeApp() {
                             sceneStrategies = listOf(listDetail),
                             onBack = {
                                 isTabSwitch = false
-                                stacks.getValue(current).removeLastOrNull()
+                                // Never pops the tab root: two system backs can land in the same
+                                // frame, before recomposition deregisters the callback, and the
+                                // second would empty the stack ("backstack cannot be empty").
+                                val stack = stacks.getValue(current)
+                                if (stack.size > 1) stack.removeLastOrNull()
                             },
                             // Sub-route nav: new screen slides in, previous fades out at the same speed;
                             // back mirrors it (top slides out, revealed screen fades in). Tab switches are
@@ -281,26 +325,41 @@ fun RidesafeApp() {
                                         viewModel = ridesViewModel,
                                         selectedKey = openRide,
                                         showBack = !twoPane,
-                                        onOpen = {
+                                        selectionDismissRequests = ridesTabReselections,
+                                        onOpen = { key ->
                                             isTabSwitch = false
-                                            ridesStack.add(it)
+                                            // A refuel opened while a ride detail is showing came
+                                            // from inside that detail (its attached-refuels list):
+                                            // it stacks so back returns to the ride. Everything
+                                            // else this tab opens is list-level and replaces.
+                                            val top = ridesStack.lastOrNull()
+                                            val overDetail =
+                                                key is EditRefuelRoute &&
+                                                    (top is RideDetailRoute || top is MergedRideDetailRoute)
+                                            if (overDetail) ridesStack.add(key) else openFromList(ridesStack, key)
                                         },
-                                        onBack = {
+                                        onBack = { key ->
                                             isTabSwitch = false
-                                            ridesStack.removeLastOrNull()
+                                            popOwn(ridesStack, key)
                                         },
                                     )
                                     garageEntries(
                                         viewModel = garageViewModel,
                                         selectedId = openVehicle,
                                         showBack = !twoPane,
-                                        onOpen = {
+                                        onOpen = { key ->
                                             isTabSwitch = false
-                                            garageStack.add(it)
+                                            // The edit form opens from inside the detail pane and
+                                            // stacks on top of its vehicle; the rest is list-level.
+                                            if (key is EditVehicleRoute) {
+                                                garageStack.add(key)
+                                            } else {
+                                                openFromList(garageStack, key)
+                                            }
                                         },
-                                        onBack = {
+                                        onBack = { key ->
                                             isTabSwitch = false
-                                            garageStack.removeLastOrNull()
+                                            popOwn(garageStack, key)
                                         },
                                         onPopToGarage = {
                                             isTabSwitch = false
@@ -311,13 +370,19 @@ fun RidesafeApp() {
                                         savedAddressViewModel = savedAddressViewModel,
                                         selected = openSetting,
                                         showBack = !twoPane,
-                                        onOpen = {
+                                        onOpen = { key ->
                                             isTabSwitch = false
-                                            settingsStack.add(it)
+                                            // The address editor opens from inside the detail pane
+                                            // and stacks on top of its list; menu taps are list-level.
+                                            if (key in SettingsMenuRoutes) {
+                                                openFromList(settingsStack, key)
+                                            } else {
+                                                settingsStack.add(key)
+                                            }
                                         },
-                                        onBack = {
+                                        onBack = { key ->
                                             isTabSwitch = false
-                                            settingsStack.removeLastOrNull()
+                                            popOwn(settingsStack, key)
                                         },
                                     )
                                 },

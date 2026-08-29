@@ -17,8 +17,6 @@ data class HomeDashboardState(
     val currentMonthDistanceMeters: Double = 0.0,
     val currentMonthDurationMillis: Long = 0L,
     val currentMonthRecordedRides: Int = 0,
-    val activityBars: List<ActivityBar> = emptyList(),
-    val monthlyActivity: List<ActivityBar> = emptyList(),
     val activityByDay: Map<LocalDate, ActivityBar> = emptyMap(),
     val highlights: HomeHighlights = HomeHighlights(),
     // The safety score over three windows (DSH-06); null = nothing scoreable in that window. All-time
@@ -42,6 +40,7 @@ data class ActivityBar(
     val rideCount: Int,
     val distanceMeters: Double,
     val durationMillis: Long,
+    val costMinor: Long = 0L,
 )
 
 data class HomeHighlights(

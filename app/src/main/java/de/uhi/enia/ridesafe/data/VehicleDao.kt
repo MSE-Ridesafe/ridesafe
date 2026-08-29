@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
+import java.util.UUID
 
 @Dao
 abstract class VehicleDao {
@@ -24,11 +25,22 @@ abstract class VehicleDao {
     @Query("SELECT * FROM vehicles")
     abstract suspend fun all(): List<Vehicle>
 
+    /** Batch relation lookup for ride exports, avoiding one query per selected journey. */
+    @Query("SELECT * FROM vehicles WHERE id IN (:ids)")
+    abstract suspend fun byIds(ids: List<Long>): List<Vehicle>
+
     @Insert
     abstract suspend fun insert(vehicle: Vehicle): Long
 
     @Update
     abstract suspend fun update(vehicle: Vehicle)
+
+    @Query("UPDATE vehicles SET mileageKm = :mileageKm, updatedAtEpochMs = :updatedAtEpochMs WHERE id = :vehicleId")
+    abstract suspend fun updateMileage(
+        vehicleId: Long,
+        mileageKm: Int,
+        updatedAtEpochMs: Long,
+    )
 
     @Delete
     abstract suspend fun delete(vehicle: Vehicle)
@@ -55,7 +67,13 @@ abstract class VehicleDao {
     ): Long {
         val primary = makePrimary || count() == 0
         if (primary) clearPrimary()
-        return insert(vehicle.copy(isPrimary = primary))
+        return insert(
+            vehicle.copy(
+                isPrimary = primary,
+                vehicleUuid = vehicle.vehicleUuid.ifBlank { UUID.randomUUID().toString() },
+                updatedAtEpochMs = System.currentTimeMillis(),
+            ),
+        )
     }
 
     /**
@@ -69,7 +87,13 @@ abstract class VehicleDao {
         makePrimary: Boolean,
     ) {
         if (makePrimary) clearPrimary()
-        update(vehicle.copy(isPrimary = makePrimary || vehicle.isPrimary))
+        update(
+            vehicle.copy(
+                isPrimary = makePrimary || vehicle.isPrimary,
+                vehicleUuid = vehicle.vehicleUuid.ifBlank { UUID.randomUUID().toString() },
+                updatedAtEpochMs = System.currentTimeMillis(),
+            ),
+        )
     }
 
     /**

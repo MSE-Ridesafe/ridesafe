@@ -3,7 +3,6 @@ package de.uhi.enia.ridesafe.ui.components.map
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,6 +33,7 @@ import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.rememberCameraPositionState
 import de.uhi.enia.ridesafe.R
+import de.uhi.enia.ridesafe.ui.theme.resolvedDarkTheme
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.atan
@@ -152,7 +152,7 @@ internal fun MapSurface(
             onLoaded?.invoke()
         }
     }
-    val dark = isSystemInDarkTheme()
+    val dark = resolvedDarkTheme()
     val context = LocalContext.current
     val mapStyle =
         remember(dark) {

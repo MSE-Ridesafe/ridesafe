@@ -17,7 +17,6 @@
     <string name="screen_rides_title">Rides</string>
     <string name="screen_garage_title">Garage</string>
     <string name="screen_settings_title">Settings</string>
-    <string name="home_notifications">Notifications</string>
     <string name="home_no_primary_vehicle">No primary vehicle</string>
     <string name="home_unknown_vehicle">Vehicle</string>
     <string name="home_add_vehicle_hint">Add a vehicle in Garage</string>
@@ -40,31 +39,47 @@
     <string name="home_activity_title">Activity</string>
     <string name="home_activity_distance_week">Weekly Distance</string>
     <string name="home_activity_time_week">Weekly Travel Time</string>
-    <string name="home_activity_distance_month">Monthly Distance</string>
-    <string name="home_activity_time_month">Monthly Travel Time</string>
-    <string name="home_activity_period_week">Week</string>
-    <string name="home_activity_period_month">Month</string>
+    <string name="home_activity_cost_week">Weekly Cost</string>
     <string name="home_activity_metric_distance">Distance</string>
     <string name="home_activity_metric_time">Travel time</string>
-    <string name="home_activity_empty_week">No activity this week</string>
-    <string name="home_activity_empty_month">No activity this month</string>
-    <string name="home_activity_dialog_distance">Distance: %1$s</string>
-    <string name="home_activity_dialog_time">Travel time: %1$s</string>
-    <string name="home_activity_legend_none">None</string>
-    <string name="home_activity_legend_low">Low</string>
-    <string name="home_activity_legend_medium">Medium</string>
-    <string name="home_activity_legend_high">High</string>
-    <string name="home_activity_legend_less">Less</string>
-    <string name="home_activity_legend_more">More</string>
+    <string name="home_activity_metric_cost">Cost</string>
+    <string name="home_activity_period_week">Week</string>
+    <string name="home_activity_period_month">Month</string>
 
     <string name="settings_category_preferences">Preferences</string>
     <string name="settings_category_ride_recording">Ride recording</string>
+    <string name="settings_category_backup_restore">Backup and restore</string>
+    <string name="settings_backup_import_title">Import ride backup</string>
+    <string name="settings_backup_import_summary">Import rides from a ZIP backup</string>
+    <string name="settings_backup_import_description">Choose a Ridesafe ZIP backup. It will be fully verified before import. Existing data is kept; only missing items are added.</string>
+    <string name="settings_backup_import_choose">Choose backup</string>
+    <string name="settings_backup_import_checking">Checking backup…</string>
+    <string name="settings_backup_import_importing">Importing backup…</string>
+    <string name="settings_backup_import_confirm_title">Import this backup?</string>
+    <string name="settings_backup_import_confirm_message">This backup contains:\n\n• %1$d rides\n• %2$d vehicles\n• %3$d places\n• %4$d refuels\n\nYour existing data will be kept, and only missing items will be imported.</string>
+    <string name="settings_backup_import_confirm">Import</string>
+    <string name="settings_backup_import_success_title">Backup imported</string>
+    <string name="settings_backup_import_success_message">Imported from this backup:\n\n• %1$d rides (%5$d already existed)\n• %2$d vehicles (%6$d already existed)\n• %3$d places (%7$d already existed)\n• %4$d refuels (%8$d already existed)</string>
+    <string name="settings_backup_import_error_title">Could not import backup</string>
+    <string name="settings_backup_import_error_message">The archive was not changed or could not be restored safely. %1$s</string>
     <string name="settings_units_title">Distance Units</string>
     <string name="settings_units_detail_description">Choose how distances and ride measurements are shown throughout Ridesafe.</string>
+    <string name="settings_currency_title">Currency</string>
+    <string name="settings_currency_detail_description">Choose the currency used to enter and display refuel prices.</string>
+    <string name="currency_us_dollar">US Dollar ($)</string>
+    <string name="currency_british_pound">British Pound (£)</string>
+    <string name="currency_swiss_franc">Swiss Franc (CHF)</string>
+    <string name="currency_euro">Euro (€)</string>
     <string name="unit_system_automatic">Automatic (Based on language)</string>
     <string name="unit_system_metric">Metric (Kilometers)</string>
     <string name="unit_system_imperial">Imperial (Miles)</string>
     <string name="sample_distance_label">Sample Distance: %1$s</string>
+
+    <string name="settings_theme_title">App Theme</string>
+    <string name="settings_theme_detail_description">Choose whether Ridesafe appears light or dark, or follows the system setting.</string>
+    <string name="theme_system">System Default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
 
     <string name="settings_auto_track_title">Automatic ride recording</string>
     <string name="settings_auto_track_detail_description">Choose when Ridesafe may start recording rides in the background.</string>
@@ -100,7 +115,7 @@
     <string name="permission_activity_title">Physical activity</string>
     <string name="permission_activity_rationale">Recognizes car trips in vehicles without a Bluetooth pairing.</string>
     <string name="permission_notifications_title">Notifications</string>
-    <string name="permission_notifications_rationale">Shows the recording notification while a ride is in progress.</string>
+    <string name="permission_notifications_rationale">Shows recording status and completed ride exports.</string>
 
     <!-- Garage -->
     <string name="action_back">Back</string>
@@ -119,6 +134,7 @@
     <string name="garage_empty_message">Tap + to add your first vehicle.</string>
     <string name="garage_primary">Primary</string>
     <string name="garage_vehicle_image">Vehicle image</string>
+    <string name="vehicle_choose_image">Choose vehicle photo</string>
     <string name="garage_primary_marker">Primary vehicle</string>
 
     <string name="vehicle_nickname">Nickname</string>
@@ -132,8 +148,13 @@
     <string name="vehicle_tank_size">Tank size</string>
     <string name="vehicle_label_optional">%1$s (optional)</string>
     <string name="vehicle_section_overview">Overview</string>
-    <string name="vehicle_section_fuel">Fuel</string>
+    <string name="vehicle_section_fuel">Fuel type</string>
+    <string name="vehicle_section_information">Vehicle information</string>
     <string name="vehicle_section_tracking">Automatic tracking</string>
+    <string name="vehicle_extended_information">Extended information</string>
+    <string name="vehicle_type">Vehicle type</string>
+    <string name="vehicle_engine">Engine</string>
+    <string name="vehicle_manufacturing_country">Manufacturing country</string>
     <string name="vehicle_bluetooth_link">Link Bluetooth device</string>
     <string name="vehicle_bluetooth_none">No device linked yet</string>
     <string name="vehicle_bluetooth_remove">Remove device</string>
@@ -142,6 +163,7 @@
     <string name="add_vehicle_set_primary">Set as primary vehicle</string>
 
     <string name="fuel_type_petrol">Petrol</string>
+    <string name="fuel_type_not_set">Not set</string>
     <string name="fuel_type_diesel">Diesel</string>
     <string name="fuel_type_electric">Electric</string>
     <string name="fuel_type_hybrid">Hybrid</string>
@@ -156,9 +178,46 @@
     <string name="unit_liter">L</string>
     <string name="value_not_set">&#8212;</string>
 
+    <!-- Refueling -->
+    <string name="refuel_add">Add refuel</string>
+    <string name="refuel_edit">Edit refuel</string>
+    <string name="refuel_not_found">This refuel is no longer available.</string>
+    <string name="refuel_vehicle">Vehicle</string>
+    <string name="refuel_vehicle_required">Add a vehicle in Garage before recording a refuel.</string>
+    <string name="refuel_vehicle_unavailable">Previous vehicle unavailable</string>
+    <string name="refuel_vehicle_unavailable_select">The previous vehicle was deleted. Select an available vehicle to save.</string>
+    <string name="refuel_date">Date</string>
+    <string name="refuel_time">Time</string>
+    <string name="refuel_fuel_amount">Fuel amount</string>
+    <string name="refuel_total_price">Total price</string>
+    <string name="refuel_price_per_liter">Price per liter</string>
+    <string name="refuel_per_liter_suffix">/L</string>
+    <string name="refuel_odometer">Odometer</string>
+    <string name="refuel_label">Refuel</string>
+    <string name="refuel_full_tank">Full tank</string>
+    <string name="refuel_unknown_vehicle">Unknown vehicle</string>
+    <string name="refuel_error_fuel">Enter a fuel amount greater than zero using up to three decimal places.</string>
+    <string name="refuel_error_total">Enter a non-negative price using the currency\'s minor units.</string>
+    <string name="refuel_error_odometer">Enter a non-negative odometer reading.</string>
+    <string name="refuel_save_failed">Could not save the refuel. Your entries have been kept; please try again.</string>
+    <string name="refuel_row_amount_price">%1$s L · %2$s</string>
+    <string name="refuel_price_per_liter_value">%1$s/L</string>
+    <string name="refuel_action_add_to_ride">Add refuel to ride</string>
+    <string name="refuel_action_remove_from_ride">Remove from ride</string>
+    <string name="refuel_attached_success">Refuel added to ride.</string>
+    <string name="refuel_detached_success">Refuel removed from ride.</string>
+    <string name="ride_merge_success">Rides merged.</string>
+    <string name="refuel_association_error">Could not update the ride association. Your data was not changed.</string>
+    <string name="refuel_reason_vehicle_mismatch">Refuel vehicle does not match the ride</string>
+    <string name="refuel_reason_other_ride">Refuel already belongs to another ride</string>
+    <string name="refuel_reason_already_attached">All selected refuels already belong to this ride</string>
+    <string name="refuel_reason_not_all_attached">Select only refuels that belong to a ride</string>
+    <string name="refuel_vehicle_locked">Remove from ride before changing vehicle.</string>
+    <string name="refuel_associated_section">Refuels</string>
+
     <!-- Rides -->
-    <string name="rides_empty_title">No rides yet</string>
-    <string name="rides_empty_message">Recorded rides will show up here.</string>
+    <string name="rides_empty_title">No logbook entries yet</string>
+    <string name="rides_empty_message">Recorded rides and refuels will show up here.</string>
     <string name="ride_day_today">Today</string>
     <string name="ride_day_yesterday">Yesterday</string>
     <string name="ride_max_speed_short">max %1$s</string>
@@ -247,7 +306,30 @@
     <string name="action_exit_selection">Exit selection</string>
     <string name="ride_selected">Selected</string>
     <string name="ride_not_selected">Not selected</string>
-    <string name="ride_action_merge">Merge rides</string>
+    <string name="ride_action_merge">Merge</string>
+    <string name="ride_action_unmerge">Unmerge</string>
+    <string name="ride_action_export">Export</string>
+    <string name="ride_action_delete">Delete</string>
+    <string name="ride_delete_title">Delete selected entries?</string>
+    <string name="ride_delete_message">The selected rides and their attached refuels will be permanently deleted. For grouped rides, this includes every stop and cannot be undone.</string>
+    <string name="ride_delete_confirm">Delete</string>
+    <string name="ride_delete_cancel">Cancel</string>
+    <string name="ride_delete_success">Selected entries deleted.</string>
+    <string name="ride_delete_error">Could not delete the selected entries. Your data was not changed.</string>
+    <string name="ride_export_format_title">Choose export format</string>
+    <string name="ride_export_format_pdf">PDF</string>
+    <string name="ride_export_format_csv">CSV</string>
+    <string name="ride_export_format_zip">ZIP</string>
+    <string name="ride_export_format_pdf_description">Formatted report for reading and sharing</string>
+    <string name="ride_export_format_csv_description">Table data for Excel and other applications</string>
+    <string name="ride_export_format_zip_description">Backup with ride data, routes, and linked records</string>
+    <string name="ride_exporting">Exporting rides…</string>
+    <string name="ride_export_success">Export saved to Downloads/RideSafe.</string>
+    <string name="ride_export_error">Could not export rides. Please try again.</string>
+    <string name="ride_export_channel_name">Ride exports</string>
+    <string name="ride_export_notification_title">Ride export complete</string>
+    <string name="ride_export_notification_body">%1$s was saved to Downloads/RideSafe.</string>
+    <string name="ride_export_notification_open">Open file</string>
     <string name="merge_reason_not_enough">Select at least two rides</string>
     <string name="merge_reason_mixed_vehicle">Rides must be from the same vehicle</string>
     <string name="merge_reason_not_contiguous">Don\'t skip any ride in between</string>
@@ -276,12 +358,20 @@
     <string name="saved_address_label">Label</string>
     <string name="saved_address_search">Search address</string>
     <string name="saved_address_search_failed">No match found</string>
+    <string name="saved_address_search_clear">Clear search</string>
+    <string name="saved_address_search_recent">Recent searches</string>
+    <string name="saved_address_search_more_characters">Enter at least three characters.</string>
+    <string name="saved_address_search_no_results">No matching addresses found. Try including the city or postal code.</string>
+    <string name="saved_address_search_already_saved">Already saved as %1$s</string>
     <string name="saved_address_use_location">Use my location</string>
     <string name="saved_address_location_unavailable">Couldn\'t get your location</string>
     <string name="saved_address_radius">Recognition radius</string>
     <string name="saved_address_icon">Icon</string>
     <string name="saved_address_pick_hint">Tap the map, search, or use your location to set the point.</string>
     <string name="saved_address_marker">Saved place location</string>
+    <string name="saved_address_map_open">Open full-screen map</string>
+    <string name="saved_address_map_picker_title">Choose location</string>
+    <string name="saved_address_map_picker_hint">Move and zoom the map to position the pin.</string>
     <string name="saved_address_delete">Delete place</string>
     <string name="saved_address_delete_confirm_title">Delete place?</string>
     <string name="saved_address_delete_confirm_message">%1$s will be removed. This can\'t be undone.</string>
@@ -290,6 +380,7 @@
     <string name="place_kind_home">Home</string>
     <string name="place_kind_work">Work</string>
     <string name="place_kind_school">School</string>
+    <string name="place_kind_gas_station">Gas station</string>
     <string name="place_kind_custom">Custom place</string>
 
     <!-- Manual ride recording (TRK-07) -->

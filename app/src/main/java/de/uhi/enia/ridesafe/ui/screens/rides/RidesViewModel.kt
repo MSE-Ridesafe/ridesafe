@@ -1,18 +1,25 @@
 package de.uhi.enia.ridesafe.ui.screens.rides
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.room.withTransaction
 import com.google.android.gms.maps.model.LatLng
+import de.uhi.enia.ridesafe.data.MergeCheck
 import de.uhi.enia.ridesafe.data.MergedSummary
+import de.uhi.enia.ridesafe.data.Refuel
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.Vehicle
+import de.uhi.enia.ridesafe.data.canMerge
+import de.uhi.enia.ridesafe.data.consolidateSavedAddressDuplicates
 import de.uhi.enia.ridesafe.data.mergeGroupIdFor
 import de.uhi.enia.ridesafe.data.rematchRides
 import de.uhi.enia.ridesafe.data.summarizeMerge
+import de.uhi.enia.ridesafe.rides.RideDataCoordinator
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisPipeline
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
 import de.uhi.enia.ridesafe.rides.processing.processedRouteFile
@@ -43,6 +50,25 @@ data class RideRow(
     val startPlace: SavedAddress? = null,
     val endPlace: SavedAddress? = null,
 )
+
+data class RefuelRow(
+    val refuel: Refuel,
+    val vehicleName: String?,
+)
+
+enum class LogbookOperation { MERGED, ATTACHED, DETACHED, DELETED }
+
+sealed interface LogbookOperationState {
+    data object Idle : LogbookOperationState
+
+    data object Running : LogbookOperationState
+
+    data class Success(
+        val operation: LogbookOperation,
+    ) : LogbookOperationState
+
+    data object Error : LogbookOperationState
+}
 
 /**
  * One row of the Logbook list: either a standalone ride or a merged ride collapsed into a single
@@ -90,8 +116,18 @@ class RidesViewModel(
     private val vehicleDao = db.vehicleDao()
     private val savedAddressDao = db.savedAddressDao()
     private val rideEventDao = db.rideEventDao()
+    private val refuelDao = db.refuelDao()
 
     private val pipeline = RideAnalysisPipeline(app, db)
+    private val rideExporter = RideExporter(app)
+
+    private val exportController =
+        RideExportController(
+            scope = viewModelScope,
+            operation = rideExporter::export,
+            onFailure = { Log.e("RideExport", "Could not export selected rides", it) },
+        )
+    val exportState: StateFlow<RideExportState> = exportController.state
 
     /** The analysis queue (ANL-03), for the Rides status bar, the queue screen and the detail notice. */
     val analysisProgress: StateFlow<RideAnalysisProgress> = pipeline.progress
@@ -124,6 +160,9 @@ class RidesViewModel(
 
     /** Fill in any missing ride address (DR-RID) and re-match every ride to the saved places (ADR-07). */
     private suspend fun refreshPlaces() {
+        db.withTransaction {
+            consolidateSavedAddressDuplicates(rideDao, savedAddressDao)
+        }
         rideDao.needingAddresses().forEach { fillAddresses(it) }
         rematchRides(rideDao, savedAddressDao)
     }
@@ -163,7 +202,7 @@ class RidesViewModel(
      * entry once it is finalized; the dashboard is where a running ride is shown live.
      */
     private val rides: Flow<List<RideRow>> =
-        combine(rideDao.observeFinished(), vehicleDao.observeAll(), savedAddressDao.observeAll()) { rides, vehicles, addresses ->
+        combine(rideDao.observeFinished(), vehicles, savedAddressDao.observeAll()) { rides, vehicles, addresses ->
             val names = vehicles.associate { it.id to it.displayTitle() }
             val places = addresses.associateBy { it.id }
             rides.map {
@@ -188,6 +227,81 @@ class RidesViewModel(
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    private val refuelRows: StateFlow<List<RefuelRow>> =
+        combine(refuelDao.observeAll(), vehicles) { refuels, vehicles ->
+            val names = vehicles.associate { it.id to it.displayTitle() }
+            refuels.map { refuel ->
+                RefuelRow(
+                    refuel = refuel,
+                    vehicleName = names[refuel.vehicleId],
+                )
+            }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val timeline: StateFlow<List<TimelineEntry>> =
+        combine(entries, refuelRows, ::buildTimeline)
+            .flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    fun attachedRefuels(logbookKey: String): Flow<List<RefuelRow>> =
+        timeline
+            .map { timeline ->
+                timeline
+                    .filterIsInstance<TimelineEntry.RideEntry>()
+                    .firstOrNull { it.stableKey == logbookKey }
+                    ?.refuels
+                    .orEmpty()
+            }.distinctUntilChanged()
+
+    private val _logbookOperationState = MutableStateFlow<LogbookOperationState>(LogbookOperationState.Idle)
+    val logbookOperationState: StateFlow<LogbookOperationState> = _logbookOperationState.asStateFlow()
+
+    fun addRefuel(
+        refuel: Refuel,
+        onResult: (Result<Unit>) -> Unit,
+    ) {
+        viewModelScope.launch {
+            onResult(
+                runCatching {
+                    db.withTransaction {
+                        val id = refuelDao.insert(refuel)
+                        updateVehicleMileageIfNewest(refuel.copy(id = id))
+                    }
+                }.onFailure { Log.e("RefuelInsert", "Could not insert refuel", it) },
+            )
+        }
+    }
+
+    /** Missing Ride anchors have no logical parent; normalize them for editing so they behave unattached. */
+    suspend fun refuel(id: Long): Refuel? =
+        refuelDao.getById(id)?.let { refuel ->
+            val anchor = refuel.journeyAnchorRideId ?: return@let refuel
+            if (rideDao.byIds(listOf(anchor)).isEmpty()) refuel.copy(journeyAnchorRideId = null) else refuel
+        }
+
+    fun updateRefuel(
+        refuel: Refuel,
+        onResult: (Result<Unit>) -> Unit,
+    ) {
+        viewModelScope.launch {
+            onResult(
+                runCatching {
+                    db.withTransaction {
+                        refuelDao.update(refuel)
+                        updateVehicleMileageIfNewest(refuel)
+                    }
+                }.onFailure { Log.e("RefuelUpdate", "Could not update refuel ${refuel.id}", it) },
+            )
+        }
+    }
+
+    /** A Refuel updates Garage mileage only when it is the newest event for that vehicle. */
+    private suspend fun updateVehicleMileageIfNewest(refuel: Refuel) {
+        if (refuelDao.newestForVehicle(refuel.vehicleId)?.id != refuel.id) return
+        val mileageKm = odometerMetersToVehicleMileageKm(refuel.odometerMeters) ?: return
+        vehicleDao.updateMileage(refuel.vehicleId, mileageKm, System.currentTimeMillis())
+    }
+
     fun ride(id: Long): Flow<Ride?> = rideDao.observe(id)
 
     /** The stops of a merged ride (MRG-04), chronological — the merged detail's source of truth. */
@@ -202,10 +316,199 @@ class RidesViewModel(
     /** Per-stop routes for the merged map, each drawn as its own disconnected polyline (MRG-07). */
     suspend fun routes(stops: List<Ride>): List<List<LatLng>> = stops.map { route(it) }
 
-    /** Merge the given rides into one trip (MRG-01); the smallest id becomes the shared group id (MRG-10). */
-    fun merge(rideIds: List<Long>) {
-        if (rideIds.size < 2) return
-        viewModelScope.launch { rideDao.setMergeGroup(mergeGroupIdFor(rideIds), rideIds) }
+    /** Merge rides and attach explicitly selected compatible Refuels in one Room transaction. */
+    fun merge(
+        rideIds: List<Long>,
+        refuelIds: List<Long>,
+    ) = startLogbookOperation(LogbookOperation.MERGED) {
+        db.withTransaction {
+            val allRides = rideDao.all()
+            val selectedRides = rideDao.byIds(rideIds.distinct())
+            require(selectedRides.size == rideIds.distinct().size)
+            require(canMerge(selectedRides.mapTo(hashSetOf()) { it.id }, allRides) == MergeCheck.OK)
+            val selectedRefuels = if (refuelIds.isEmpty()) emptyList() else refuelDao.byIds(refuelIds.distinct())
+            require(selectedRefuels.size == refuelIds.distinct().size)
+            val vehicleId = selectedRides.first().vehicleId
+            require(selectedRefuels.all { it.vehicleId == vehicleId })
+            val liveRideIds = allRides.mapTo(hashSetOf()) { it.id }
+            val selectedRideIds = selectedRides.mapTo(hashSetOf()) { it.id }
+            require(
+                selectedRefuels.none { refuel ->
+                    refuel.journeyAnchorRideId?.let { it in liveRideIds && it !in selectedRideIds } == true
+                },
+            )
+
+            // Selecting one already-combined logical entry plus Refuels only needs association work.
+            // Avoid a no-op Ride update (and its separate Flow invalidation) in that case.
+            val existingGroupId = selectedRides.first().mergeGroupId
+            val alreadyOneCompleteGroup =
+                existingGroupId != null &&
+                    selectedRides.all { it.mergeGroupId == existingGroupId } &&
+                    allRides.filter { it.mergeGroupId == existingGroupId }.mapTo(hashSetOf()) { it.id } == selectedRideIds
+            if (!alreadyOneCompleteGroup) {
+                rideDao.setMergeGroup(mergeGroupIdFor(selectedRideIds), selectedRideIds.toList())
+            }
+            selectedRefuels
+                .filter { it.journeyAnchorRideId !in selectedRideIds }
+                .forEach { refuelDao.setJourneyAnchor(it.id, closestRideAnchor(it, selectedRides).id) }
+        }
+    }
+
+    fun attachRefuels(
+        targetRideIds: List<Long>,
+        refuelIds: List<Long>,
+    ) = startLogbookOperation(LogbookOperation.ATTACHED) {
+        db.withTransaction {
+            val allRides = rideDao.all()
+            val targetRides = rideDao.byIds(targetRideIds.distinct())
+            val selectedRefuels = refuelDao.byIds(refuelIds.distinct())
+            require(targetRides.isNotEmpty() && targetRides.size == targetRideIds.distinct().size)
+            require(selectedRefuels.isNotEmpty() && selectedRefuels.size == refuelIds.distinct().size)
+            val targetIds = targetRides.mapTo(hashSetOf()) { it.id }
+            if (targetRides.size == 1) {
+                require(targetRides.single().mergeGroupId == null)
+            } else {
+                val groupId = targetRides.first().mergeGroupId
+                require(groupId != null && targetRides.all { it.mergeGroupId == groupId })
+                require(allRides.filter { it.mergeGroupId == groupId }.mapTo(hashSetOf()) { it.id } == targetIds)
+            }
+            val vehicleId = targetRides.first().vehicleId
+            require(vehicleId != null && targetRides.all { it.vehicleId == vehicleId })
+            require(selectedRefuels.all { it.vehicleId == vehicleId })
+            val liveRideIds = allRides.mapTo(hashSetOf()) { it.id }
+            require(
+                selectedRefuels.none { refuel ->
+                    refuel.journeyAnchorRideId?.let { it in liveRideIds && it !in targetIds } == true
+                },
+            )
+            val needingAttachment = selectedRefuels.filter { it.journeyAnchorRideId !in targetIds }
+            require(needingAttachment.isNotEmpty())
+            needingAttachment.forEach { refuelDao.setJourneyAnchor(it.id, closestRideAnchor(it, targetRides).id) }
+        }
+    }
+
+    fun detachRefuels(refuelIds: List<Long>) =
+        startLogbookOperation(LogbookOperation.DETACHED) {
+            db.withTransaction {
+                val selected = refuelDao.byIds(refuelIds.distinct())
+                val liveRideIds = rideDao.all().mapTo(hashSetOf()) { it.id }
+                require(selected.isNotEmpty() && selected.size == refuelIds.distinct().size)
+                require(selected.all { refuel -> refuel.journeyAnchorRideId?.let(liveRideIds::contains) == true })
+                refuelDao.clearJourneyAnchor(selected.map { it.id })
+            }
+        }
+
+    /**
+     * Permanently remove the selected logical entries. A merged entry supplies every physical ride
+     * id in the group, and every refuel anchored to one of those rides belongs to the deletion.
+     * Standalone refuels are deleted only when their own ids are explicitly selected.
+     */
+    fun deleteEntries(
+        rideIds: List<Long>,
+        refuelIds: List<Long>,
+    ) = startLogbookOperation(LogbookOperation.DELETED) {
+        val distinctRideIds = rideIds.distinct()
+        val distinctRefuelIds = refuelIds.distinct()
+        require(distinctRideIds.isNotEmpty() || distinctRefuelIds.isNotEmpty())
+
+        RideDataCoordinator.withRides(distinctRideIds) {
+            val ridesToDelete =
+                db.withTransaction {
+                    val rides = if (distinctRideIds.isEmpty()) emptyList() else rideDao.byIds(distinctRideIds)
+                    val explicitlySelectedRefuels =
+                        if (distinctRefuelIds.isEmpty()) emptyList() else refuelDao.byIds(distinctRefuelIds)
+                    val attachedRefuels =
+                        if (distinctRideIds.isEmpty()) emptyList() else refuelDao.forJourneyAnchors(distinctRideIds)
+
+                    require(rides.size == distinctRideIds.size)
+                    require(explicitlySelectedRefuels.size == distinctRefuelIds.size)
+                    // The recorder owns active rides and their open streams; they cannot be deleted here.
+                    require(rides.all { it.endedAtEpochMs != null })
+
+                    val allRefuelIds =
+                        (distinctRefuelIds + attachedRefuels.map { it.id }).distinct()
+                    if (allRefuelIds.isNotEmpty()) {
+                        refuelDao.deleteByIds(allRefuelIds)
+                    }
+                    if (distinctRideIds.isNotEmpty()) {
+                        rideDao.deleteByIds(distinctRideIds)
+                    }
+
+                    rides
+                }
+
+            // Database rows are the source of truth. Clean up their private sample and derived
+            // files while the same per-ride locks used by analysis/export are still held.
+            val directory = ridesDir(getApplication())
+            ridesToDelete.forEach { ride ->
+                runCatching {
+                    safeRideFile(directory, ride.sampleFile)?.delete()
+                    safePrivateFile(directory, processedRouteFile(getApplication(), ride))?.delete()
+                }.onFailure {
+                    // The database deletion has committed, so a stale private sidecar must not turn
+                    // a successful user action into a misleading failure. It is harmless and can be
+                    // removed by later maintenance.
+                    Log.w("LogbookDelete", "Could not clean private files for ride ${ride.id}", it)
+                }
+            }
+        }
+    }
+
+    private fun safeRideFile(
+        directory: File,
+        relativeName: String,
+    ): File? {
+        val root = directory.canonicalFile
+        val candidate = File(root, relativeName).canonicalFile
+        return candidate.takeIf { it.parentFile == root }
+    }
+
+    private fun safePrivateFile(
+        directory: File,
+        file: File,
+    ): File? {
+        val root = directory.canonicalFile
+        val candidate = file.canonicalFile
+        return candidate.takeIf { it.parentFile == root }
+    }
+
+    fun consumeLogbookOperationResult() {
+        if (_logbookOperationState.value is LogbookOperationState.Success ||
+            _logbookOperationState.value == LogbookOperationState.Error
+        ) {
+            _logbookOperationState.value = LogbookOperationState.Idle
+        }
+    }
+
+    private fun startLogbookOperation(
+        success: LogbookOperation,
+        block: suspend () -> Unit,
+    ) {
+        if (_logbookOperationState.value != LogbookOperationState.Idle) return
+        _logbookOperationState.value = LogbookOperationState.Running
+        viewModelScope.launch {
+            _logbookOperationState.value =
+                runCatching { block() }
+                    .fold(
+                        onSuccess = { LogbookOperationState.Success(success) },
+                        onFailure = {
+                            Log.e("LogbookOperation", "Could not complete $success", it)
+                            LogbookOperationState.Error
+                        },
+                    )
+        }
+    }
+
+    /** Export one immutable logical-selection snapshot; repeated taps while busy are ignored. */
+    fun export(
+        requests: List<RideExportRequest>,
+        format: RideExportFormat,
+    ) {
+        exportController.start(requests, format)
+    }
+
+    fun consumeExportResult() {
+        exportController.consumeResult()
     }
 
     /** Peel the given stops off a merged ride (MRG-11); if ≤1 stop is left, dissolve the group entirely. */
@@ -213,15 +516,36 @@ class RidesViewModel(
         groupId: Long,
         stopIds: List<Long>,
     ) = viewModelScope.launch {
-        rideDao.setMergeGroup(null, stopIds)
-        val remaining = rideDao.groupMembers(groupId)
-        if (remaining.size <= 1) rideDao.setMergeGroup(null, remaining.map { it.id })
+        db.withTransaction {
+            val members = rideDao.groupMembers(groupId)
+            val memberIds = members.mapTo(hashSetOf()) { it.id }
+            val peeledIds = stopIds.distinct()
+            if (peeledIds.isEmpty() || !peeledIds.all(memberIds::contains)) return@withTransaction
+
+            rideDao.setMergeGroup(null, peeledIds)
+            refuelDao.clearJourneyAnchorsForRides(peeledIds)
+
+            val remaining = rideDao.groupMembers(groupId)
+            if (remaining.size <= 1) {
+                val remainingIds = remaining.map { it.id }
+                if (remainingIds.isNotEmpty()) {
+                    rideDao.setMergeGroup(null, remainingIds)
+                    refuelDao.clearJourneyAnchorsForRides(remainingIds)
+                }
+            }
+        }
     }
 
     /** Restore every stop of a merged ride to a standalone ride (MRG-03). */
     fun unmergeAll(groupId: Long) =
         viewModelScope.launch {
-            rideDao.setMergeGroup(null, rideDao.groupMembers(groupId).map { it.id })
+            db.withTransaction {
+                val memberIds = rideDao.groupMembers(groupId).map { it.id }
+                if (memberIds.isNotEmpty()) {
+                    rideDao.setMergeGroup(null, memberIds)
+                    refuelDao.clearJourneyAnchorsForRides(memberIds)
+                }
+            }
         }
 
     /** Fold rides into list entries: each merge group (≥2 stops) collapses to one Merged entry, rest stay Single. */
@@ -274,4 +598,94 @@ class RidesViewModel(
             rideDao.setAddresses(ride.id, start, end)
         }
     }
+}
+
+/** A heterogeneous Rides-page event; ride-only behavior stays inside [LogbookEntry]. */
+sealed interface TimelineEntry {
+    val sortEpochMs: Long
+    val stableKey: String
+
+    data class RideEntry(
+        val entry: LogbookEntry,
+        val refuels: List<RefuelRow> = emptyList(),
+    ) : TimelineEntry {
+        override val sortEpochMs get() = entry.sortEpochMs
+        override val stableKey get() = entry.key
+    }
+
+    data class RefuelEntry(
+        val row: RefuelRow,
+    ) : TimelineEntry {
+        override val sortEpochMs get() = row.refuel.timestampEpochMs
+        override val stableKey get() = "f${row.refuel.id}"
+    }
+}
+
+/** Newest first; exact ties put rides before refuels, then use the stable persistent key. */
+val timelineEntryComparator =
+    compareByDescending<TimelineEntry> { it.sortEpochMs }
+        .thenBy { if (it is TimelineEntry.RideEntry) 0 else 1 }
+        .thenByDescending { it.stableKey }
+
+fun rideLogbookEntries(timeline: List<TimelineEntry>): List<LogbookEntry> = timeline.mapNotNull { (it as? TimelineEntry.RideEntry)?.entry }
+
+fun timelineSelectionKeys(timeline: List<TimelineEntry>): Set<String> = timeline.mapTo(linkedSetOf()) { it.stableKey }
+
+fun visibleTimelineSelectionKeys(timeline: List<TimelineEntry>): Set<String> =
+    timeline.flatMapTo(linkedSetOf()) { entry ->
+        listOf(entry.stableKey) +
+            if (entry is TimelineEntry.RideEntry && entry.entry is LogbookEntry.Single) {
+                entry.refuels.map { "f${it.refuel.id}" }
+            } else {
+                emptyList()
+            }
+    }
+
+fun selectedRefuels(
+    timeline: List<TimelineEntry>,
+    selectedKeys: Set<String>,
+): List<Refuel> =
+    timeline
+        .flatMap { entry ->
+            when (entry) {
+                is TimelineEntry.RefuelEntry -> listOf(entry.row)
+                is TimelineEntry.RideEntry -> entry.refuels
+            }
+        }.filter { "f${it.refuel.id}" in selectedKeys }
+        .map { it.refuel }
+
+fun selectedRideLogbookEntries(
+    timeline: List<TimelineEntry>,
+    selectedKeys: Set<String>,
+): List<LogbookEntry> = rideLogbookEntries(timeline).filter { it.key in selectedKeys }
+
+fun buildTimeline(
+    rideEntries: List<LogbookEntry>,
+    refuelRows: List<RefuelRow>,
+): List<TimelineEntry> {
+    val entryKeyByRideId =
+        buildMap {
+            rideEntries.forEach { entry -> entry.rideIds.forEach { put(it, entry.key) } }
+        }
+    val attachedByKey =
+        refuelRows
+            .mapNotNull { row ->
+                row.refuel.journeyAnchorRideId
+                    ?.let(entryKeyByRideId::get)
+                    ?.let { it to row }
+            }.groupBy({ it.first }, { it.second })
+    val attachedIds = attachedByKey.values.flatten().mapTo(hashSetOf()) { it.refuel.id }
+    return buildList {
+        rideEntries.forEach { entry ->
+            add(
+                TimelineEntry.RideEntry(
+                    entry,
+                    attachedByKey[entry.key].orEmpty().sortedWith(
+                        compareBy<RefuelRow> { it.refuel.timestampEpochMs }.thenBy { it.refuel.id },
+                    ),
+                ),
+            )
+        }
+        refuelRows.filterNot { it.refuel.id in attachedIds }.forEach { add(TimelineEntry.RefuelEntry(it)) }
+    }.sortedWith(timelineEntryComparator)
 }

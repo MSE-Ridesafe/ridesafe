@@ -11,7 +11,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object SavedAddressesRoute : NavKey
 
-/** Add a place; [kind] preselects a shortcut (Home/Work/School) or CUSTOM for a free-form place. */
+/** Add a place; [kind] preselects a fixed shortcut or CUSTOM for a free-form place. */
 @Serializable data class AddSavedAddressRoute(
     val kind: String = SavedPlaceKind.CUSTOM.name,
 ) : NavKey
@@ -33,7 +33,7 @@ fun EntryProviderScope<NavKey>.savedAddressEntries(
     viewModel: SavedAddressViewModel,
     showBack: Boolean,
     onOpen: (NavKey) -> Unit,
-    onBack: () -> Unit,
+    onBack: (NavKey) -> Unit,
 ) {
     entry<SavedAddressesRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) {
         val addresses by viewModel.addresses.collectAsState()
@@ -41,36 +41,40 @@ fun EntryProviderScope<NavKey>.savedAddressEntries(
             addresses = addresses,
             onAdd = { kind -> onOpen(AddSavedAddressRoute(kind.name)) },
             onEdit = { id -> onOpen(EditSavedAddressRoute(id)) },
-            onBack = onBack,
+            onBack = { onBack(SavedAddressesRoute) },
             showBack = showBack,
         )
     }
     entry<AddSavedAddressRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) { key ->
+        val addresses by viewModel.addresses.collectAsState()
         SavedAddressFormScreen(
             existing = null,
             presetKind = SavedPlaceKind.valueOf(key.kind),
+            savedAddresses = addresses,
             onSave = {
                 viewModel.add(it)
-                onBack()
+                onBack(key)
             },
-            onBack = onBack,
+            onBack = { onBack(key) },
         )
     }
     entry<EditSavedAddressRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) { key ->
         // Render only once the address has loaded — the form snapshots its initial fields.
         val address by viewModel.address(key.id).collectAsState(initial = null)
+        val addresses by viewModel.addresses.collectAsState()
         address?.let { loaded ->
             SavedAddressFormScreen(
                 existing = loaded,
                 presetKind = loaded.kind,
+                savedAddresses = addresses,
                 onSave = {
                     viewModel.update(it)
-                    onBack()
+                    onBack(key)
                 },
-                onBack = onBack,
+                onBack = { onBack(key) },
                 onDelete = {
                     viewModel.delete(loaded)
-                    onBack()
+                    onBack(key)
                 },
             )
         }

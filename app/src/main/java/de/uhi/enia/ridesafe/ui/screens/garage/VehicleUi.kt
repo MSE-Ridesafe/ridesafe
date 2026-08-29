@@ -9,6 +9,7 @@ import de.uhi.enia.ridesafe.data.Vehicle
 @StringRes
 fun FuelType.labelRes(): Int =
     when (this) {
+        FuelType.UNSPECIFIED -> R.string.fuel_type_not_set
         FuelType.PETROL -> R.string.fuel_type_petrol
         FuelType.DIESEL -> R.string.fuel_type_diesel
         FuelType.ELECTRIC -> R.string.fuel_type_electric
