@@ -24,6 +24,7 @@ import de.uhi.enia.ridesafe.ui.screens.rides.BackupSavedAddress
 import de.uhi.enia.ridesafe.ui.screens.rides.BackupVehicle
 import de.uhi.enia.ridesafe.ui.screens.rides.RideBackupArchiveValidator
 import de.uhi.enia.ridesafe.ui.screens.rides.RideBackupManifest
+import de.uhi.enia.ridesafe.util.copyCancellable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -36,7 +37,6 @@ import java.security.MessageDigest
 import java.util.Locale
 import java.util.UUID
 import java.util.zip.ZipFile
-import kotlin.coroutines.coroutineContext
 
 data class RideBackupImportPreview(
     val createdAtEpochMs: Long,
@@ -454,19 +454,6 @@ internal class RideBackupImporter(
                 local.delete()
             }
         }
-}
-
-private suspend fun copyCancellable(
-    input: java.io.InputStream,
-    output: java.io.OutputStream,
-) {
-    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-    while (true) {
-        currentCoroutineContext().ensureActive()
-        val count = input.read(buffer)
-        if (count < 0) return
-        output.write(buffer, 0, count)
-    }
 }
 
 /**

@@ -16,6 +16,8 @@ import org.apache.commons.math3.linear.ArrayRealVector
 import org.apache.commons.math3.linear.RealMatrix
 import org.apache.commons.math3.linear.RealVector
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -67,33 +69,36 @@ fun simplifyRoute(
 ): List<LatLng> = if (points.size < 3) points else PolyUtil.simplify(points, toleranceMeters)
 
 /** Store a route as a Google encoded-polyline string (compact); empty list -> empty file. */
-fun writeProcessedRoute(
+suspend fun writeProcessedRoute(
     file: File,
     points: List<LatLng>,
-) {
-    file.parentFile?.mkdirs()
-    // Deliberately does not contain ".route": stale-route pruning must never mistake an in-flight
-    // publication for an old sidecar.
-    val temporary = File(file.parentFile, ".ridesafe_sidecar_${System.nanoTime()}.tmp")
-    try {
-        FileOutputStream(temporary).use { output ->
-            output.write(PolyUtil.encode(points).toByteArray(Charsets.UTF_8))
-            output.fd.sync()
+): Unit =
+    withContext(Dispatchers.IO) {
+        file.parentFile?.mkdirs()
+        // Deliberately does not contain ".route": stale-route pruning must never mistake an in-flight
+        // publication for an old sidecar.
+        val temporary = File(file.parentFile, ".ridesafe_sidecar_${System.nanoTime()}.tmp")
+        try {
+            FileOutputStream(temporary).use { output ->
+                output.write(PolyUtil.encode(points).toByteArray(Charsets.UTF_8))
+                output.fd.sync()
+            }
+            Files.move(
+                temporary.toPath(),
+                file.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+        } finally {
+            if (temporary.exists()) temporary.delete()
         }
-        Files.move(
-            temporary.toPath(),
-            file.toPath(),
-            StandardCopyOption.ATOMIC_MOVE,
-            StandardCopyOption.REPLACE_EXISTING,
-        )
-    } finally {
-        if (temporary.exists()) temporary.delete()
     }
-}
 
 /** Read back a sidecar route; null when it doesn't exist yet or can't be decoded. */
-fun readProcessedRoute(file: File): List<LatLng>? =
-    if (file.exists()) runCatching { PolyUtil.decode(file.readText()) }.getOrNull() else null
+suspend fun readProcessedRoute(file: File): List<LatLng>? =
+    withContext(Dispatchers.IO) {
+        if (file.exists()) runCatching { PolyUtil.decode(file.readText()) }.getOrNull() else null
+    }
 
 /** Great-circle length of a [LatLng] path — the fallback distance for a ride not yet processed. */
 fun latLngDistanceMeters(points: List<LatLng>): Double {

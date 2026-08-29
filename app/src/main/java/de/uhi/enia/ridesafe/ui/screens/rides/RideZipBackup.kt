@@ -24,6 +24,7 @@ import de.uhi.enia.ridesafe.rides.processing.ROUTE_VERSION
 import de.uhi.enia.ridesafe.rides.processing.processedRouteFile
 import de.uhi.enia.ridesafe.rides.recording.RideSample
 import de.uhi.enia.ridesafe.rides.recording.ridesDir
+import de.uhi.enia.ridesafe.util.copyCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.serialization.Serializable
@@ -269,7 +270,6 @@ internal class RideZipBackup(
                     RideBackupArchiveValidator.validateManifest(manifest)
                     RideBackupArchive(manifest, sources)
                 }
-            currentCoroutineContext().ensureActive()
             writeRideBackupZip(destination, archive.manifest, archive.sources)
             currentCoroutineContext().ensureActive()
             RideBackupArchiveValidator.validate(destination)
@@ -727,19 +727,6 @@ private suspend fun copyCancellable(
     destination: File,
 ) {
     source.inputStream().buffered().use { input -> destination.outputStream().buffered().use { output -> copyCancellable(input, output) } }
-}
-
-private suspend fun copyCancellable(
-    input: InputStream,
-    output: java.io.OutputStream,
-) {
-    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-    while (true) {
-        currentCoroutineContext().ensureActive()
-        val count = input.read(buffer)
-        if (count < 0) break
-        output.write(buffer, 0, count)
-    }
 }
 
 private fun validateRawSamples(input: InputStream) {

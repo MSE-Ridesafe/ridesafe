@@ -37,7 +37,6 @@ import de.uhi.enia.ridesafe.util.formattingLocale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -50,7 +49,6 @@ import java.text.DateFormat
 import java.time.LocalDate
 import java.util.Date
 import java.util.Locale
-import kotlin.coroutines.coroutineContext
 
 private const val EXPORT_PREFIX = "ridesafe_export_"
 private const val DOWNLOAD_FOLDER = "RideSafe"
@@ -191,25 +189,11 @@ class RideExporter(
             cleanupStaleTemps(app.cacheDir)
             val temp = File.createTempFile(EXPORT_PREFIX, ".${format.extension}", app.cacheDir)
             try {
-                coroutineContext.ensureActive()
                 val exportDate = LocalDate.now()
                 when (format) {
-                    RideExportFormat.PDF,
-                    RideExportFormat.CSV,
-                    -> {
-                        val journeys = loadJourneys(requests)
-                        require(journeys.isNotEmpty()) { "Selected rides no longer exist" }
-                        val units = UnitPrefs.get(app)
-                        when (format) {
-                            RideExportFormat.PDF -> RidePdfReport(app).write(temp, journeys, exportDate, units)
-                            RideExportFormat.CSV -> RideCsvReport(app).write(temp, journeys, units)
-                            RideExportFormat.ZIP -> error("Handled outside this branch")
-                        }
-                    }
-
-                    RideExportFormat.ZIP -> {
-                        RideZipBackup(app, db).write(temp, requests)
-                    }
+                    RideExportFormat.PDF -> RidePdfReport(app).write(temp, loadJourneys(requests), exportDate, UnitPrefs.get(app))
+                    RideExportFormat.CSV -> RideCsvReport().write(temp, loadJourneys(requests), UnitPrefs.get(app))
+                    RideExportFormat.ZIP -> RideZipBackup(app, db).write(temp, requests)
                 }
                 coroutineContext.ensureActive()
                 val saved =
@@ -240,13 +224,12 @@ class RideExporter(
                 db.savedAddressDao().byIds(savedAddressIds).associateBy(SavedAddress::id)
             }
 
-        currentCoroutineContext().ensureActive()
         return buildExportJourneys(
             requests,
             ridesById.values.toList(),
             vehicles.values.toList(),
             savedAddresses.values.toList(),
-        )
+        ).also { require(it.isNotEmpty()) { "Selected rides no longer exist" } }
     }
 }
 
@@ -493,7 +476,6 @@ internal interface RideExportValueFormatter {
 }
 
 private class AndroidRideExportValueFormatter(
-    context: Context,
     private val units: UnitSystemSetting,
 ) : RideExportValueFormatter {
     private val locale = formattingLocale()
@@ -509,15 +491,13 @@ private class AndroidRideExportValueFormatter(
     override fun distance(distanceMeters: Double?): String = distanceMeters?.let { formatDistance(it, units) } ?: "Unavailable"
 }
 
-internal class RideCsvReport(
-    private val context: Context,
-) {
+internal class RideCsvReport {
     fun write(
         file: File,
         journeys: List<RideExportJourney>,
         units: UnitSystemSetting,
     ) {
-        val csv = buildRideCsv(journeys, AndroidRideExportValueFormatter(context, units))
+        val csv = buildRideCsv(journeys, AndroidRideExportValueFormatter(units))
         file.outputStream().bufferedWriter(Charsets.UTF_8).use { it.write(csv) }
     }
 }
@@ -637,7 +617,7 @@ internal class RidePdfReport(
         val document = PdfDocument()
         try {
             val writer = PageWriter(document)
-            val formatter = AndroidRideExportValueFormatter(context, units)
+            val formatter = AndroidRideExportValueFormatter(units)
             writer.text("RideSafe Rides Export", title, after = 8f)
             writer.text("Exported: ${localizedDate(exportDate)}", muted, after = 18f)
             journeys.forEachIndexed { index, journey ->

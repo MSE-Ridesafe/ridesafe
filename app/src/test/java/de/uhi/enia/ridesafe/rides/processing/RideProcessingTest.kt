@@ -3,6 +3,7 @@ package de.uhi.enia.ridesafe.rides.processing
 import com.google.android.gms.maps.model.LatLng
 import de.uhi.enia.ridesafe.rides.recording.LocationSample
 import de.uhi.enia.ridesafe.rides.recording.trackDistanceMeters
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -28,20 +29,21 @@ class RideProcessingTest {
     )
 
     @Test
-    fun processedRouteIsAtomicallyReplacedWithoutLeavingTemporaryFiles() {
-        val directory = Files.createTempDirectory("ridesafe_route_test_").toFile().apply { deleteOnExit() }
-        val route = File(directory, "ride_42.route.v2")
-        writeProcessedRoute(route, listOf(LatLng(52.0, 9.0), LatLng(52.1, 9.1)))
-        writeProcessedRoute(route, listOf(LatLng(53.0, 10.0), LatLng(53.1, 10.1)))
+    fun processedRouteIsAtomicallyReplacedWithoutLeavingTemporaryFiles() =
+        runBlocking {
+            val directory = Files.createTempDirectory("ridesafe_route_test_").toFile().apply { deleteOnExit() }
+            val route = File(directory, "ride_42.route.v2")
+            writeProcessedRoute(route, listOf(LatLng(52.0, 9.0), LatLng(52.1, 9.1)))
+            writeProcessedRoute(route, listOf(LatLng(53.0, 10.0), LatLng(53.1, 10.1)))
 
-        val restored = requireNotNull(readProcessedRoute(route))
-        assertEquals(2, restored.size)
-        assertEquals(53.0, restored[0].latitude, 1e-5)
-        assertEquals(10.0, restored[0].longitude, 1e-5)
-        assertEquals(53.1, restored[1].latitude, 1e-5)
-        assertEquals(10.1, restored[1].longitude, 1e-5)
-        assertTrue(directory.listFiles().orEmpty().none { it.name.endsWith(".tmp") })
-    }
+            val restored = requireNotNull(readProcessedRoute(route))
+            assertEquals(2, restored.size)
+            assertEquals(53.0, restored[0].latitude, 1e-5)
+            assertEquals(10.0, restored[0].longitude, 1e-5)
+            assertEquals(53.1, restored[1].latitude, 1e-5)
+            assertEquals(10.1, restored[1].longitude, 1e-5)
+            assertTrue(directory.listFiles().orEmpty().none { it.name.endsWith(".tmp") })
+        }
 
     @Test
     fun shortTracksPassThroughUntouched() {
