@@ -39,6 +39,8 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -70,18 +72,18 @@ import java.util.Locale
 
 @Composable
 fun RefuelLoadingScreen(
+    modifier: Modifier = Modifier,
     onBack: () -> Unit,
     showBack: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     RefuelStateScreen(onBack = onBack, showBack = showBack, modifier = modifier) { CircularProgressIndicator() }
 }
 
 @Composable
 fun RefuelUnavailableScreen(
+    modifier: Modifier = Modifier,
     onBack: () -> Unit,
     showBack: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     RefuelStateScreen(onBack = onBack, showBack = showBack, modifier = modifier) {
         Text(
@@ -125,11 +127,11 @@ private fun RefuelStateScreen(
 
 @Composable
 fun RefuelFormScreen(
+    modifier: Modifier = Modifier,
     vehicles: List<Vehicle>,
     existing: Refuel? = null,
     onSave: (Refuel, (Result<Unit>) -> Unit) -> Unit,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     // Regional conventions, not the in-app language's likely region (SET-07).
@@ -149,10 +151,10 @@ fun RefuelFormScreen(
 
     var selectedVehicleId by rememberSaveable(existing?.id) { mutableStateOf(editInitial?.vehicleId) }
     var dateEpochDay by rememberSaveable(existing?.id) {
-        mutableStateOf(editInitial?.dateEpochDay ?: initialDateTime.toLocalDate().toEpochDay())
+        mutableLongStateOf(editInitial?.dateEpochDay ?: initialDateTime.toLocalDate().toEpochDay())
     }
-    var hour by rememberSaveable(existing?.id) { mutableStateOf(editInitial?.hour ?: initialDateTime.hour) }
-    var minute by rememberSaveable(existing?.id) { mutableStateOf(editInitial?.minute ?: initialDateTime.minute) }
+    var hour by rememberSaveable(existing?.id) { mutableIntStateOf(editInitial?.hour ?: initialDateTime.hour) }
+    var minute by rememberSaveable(existing?.id) { mutableIntStateOf(editInitial?.minute ?: initialDateTime.minute) }
     var fuelText by
         rememberSaveable(existing?.id) {
             mutableStateOf(editInitial?.fuelText.orEmpty())

@@ -51,12 +51,12 @@ import kotlinx.coroutines.withContext
 
 @Composable
 fun GarageScreen(
+    modifier: Modifier = Modifier,
     vehicles: List<Vehicle>,
     onVehicleClick: (Long) -> Unit,
-    onAddVehicle: () -> Unit,
     // The vehicle whose detail pane is showing. Null on a phone, where the detail covers the list.
+    onAddVehicle: () -> Unit,
     selectedId: Long? = null,
-    modifier: Modifier = Modifier,
 ) {
     Scaffold(
         modifier = modifier,
@@ -171,9 +171,9 @@ private fun VehicleCard(
 /** Vehicle photo, with the car symbol retained as the empty-state fallback. */
 @Composable
 internal fun VehicleImage(
+    modifier: Modifier = Modifier,
     vehicle: Vehicle? = null,
     size: Dp,
-    modifier: Modifier = Modifier,
     color: Color? = null,
 ) {
     val context = LocalContext.current
@@ -242,11 +242,11 @@ private fun EmptyGarage(modifier: Modifier = Modifier) {
 @Preview
 @Composable
 private fun GarageScreenPreview() {
-    RidesafeTheme { GarageScreen(previewVehicles, {}, {}) }
+    RidesafeTheme { GarageScreen(vehicles = previewVehicles, onVehicleClick = {}, onAddVehicle = {}) }
 }
 
 @Preview
 @Composable
 private fun GarageEmptyPreview() {
-    RidesafeTheme { GarageScreen(emptyList(), {}, {}) }
+    RidesafeTheme { GarageScreen(vehicles = emptyList(), onVehicleClick = {}, onAddVehicle = {}) }
 }

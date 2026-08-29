@@ -134,17 +134,17 @@ fun SummaryMetricCarousel(
             pageSpacing = 14.dp,
             modifier = Modifier.fillMaxWidth(),
         ) { page ->
-            val pageOffset =
-                ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction)
-                    .absoluteValue
-                    .coerceIn(0f, 1f)
-            val pageScale = lerp(start = 0.98f, stop = 1f, fraction = 1f - pageOffset)
             MetricCard(
                 metric = metrics[page],
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .graphicsLayer {
+                            val pageOffset =
+                                ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction)
+                                    .absoluteValue
+                                    .coerceIn(0f, 1f)
+                            val pageScale = lerp(start = 0.98f, stop = 1f, fraction = 1f - pageOffset)
                             scaleX = pageScale
                             scaleY = pageScale
                         },

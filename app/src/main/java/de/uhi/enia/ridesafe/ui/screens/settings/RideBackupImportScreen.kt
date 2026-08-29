@@ -108,9 +108,9 @@ internal class RideBackupImportViewModel(
 
 @Composable
 internal fun RideBackupImportScreen(
+    modifier: Modifier = Modifier,
     onBack: () -> Unit,
     showBack: Boolean = true,
-    modifier: Modifier = Modifier,
     importViewModel: RideBackupImportViewModel = viewModel(),
 ) {
     val state by importViewModel.state.collectAsState()

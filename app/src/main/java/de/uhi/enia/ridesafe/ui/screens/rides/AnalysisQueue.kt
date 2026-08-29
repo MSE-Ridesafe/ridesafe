@@ -196,11 +196,11 @@ fun AnalysisStatusBar(
  */
 @Composable
 fun AnalysisQueueScreen(
+    modifier: Modifier = Modifier,
     progress: RideAnalysisProgress,
     rides: Map<Long, Ride>,
     onBack: () -> Unit,
     showBack: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val rows = rememberQueueRows(progress)

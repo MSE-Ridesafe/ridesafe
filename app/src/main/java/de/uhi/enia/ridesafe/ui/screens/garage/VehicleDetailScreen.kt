@@ -64,13 +64,13 @@ import de.uhi.enia.ridesafe.util.formatOdometer
 
 @Composable
 fun VehicleDetailScreen(
+    modifier: Modifier = Modifier,
     vehicle: Vehicle?,
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     showBack: Boolean = true,
     onChooseImage: (Uri) -> Unit,
-    modifier: Modifier = Modifier,
     onLinkBluetooth: (BtDevice) -> Unit = {},
     onUnlinkBluetooth: (String) -> Unit = {},
 ) {
@@ -265,10 +265,10 @@ private fun VehicleHeader(
     ) {
         Box {
             VehicleImage(
+                modifier = Modifier.clickable(onClickLabel = chooseImageLabel, onClick = onChooseImage),
                 vehicle = vehicle,
                 size = 120.dp,
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                modifier = Modifier.clickable(onClickLabel = chooseImageLabel, onClick = onChooseImage),
             )
             Box(
                 modifier =

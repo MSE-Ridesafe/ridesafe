@@ -76,16 +76,15 @@ fun EntryProviderScope<NavKey>.garageEntries(
         VehicleDetailScreen(
             vehicle = vehicle,
             onBack = { onBack(key) },
-            showBack = showBack,
             onEdit = { onOpen(EditVehicleRoute(key.id)) },
-            onChooseImage = { uri -> vehicle?.let { viewModel.setVehicleImage(it, uri) } },
             onDelete = {
                 vehicle?.let(viewModel::deleteVehicle)
                 onPopToGarage()
             },
+            showBack = showBack,
+            onChooseImage = { uri -> vehicle?.let { viewModel.setVehicleImage(it, uri) } },
             onLinkBluetooth = { device -> vehicle?.let { viewModel.linkBluetooth(it, device) } },
-            onUnlinkBluetooth = { address -> vehicle?.let { viewModel.unlinkBluetooth(it, address) } },
-        )
+        ) { address -> vehicle?.let { viewModel.unlinkBluetooth(it, address) } }
     }
     entry<AddVehicleRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = GARAGE_SCENE)) {
         // Latch against a double-tapped save inserting the vehicle twice.
