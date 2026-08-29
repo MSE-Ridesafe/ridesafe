@@ -46,4 +46,7 @@ interface RideEventDao {
     /** One ride's stored events, for an analysis step deriving from them rather than from samples. */
     @Query("SELECT * FROM ride_events WHERE rideId = :rideId ORDER BY startOffsetMs ASC")
     suspend fun eventsFor(rideId: Long): List<RideEvent>
+
+    @Query("SELECT * FROM ride_events WHERE rideId IN (:rideIds) ORDER BY rideId ASC, startOffsetMs ASC")
+    suspend fun eventsForRides(rideIds: List<Long>): List<RideEvent>
 }

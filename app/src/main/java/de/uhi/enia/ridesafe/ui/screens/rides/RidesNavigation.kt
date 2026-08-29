@@ -2,6 +2,7 @@ package de.uhi.enia.ridesafe.ui.screens.rides
 
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -27,6 +28,12 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object AnalysisQueueRoute : NavKey
 
+@Serializable data object AddRefuelRoute : NavKey
+
+@Serializable data class EditRefuelRoute(
+    val id: Long,
+) : NavKey
+
 /** Ties this tab's list and detail routes into one scene, distinct from the other tabs'. */
 private const val RIDES_SCENE = "rides"
 
@@ -46,6 +53,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
     viewModel: RidesViewModel,
     selectedKey: String?,
     showBack: Boolean,
+    selectionDismissRequests: State<Int>,
     onOpen: (NavKey) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -55,8 +63,12 @@ fun EntryProviderScope<NavKey>.ridesEntries(
                 DetailPlaceholder(stringResource(R.string.placeholder_select_ride))
             },
     ) {
-        val entries by viewModel.entries.collectAsState()
+        val timeline by viewModel.timeline.collectAsState()
         val analysis by viewModel.analysisProgress.collectAsState()
+
+        val exportState by viewModel.exportState.collectAsState()
+        val logbookOperationState by viewModel.logbookOperationState.collectAsState()
+
         // The garage and the saved places feed the filter sheet's dropdowns (LOG-07, LOG-12).
         val vehicles by viewModel.vehicles.collectAsState()
         val places by viewModel.savedAddresses.collectAsState()
@@ -64,8 +76,9 @@ fun EntryProviderScope<NavKey>.ridesEntries(
         val filter by viewModel.filter.collectAsState()
         ListPaneFocusSink {
             RidesScreen(
-                entries = entries,
+                timeline = timeline,
                 analysis = analysis,
+                exportState = exportState,
                 vehicles = vehicles,
                 places = places,
                 ridesWithEvents = ridesWithEvents,
@@ -73,10 +86,52 @@ fun EntryProviderScope<NavKey>.ridesEntries(
                 onFilterChange = viewModel::setFilter,
                 onOpenRide = { onOpen(RideDetailRoute(it)) },
                 onOpenMerged = { onOpen(MergedRideDetailRoute(it)) },
+                onOpenRefuel = { onOpen(EditRefuelRoute(it)) },
                 onOpenAnalysisQueue = { onOpen(AnalysisQueueRoute) },
-                onMerge = { viewModel.merge(it) },
+                onMerge = viewModel::merge,
+                onUnmerge = viewModel::unmergeAll,
+                onDelete = viewModel::deleteEntries,
                 selectedKey = selectedKey,
+                onAddRefuel = { onOpen(AddRefuelRoute) },
+                onExport = viewModel::export,
+                logbookOperationState = logbookOperationState,
+                onLogbookOperationResultConsumed = viewModel::consumeLogbookOperationResult,
+                onExportResultConsumed = viewModel::consumeExportResult,
+                selectionDismissRequests = selectionDismissRequests,
             )
+        }
+    }
+    entry<AddRefuelRoute> {
+        val vehicles by viewModel.vehicles.collectAsState()
+        RefuelFormScreen(
+            vehicles = vehicles,
+            onSave = viewModel::addRefuel,
+            onBack = onBack,
+        )
+    }
+    entry<EditRefuelRoute> { key ->
+        val loaded by produceState<Result<de.uhi.enia.ridesafe.data.Refuel?>?>(initialValue = null, key.id) {
+            value = runCatching { viewModel.refuel(key.id) }
+        }
+        when (val result = loaded) {
+            null -> {
+                RefuelLoadingScreen(onBack = onBack)
+            }
+
+            else -> {
+                val refuel = result.getOrNull()
+                if (refuel == null) {
+                    RefuelUnavailableScreen(onBack = onBack)
+                } else {
+                    val vehicles by viewModel.vehicles.collectAsState()
+                    RefuelFormScreen(
+                        vehicles = vehicles,
+                        existing = refuel,
+                        onSave = viewModel::updateRefuel,
+                        onBack = onBack,
+                    )
+                }
+            }
         }
     }
     entry<AnalysisQueueRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = RIDES_SCENE)) {
@@ -93,10 +148,13 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             value = stops?.takeIf { it.isNotEmpty() }?.let { viewModel.routes(it) }
         }
         val groupEvents by viewModel.groupRideEvents(key.groupId).collectAsState(initial = emptyList())
+        val refuels by viewModel.attachedRefuels("g${key.groupId}").collectAsState(initial = emptyList())
         MergedRideDetailScreen(
             stops = stops,
             segments = segments,
             rideEvents = groupEvents,
+            refuels = refuels,
+            onOpenRefuel = { onOpen(EditRefuelRoute(it)) },
             onBack = onBack,
             showBack = showBack,
             onUnmergeAll = { viewModel.unmergeAll(key.groupId) },
@@ -107,6 +165,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
         val ride by viewModel.ride(key.id).collectAsState(initial = null)
         val addresses by viewModel.savedAddresses.collectAsState()
         val rideEvents by viewModel.rideEvents(key.id).collectAsState(initial = emptyList())
+        val refuels by viewModel.attachedRefuels("r${key.id}").collectAsState(initial = emptyList())
         // Non-null only while this very ride is queued, which is what the detail notice keys off.
         val analysis by viewModel.analysisProgress.collectAsState()
         val analysisProgress = analysis.jobs.firstOrNull { it.rideId == key.id }?.progress
@@ -124,6 +183,8 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             startPlace = startPlace,
             endPlace = endPlace,
             analysisProgress = analysisProgress,
+            refuels = refuels,
+            onOpenRefuel = { onOpen(EditRefuelRoute(it)) },
             onBack = onBack,
             showBack = showBack,
         )

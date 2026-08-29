@@ -41,18 +41,21 @@ fun VehicleCard(vehicle: Vehicle?) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                VehicleImage(size = 86.dp)
+                VehicleImage(vehicle = vehicle, size = 86.dp)
                 Spacer(Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = vehicle?.let { "${it.make} ${it.model}" } ?: stringResource(R.string.home_no_primary_vehicle),
+                        text =
+                            vehicle
+                                ?.let { it.name.trim().ifBlank { "${it.make} ${it.model}" } }
+                                ?: stringResource(R.string.home_no_primary_vehicle),
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = vehicle?.name?.takeIf { it.isNotBlank() } ?: stringResource(R.string.home_add_vehicle_hint),
+                        text = vehicle?.let { "${it.make} ${it.model}" } ?: stringResource(R.string.home_add_vehicle_hint),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,

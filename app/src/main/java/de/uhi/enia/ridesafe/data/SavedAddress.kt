@@ -13,7 +13,7 @@ import kotlin.math.sqrt
  * ([latitude]/[longitude]) with a [radiusMeters] recognition area (ADR-02): a ride endpoint
  * inside that area is recognized as this place (ADR-07).
  *
- * [kind] drives the three singleton shortcuts (Home/Work/School) with fixed labels and icons; a
+ * [kind] drives singleton shortcuts (Home/Work/School/Gas station) with fixed labels and icons; a
  * [CUSTOM][SavedPlaceKind.CUSTOM] place has a user-chosen [label] and [icon] (a Material Symbols
  * ligature name). [address] is the reverse-geocoded (or searched) address at the point, kept so the
  * detail view can suppress the distance suffix when a ride endpoint's address matches it exactly
@@ -36,6 +36,7 @@ enum class SavedPlaceKind {
     HOME,
     WORK,
     SCHOOL,
+    GAS_STATION,
     CUSTOM,
 }
 
@@ -45,11 +46,13 @@ fun SavedPlaceKind.fixedIcon(): String? =
         SavedPlaceKind.HOME -> "home"
         SavedPlaceKind.WORK -> "work"
         SavedPlaceKind.SCHOOL -> "school"
+        SavedPlaceKind.GAS_STATION -> "local_gas_station"
         SavedPlaceKind.CUSTOM -> null
     }
 
-/** Home/Work/School are singletons with fixed label + icon; only CUSTOM is freely edited. */
-val SavedPlaceKind.isShortcut: Boolean get() = this != SavedPlaceKind.CUSTOM
+/** Home/Work/School keep their localized names; Gas station has a fixed icon but an editable name. */
+val SavedPlaceKind.hasFixedLabel: Boolean
+    get() = this == SavedPlaceKind.HOME || this == SavedPlaceKind.WORK || this == SavedPlaceKind.SCHOOL
 
 /** Default icon for a fresh custom place. */
 const val DEFAULT_PLACE_ICON = "place"

@@ -28,6 +28,13 @@ interface RideDao {
     @Query("SELECT * FROM rides")
     suspend fun all(): List<Ride>
 
+    /** Targeted snapshot read for exports; callers restore their own logical order after this query. */
+    @Query("SELECT * FROM rides WHERE id IN (:ids)")
+    suspend fun byIds(ids: List<Long>): List<Ride>
+
+    @Query("SELECT * FROM rides WHERE rideUuid IN (:uuids)")
+    suspend fun byUuids(uuids: List<String>): List<Ride>
+
     /** The stops of a merged ride (MRG-01), in chronological order — the merged detail's source of truth. */
     @Query("SELECT * FROM rides WHERE mergeGroupId = :groupId ORDER BY startedAtEpochMs ASC")
     fun observeGroup(groupId: Long): Flow<List<Ride>>
@@ -35,6 +42,9 @@ interface RideDao {
     /** Non-observing read of a group's current stops, for the post-unmerge cleanup. */
     @Query("SELECT * FROM rides WHERE mergeGroupId = :groupId")
     suspend fun groupMembers(groupId: Long): List<Ride>
+
+    @Query("SELECT * FROM rides WHERE mergeGroupId IN (:groupIds)")
+    suspend fun membersOfGroups(groupIds: List<Long>): List<Ride>
 
     /** Tag rides with a merge group id (MRG-01), or clear it (null) to un-merge them (MRG-03). */
     @Query("UPDATE rides SET mergeGroupId = :groupId WHERE id IN (:ids)")
@@ -164,9 +174,24 @@ interface RideDao {
     @Query("SELECT * FROM rides WHERE id = :id")
     suspend fun byId(id: Long): Ride?
 
+    /** Repoint rides before an equivalent duplicate Saved Place is removed during import. */
+    @Query(
+        "UPDATE rides SET " +
+            "startAddressId = CASE WHEN startAddressId = :duplicateId THEN :retainedId ELSE startAddressId END, " +
+            "endAddressId = CASE WHEN endAddressId = :duplicateId THEN :retainedId ELSE endAddressId END " +
+            "WHERE startAddressId = :duplicateId OR endAddressId = :duplicateId",
+    )
+    suspend fun replaceSavedAddressReferences(
+        duplicateId: Long,
+        retainedId: Long,
+    )
+
     /** Drop a ride the recorder decided not to keep (TRK-10); its sample file goes with it. */
     @Query("DELETE FROM rides WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM rides WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
 
     @Delete
     suspend fun delete(ride: Ride)
