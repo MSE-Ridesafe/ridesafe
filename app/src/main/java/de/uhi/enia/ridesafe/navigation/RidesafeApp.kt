@@ -15,7 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
@@ -127,7 +127,7 @@ fun RidesafeApp() {
     // showBack = !twoPane only reaches the screens a list can open directly: pinned beside the list
     // they are already "here", so an arrow back to nothing is noise. The forms sit a level deeper
     // and keep their own cancel regardless — that X discards edits, it is not navigation.
-    val directive = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo())
+    val directive = calculatePaneScaffoldDirective(currentWindowAdaptiveInfoV2())
     val twoPane = directive.maxHorizontalPartitions > 1
     // PopLatest, not the default PopUntilScaffoldValueChange: with a placeholder filling the empty
     // detail pane, the scaffold value never changes, so the default finds nothing to pop and lets
