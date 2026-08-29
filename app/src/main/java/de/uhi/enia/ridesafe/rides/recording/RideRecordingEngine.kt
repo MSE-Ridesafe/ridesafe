@@ -42,10 +42,7 @@ import kotlin.time.Duration.Companion.milliseconds
 private const val TAG = "RideRecording"
 
 /**
- * Records a ride's GPS + motion stream (TRK-01/TRK-04). Implements [RideRecorder] so the
- * auto-tracking trigger can later drive it by setting [de.uhi.enia.ridesafe.rides.trigger.AutoTracking.recorder] — that wiring,
- * the foreground service (TRK-05) and the runtime permission flow (NFR-05) are a later round;
- * this is the standalone capture + persistence engine.
+ * Records a ride's GPS + motion stream (TRK-01/TRK-04), driven by [RideRecordingService].
  *
  * Per [Ride]: only a summary row lands in the DB; the full sample
  * stream is appended (gzip'd NDJSON) to a per-ride file so the DB stays lean. start/stop are
@@ -62,7 +59,7 @@ class RideRecordingEngine(
     // a change applies from the next ride on. 0 disables either rule.
     private val reconnectGraceMs: Long = ReconnectGracePrefs.get(appContext).millis, // TRK-09/SET-10
     private val minRideMs: Long = MinRideLengthPrefs.get(appContext).millis, // TRK-10/SET-11
-) : RideRecorder {
+) {
     private val json =
         Json {
             classDiscriminator = "ty"
@@ -122,12 +119,8 @@ class RideRecordingEngine(
         }
     }
 
-    override fun onTripStart(vehicleId: Long?) {
+    fun onTripStart(vehicleId: Long?) {
         commands.trySend(Start(vehicleId))
-    }
-
-    override fun onTripEnd() {
-        commands.trySend(End())
     }
 
     /**

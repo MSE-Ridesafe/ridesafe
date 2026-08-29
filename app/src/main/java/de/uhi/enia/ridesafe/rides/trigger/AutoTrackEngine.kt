@@ -1,6 +1,5 @@
 package de.uhi.enia.ridesafe.rides.trigger
 
-import de.uhi.enia.ridesafe.rides.recording.LoggingRecorder
 import de.uhi.enia.ridesafe.rides.recording.RideRecorder
 
 /**
@@ -77,13 +76,18 @@ class AutoTrackEngine(
 }
 
 /**
- * Process-global auto-tracking state and the plugging point for ride recording. The
- * recording layer (later) assigns [recorder] in Application.onCreate; until then trips are
- * logged by [LoggingRecorder].
+ * Process-global auto-tracking state and the plugging point for ride recording.
+ * [de.uhi.enia.ridesafe.RidesafeApplication] assigns the real [recorder] in onCreate, before any
+ * trigger can fire; the no-op initial value only exists so the field is never null.
  */
 object AutoTracking {
     @Volatile
-    var recorder: RideRecorder = LoggingRecorder
+    var recorder: RideRecorder =
+        object : RideRecorder {
+            override fun onTripStart(vehicleId: Long?) {}
+
+            override fun onTripEnd() {}
+        }
 
     val engine = AutoTrackEngine { recorder }
 }
