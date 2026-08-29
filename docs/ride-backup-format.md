@@ -31,6 +31,10 @@ Each ride has a stable `rideUuid` and optionally references one vehicle, one mer
 and analysis states reference a ride. Refuels reference a vehicle and optionally their selected
 journey anchor. Bluetooth devices are owned values nested in their vehicle.
 
+Vehicle type, engine description, and manufacturing country are optional vehicle attributes. They
+are stored directly in the manifest and restored with the vehicle; archives created before these
+fields existed remain valid.
+
 Every non-null reference must resolve inside the manifest. A merge group's forward membership and
 the rides' reverse merge-group references must agree. The exporter validates these rules before ZIP
 creation and the reference reader validates them again from the finished ZIP.

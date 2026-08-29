@@ -11,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.serialization.json.Json
 
 private val deviceJson = Json { ignoreUnknownKeys = true }
-const val RIDESAFE_DATABASE_VERSION = 19
+const val RIDESAFE_DATABASE_VERSION = 20
 
 class Converters {
     @TypeConverter
@@ -377,6 +377,16 @@ val MIGRATION_18_19 =
         }
     }
 
+/** Adds optional, manually maintained vehicle specifications without requiring an external API. */
+val MIGRATION_19_20 =
+    object : Migration(19, 20) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE vehicles ADD COLUMN vehicleType TEXT")
+            db.execSQL("ALTER TABLE vehicles ADD COLUMN engine TEXT")
+            db.execSQL("ALTER TABLE vehicles ADD COLUMN manufacturingCountry TEXT")
+        }
+    }
+
 @Database(
     entities = [
         Vehicle::class,
@@ -432,6 +442,7 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_16_17,
                         MIGRATION_17_18,
                         MIGRATION_18_19,
+                        MIGRATION_19_20,
                     ).build()
                     .also { instance = it }
             }

@@ -77,6 +77,7 @@ fun VehicleDetailScreen(
     val context = LocalContext.current
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
     var showBluetoothPicker by rememberSaveable { mutableStateOf(false) }
+    var showExtendedInformation by rememberSaveable { mutableStateOf(false) }
     val bluetoothPermissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) showBluetoothPicker = true
@@ -138,8 +139,6 @@ fun VehicleDetailScreen(
                 },
             )
 
-            OdometerCard(value = formatOdometer(vehicle.mileageKm, unitSystem))
-
             DetailCard(
                 title = stringResource(R.string.vehicle_section_overview),
                 rows =
@@ -148,32 +147,61 @@ fun VehicleDetailScreen(
                         stringResource(R.string.vehicle_model) to vehicle.model,
                         stringResource(R.string.vehicle_year) to (vehicle.year?.toString() ?: notSet),
                         stringResource(R.string.vehicle_license_plate) to vehicle.licensePlate,
+                        stringResource(R.string.vehicle_mileage) to formatOdometer(vehicle.mileageKm, unitSystem),
                     ),
             )
 
-            DetailCard(
-                title = stringResource(R.string.vehicle_section_fuel),
-                rows =
-                    listOf(
-                        stringResource(R.string.vehicle_fuel_type) to stringResource(vehicle.fuelType.labelRes()),
-                        stringResource(R.string.vehicle_fuel_economy) to
-                            (vehicle.fuelEconomy?.let { "$it ${stringResource(R.string.unit_fuel_economy)}" } ?: notSet),
-                        stringResource(R.string.vehicle_tank_size) to
-                            (vehicle.tankSize?.let { "$it ${stringResource(R.string.unit_liter)}" } ?: notSet),
-                    ),
-            )
+            OutlinedButton(
+                onClick = { showExtendedInformation = !showExtendedInformation },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = stringResource(R.string.vehicle_extended_information),
+                    modifier = Modifier.weight(1f),
+                )
+                MaterialSymbol(
+                    symbolName = if (showExtendedInformation) "expand_less" else "expand_more",
+                    contentDescription = null,
+                    size = 22.dp,
+                )
+            }
 
-            TrackingCard(
-                devices = vehicle.bluetoothDevices,
-                onLink = {
-                    if (hasBluetoothConnect(context)) {
-                        showBluetoothPicker = true
-                    } else {
-                        bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
-                    }
-                },
-                onRemove = onUnlinkBluetooth,
-            )
+            if (showExtendedInformation) {
+                DetailCard(
+                    title = stringResource(R.string.vehicle_section_fuel),
+                    rows =
+                        listOf(
+                            stringResource(R.string.vehicle_fuel_type) to stringResource(vehicle.fuelType.labelRes()),
+                            stringResource(R.string.vehicle_fuel_economy) to
+                                (vehicle.fuelEconomy?.let { "$it ${stringResource(R.string.unit_fuel_economy)}" } ?: notSet),
+                            stringResource(R.string.vehicle_tank_size) to
+                                (vehicle.tankSize?.let { "$it ${stringResource(R.string.unit_liter)}" } ?: notSet),
+                        ),
+                )
+
+                DetailCard(
+                    title = stringResource(R.string.vehicle_section_information),
+                    rows =
+                        listOf(
+                            stringResource(R.string.vehicle_type) to (vehicle.vehicleType ?: notSet),
+                            stringResource(R.string.vehicle_engine) to (vehicle.engine ?: notSet),
+                            stringResource(R.string.vehicle_manufacturing_country) to
+                                (vehicle.manufacturingCountry ?: notSet),
+                        ),
+                )
+
+                TrackingCard(
+                    devices = vehicle.bluetoothDevices,
+                    onLink = {
+                        if (hasBluetoothConnect(context)) {
+                            showBluetoothPicker = true
+                        } else {
+                            bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                        }
+                    },
+                    onRemove = onUnlinkBluetooth,
+                )
+            }
 
             OutlinedButton(
                 onClick = { showDeleteDialog = true },
@@ -301,41 +329,6 @@ private fun VehicleHeader(
 private fun Vehicle.nicknameTitle(): String = name.trim().ifBlank { makeAndModel() }
 
 private fun Vehicle.makeAndModel(): String = "$make $model".trim()
-
-/** Highlighted hero stat — the odometer is the vehicle's most-watched number. */
-@Composable
-private fun OdometerCard(value: String) {
-    Card(
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            MaterialSymbol(
-                symbolName = "speed",
-                contentDescription = null,
-                size = 32.dp,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-            Spacer(Modifier.width(16.dp))
-            Column {
-                Text(
-                    text = stringResource(R.string.vehicle_mileage),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                )
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                )
-            }
-        }
-    }
-}
 
 /** Linked Bluetooth devices for auto-tracking (GAR-08): list with remove + a link action. */
 @Composable

@@ -540,6 +540,9 @@ private fun BackupVehicle.toVehicle(
         year = year,
         fuelEconomy = fuelEconomy,
         tankSize = tankSize,
+        vehicleType = vehicleType,
+        engine = engine,
+        manufacturingCountry = manufacturingCountry,
         vehicleUuid = vehicleUuid ?: UUID.randomUUID().toString(),
         updatedAtEpochMs = vehicleFreshness(this, manifest),
     )
@@ -576,6 +579,9 @@ private fun resolveVehicleConflict(
         year = archived.year,
         fuelEconomy = archived.fuelEconomy,
         tankSize = archived.tankSize,
+        vehicleType = archived.vehicleType ?: local.vehicleType,
+        engine = archived.engine ?: local.engine,
+        manufacturingCountry = archived.manufacturingCountry ?: local.manufacturingCountry,
         updatedAtEpochMs = archivedFreshness,
     )
 }

@@ -158,6 +158,9 @@ internal data class BackupVehicle(
     val year: Int? = null,
     val fuelEconomy: Double? = null,
     val tankSize: Double? = null,
+    val vehicleType: String? = null,
+    val engine: String? = null,
+    val manufacturingCountry: String? = null,
     /** Null only for archives produced before stable cross-backup vehicle identity existed. */
     val vehicleUuid: String? = null,
     /** Null only for legacy archives; their manifest creation time is the freshness fallback. */
@@ -664,6 +667,9 @@ private fun Vehicle.toBackup() =
         year = year,
         fuelEconomy = fuelEconomy,
         tankSize = tankSize,
+        vehicleType = vehicleType,
+        engine = engine,
+        manufacturingCountry = manufacturingCountry,
         vehicleUuid = vehicleUuid,
         updatedAtEpochMs = updatedAtEpochMs,
     )

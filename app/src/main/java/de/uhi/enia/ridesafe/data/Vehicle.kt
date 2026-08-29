@@ -34,6 +34,9 @@ data class Vehicle(
     val year: Int? = null,
     val fuelEconomy: Double? = null,
     val tankSize: Double? = null,
+    val vehicleType: String? = null,
+    val engine: String? = null,
+    val manufacturingCountry: String? = null,
     /** Stable identity used to recognize this vehicle across RideSafe backup generations. */
     @ColumnInfo(defaultValue = "''") val vehicleUuid: String = UUID.randomUUID().toString(),
     /** Last user/data update; import conflict resolution never relies on database numeric IDs. */
@@ -52,6 +55,7 @@ data class BtDevice(
 
 /** Stored by [name]; user-facing labels are localized in the UI layer. */
 enum class FuelType {
+    UNSPECIFIED,
     PETROL,
     DIESEL,
     ELECTRIC,

@@ -139,8 +139,13 @@
     <string name="vehicle_tank_size">Tank size</string>
     <string name="vehicle_label_optional">%1$s (optional)</string>
     <string name="vehicle_section_overview">Overview</string>
-    <string name="vehicle_section_fuel">Fuel</string>
+    <string name="vehicle_section_fuel">Fuel type</string>
+    <string name="vehicle_section_information">Vehicle information</string>
     <string name="vehicle_section_tracking">Automatic tracking</string>
+    <string name="vehicle_extended_information">Extended information</string>
+    <string name="vehicle_type">Vehicle type</string>
+    <string name="vehicle_engine">Engine</string>
+    <string name="vehicle_manufacturing_country">Manufacturing country</string>
     <string name="vehicle_bluetooth_link">Link Bluetooth device</string>
     <string name="vehicle_bluetooth_none">No device linked yet</string>
     <string name="vehicle_bluetooth_remove">Remove device</string>
@@ -149,6 +154,7 @@
     <string name="add_vehicle_set_primary">Set as primary vehicle</string>
 
     <string name="fuel_type_petrol">Petrol</string>
+    <string name="fuel_type_not_set">Not set</string>
     <string name="fuel_type_diesel">Diesel</string>
     <string name="fuel_type_electric">Electric</string>
     <string name="fuel_type_hybrid">Hybrid</string>
