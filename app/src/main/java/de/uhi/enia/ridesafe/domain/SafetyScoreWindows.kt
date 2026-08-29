@@ -2,7 +2,6 @@ package de.uhi.enia.ridesafe.domain
 
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.SafetyScore
-import de.uhi.enia.ridesafe.rides.processing.score.ScoreWeights
 import de.uhi.enia.ridesafe.rides.processing.score.aggregateScore
 import java.time.DayOfWeek
 import java.time.Instant
@@ -22,22 +21,14 @@ import java.time.temporal.TemporalAdjusters
  *
  * Null means the window holds no scoreable driving at all — not a bad score, and not zero.
  */
-fun safetyScoreForRides(
-    rides: List<Ride>,
-    weights: ScoreWeights = ScoreWeights(),
-): SafetyScore? = aggregateScore(rides.mapNotNull { it.score }, weights)
+fun safetyScoreForRides(rides: List<Ride>): SafetyScore? = aggregateScore(rides.mapNotNull { it.score })
 
 /** One calendar month, matching how [journeyTotalsForMonth] slices mileage. */
 fun safetyScoreForMonth(
     rides: List<Ride>,
     month: YearMonth,
     zone: ZoneId,
-    weights: ScoreWeights = ScoreWeights(),
-): SafetyScore? =
-    safetyScoreForRides(
-        rides.filter { YearMonth.from(it.startedAtEpochMs.toLocalDate(zone)) == month },
-        weights,
-    )
+): SafetyScore? = safetyScoreForRides(rides.filter { YearMonth.from(it.startedAtEpochMs.toLocalDate(zone)) == month })
 
 /**
  * The last seven days including [endDay] — a rolling window, not an ISO week, to match
@@ -48,13 +39,9 @@ fun safetyScoreForRollingWeek(
     rides: List<Ride>,
     endDay: LocalDate,
     zone: ZoneId,
-    weights: ScoreWeights = ScoreWeights(),
 ): SafetyScore? {
     val from = endDay.minusDays(6)
-    return safetyScoreForRides(
-        rides.filter { it.startedAtEpochMs.toLocalDate(zone) in from..endDay },
-        weights,
-    )
+    return safetyScoreForRides(rides.filter { it.startedAtEpochMs.toLocalDate(zone) in from..endDay })
 }
 
 /**
@@ -66,13 +53,12 @@ fun safetyScoreForRollingWeek(
 fun weeklySafetyScores(
     rides: List<Ride>,
     zone: ZoneId,
-    weights: ScoreWeights = ScoreWeights(),
 ): Map<LocalDate, Int> =
     rides
         .filter { it.score != null }
         .groupBy { it.startedAtEpochMs.toLocalDate(zone).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)) }
         .mapNotNull { (weekStart, weekRides) ->
-            aggregateScore(weekRides.mapNotNull { it.score }, weights)?.let { weekStart to it.total }
+            aggregateScore(weekRides.mapNotNull { it.score })?.let { weekStart to it.total }
         }.toMap()
 
 /**
@@ -82,13 +68,12 @@ fun weeklySafetyScores(
 fun monthlySafetyScores(
     rides: List<Ride>,
     zone: ZoneId,
-    weights: ScoreWeights = ScoreWeights(),
 ): Map<YearMonth, Int> =
     rides
         .filter { it.score != null }
         .groupBy { YearMonth.from(it.startedAtEpochMs.toLocalDate(zone)) }
         .mapNotNull { (month, monthRides) ->
-            aggregateScore(monthRides.mapNotNull { it.score }, weights)?.let { month to it.total }
+            aggregateScore(monthRides.mapNotNull { it.score })?.let { month to it.total }
         }.toMap()
 
 /**
@@ -101,7 +86,6 @@ fun monthlySafetyScores(
 fun allTimeSafetyScoreHistory(
     rides: List<Ride>,
     zone: ZoneId,
-    weights: ScoreWeights = ScoreWeights(),
 ): List<Pair<LocalDate, Int>> {
     val byDay =
         rides
@@ -111,7 +95,7 @@ fun allTimeSafetyScoreHistory(
     val soFar = mutableListOf<SafetyScore>()
     return byDay.mapNotNull { (day, dayRides) ->
         soFar += dayRides.mapNotNull { it.score }
-        aggregateScore(soFar, weights)?.let { day to it.total }
+        aggregateScore(soFar)?.let { day to it.total }
     }
 }
 
