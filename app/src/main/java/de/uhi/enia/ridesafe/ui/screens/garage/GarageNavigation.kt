@@ -46,6 +46,7 @@ fun EntryProviderScope<NavKey>.garageEntries(
             vehicle = vehicle,
             onBack = onBack,
             onEdit = { onOpen(EditVehicleRoute(key.id)) },
+            onChooseImage = { uri -> vehicle?.let { viewModel.setVehicleImage(it, uri) } },
             onDelete = {
                 vehicle?.let(viewModel::deleteVehicle)
                 onPopToGarage()

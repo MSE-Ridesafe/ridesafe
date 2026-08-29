@@ -2,6 +2,7 @@
 
 package de.uhi.enia.ridesafe.ui.screens.garage
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,10 +27,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,6 +46,8 @@ import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.theme.RidesafeTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun GarageScreen(
@@ -111,11 +119,11 @@ private fun VehicleCard(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            VehicleImage(size = 64.dp)
+            VehicleImage(vehicle = vehicle, size = 64.dp)
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = vehicle.displayTitle(),
+                    text = "${vehicle.make} ${vehicle.model}".trim(),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
@@ -145,13 +153,23 @@ private fun VehicleCard(
     }
 }
 
-/** Placeholder title-image slot — a tinted avatar with a car symbol (no image picking yet). */
+/** Vehicle photo, with the car symbol retained as the empty-state fallback. */
 @Composable
 internal fun VehicleImage(
+    vehicle: Vehicle? = null,
     size: Dp,
     modifier: Modifier = Modifier,
     color: Color? = null,
 ) {
+    val context = LocalContext.current
+    val bitmap by
+        produceState<android.graphics.Bitmap?>(
+            initialValue = null,
+            key1 = vehicle?.vehicleUuid,
+            key2 = vehicle?.updatedAtEpochMs,
+        ) {
+            value = withContext(Dispatchers.IO) { vehicle?.let { loadVehicleImage(context, it) } }
+        }
     Box(
         modifier =
             modifier
@@ -160,12 +178,21 @@ internal fun VehicleImage(
                 .background(color ?: MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
     ) {
-        MaterialSymbol(
-            symbolName = "directions_car",
-            contentDescription = null,
-            color = MaterialTheme.colorScheme.onSurface,
-            size = size / 2,
-        )
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap!!.asImageBitmap(),
+                contentDescription = stringResource(R.string.garage_vehicle_image),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            MaterialSymbol(
+                symbolName = "directions_car",
+                contentDescription = null,
+                color = MaterialTheme.colorScheme.onSurface,
+                size = size / 2,
+            )
+        }
     }
 }
 

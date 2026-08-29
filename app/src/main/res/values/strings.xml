@@ -125,6 +125,7 @@
     <string name="garage_empty_message">Tap + to add your first vehicle.</string>
     <string name="garage_primary">Primary</string>
     <string name="garage_vehicle_image">Vehicle image</string>
+    <string name="vehicle_choose_image">Choose vehicle photo</string>
     <string name="garage_primary_marker">Primary vehicle</string>
 
     <string name="vehicle_nickname">Nickname</string>
