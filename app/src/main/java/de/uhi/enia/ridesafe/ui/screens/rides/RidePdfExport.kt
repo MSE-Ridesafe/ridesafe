@@ -205,7 +205,9 @@ class RideExporter(
                         }
                     }
 
-                    RideExportFormat.ZIP -> RideZipBackup(app, db).write(temp, requests)
+                    RideExportFormat.ZIP -> {
+                        RideZipBackup(app, db).write(temp, requests)
+                    }
                 }
                 coroutineContext.ensureActive()
                 val saved =

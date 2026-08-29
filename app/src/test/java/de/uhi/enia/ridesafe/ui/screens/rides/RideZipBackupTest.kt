@@ -2,8 +2,8 @@ package de.uhi.enia.ridesafe.ui.screens.rides
 
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.rides.RideDataCoordinator
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -49,7 +49,11 @@ class RideZipBackupTest {
             val corrupt = temporary(".gz").apply { writeText("not gzip") }
             val rawSource = source(corrupt, rawDescriptor(corrupt))
             val archive = temporary(".zip")
-            writeRideBackupZip(archive, manifest(files = listOf(rawSource.metadata, absentRouteDescriptor())), listOf(rawSource, absentSource()))
+            writeRideBackupZip(
+                archive,
+                manifest(files = listOf(rawSource.metadata, absentRouteDescriptor())),
+                listOf(rawSource, absentSource()),
+            )
 
             assertThrows(RideBackupValidationException::class.java) { RideBackupArchiveValidator.validate(archive) }
         }
@@ -78,7 +82,9 @@ class RideZipBackupTest {
     fun activeAndMissingSelectedRidesAreRejected() {
         val active = Ride(id = 42, startedAtEpochMs = 1, startedElapsedNanos = 2, sampleFile = "ride.gz")
         assertThrows(IllegalArgumentException::class.java) { requireFinishedSelectedRides(listOf(42), listOf(active)) }
-        assertThrows(IllegalArgumentException::class.java) { requireFinishedSelectedRides(listOf(42, 43), listOf(active.copy(endedAtEpochMs = 3))) }
+        assertThrows(
+            IllegalArgumentException::class.java,
+        ) { requireFinishedSelectedRides(listOf(42, 43), listOf(active.copy(endedAtEpochMs = 3))) }
     }
 
     @Test
@@ -101,7 +107,11 @@ class RideZipBackupTest {
         assertThrows(CancellationException::class.java) {
             runBlocking {
                 cancel()
-                writeRideBackupZip(archive, manifest(files = listOf(rawSource.metadata, absentRouteDescriptor())), listOf(rawSource, absentSource()))
+                writeRideBackupZip(
+                    archive,
+                    manifest(files = listOf(rawSource.metadata, absentRouteDescriptor())),
+                    listOf(rawSource, absentSource()),
+                )
             }
         }
     }
@@ -227,16 +237,40 @@ class RideZipBackupTest {
         }
 
     private fun rawDescriptor(file: File): BackupFile =
-        BackupFile(42, "raw_samples", "required_source", "included", "data/rides/42/samples.ndjson.gz", "application/x-ndjson", "gzip", file.length(), sha256(file))
+        BackupFile(
+            42,
+            "raw_samples",
+            "required_source",
+            "included",
+            "data/rides/42/samples.ndjson.gz",
+            "application/x-ndjson",
+            "gzip",
+            file.length(),
+            sha256(file),
+        )
 
     private fun absentRouteDescriptor() =
-        BackupFile(42, "processed_route", "optional_regenerable_derived", "absent", "data/rides/42/route.v2", "application/vnd.google.polyline", "google-encoded-polyline-1e5", null, null)
+        BackupFile(
+            42,
+            "processed_route",
+            "optional_regenerable_derived",
+            "absent",
+            "data/rides/42/route.v2",
+            "application/vnd.google.polyline",
+            "google-encoded-polyline-1e5",
+            null,
+            null,
+        )
 
-    private fun includedRouteDescriptor(file: File) = absentRouteDescriptor().copy(status = "included", sizeBytes = file.length(), sha256 = sha256(file))
+    private fun includedRouteDescriptor(file: File) =
+        absentRouteDescriptor().copy(status = "included", sizeBytes = file.length(), sha256 = sha256(file))
 
     private fun absentSource() = RideBackupSourceFile(absentRouteDescriptor(), temporary(".absent"), 0)
 
-    private fun source(file: File, descriptor: BackupFile): RideBackupSourceFile {
+    private fun source(
+        file: File,
+        descriptor: BackupFile,
+    ): RideBackupSourceFile {
         val crc = CRC32().apply { update(file.readBytes()) }
         return RideBackupSourceFile(descriptor, file, crc.value)
     }

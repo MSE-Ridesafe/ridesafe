@@ -78,8 +78,7 @@ private fun SavedAddress.isEquivalentSavedPlace(other: SavedAddress): Boolean {
     return sameKnownAddress || sameCoordinates
 }
 
-private fun normalizePlaceText(value: String): String =
-    value.filter(Char::isLetterOrDigit).uppercase(Locale.ROOT)
+private fun normalizePlaceText(value: String): String = value.filter(Char::isLetterOrDigit).uppercase(Locale.ROOT)
 
 /**
  * Re-match every ride's start/end point against the current saved addresses (ADR-07) and persist the

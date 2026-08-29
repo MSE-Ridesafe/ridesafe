@@ -39,22 +39,36 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 internal sealed interface RideBackupImportState {
     data object Idle : RideBackupImportState
+
     data object Inspecting : RideBackupImportState
-    data class Ready(val uri: Uri, val preview: RideBackupImportPreview) : RideBackupImportState
+
+    data class Ready(
+        val uri: Uri,
+        val preview: RideBackupImportPreview,
+    ) : RideBackupImportState
+
     data object Importing : RideBackupImportState
-    data class Success(val result: RideBackupImportResult) : RideBackupImportState
-    data class Error(val detail: String) : RideBackupImportState
+
+    data class Success(
+        val result: RideBackupImportResult,
+    ) : RideBackupImportState
+
+    data class Error(
+        val detail: String,
+    ) : RideBackupImportState
 }
 
-internal class RideBackupImportViewModel(app: Application) : AndroidViewModel(app) {
+internal class RideBackupImportViewModel(
+    app: Application,
+) : AndroidViewModel(app) {
     private val importer = RideBackupImporter(app)
     private val _state = MutableStateFlow<RideBackupImportState>(RideBackupImportState.Idle)
     val state: StateFlow<RideBackupImportState> = _state.asStateFlow()
@@ -167,7 +181,7 @@ internal fun RideBackupImportScreen(
     }
 
     when (val current = state) {
-        is RideBackupImportState.Ready ->
+        is RideBackupImportState.Ready -> {
             AlertDialog(
                 onDismissRequest = importViewModel::dismiss,
                 title = { Text(stringResource(R.string.settings_backup_import_confirm_title)) },
@@ -182,11 +196,16 @@ internal fun RideBackupImportScreen(
                         ),
                     )
                 },
-                confirmButton = { TextButton(onClick = importViewModel::confirm) { Text(stringResource(R.string.settings_backup_import_confirm)) } },
+                confirmButton = {
+                    TextButton(
+                        onClick = importViewModel::confirm,
+                    ) { Text(stringResource(R.string.settings_backup_import_confirm)) }
+                },
                 dismissButton = { TextButton(onClick = importViewModel::dismiss) { Text(stringResource(R.string.action_cancel)) } },
             )
+        }
 
-        is RideBackupImportState.Success ->
+        is RideBackupImportState.Success -> {
             AlertDialog(
                 onDismissRequest = importViewModel::dismiss,
                 title = { Text(stringResource(R.string.settings_backup_import_success_title)) },
@@ -207,15 +226,19 @@ internal fun RideBackupImportScreen(
                 },
                 confirmButton = { TextButton(onClick = importViewModel::dismiss) { Text(stringResource(R.string.action_done)) } },
             )
+        }
 
-        is RideBackupImportState.Error ->
+        is RideBackupImportState.Error -> {
             AlertDialog(
                 onDismissRequest = importViewModel::dismiss,
                 title = { Text(stringResource(R.string.settings_backup_import_error_title)) },
                 text = { Text(stringResource(R.string.settings_backup_import_error_message, current.detail)) },
                 confirmButton = { TextButton(onClick = importViewModel::dismiss) { Text(stringResource(R.string.action_done)) } },
             )
+        }
 
-        else -> Unit
+        else -> {
+            Unit
+        }
     }
 }

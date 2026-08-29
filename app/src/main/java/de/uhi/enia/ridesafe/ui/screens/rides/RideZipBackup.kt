@@ -116,10 +116,16 @@ internal data class BackupContract(
 )
 
 @Serializable
-internal data class BackupLogicalSelection(val archiveId: String, val rideArchiveIds: List<Long>)
+internal data class BackupLogicalSelection(
+    val archiveId: String,
+    val rideArchiveIds: List<Long>,
+)
 
 @Serializable
-internal data class BackupMergeGroup(val archiveId: Long, val rideArchiveIdsInStartOrder: List<Long>)
+internal data class BackupMergeGroup(
+    val archiveId: Long,
+    val rideArchiveIdsInStartOrder: List<Long>,
+)
 
 @Serializable
 internal data class BackupRide(
@@ -168,7 +174,10 @@ internal data class BackupVehicle(
 )
 
 @Serializable
-internal data class BackupBluetoothDevice(val address: String, val name: String)
+internal data class BackupBluetoothDevice(
+    val address: String,
+    val name: String,
+)
 
 @Serializable
 internal data class BackupSavedAddress(
@@ -198,7 +207,11 @@ internal data class BackupRideEvent(
 )
 
 @Serializable
-internal data class BackupAnalysisState(val rideArchiveId: Long, val stage: String, val version: Int)
+internal data class BackupAnalysisState(
+    val rideArchiveId: Long,
+    val stage: String,
+    val version: Int,
+)
 
 @Serializable
 internal data class BackupRefuel(
@@ -226,13 +239,25 @@ internal data class BackupFile(
     val sha256: String? = null,
 )
 
-internal data class RideBackupSourceFile(val metadata: BackupFile, val snapshot: File, val crc32: Long)
+internal data class RideBackupSourceFile(
+    val metadata: BackupFile,
+    val snapshot: File,
+    val crc32: Long,
+)
 
-internal class RideBackupValidationException(message: String, cause: Throwable? = null) :
-    IllegalArgumentException(message, cause)
+internal class RideBackupValidationException(
+    message: String,
+    cause: Throwable? = null,
+) : IllegalArgumentException(message, cause)
 
-internal class RideZipBackup(private val app: Application, private val db: RidesafeDatabase) {
-    suspend fun write(destination: File, requests: List<RideExportRequest>) {
+internal class RideZipBackup(
+    private val app: Application,
+    private val db: RidesafeDatabase,
+) {
+    suspend fun write(
+        destination: File,
+        requests: List<RideExportRequest>,
+    ) {
         val rideIds = requests.flatMap(RideExportRequest::rideIds).distinct()
         require(rideIds.isNotEmpty())
         val snapshotDirectory = Files.createTempDirectory(app.cacheDir.toPath(), "ridesafe_backup_snapshot_").toFile()
@@ -260,7 +285,12 @@ internal class RideZipBackup(private val app: Application, private val db: Rides
             requireFinishedSelectedRides(rideIds, rides)
             val groupIds = rides.mapNotNull(Ride::mergeGroupId).distinct()
             if (groupIds.isNotEmpty()) {
-                val allGroupRideIds = db.rideDao().membersOfGroups(groupIds).map(Ride::id).toSet()
+                val allGroupRideIds =
+                    db
+                        .rideDao()
+                        .membersOfGroups(groupIds)
+                        .map(Ride::id)
+                        .toSet()
                 require(rideIds.toSet().containsAll(allGroupRideIds)) { "A selected merge group is incomplete" }
             }
             val refuels = db.refuelDao().forJourneyAnchors(rideIds)
@@ -276,7 +306,10 @@ internal class RideZipBackup(private val app: Application, private val db: Rides
             )
         }
 
-    private suspend fun snapshotFiles(rides: List<Ride>, directory: File): List<RideBackupSourceFile> {
+    private suspend fun snapshotFiles(
+        rides: List<Ride>,
+        directory: File,
+    ): List<RideBackupSourceFile> {
         val sources = mutableListOf<RideBackupSourceFile>()
         for (ride in rides) {
             coroutineContext.ensureActive()
@@ -312,20 +345,29 @@ internal class RideZipBackup(private val app: Application, private val db: Rides
         }
         val integrity = fileIntegrity(target)
         val metadata =
-            if (role == RAW_ROLE) rawFileMetadata(rideId, integrity.size, integrity.sha256)
-            else routeFileMetadata(rideId, INCLUDED, integrity.size, integrity.sha256)
+            if (role == RAW_ROLE) {
+                rawFileMetadata(rideId, integrity.size, integrity.sha256)
+            } else {
+                routeFileMetadata(rideId, INCLUDED, integrity.size, integrity.sha256)
+            }
         return RideBackupSourceFile(metadata, target, integrity.crc32)
     }
 }
 
-internal fun requireFinishedSelectedRides(expectedRideIds: List<Long>, rides: List<Ride>) {
+internal fun requireFinishedSelectedRides(
+    expectedRideIds: List<Long>,
+    rides: List<Ride>,
+) {
     require(rides.size == expectedRideIds.distinct().size && rides.map(Ride::id).toSet() == expectedRideIds.toSet()) {
         "Selected rides no longer exist"
     }
     require(rides.all { it.endedAtEpochMs != null }) { "Active rides cannot be exported" }
 }
 
-private data class RideBackupArchive(val manifest: RideBackupManifest, val sources: List<RideBackupSourceFile>)
+private data class RideBackupArchive(
+    val manifest: RideBackupManifest,
+    val sources: List<RideBackupSourceFile>,
+)
 
 private data class RideBackupSnapshot(
     val rides: List<Ride>,
@@ -347,8 +389,17 @@ private fun RideBackupSnapshot.toManifest(
         producer = producer(app),
         sourceDatabaseVersion = RIDESAFE_DATABASE_VERSION,
         processingVersions = BackupProcessingVersions(ROUTE_VERSION, AXIS_VERSION, EVENTS_VERSION, ENDPOINTS_VERSION),
-        logicalSelections = requests.mapIndexed { index, request -> BackupLogicalSelection("selection-${index + 1}", request.rideIds.distinct()) },
-        mergeGroups = groupIds.map { id -> BackupMergeGroup(id, rides.filter { it.mergeGroupId == id }.sortedBy(Ride::startedAtEpochMs).map(Ride::id)) },
+        logicalSelections =
+            requests.mapIndexed {
+                index,
+                request,
+                ->
+                BackupLogicalSelection("selection-${index + 1}", request.rideIds.distinct())
+            },
+        mergeGroups =
+            groupIds.map { id ->
+                BackupMergeGroup(id, rides.filter { it.mergeGroupId == id }.sortedBy(Ride::startedAtEpochMs).map(Ride::id))
+            },
         rides = rides.map(Ride::toBackup),
         vehicles = vehicles.sortedBy(Vehicle::id).map(Vehicle::toBackup),
         savedAddresses = savedAddresses.sortedBy(SavedAddress::id).map(SavedAddress::toBackup),
@@ -361,7 +412,14 @@ private fun RideBackupSnapshot.toManifest(
 
 private fun producer(app: Application): BackupProducer {
     val info = app.packageManager.getPackageInfo(app.packageName, PackageManager.PackageInfoFlags.of(0))
-    return BackupProducer(app.packageName, info.versionName.orEmpty(), info.longVersionCode, "android", Build.VERSION.RELEASE, Build.VERSION.SDK_INT)
+    return BackupProducer(
+        app.packageName,
+        info.versionName.orEmpty(),
+        info.longVersionCode,
+        "android",
+        Build.VERSION.RELEASE,
+        Build.VERSION.SDK_INT,
+    )
 }
 
 internal suspend fun writeRideBackupZip(
@@ -373,7 +431,14 @@ internal suspend fun writeRideBackupZip(
     RideBackupArchiveValidator.validateManifest(manifest)
     val included = sources.filter { it.metadata.status == INCLUDED }.associateBy { it.metadata.path }
     require(included.size == sources.count { it.metadata.status == INCLUDED }) { "Duplicate source paths" }
-    require(included.keys == manifest.files.filter { it.status == INCLUDED }.map(BackupFile::path).toSet()) { "ZIP sources do not match the manifest" }
+    require(
+        included.keys ==
+            manifest.files
+                .filter {
+                    it.status == INCLUDED
+                }.map(BackupFile::path)
+                .toSet(),
+    ) { "ZIP sources do not match the manifest" }
     ZipOutputStream(BufferedOutputStream(destination.outputStream())).use { zip ->
         putBytes(zip, MANIFEST_ENTRY, encodeRideBackupManifest(manifest).toByteArray(Charsets.UTF_8))
         for (file in manifest.files.filter { it.status == INCLUDED }.sortedBy(BackupFile::path)) {
@@ -387,13 +452,20 @@ internal suspend fun writeRideBackupZip(
                 entry.crc = source.crc32
             }
             zip.putNextEntry(entry)
-            source.snapshot.inputStream().buffered().use { input -> copyCancellable(input, zip) }
+            source.snapshot
+                .inputStream()
+                .buffered()
+                .use { input -> copyCancellable(input, zip) }
             zip.closeEntry()
         }
     }
 }
 
-private fun putBytes(zip: ZipOutputStream, path: String, bytes: ByteArray) {
+private fun putBytes(
+    zip: ZipOutputStream,
+    path: String,
+    bytes: ByteArray,
+) {
     zip.putNextEntry(ZipEntry(path).apply { time = 0L })
     zip.write(bytes)
     zip.closeEntry()
@@ -402,12 +474,19 @@ private fun putBytes(zip: ZipOutputStream, path: String, bytes: ByteArray) {
 internal fun encodeRideBackupManifest(manifest: RideBackupManifest): String = backupJson.encodeToString(manifest)
 
 internal fun decodeRideBackupManifest(json: String): RideBackupManifest {
-    val element = runCatching { backupJson.parseToJsonElement(json) }.getOrElse { throw RideBackupValidationException("Manifest is not valid JSON", it) }
-    val schema = element.jsonObject["schemaVersion"]?.jsonPrimitive?.intOrNull
-        ?: throw RideBackupValidationException("Manifest has no integer schemaVersion")
+    val element =
+        runCatching {
+            backupJson.parseToJsonElement(json)
+        }.getOrElse { throw RideBackupValidationException("Manifest is not valid JSON", it) }
+    val schema =
+        element.jsonObject["schemaVersion"]?.jsonPrimitive?.intOrNull
+            ?: throw RideBackupValidationException("Manifest has no integer schemaVersion")
     when {
         schema > RIDE_BACKUP_SCHEMA_VERSION -> throw RideBackupValidationException("Unsupported newer backup schema $schema")
-        schema < RIDE_BACKUP_SCHEMA_VERSION -> throw RideBackupValidationException("Backup schema $schema has no registered upgrade to $RIDE_BACKUP_SCHEMA_VERSION")
+
+        schema < RIDE_BACKUP_SCHEMA_VERSION -> throw RideBackupValidationException(
+            "Backup schema $schema has no registered upgrade to $RIDE_BACKUP_SCHEMA_VERSION",
+        )
     }
     return runCatching { backupJson.decodeFromJsonElement<RideBackupManifest>(element) }.getOrElse {
         throw RideBackupValidationException("Manifest does not conform to schema $schema", it)
@@ -424,14 +503,19 @@ internal object RideBackupArchiveValidator {
                 if (names.size != names.toSet().size) fail("ZIP contains duplicate paths")
                 names.forEach(::validateArchivePath)
                 val manifestEntry = zip.getEntry(MANIFEST_ENTRY) ?: fail("ZIP has no $MANIFEST_ENTRY")
-                val manifest = decodeRideBackupManifest(zip.getInputStream(manifestEntry).bufferedReader(Charsets.UTF_8).use { it.readText() })
+                val manifest =
+                    decodeRideBackupManifest(zip.getInputStream(manifestEntry).bufferedReader(Charsets.UTF_8).use { it.readText() })
                 validateManifest(manifest)
                 val included = manifest.files.filter { it.status == INCLUDED }
                 val expectedPaths = setOf(MANIFEST_ENTRY) + included.map(BackupFile::path)
                 if (names.toSet() != expectedPaths) fail("ZIP entries do not exactly match the manifest")
                 for (descriptor in included) {
                     val entry = zip.getEntry(descriptor.path) ?: fail("Missing ZIP entry ${descriptor.path}")
-                    if (descriptor.contentEncoding == "gzip" && entry.method != ZipEntry.STORED) fail("Gzip entry ${descriptor.path} must use ZIP STORED mode")
+                    if (descriptor.contentEncoding == "gzip" &&
+                        entry.method != ZipEntry.STORED
+                    ) {
+                        fail("Gzip entry ${descriptor.path} must use ZIP STORED mode")
+                    }
                     val integrity = zip.getInputStream(entry).use(::streamIntegrity)
                     if (integrity.size != descriptor.sizeBytes) fail("Byte-size mismatch for ${descriptor.path}")
                     if (!integrity.sha256.equals(descriptor.sha256, ignoreCase = true)) fail("SHA-256 mismatch for ${descriptor.path}")
@@ -450,7 +534,11 @@ internal object RideBackupArchiveValidator {
     }
 
     fun validateManifest(manifest: RideBackupManifest) {
-        if (manifest.formatId != RIDE_BACKUP_FORMAT_ID || manifest.formatVersion != RIDE_BACKUP_FORMAT_VERSION) fail("Unsupported backup format")
+        if (manifest.formatId != RIDE_BACKUP_FORMAT_ID ||
+            manifest.formatVersion != RIDE_BACKUP_FORMAT_VERSION
+        ) {
+            fail("Unsupported backup format")
+        }
         if (manifest.schemaVersion != RIDE_BACKUP_SCHEMA_VERSION) fail("Unsupported backup schema ${manifest.schemaVersion}")
         if (
             !manifest.contract.numericIdsAreArchiveLocal ||
@@ -492,7 +580,11 @@ internal object RideBackupArchiveValidator {
             if (group.rideArchiveIdsInStartOrder.isEmpty()) fail("Merge group ${group.archiveId} is empty")
             unique(group.rideArchiveIdsInStartOrder, "rides in merge group ${group.archiveId}")
             group.rideArchiveIdsInStartOrder.forEach { requireRef(it, rides, false, "merge-group ride") }
-            val reverse = manifest.rides.filter { it.mergeGroupArchiveId == group.archiveId }.map(BackupRide::archiveId).toSet()
+            val reverse =
+                manifest.rides
+                    .filter { it.mergeGroupArchiveId == group.archiveId }
+                    .map(BackupRide::archiveId)
+                    .toSet()
             if (reverse != group.rideArchiveIdsInStartOrder.toSet()) fail("Merge group ${group.archiveId} is not bidirectional")
         }
         val selected = mutableListOf<Long>()
@@ -520,27 +612,58 @@ internal object RideBackupArchiveValidator {
             if (it.updatedAtEpochMs != null && it.updatedAtEpochMs < 0) fail("Invalid vehicle modification time")
         }
         unique(manifest.vehicles.mapNotNull(BackupVehicle::vehicleUuid), "vehicle UUIDs")
-        manifest.savedAddresses.forEach { if (it.kind !in SavedPlaceKind.entries.map { value -> value.name }) fail("Unknown saved-place enum ${it.kind}") }
+        manifest.savedAddresses.forEach {
+            if (it.kind !in
+                SavedPlaceKind.entries.map { value -> value.name }
+            ) {
+                fail("Unknown saved-place enum ${it.kind}")
+            }
+        }
 
         unique(manifest.files.map(BackupFile::path), "manifest file paths")
         manifest.files.forEach { descriptor ->
             validateArchivePath(descriptor.path)
             requireRef(descriptor.rideArchiveId, rides, false, "file ride")
             val expected =
-                if (descriptor.role == RAW_ROLE) rawArchivePath(descriptor.rideArchiveId)
-                else routeArchivePath(descriptor.rideArchiveId, manifest.processingVersions.route)
-            if (descriptor.role !in setOf(RAW_ROLE, ROUTE_ROLE) || descriptor.path != expected) fail("Noncanonical file path ${descriptor.path}")
+                if (descriptor.role == RAW_ROLE) {
+                    rawArchivePath(descriptor.rideArchiveId)
+                } else {
+                    routeArchivePath(descriptor.rideArchiveId, manifest.processingVersions.route)
+                }
+            if (descriptor.role !in setOf(RAW_ROLE, ROUTE_ROLE) ||
+                descriptor.path != expected
+            ) {
+                fail("Noncanonical file path ${descriptor.path}")
+            }
             when (descriptor.status) {
-                INCLUDED -> if (descriptor.sizeBytes == null || descriptor.sizeBytes < 0 || !isSha256(descriptor.sha256)) fail("Included file ${descriptor.path} lacks integrity metadata")
-                ABSENT -> if (descriptor.requirement != OPTIONAL_DERIVED || descriptor.sizeBytes != null || descriptor.sha256 != null) fail("Only optional derived files may be absent")
-                else -> fail("Unknown file status ${descriptor.status}")
+                INCLUDED -> {
+                    if (descriptor.sizeBytes == null || descriptor.sizeBytes < 0 ||
+                        !isSha256(descriptor.sha256)
+                    ) {
+                        fail("Included file ${descriptor.path} lacks integrity metadata")
+                    }
+                }
+
+                ABSENT -> {
+                    if (descriptor.requirement != OPTIONAL_DERIVED || descriptor.sizeBytes != null ||
+                        descriptor.sha256 != null
+                    ) {
+                        fail("Only optional derived files may be absent")
+                    }
+                }
+
+                else -> {
+                    fail("Unknown file status ${descriptor.status}")
+                }
             }
             if (descriptor.role == RAW_ROLE && descriptor.requirement != REQUIRED_SOURCE) fail("Raw samples must be required")
             if (descriptor.role == ROUTE_ROLE && descriptor.requirement != OPTIONAL_DERIVED) fail("Routes must be optional derived files")
         }
         manifest.rides.forEach { ride ->
             val descriptors = manifest.files.filter { it.rideArchiveId == ride.archiveId }
-            if (descriptors.count { it.role == RAW_ROLE && it.status == INCLUDED } != 1 || descriptors.count { it.role == ROUTE_ROLE } != 1) {
+            if (descriptors.count { it.role == RAW_ROLE && it.status == INCLUDED } != 1 ||
+                descriptors.count { it.role == ROUTE_ROLE } != 1
+            ) {
                 fail("Ride ${ride.archiveId} must have one included raw file and one route descriptor")
             }
         }
@@ -548,15 +671,40 @@ internal object RideBackupArchiveValidator {
 }
 
 private fun rawArchivePath(rideId: Long) = "data/rides/$rideId/samples.ndjson.gz"
-private fun routeArchivePath(rideId: Long, routeVersion: Int = ROUTE_VERSION) = "data/rides/$rideId/route.v$routeVersion"
 
-private fun rawFileMetadata(rideId: Long, size: Long, sha256: String) =
-    BackupFile(rideId, RAW_ROLE, REQUIRED_SOURCE, INCLUDED, rawArchivePath(rideId), "application/x-ndjson", "gzip", size, sha256)
+private fun routeArchivePath(
+    rideId: Long,
+    routeVersion: Int = ROUTE_VERSION,
+) = "data/rides/$rideId/route.v$routeVersion"
 
-private fun routeFileMetadata(rideId: Long, status: String, size: Long?, sha256: String?) =
-    BackupFile(rideId, ROUTE_ROLE, OPTIONAL_DERIVED, status, routeArchivePath(rideId), "application/vnd.google.polyline", "google-encoded-polyline-1e5", size, sha256)
+private fun rawFileMetadata(
+    rideId: Long,
+    size: Long,
+    sha256: String,
+) = BackupFile(rideId, RAW_ROLE, REQUIRED_SOURCE, INCLUDED, rawArchivePath(rideId), "application/x-ndjson", "gzip", size, sha256)
 
-private data class FileIntegrity(val size: Long, val sha256: String, val crc32: Long)
+private fun routeFileMetadata(
+    rideId: Long,
+    status: String,
+    size: Long?,
+    sha256: String?,
+) = BackupFile(
+    rideId,
+    ROUTE_ROLE,
+    OPTIONAL_DERIVED,
+    status,
+    routeArchivePath(rideId),
+    "application/vnd.google.polyline",
+    "google-encoded-polyline-1e5",
+    size,
+    sha256,
+)
+
+private data class FileIntegrity(
+    val size: Long,
+    val sha256: String,
+    val crc32: Long,
+)
 
 private fun fileIntegrity(file: File): FileIntegrity = file.inputStream().use(::streamIntegrity)
 
@@ -575,11 +723,17 @@ private fun streamIntegrity(input: InputStream): FileIntegrity {
     return FileIntegrity(size, digest.digest().joinToString("") { "%02x".format(Locale.ROOT, it.toInt() and 0xff) }, crc.value)
 }
 
-private suspend fun copyCancellable(source: File, destination: File) {
+private suspend fun copyCancellable(
+    source: File,
+    destination: File,
+) {
     source.inputStream().buffered().use { input -> destination.outputStream().buffered().use { output -> copyCancellable(input, output) } }
 }
 
-private suspend fun copyCancellable(input: InputStream, output: java.io.OutputStream) {
+private suspend fun copyCancellable(
+    input: InputStream,
+    output: java.io.OutputStream,
+) {
     val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
     while (true) {
         coroutineContext.ensureActive()
@@ -608,25 +762,42 @@ private fun validateRawSamples(input: InputStream) {
 
 private fun validateEncodedRoute(input: InputStream) {
     val encoded = input.bufferedReader(Charsets.UTF_8).use { it.readText() }
-    val points = runCatching { PolyUtil.decode(encoded) }.getOrElse { throw RideBackupValidationException("Processed route is not a valid encoded polyline", it) }
+    val points =
+        runCatching {
+            PolyUtil.decode(encoded)
+        }.getOrElse { throw RideBackupValidationException("Processed route is not a valid encoded polyline", it) }
     if (points.any { it.latitude !in -90.0..90.0 || it.longitude !in -180.0..180.0 }) fail("Processed route contains an invalid coordinate")
 }
 
 private fun validateArchivePath(path: String) {
-    if (path.isBlank() || path.startsWith('/') || '\\' in path || path.endsWith('/') || path.split('/').any { it.isBlank() || it == "." || it == ".." }) fail("Unsafe archive path: $path")
+    if (path.isBlank() || path.startsWith('/') || '\\' in path || path.endsWith('/') ||
+        path.split('/').any { it.isBlank() || it == "." || it == ".." }
+    ) {
+        fail("Unsafe archive path: $path")
+    }
     if (!path.matches(Regex("[A-Za-z0-9._/-]+"))) fail("Archive path is not normalized: $path")
 }
 
 private fun isSha256(value: String?) = value?.matches(Regex("[0-9a-f]{64}")) == true
 
-private fun <T> unique(values: List<T>, label: String) {
+private fun <T> unique(
+    values: List<T>,
+    label: String,
+) {
     if (values.size != values.toSet().size) fail("Duplicate $label")
 }
 
-private fun <T> requireRef(value: T?, targets: Set<T>, nullable: Boolean, label: String) {
+private fun <T> requireRef(
+    value: T?,
+    targets: Set<T>,
+    nullable: Boolean,
+    label: String,
+) {
     if (value == null) {
         if (!nullable) fail("$label is unexpectedly null")
-    } else if (value !in targets) fail("Broken $label reference: $value")
+    } else if (value !in targets) {
+        fail("Broken $label reference: $value")
+    }
 }
 
 private fun fail(message: String): Nothing = throw RideBackupValidationException(message)
@@ -676,8 +847,20 @@ private fun Vehicle.toBackup() =
 
 private fun SavedAddress.toBackup() = BackupSavedAddress(id, label, kind.name, latitude, longitude, radiusMeters, icon, address)
 
-private fun RideEvent.toBackup() = BackupRideEvent(id, rideId, type.name, startOffsetMs, durationMs, peakG, peakJerkGPerS, avgG, speedMps, lat, lon)
+private fun RideEvent.toBackup() =
+    BackupRideEvent(id, rideId, type.name, startOffsetMs, durationMs, peakG, peakJerkGPerS, avgG, speedMps, lat, lon)
 
 private fun RideAnalysisState.toBackup() = BackupAnalysisState(rideId, stage, version)
 
-private fun Refuel.toBackup() = BackupRefuel(id, vehicleId, timestampEpochMs, fuelAmountMilliliters, totalPriceMinor, currencyCode, odometerMeters, isFullTank, journeyAnchorRideId)
+private fun Refuel.toBackup() =
+    BackupRefuel(
+        id,
+        vehicleId,
+        timestampEpochMs,
+        fuelAmountMilliliters,
+        totalPriceMinor,
+        currencyCode,
+        odometerMeters,
+        isFullTank,
+        journeyAnchorRideId,
+    )

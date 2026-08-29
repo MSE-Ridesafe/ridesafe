@@ -386,29 +386,30 @@ class RidesViewModel(
         require(distinctRideIds.isNotEmpty() || distinctRefuelIds.isNotEmpty())
 
         RideDataCoordinator.withRides(distinctRideIds) {
-            val ridesToDelete = db.withTransaction {
-                val rides = if (distinctRideIds.isEmpty()) emptyList() else rideDao.byIds(distinctRideIds)
-                val explicitlySelectedRefuels =
-                    if (distinctRefuelIds.isEmpty()) emptyList() else refuelDao.byIds(distinctRefuelIds)
-                val attachedRefuels =
-                    if (distinctRideIds.isEmpty()) emptyList() else refuelDao.forJourneyAnchors(distinctRideIds)
+            val ridesToDelete =
+                db.withTransaction {
+                    val rides = if (distinctRideIds.isEmpty()) emptyList() else rideDao.byIds(distinctRideIds)
+                    val explicitlySelectedRefuels =
+                        if (distinctRefuelIds.isEmpty()) emptyList() else refuelDao.byIds(distinctRefuelIds)
+                    val attachedRefuels =
+                        if (distinctRideIds.isEmpty()) emptyList() else refuelDao.forJourneyAnchors(distinctRideIds)
 
-                require(rides.size == distinctRideIds.size)
-                require(explicitlySelectedRefuels.size == distinctRefuelIds.size)
-                // The recorder owns active rides and their open streams; they cannot be deleted here.
-                require(rides.all { it.endedAtEpochMs != null })
+                    require(rides.size == distinctRideIds.size)
+                    require(explicitlySelectedRefuels.size == distinctRefuelIds.size)
+                    // The recorder owns active rides and their open streams; they cannot be deleted here.
+                    require(rides.all { it.endedAtEpochMs != null })
 
-                val allRefuelIds =
-                    (distinctRefuelIds + attachedRefuels.map { it.id }).distinct()
-                if (allRefuelIds.isNotEmpty()) {
-                    refuelDao.deleteByIds(allRefuelIds)
+                    val allRefuelIds =
+                        (distinctRefuelIds + attachedRefuels.map { it.id }).distinct()
+                    if (allRefuelIds.isNotEmpty()) {
+                        refuelDao.deleteByIds(allRefuelIds)
+                    }
+                    if (distinctRideIds.isNotEmpty()) {
+                        rideDao.deleteByIds(distinctRideIds)
+                    }
+
+                    rides
                 }
-                if (distinctRideIds.isNotEmpty()) {
-                    rideDao.deleteByIds(distinctRideIds)
-                }
-
-                rides
-            }
 
             // Database rows are the source of truth. Clean up their private sample and derived
             // files while the same per-ride locks used by analysis/export are still held.

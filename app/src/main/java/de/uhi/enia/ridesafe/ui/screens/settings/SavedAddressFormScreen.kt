@@ -8,8 +8,8 @@ import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -33,8 +33,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -160,8 +160,7 @@ private fun findExistingSavedPlace(
         ?.first
 }
 
-private fun normalizeSearchAddress(value: String): String =
-    value.filter(Char::isLetterOrDigit).uppercase(Locale.ROOT)
+private fun normalizeSearchAddress(value: String): String = value.filter(Char::isLetterOrDigit).uppercase(Locale.ROOT)
 
 /** Curated Material Symbols offered for a custom place (ADR-06); the full font is thousands of glyphs. */
 private val CURATED_PLACE_ICONS =
@@ -405,7 +404,10 @@ fun SavedAddressFormScreen(
                 leadingIcon = { MaterialSymbol(symbolName = "search", contentDescription = null) },
                 trailingIcon = {
                     when {
-                        searchLoading -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        searchLoading -> {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        }
+
                         search.isNotEmpty() -> {
                             IconButton(onClick = { search = "" }) {
                                 MaterialSymbol(
@@ -507,111 +509,111 @@ fun SavedAddressFormScreen(
             }
 
             if (!searchActive) {
-            Card(
-                shape = MaterialTheme.shapes.extraLarge,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-                modifier = Modifier.fillMaxWidth().height(260.dp),
-            ) {
-                Box(Modifier.fillMaxSize()) {
-                    GoogleMap(
-                        modifier = Modifier.fillMaxSize(),
-                        cameraPositionState = cameraPositionState,
-                        uiSettings =
-                            MapUiSettings(
-                                scrollGesturesEnabled = false,
-                                zoomGesturesEnabled = false,
-                                rotationGesturesEnabled = false,
-                                tiltGesturesEnabled = false,
-                                mapToolbarEnabled = false,
-                                zoomControlsEnabled = false,
-                            ),
-                    ) {
-                        point?.let { p ->
-                            Circle(
-                                center = p,
-                                radius = radius.toDouble(),
-                                strokeColor = MaterialTheme.colorScheme.primary,
-                                strokeWidth = 4f,
-                                fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                Card(
+                    shape = MaterialTheme.shapes.extraLarge,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+                    modifier = Modifier.fillMaxWidth().height(260.dp),
+                ) {
+                    Box(Modifier.fillMaxSize()) {
+                        GoogleMap(
+                            modifier = Modifier.fillMaxSize(),
+                            cameraPositionState = cameraPositionState,
+                            uiSettings =
+                                MapUiSettings(
+                                    scrollGesturesEnabled = false,
+                                    zoomGesturesEnabled = false,
+                                    rotationGesturesEnabled = false,
+                                    tiltGesturesEnabled = false,
+                                    mapToolbarEnabled = false,
+                                    zoomControlsEnabled = false,
+                                ),
+                        ) {
+                            point?.let { p ->
+                                Circle(
+                                    center = p,
+                                    radius = radius.toDouble(),
+                                    strokeColor = MaterialTheme.colorScheme.primary,
+                                    strokeWidth = 4f,
+                                    fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                )
+                            }
+                        }
+                        if (point != null) {
+                            MaterialSymbol(
+                                symbolName = "location_on",
+                                contentDescription = null,
+                                fill = true,
+                                size = 48.dp,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.align(Alignment.Center).offset(y = (-24).dp),
                             )
                         }
-                    }
-                    if (point != null) {
-                        MaterialSymbol(
-                            symbolName = "location_on",
-                            contentDescription = null,
-                            fill = true,
-                            size = 48.dp,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.align(Alignment.Center).offset(y = (-24).dp),
+                        Box(
+                            modifier =
+                                Modifier
+                                    .matchParentSize()
+                                    .clickable(onClickLabel = stringResource(R.string.saved_address_map_open), onClick = ::openMapPicker),
                         )
                     }
-                    Box(
-                        modifier =
-                            Modifier
-                                .matchParentSize()
-                                .clickable(onClickLabel = stringResource(R.string.saved_address_map_open), onClick = ::openMapPicker),
+                }
+
+                val hint =
+                    when {
+                        point == null -> stringResource(R.string.saved_address_pick_hint)
+                        locationFailed -> stringResource(R.string.saved_address_location_unavailable)
+                        resolvedAddress != null -> shortAddress(resolvedAddress!!)
+                        else -> null
+                    }
+                if (hint != null) {
+                    Text(
+                        text = hint,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-            }
 
-            val hint =
-                when {
-                    point == null -> stringResource(R.string.saved_address_pick_hint)
-                    locationFailed -> stringResource(R.string.saved_address_location_unavailable)
-                    resolvedAddress != null -> shortAddress(resolvedAddress!!)
-                    else -> null
+                OutlinedButton(onClick = ::requestLocate, modifier = Modifier.fillMaxWidth()) {
+                    MaterialSymbol(symbolName = "my_location", contentDescription = null, size = 18.dp)
+                    Text(stringResource(R.string.saved_address_use_location), modifier = Modifier.padding(start = 8.dp))
                 }
-            if (hint != null) {
+
                 Text(
-                    text = hint,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = "${stringResource(R.string.saved_address_radius)}: ${formatShortDistance(radius.toDouble(), unitSystem)}",
+                    style = MaterialTheme.typography.bodyLarge,
                 )
-            }
+                Slider(
+                    value = radius,
+                    onValueChange = { radius = it },
+                    valueRange = RADIUS_MIN..RADIUS_MAX,
+                    steps = RADIUS_STEPS,
+                )
 
-            OutlinedButton(onClick = ::requestLocate, modifier = Modifier.fillMaxWidth()) {
-                MaterialSymbol(symbolName = "my_location", contentDescription = null, size = 18.dp)
-                Text(stringResource(R.string.saved_address_use_location), modifier = Modifier.padding(start = 8.dp))
-            }
-
-            Text(
-                text = "${stringResource(R.string.saved_address_radius)}: ${formatShortDistance(radius.toDouble(), unitSystem)}",
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            Slider(
-                value = radius,
-                onValueChange = { radius = it },
-                valueRange = RADIUS_MIN..RADIUS_MAX,
-                steps = RADIUS_STEPS,
-            )
-
-            if (presetKind.fixedIcon() == null) {
-                Text(stringResource(R.string.saved_address_icon), style = MaterialTheme.typography.bodyLarge)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CURATED_PLACE_ICONS.forEach { name ->
-                        FilledIconToggleButton(
-                            checked = icon == name,
-                            onCheckedChange = { icon = name },
-                        ) {
-                            MaterialSymbol(symbolName = name, contentDescription = name)
+                if (presetKind.fixedIcon() == null) {
+                    Text(stringResource(R.string.saved_address_icon), style = MaterialTheme.typography.bodyLarge)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CURATED_PLACE_ICONS.forEach { name ->
+                            FilledIconToggleButton(
+                                checked = icon == name,
+                                onCheckedChange = { icon = name },
+                            ) {
+                                MaterialSymbol(symbolName = name, contentDescription = name)
+                            }
                         }
                     }
                 }
-            }
 
-            if (onDelete != null) {
-                OutlinedButton(
-                    onClick = { showDeleteDialog = true },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    MaterialSymbol(symbolName = "delete", contentDescription = null, size = 18.dp)
-                    Text(stringResource(R.string.saved_address_delete), modifier = Modifier.padding(start = 8.dp))
+                if (onDelete != null) {
+                    OutlinedButton(
+                        onClick = { showDeleteDialog = true },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        MaterialSymbol(symbolName = "delete", contentDescription = null, size = 18.dp)
+                        Text(stringResource(R.string.saved_address_delete), modifier = Modifier.padding(start = 8.dp))
+                    }
                 }
             }
         }
-    }
     }
 
     if (showMapPicker) {
