@@ -80,10 +80,13 @@ fun EntryProviderScope<NavKey>.savedAddressEntries(
                     onBack(key)
                 },
                 onBack = { onBack(key) },
-            ) {
-                viewModel.delete(loaded)
-                onBack(key)
-            }
+                // Named, not trailing: a trailing lambda would bind to whatever parameter is
+                // last (today the onboarding's `embedded` flag), not to onDelete.
+                onDelete = {
+                    viewModel.delete(loaded)
+                    onBack(key)
+                },
+            )
         }
     }
 }

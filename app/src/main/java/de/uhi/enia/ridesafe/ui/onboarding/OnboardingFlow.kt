@@ -17,8 +17,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -110,8 +110,7 @@ private val VehicleBoundSteps = setOf(OnboardingStep.BLUETOOTH, OnboardingStep.A
  * auto-record steps act *on a vehicle* (GAR-08 mapping, TRK-02 detection), so without a created
  * car they have nothing to work with; skipping the car step therefore skips them too.
  */
-fun onboardingSteps(hasVehicle: Boolean): List<OnboardingStep> =
-    OnboardingStep.entries.filter { hasVehicle || it !in VehicleBoundSteps }
+fun onboardingSteps(hasVehicle: Boolean): List<OnboardingStep> = OnboardingStep.entries.filter { hasVehicle || it !in VehicleBoundSteps }
 
 /** The step after [current], or null when [current] is the last — i.e. advancing finishes. */
 fun stepAfter(
@@ -150,7 +149,12 @@ fun OnboardingGate() {
     }
     val decision by
         produceState<FirstRunDecision?>(initialValue = null) {
-            val vehicles = RidesafeDatabase.getInstance(context).vehicleDao().observeAll().first()
+            val vehicles =
+                RidesafeDatabase
+                    .getInstance(context)
+                    .vehicleDao()
+                    .observeAll()
+                    .first()
             value =
                 firstRunDecision(completed = false, vehicleCount = vehicles.size).also {
                     if (it == FirstRunDecision.SUPPRESS_AND_MARK_DONE) OnboardingPrefs.setCompleted(context)
@@ -159,7 +163,9 @@ fun OnboardingGate() {
     when (decision) {
         // Plain themed ground for the frames the Room read takes on a cold start.
         null -> Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxSize()) {}
+
         FirstRunDecision.SHOW -> OnboardingFlow(onFinished = { OnboardingPrefs.setCompleted(context) })
+
         else -> RidesafeApp()
     }
 }
@@ -240,13 +246,14 @@ fun OnboardingFlow(onFinished: () -> Unit) {
                 label = "onboardingStep",
             ) { target ->
                 when (target) {
-                    OnboardingStep.WELCOME ->
+                    OnboardingStep.WELCOME -> {
                         WelcomePage(
                             onStart = { advanceFrom(OnboardingStep.WELCOME) },
                             onSkipAll = onFinished,
                         )
+                    }
 
-                    OnboardingStep.CAR ->
+                    OnboardingStep.CAR -> {
                         CarPage(
                             vehicleDao = vehicleDao,
                             vehicleId = vehicleId,
@@ -268,25 +275,34 @@ fun OnboardingFlow(onFinished: () -> Unit) {
                             },
                             onBack = { retreatFrom(OnboardingStep.CAR) },
                         )
+                    }
 
-                    OnboardingStep.BLUETOOTH ->
+                    OnboardingStep.BLUETOOTH -> {
                         BluetoothPage(
                             vehicleDao = vehicleDao,
                             vehicleId = requireNotNull(vehicleId),
                             onContinue = { advanceFrom(OnboardingStep.BLUETOOTH) },
                         )
+                    }
 
-                    OnboardingStep.AUTO_TRACK -> AutoTrackPage(onContinue = { advanceFrom(OnboardingStep.AUTO_TRACK) })
+                    OnboardingStep.AUTO_TRACK -> {
+                        AutoTrackPage(onContinue = { advanceFrom(OnboardingStep.AUTO_TRACK) })
+                    }
 
-                    OnboardingStep.PLACE ->
+                    OnboardingStep.PLACE -> {
                         PlacePage(
                             onSaved = { advanceFrom(OnboardingStep.PLACE) },
                             onBack = { retreatFrom(OnboardingStep.PLACE) },
                         )
+                    }
 
-                    OnboardingStep.RECORDING -> RecordingPage(onContinue = { advanceFrom(OnboardingStep.RECORDING) })
+                    OnboardingStep.RECORDING -> {
+                        RecordingPage(onContinue = { advanceFrom(OnboardingStep.RECORDING) })
+                    }
 
-                    OnboardingStep.SCORES -> ScoresPage(onFinish = { advanceFrom(OnboardingStep.SCORES) })
+                    OnboardingStep.SCORES -> {
+                        ScoresPage(onFinish = { advanceFrom(OnboardingStep.SCORES) })
+                    }
                 }
             }
         }
