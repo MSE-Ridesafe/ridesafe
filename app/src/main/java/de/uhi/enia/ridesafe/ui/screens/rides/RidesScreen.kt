@@ -82,11 +82,11 @@ import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDuration
 import de.uhi.enia.ridesafe.util.formatDurationMs
 import de.uhi.enia.ridesafe.util.formatTimeOfDay
+import de.uhi.enia.ridesafe.util.formattingLocale
 import de.uhi.enia.ridesafe.util.rideDay
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.time.LocalDate
-import java.util.Locale
 
 @Composable
 fun RidesScreen(
@@ -992,7 +992,8 @@ internal fun RefuelTimelineRow(
     showVehicle: Boolean = true,
 ) {
     val context = LocalContext.current
-    val locale = context.resources.configuration.locales[0] ?: Locale.getDefault()
+    // Regional conventions, not the in-app language's likely region (SET-07).
+    val locale = formattingLocale()
     val refuel = row.refuel
     val currency = currentCurrencySetting().currency
     val fractionDigits = currency.defaultFractionDigits.takeIf { it >= 0 } ?: 2

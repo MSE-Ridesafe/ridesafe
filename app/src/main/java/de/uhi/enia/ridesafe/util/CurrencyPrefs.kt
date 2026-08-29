@@ -49,7 +49,7 @@ object CurrencyPrefs {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val stored = prefs.getString(KEY_CURRENCY, null)
         return stored?.let { runCatching { CurrencySetting.valueOf(it) }.getOrNull() }
-            ?: defaultCurrencySetting(context.resources.configuration.locales[0] ?: Locale.getDefault())
+            ?: defaultCurrencySetting(formattingLocale())
     }
 }
 
