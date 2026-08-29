@@ -8,11 +8,7 @@ import android.icu.util.Measure
 import android.icu.util.MeasureUnit
 import android.icu.util.ULocale
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.edit
 import de.uhi.enia.ridesafe.R
 import kotlin.math.roundToLong
 
@@ -25,42 +21,8 @@ enum class UnitSystemSetting {
     IMPERIAL,
 }
 
-/**
- * The unit setting, read straight from the preference wherever it is needed.
- *
- * [get] is backed by snapshot state, so a composable that calls it subscribes to it: [set]
- * updates every screen already on screen. Handing the value down as a parameter instead does
- * not work here — a screen composed by NavDisplay keeps the value it was built with until the
- * back stack changes, which is why picking a unit used to leave the radio button behind.
- */
-object UnitPrefs {
-    private const val PREFS_NAME = "ridesafe_prefs"
-    private const val KEY_UNIT_SYSTEM = "unit_system"
-
-    private var cached by mutableStateOf<UnitSystemSetting?>(null)
-
-    fun get(context: Context): UnitSystemSetting = cached ?: read(context).also { cached = it }
-
-    fun set(
-        context: Context,
-        value: UnitSystemSetting,
-    ) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit {
-            putString(KEY_UNIT_SYSTEM, value.name)
-        }
-        cached = value
-    }
-
-    private fun read(context: Context): UnitSystemSetting {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val name = prefs.getString(KEY_UNIT_SYSTEM, UnitSystemSetting.AUTOMATIC.name)
-        return try {
-            UnitSystemSetting.valueOf(name ?: UnitSystemSetting.AUTOMATIC.name)
-        } catch (_: Exception) {
-            UnitSystemSetting.AUTOMATIC
-        }
-    }
-}
+/** The unit setting, read straight from the preference wherever it is needed (see [EnumPref]). */
+object UnitPrefs : EnumPref<UnitSystemSetting>("unit_system", UnitSystemSetting.entries, { UnitSystemSetting.AUTOMATIC })
 
 /** The unit setting, live — the caller recomposes when it changes. */
 @Composable

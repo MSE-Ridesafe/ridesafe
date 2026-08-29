@@ -1,10 +1,7 @@
 package de.uhi.enia.ridesafe.rides.trigger
 
 import android.content.Context
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.core.content.edit
+import de.uhi.enia.ridesafe.util.EnumPref
 
 /** SET-06: how aggressively rides are auto-recorded. */
 enum class AutoTrackMode {
@@ -18,38 +15,12 @@ enum class AutoTrackMode {
     ANY,
 }
 
-/** Persists the auto-tracking mode in the shared prefs file used across the app (cf. [de.uhi.enia.ridesafe.util.UnitPrefs]). */
-object AutoTrackPrefs {
-    private const val PREFS_NAME = "ridesafe_prefs"
-    private const val KEY_MODE = "auto_track_mode"
-
-    private var cached by mutableStateOf<AutoTrackMode?>(null)
-
-    /** Backed by snapshot state like [de.uhi.enia.ridesafe.util.UnitPrefs] — readers stay current. */
-    fun get(context: Context): AutoTrackMode = cached ?: read(context).also { cached = it }
-
-    fun set(
-        context: Context,
-        value: AutoTrackMode,
-    ) {
-        context
-            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit { putString(KEY_MODE, value.name) }
-        cached = value
-    }
-
-    private fun read(context: Context): AutoTrackMode {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        // Off until the user asks for it (SET-06): enabling a mode is what triggers the first
-        // permission request, so nothing is recorded before the user has agreed to it.
-        val name = prefs.getString(KEY_MODE, AutoTrackMode.OFF.name)
-        return try {
-            AutoTrackMode.valueOf(name ?: AutoTrackMode.OFF.name)
-        } catch (e: Exception) {
-            AutoTrackMode.OFF
-        }
-    }
-}
+/**
+ * Persists the auto-tracking mode (see [EnumPref]). Off until the user asks for it (SET-06):
+ * enabling a mode is what triggers the first permission request, so nothing is recorded before the
+ * user has agreed to it.
+ */
+object AutoTrackPrefs : EnumPref<AutoTrackMode>("auto_track_mode", AutoTrackMode.entries, { AutoTrackMode.OFF })
 
 /**
  * Persist [mode] and (re)arm the matching detectors. Called when the user changes the
