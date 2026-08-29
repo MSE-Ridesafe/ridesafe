@@ -34,9 +34,35 @@ class HomeActivityCostTest {
                 zone = zone,
             )
 
-        assertEquals(rideActivity.copy(costMinor = 6_500), result[rideDay])
-        assertEquals(7_200L, result.getValue(refuelOnlyDay).costMinor)
+        assertEquals(rideActivity.copy(costMinorByCurrency = mapOf("EUR" to 6_500L)), result[rideDay])
+        assertEquals(mapOf("EUR" to 7_200L), result.getValue(refuelOnlyDay).costMinorByCurrency)
         assertEquals(0, result.getValue(refuelOnlyDay).rideCount)
+    }
+
+    @Test
+    fun refuelCostsAreBucketedPerCurrencyNeverSummedAcrossCurrencies() {
+        val day = LocalDate.of(2026, 8, 24)
+
+        val result =
+            addRefuelCosts(
+                activityByDay = emptyMap(),
+                refuels =
+                    listOf(
+                        refuel(day, 4_000, "EUR"),
+                        refuel(day, 2_500, "USD"),
+                        // Imported backups may carry lowercase codes; folds into the EUR bucket.
+                        refuel(day, 1_000, "eur"),
+                    ),
+                zone = zone,
+            )
+
+        val bar = result.getValue(day)
+        assertEquals(mapOf("EUR" to 5_000L, "USD" to 2_500L), bar.costMinorByCurrency)
+        // The chart reads only the selected currency's bucket, absent currencies as zero.
+        assertEquals(5_000.0, bar.valueFor(ActivityChartMetric.COST, "EUR"), 0.0)
+        assertEquals(2_500.0, bar.valueFor(ActivityChartMetric.COST, "USD"), 0.0)
+        assertEquals(0.0, bar.valueFor(ActivityChartMetric.COST, "CHF"), 0.0)
+        assertEquals(5_000.0, activityScaleMaximum(result.values, ActivityChartMetric.COST, "EUR"), 0.0)
     }
 
     @Test
@@ -73,7 +99,7 @@ class HomeActivityCostTest {
                 monday.plusDays(1) to ActivityBar(monday.plusDays(1), 1, 93_400.0, 1_000),
             )
 
-        val scaleMaximum = activityScaleMaximum(activityByDay.values, ActivityChartMetric.DISTANCE)
+        val scaleMaximum = activityScaleMaximum(activityByDay.values, ActivityChartMetric.DISTANCE, "EUR")
         val tuesdayFraction = activityByDay.getValue(monday.plusDays(1)).distanceMeters / scaleMaximum
 
         assertEquals(157_700.0, scaleMaximum, 0.0)
@@ -83,6 +109,7 @@ class HomeActivityCostTest {
     private fun refuel(
         day: LocalDate,
         costMinor: Long,
+        currencyCode: String = "EUR",
     ) = Refuel(
         vehicleId = 1,
         timestampEpochMs =
@@ -93,7 +120,7 @@ class HomeActivityCostTest {
                 .toEpochMilli(),
         fuelAmountMilliliters = 30_000,
         totalPriceMinor = costMinor,
-        currencyCode = "EUR",
+        currencyCode = currencyCode,
         odometerMeters = 100_000_000,
     )
 }

@@ -76,7 +76,7 @@ fun WeeklyBarChart(
             verticalAlignment = Alignment.Bottom,
         ) {
             bars.forEachIndexed { index, bar ->
-                val value = bar.valueFor(selectedMetric)
+                val value = bar.valueFor(selectedMetric, currency.currencyCode)
                 val left = (index - 1) * dayStepPx + dragOffsetPx
                 val visibleWidth = (minOf(left + barWidthPx, viewportWidthPx) - maxOf(left, 0f)).coerceAtLeast(0f)
                 val visibleFraction = if (barWidthPx > 0f) visibleWidth / barWidthPx else 0f
@@ -192,6 +192,6 @@ private fun ActivityBar.labelFor(
             NumberFormat
                 .getCurrencyInstance(locale)
                 .apply { this.currency = currency }
-                .format(BigDecimal.valueOf(costMinor, fractionDigits))
+                .format(BigDecimal.valueOf(costMinorByCurrency[currency.currencyCode] ?: 0L, fractionDigits))
         }
     }

@@ -37,6 +37,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
+import java.util.Locale
 
 class HomeViewModel(
     app: Application,
@@ -138,7 +139,13 @@ internal fun addRefuelCosts(
     refuels.forEach { refuel ->
         val day = Instant.ofEpochMilli(refuel.timestampEpochMs).atZone(zone).toLocalDate()
         val existing = result[day] ?: ActivityBar(day, rideCount = 0, distanceMeters = 0.0, durationMillis = 0L)
-        result[day] = existing.copy(costMinor = existing.costMinor + refuel.totalPriceMinor)
+        // Bucketed per currency, never summed across codes — the chart picks the selected
+        // currency's bucket. Uppercased because imported backups may carry lowercase codes
+        // (RideBackupImport matches them case-insensitively).
+        val code = refuel.currencyCode.uppercase(Locale.ROOT)
+        val costs = existing.costMinorByCurrency.toMutableMap()
+        costs[code] = (costs[code] ?: 0L) + refuel.totalPriceMinor
+        result[day] = existing.copy(costMinorByCurrency = costs)
     }
     return result
 }

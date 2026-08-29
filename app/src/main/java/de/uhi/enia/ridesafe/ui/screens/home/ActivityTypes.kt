@@ -16,14 +16,18 @@ val ActivityChartMetric.labelRes: Int
             ActivityChartMetric.COST -> R.string.home_activity_metric_cost
         }
 
-fun ActivityBar.valueFor(metric: ActivityChartMetric): Double =
+fun ActivityBar.valueFor(
+    metric: ActivityChartMetric,
+    currencyCode: String,
+): Double =
     when (metric) {
         ActivityChartMetric.DISTANCE -> distanceMeters
         ActivityChartMetric.TRAVEL_TIME -> durationMillis.toDouble()
-        ActivityChartMetric.COST -> costMinor.toDouble()
+        ActivityChartMetric.COST -> (costMinorByCurrency[currencyCode] ?: 0L).toDouble()
     }
 
 fun activityScaleMaximum(
     activity: Collection<ActivityBar>,
     metric: ActivityChartMetric,
-): Double = (activity.maxOfOrNull { it.valueFor(metric) } ?: 0.0).coerceAtLeast(1.0)
+    currencyCode: String,
+): Double = (activity.maxOfOrNull { it.valueFor(metric, currencyCode) } ?: 0.0).coerceAtLeast(1.0)
