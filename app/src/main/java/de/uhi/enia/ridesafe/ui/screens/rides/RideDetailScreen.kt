@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -76,6 +77,8 @@ fun RideDetailScreen(
     startPlace: SavedAddress?,
     endPlace: SavedAddress?,
     analysisProgress: Float?,
+    refuels: List<RefuelRow>,
+    onOpenRefuel: (Long) -> Unit,
     onBack: () -> Unit,
     showBack: Boolean = true,
     modifier: Modifier = Modifier,
@@ -174,6 +177,36 @@ fun RideDetailScreen(
                 ?: ride.dynamics?.let {
                     SafetyScoreCard(score = null, emptyText = stringResource(R.string.ride_score_unscoreable))
                 }
+
+            if (refuels.isNotEmpty()) {
+                Card(
+                    shape = MaterialTheme.shapes.extraLarge,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                        Text(
+                            text = stringResource(R.string.refuel_associated_section),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        )
+                        refuels.sortedBy { it.refuel.timestampEpochMs }.forEachIndexed { index, row ->
+                            if (index > 0) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
+                            }
+                            RefuelTimelineRow(
+                                row = row,
+                                selectionMode = false,
+                                selected = false,
+                                onClick = { onOpenRefuel(row.refuel.id) },
+                                onLongClick = {},
+                                showVehicle = false,
+                            )
+                        }
+                    }
+                }
+            }
 
             DetailCard(
                 title = stringResource(R.string.ride_detail_section_speed),

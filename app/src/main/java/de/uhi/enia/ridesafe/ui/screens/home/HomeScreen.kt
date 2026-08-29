@@ -21,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -65,14 +64,6 @@ fun HomeScreen(
                         stringResource(R.string.screen_home_title),
                         style = MaterialTheme.typography.headlineMedium,
                     )
-                },
-                actions = {
-                    IconButton(onClick = { }) {
-                        MaterialSymbol(
-                            symbolName = "notifications",
-                            contentDescription = stringResource(R.string.home_notifications),
-                        )
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
             )

@@ -16,6 +16,10 @@ import de.uhi.enia.ridesafe.rides.recording.MotionSensor
 import de.uhi.enia.ridesafe.rides.recording.haversineMeters
 import de.uhi.enia.ridesafe.rides.recording.trackDistanceMeters
 
+const val AXIS_VERSION = 1
+const val EVENTS_VERSION = 10
+const val ENDPOINTS_VERSION = 1
+
 /**
  * GPS processing (ANL-02): store the Kalman-filtered track as an RDP-simplified sidecar and persist
  * the distance/average speed off it. The raw NDJSON file stays the source of truth — this output is
@@ -79,7 +83,7 @@ class ForwardAxisStage(
     config: RideEventConfig = RideEventConfig(),
 ) : RideStage {
     override val id = "axis"
-    override val version = 1
+    override val version = AXIS_VERSION
     override val dependsOn = listOf("route")
 
     private val estimator = ForwardAxisEstimator(config)
@@ -166,7 +170,7 @@ class RideEventStage(
     private val config: RideEventConfig = RideEventConfig(),
 ) : RideStage {
     override val id = "events"
-    override val version = 10
+    override val version = EVENTS_VERSION
     override val dependsOn = listOf("axis")
     override val restorable = true
 
@@ -345,7 +349,7 @@ class RideEndpointStage(
     private val db: RidesafeDatabase,
 ) : RideStage {
     override val id = "endpoints"
-    override val version = 1
+    override val version = ENDPOINTS_VERSION
 
     // Not for its output — the fixes come from the pass driver — but for its version: a filter that
     // behaves differently picks different endpoints.

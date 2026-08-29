@@ -11,7 +11,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object SavedAddressesRoute : NavKey
 
-/** Add a place; [kind] preselects a shortcut (Home/Work/School) or CUSTOM for a free-form place. */
+/** Add a place; [kind] preselects a fixed shortcut or CUSTOM for a free-form place. */
 @Serializable data class AddSavedAddressRoute(
     val kind: String = SavedPlaceKind.CUSTOM.name,
 ) : NavKey
@@ -46,9 +46,11 @@ fun EntryProviderScope<NavKey>.savedAddressEntries(
         )
     }
     entry<AddSavedAddressRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) { key ->
+        val addresses by viewModel.addresses.collectAsState()
         SavedAddressFormScreen(
             existing = null,
             presetKind = SavedPlaceKind.valueOf(key.kind),
+            savedAddresses = addresses,
             onSave = {
                 viewModel.add(it)
                 onBack(key)
@@ -59,10 +61,12 @@ fun EntryProviderScope<NavKey>.savedAddressEntries(
     entry<EditSavedAddressRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = SETTINGS_SCENE)) { key ->
         // Render only once the address has loaded — the form snapshots its initial fields.
         val address by viewModel.address(key.id).collectAsState(initial = null)
+        val addresses by viewModel.addresses.collectAsState()
         address?.let { loaded ->
             SavedAddressFormScreen(
                 existing = loaded,
                 presetKind = loaded.kind,
+                savedAddresses = addresses,
                 onSave = {
                     viewModel.update(it)
                     onBack(key)

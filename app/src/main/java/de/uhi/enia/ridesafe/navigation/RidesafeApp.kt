@@ -26,6 +26,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -201,6 +202,9 @@ fun RidesafeApp() {
 
     // Shared across the rides list/detail screens; Room Flow is the source of truth.
     val ridesViewModel: RidesViewModel = viewModel()
+    // Shared snapshot signal read directly by the Rides screen. Both this counter and the screen's
+    // last-handled value are saveable, so rotation cannot replay an old dismissal.
+    val ridesTabReselections = rememberSaveable { mutableIntStateOf(0) }
 
     // Shared dashboard state sourced from vehicles and rides.
     val homeViewModel: HomeViewModel = viewModel()
@@ -249,8 +253,12 @@ fun RidesafeApp() {
                                 },
                             selected = isSelected,
                             onClick = {
-                                isTabSwitch = true
-                                current = dest
+                                if (isSelected) {
+                                    if (dest == AppDestinations.RIDES) ridesTabReselections.intValue++
+                                } else {
+                                    isTabSwitch = true
+                                    current = dest
+                                }
                             },
                         )
                     }
@@ -314,6 +322,7 @@ fun RidesafeApp() {
                                         viewModel = ridesViewModel,
                                         selectedKey = openRide,
                                         showBack = !twoPane,
+                                        selectionDismissRequests = ridesTabReselections,
                                         onOpen = {
                                             isTabSwitch = false
                                             openFromList(ridesStack, it)

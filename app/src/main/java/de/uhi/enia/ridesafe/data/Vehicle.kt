@@ -2,8 +2,10 @@ package de.uhi.enia.ridesafe.data
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
+import java.util.UUID
 
 /**
  * A vehicle in the user's garage (entity DR-VEH).
@@ -13,7 +15,10 @@ import kotlinx.serialization.Serializable
  * [fuelEconomy] and [tankSize] are optional — blank/null means "not set". The nickname
  * is rendered via [de.uhi.enia.ridesafe.ui.screens.garage.displayTitle].
  */
-@Entity(tableName = "vehicles")
+@Entity(
+    tableName = "vehicles",
+    indices = [Index(value = ["vehicleUuid"], unique = true)],
+)
 data class Vehicle(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String = "",
@@ -29,6 +34,13 @@ data class Vehicle(
     val year: Int? = null,
     val fuelEconomy: Double? = null,
     val tankSize: Double? = null,
+    val vehicleType: String? = null,
+    val engine: String? = null,
+    val manufacturingCountry: String? = null,
+    /** Stable identity used to recognize this vehicle across RideSafe backup generations. */
+    @ColumnInfo(defaultValue = "''") val vehicleUuid: String = UUID.randomUUID().toString(),
+    /** Last user/data update; import conflict resolution never relies on database numeric IDs. */
+    @ColumnInfo(defaultValue = "0") val updatedAtEpochMs: Long = System.currentTimeMillis(),
 )
 
 /**
@@ -43,6 +55,7 @@ data class BtDevice(
 
 /** Stored by [name]; user-facing labels are localized in the UI layer. */
 enum class FuelType {
+    UNSPECIFIED,
     PETROL,
     DIESEL,
     ELECTRIC,

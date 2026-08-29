@@ -1,5 +1,6 @@
 package de.uhi.enia.ridesafe.ui.screens.home
 
+import android.text.format.DateFormat
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -29,12 +30,12 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.uhi.enia.ridesafe.util.formattingLocale
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -189,7 +190,7 @@ fun ScoreBarChart(bars: List<ScoreBar>) {
 @Composable
 fun AllTimeScoreLine(points: List<Pair<LocalDate, Int>>) {
     if (points.isEmpty()) return
-    val locale = LocalLocale.current.platformLocale
+    val locale = formattingLocale()
     val lineColor = MaterialTheme.colorScheme.primary
     val grid = MaterialTheme.colorScheme.surfaceContainerHighest
     val axis = MaterialTheme.colorScheme.outlineVariant
@@ -255,8 +256,8 @@ fun AllTimeScoreLine(points: List<Pair<LocalDate, Int>>) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 // Full year only once it disambiguates: within one calendar year "26.8." cannot be
                 // misread, while a log spanning years needs "26.8.25" to say which August.
-                val pattern = if (points.first().first.year == points.last().first.year) "d.M." else "d.M.yy"
-                val formatter = DateTimeFormatter.ofPattern(pattern, locale)
+                val skeleton = if (points.first().first.year == points.last().first.year) "Md" else "yyMd"
+                val formatter = DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, skeleton), locale)
                 axisFractions(points.size).forEach { f ->
                     Text(
                         text =

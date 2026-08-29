@@ -5,10 +5,14 @@ package de.uhi.enia.ridesafe.ui.screens.garage
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,9 +44,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -63,6 +69,7 @@ fun VehicleDetailScreen(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     showBack: Boolean = true,
+    onChooseImage: (Uri) -> Unit,
     modifier: Modifier = Modifier,
     onLinkBluetooth: (BtDevice) -> Unit = {},
     onUnlinkBluetooth: (String) -> Unit = {},
@@ -71,16 +78,21 @@ fun VehicleDetailScreen(
     val context = LocalContext.current
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
     var showBluetoothPicker by rememberSaveable { mutableStateOf(false) }
+    var showExtendedInformation by rememberSaveable { mutableStateOf(false) }
     val bluetoothPermissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) showBluetoothPicker = true
+        }
+    val imagePicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            if (uri != null) onChooseImage(uri)
         }
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
-                title = { Text(vehicle?.displayTitle() ?: "") },
+                title = { Text(vehicle?.nicknameTitle() ?: "") },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent,
@@ -121,9 +133,14 @@ fun VehicleDetailScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            VehicleHeader(vehicle)
-
-            OdometerCard(value = formatOdometer(vehicle.mileageKm, unitSystem))
+            VehicleHeader(
+                vehicle = vehicle,
+                onChooseImage = {
+                    imagePicker.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                    )
+                },
+            )
 
             DetailCard(
                 title = stringResource(R.string.vehicle_section_overview),
@@ -133,32 +150,61 @@ fun VehicleDetailScreen(
                         stringResource(R.string.vehicle_model) to vehicle.model,
                         stringResource(R.string.vehicle_year) to (vehicle.year?.toString() ?: notSet),
                         stringResource(R.string.vehicle_license_plate) to vehicle.licensePlate,
+                        stringResource(R.string.vehicle_mileage) to formatOdometer(vehicle.mileageKm, unitSystem),
                     ),
             )
 
-            DetailCard(
-                title = stringResource(R.string.vehicle_section_fuel),
-                rows =
-                    listOf(
-                        stringResource(R.string.vehicle_fuel_type) to stringResource(vehicle.fuelType.labelRes()),
-                        stringResource(R.string.vehicle_fuel_economy) to
-                            (vehicle.fuelEconomy?.let { "$it ${stringResource(R.string.unit_fuel_economy)}" } ?: notSet),
-                        stringResource(R.string.vehicle_tank_size) to
-                            (vehicle.tankSize?.let { "$it ${stringResource(R.string.unit_liter)}" } ?: notSet),
-                    ),
-            )
+            OutlinedButton(
+                onClick = { showExtendedInformation = !showExtendedInformation },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = stringResource(R.string.vehicle_extended_information),
+                    modifier = Modifier.weight(1f),
+                )
+                MaterialSymbol(
+                    symbolName = if (showExtendedInformation) "expand_less" else "expand_more",
+                    contentDescription = null,
+                    size = 22.dp,
+                )
+            }
 
-            TrackingCard(
-                devices = vehicle.bluetoothDevices,
-                onLink = {
-                    if (hasBluetoothConnect(context)) {
-                        showBluetoothPicker = true
-                    } else {
-                        bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
-                    }
-                },
-                onRemove = onUnlinkBluetooth,
-            )
+            if (showExtendedInformation) {
+                DetailCard(
+                    title = stringResource(R.string.vehicle_section_fuel),
+                    rows =
+                        listOf(
+                            stringResource(R.string.vehicle_fuel_type) to stringResource(vehicle.fuelType.labelRes()),
+                            stringResource(R.string.vehicle_fuel_economy) to
+                                (vehicle.fuelEconomy?.let { "$it ${stringResource(R.string.unit_fuel_economy)}" } ?: notSet),
+                            stringResource(R.string.vehicle_tank_size) to
+                                (vehicle.tankSize?.let { "$it ${stringResource(R.string.unit_liter)}" } ?: notSet),
+                        ),
+                )
+
+                DetailCard(
+                    title = stringResource(R.string.vehicle_section_information),
+                    rows =
+                        listOf(
+                            stringResource(R.string.vehicle_type) to (vehicle.vehicleType ?: notSet),
+                            stringResource(R.string.vehicle_engine) to (vehicle.engine ?: notSet),
+                            stringResource(R.string.vehicle_manufacturing_country) to
+                                (vehicle.manufacturingCountry ?: notSet),
+                        ),
+                )
+
+                TrackingCard(
+                    devices = vehicle.bluetoothDevices,
+                    onLink = {
+                        if (hasBluetoothConnect(context)) {
+                            showBluetoothPicker = true
+                        } else {
+                            bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                        }
+                    },
+                    onRemove = onUnlinkBluetooth,
+                )
+            }
 
             OutlinedButton(
                 onClick = { showDeleteDialog = true },
@@ -205,83 +251,87 @@ private fun hasBluetoothConnect(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) ==
         PackageManager.PERMISSION_GRANTED
 
-/** Hero identity block: title image, make + model + optional nickname, license plate, primary badge. */
+/** Hero identity block: photo and the vehicle's nickname use the full available width. */
 @Composable
-private fun VehicleHeader(vehicle: Vehicle) {
-    Column(
+private fun VehicleHeader(
+    vehicle: Vehicle,
+    onChooseImage: () -> Unit,
+) {
+    val chooseImageLabel = stringResource(R.string.vehicle_choose_image)
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(20.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        VehicleImage(size = 120.dp, color = MaterialTheme.colorScheme.surfaceContainerHighest)
-        Text(
-            text = vehicle.displayTitle(),
-            style = MaterialTheme.typography.displaySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Card(
-            shape = MaterialTheme.shapes.extraSmall,
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+        Box {
+            VehicleImage(
+                vehicle = vehicle,
+                size = 120.dp,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                modifier = Modifier.clickable(onClickLabel = chooseImageLabel, onClick = onChooseImage),
+            )
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .clip(MaterialTheme.shapes.small)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .clickable(onClickLabel = chooseImageLabel, onClick = onChooseImage)
+                        .padding(7.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                MaterialSymbol(
+                    symbolName = "add_a_photo",
+                    contentDescription = chooseImageLabel,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    size = 20.dp,
+                )
+            }
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = vehicle.licensePlate,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                text = vehicle.makeAndModel(),
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
-        }
-        if (vehicle.isPrimary) {
-            AssistChip(
-                onClick = {},
-                enabled = false,
-                label = { Text(stringResource(R.string.garage_primary)) },
-                leadingIcon = {
-                    MaterialSymbol(symbolName = "favorite", contentDescription = null, fill = true)
-                },
-                colors =
-                    AssistChipDefaults.assistChipColors(
-                        disabledLabelColor = MaterialTheme.colorScheme.onSurface,
-                        disabledLeadingIconContentColor = MaterialTheme.colorScheme.primary,
-                    ),
-            )
-        }
-    }
-}
-
-/** Highlighted hero stat — the odometer is the vehicle's most-watched number. */
-@Composable
-private fun OdometerCard(value: String) {
-    Card(
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            MaterialSymbol(
-                symbolName = "speed",
-                contentDescription = null,
-                size = 32.dp,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-            Spacer(Modifier.width(16.dp))
-            Column {
+            Card(
+                shape = MaterialTheme.shapes.extraSmall,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+            ) {
                 Text(
-                    text = stringResource(R.string.vehicle_mileage),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    text = vehicle.licensePlate,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 )
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+            }
+            if (vehicle.isPrimary) {
+                AssistChip(
+                    onClick = {},
+                    enabled = false,
+                    label = { Text(stringResource(R.string.garage_primary)) },
+                    leadingIcon = {
+                        MaterialSymbol(symbolName = "favorite", contentDescription = null, fill = true)
+                    },
+                    colors =
+                        AssistChipDefaults.assistChipColors(
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurface,
+                            disabledLeadingIconContentColor = MaterialTheme.colorScheme.primary,
+                        ),
                 )
             }
         }
     }
 }
+
+private fun Vehicle.nicknameTitle(): String = name.trim().ifBlank { makeAndModel() }
+
+private fun Vehicle.makeAndModel(): String = "$make $model".trim()
 
 /** Linked Bluetooth devices for auto-tracking (GAR-08): list with remove + a link action. */
 @Composable
@@ -411,6 +461,7 @@ private fun VehicleDetailPreview() {
             onBack = {},
             onEdit = {},
             onDelete = {},
+            onChooseImage = {},
         )
     }
 }
