@@ -112,7 +112,7 @@ private fun popOwn(
  * stack [NavDisplay] renders, so switching tabs preserves each tab's in-tab navigation.
  * NavDisplay supplies the native default transitions and predictive-back animation.
  *
- * Preferences are read where they are used ([UnitPrefs], [AutoTrackPrefs]) rather than passed
+ * Preferences are read where they are used ([AutoTrackPrefs]) rather than passed
  * down; back stacks are hoisted above the display so they persist across
  * every route. The garage flow's [GarageViewModel] is hoisted here too (one app-scoped
  * instance shared by its three screens), since Nav3 has no graph scope.
