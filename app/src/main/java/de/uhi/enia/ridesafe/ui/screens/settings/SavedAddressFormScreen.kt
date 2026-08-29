@@ -200,8 +200,9 @@ fun SavedAddressFormScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onDelete: (() -> Unit)? = null,
-    // The onboarding shows a back arrow here: its onBack retreats a step, not a close.
-    navigationSymbol: String = "close",
+    // Chromeless mode for the onboarding: no app bar (the wizard supplies back/skip chrome),
+    // the save action pinned full-width at the bottom instead; onBack goes unused there.
+    embedded: Boolean = false,
 ) {
     val unitSystem = currentUnitSystem()
     val context = LocalContext.current
@@ -345,25 +346,44 @@ fun SavedAddressFormScreen(
     }
 
     Scaffold(
-        modifier = modifier,
+        // Embedded, the whole form lifts over the keyboard: the pinned save stays reachable and
+        // the field viewport shrinks exactly once — imePadding() consumes the inset, so the
+        // content's own imePadding (still needed without a bottom bar) measures zero inside.
+        modifier = if (embedded) modifier.imePadding() else modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(stringResource(if (existing != null) R.string.saved_address_edit_title else R.string.saved_address_new_title))
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        MaterialSymbol(symbolName = navigationSymbol, contentDescription = stringResource(R.string.action_back))
-                    }
-                },
-                actions = {
-                    Button(modifier = Modifier.padding(end = 8.dp), onClick = ::save, enabled = canSave) {
-                        Text(stringResource(R.string.action_save))
-                    }
-                },
-            )
+            if (!embedded) {
+                TopAppBar(
+                    title = {
+                        Text(stringResource(if (existing != null) R.string.saved_address_edit_title else R.string.saved_address_new_title))
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            MaterialSymbol(symbolName = "close", contentDescription = stringResource(R.string.action_back))
+                        }
+                    },
+                    actions = {
+                        Button(modifier = Modifier.padding(end = 8.dp), onClick = ::save, enabled = canSave) {
+                            Text(stringResource(R.string.action_save))
+                        }
+                    },
+                )
+            }
+        },
+        bottomBar = {
+            if (embedded) {
+                Button(
+                    onClick = ::save,
+                    enabled = canSave,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
+                ) {
+                    Text(stringResource(R.string.action_save))
+                }
+            }
         },
     ) { innerPadding ->
         Column(

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -165,11 +166,11 @@ fun OnboardingGate() {
 
 /**
  * First-launch setup wizard (ONB-01): welcome, then one step per setup flow, every one of them
- * skippable (ONB-07). Steps embed the app's real forms rather than re-implementing them, so
- * whatever is created here is exactly what the matching screen would have created. Backwards
- * navigation is one mechanic worn three ways — the header's arrow, the embedded forms' cancel,
- * and the system back gesture all retreat one step. [onFinished] fires on completing, on
- * skipping out, and on the header's close — finishing is the only exit.
+ * skippable (ONB-07). Steps embed the app's real forms rather than re-implementing them —
+ * chromeless, so the wizard header is the only bar and back exists exactly once (the header's
+ * arrow, mirrored by the system back gesture) — and whatever is created here is exactly what
+ * the matching screen would have created. [onFinished] fires on completing, on skipping out,
+ * and on the header's close — finishing is the only exit.
  */
 @Composable
 fun OnboardingFlow(onFinished: () -> Unit) {
@@ -206,7 +207,13 @@ fun OnboardingFlow(onFinished: () -> Unit) {
     }
 
     Scaffold(containerColor = MaterialTheme.colorScheme.surfaceContainer) { innerPadding ->
-        Column(Modifier.padding(innerPadding).fillMaxSize()) {
+        // Insets are consumed here so the embedded forms' own Scaffolds don't re-apply them.
+        Column(
+            Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+                .fillMaxSize(),
+        ) {
             // The welcome page carries its own start/skip choice; the header would double it.
             if (step != OnboardingStep.WELCOME) {
                 val shown = step
@@ -426,11 +433,12 @@ private fun WelcomePage(
 
 /**
  * ONB-02: create the first car (GAR-02) with the garage's real add form, so the fields, the
- * validation and the primary handling are exactly the Garage tab's. The form's cancel wears a
- * back arrow and retreats a step; skipping forward lives in the header. Coming back after
- * saving re-opens the created car for editing (GAR-03) — a second blank form here would only
- * mint duplicate cars. Renders nothing for the frames the re-opened car takes to load, since
- * the form snapshots its initial fields.
+ * validation and the primary handling are exactly the Garage tab's. The form renders
+ * chromeless — the wizard header is the only bar, and the form's save sits pinned at the
+ * bottom like every other step's primary action; the page's own title stands in for the app
+ * bar's. Coming back after saving re-opens the created car for editing (GAR-03) — a second
+ * blank form here would only mint duplicate cars. Renders nothing for the frames the
+ * re-opened car takes to load, since the form snapshots its initial fields.
  */
 @Composable
 private fun CarPage(
@@ -444,18 +452,38 @@ private fun CarPage(
     }.collectAsState(initial = null)
     if (vehicleId != null && existing == null) return
     Column(Modifier.fillMaxSize()) {
-        Text(
-            text = stringResource(R.string.onboarding_car_intro),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+        StepFormHeader(
+            title =
+                stringResource(
+                    if (existing != null) R.string.garage_edit_vehicle else R.string.garage_add_vehicle,
+                ),
+            body = stringResource(R.string.onboarding_car_intro),
         )
         VehicleFormScreen(
             existing = existing,
             onSave = onSave,
             onBack = onBack,
-            navigationSymbol = "arrow_back",
+            embedded = true,
             modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+/** Title + body atop a form step — the stand-in for the app bar the embedded form dropped. */
+@Composable
+private fun StepFormHeader(
+    title: String,
+    body: String,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
+    ) {
+        Text(text = title, style = MaterialTheme.typography.headlineSmall)
+        Text(
+            text = body,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -594,11 +622,9 @@ private fun PlacePage(
     // Latch against a double-tapped save inserting the place twice.
     var saved by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
-        Text(
-            text = stringResource(R.string.onboarding_place_intro),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+        StepFormHeader(
+            title = stringResource(R.string.saved_address_new_title),
+            body = stringResource(R.string.onboarding_place_intro),
         )
         SavedAddressFormScreen(
             existing = null,
@@ -617,7 +643,7 @@ private fun PlacePage(
                 }
             },
             onBack = onBack,
-            navigationSymbol = "arrow_back",
+            embedded = true,
             modifier = Modifier.weight(1f),
         )
     }

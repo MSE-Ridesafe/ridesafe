@@ -57,8 +57,9 @@ private const val KM_PER_MILE = 1.609344
 /**
  * Add/edit form for a vehicle. [existing] null = add mode (GAR-02); non-null = edit mode
  * (GAR-03), with fields pre-filled and a delete action wired through [onDelete] (GAR-04).
- * [navigationSymbol] lets a host restyle the cancel affordance — the onboarding shows a back
- * arrow, since there [onBack] retreats a step rather than closing a screen.
+ * [embedded] renders the form chromeless for a host that brings its own chrome (the
+ * onboarding): no app bar — so no title, cancel, or duplicate back affordance — and the save
+ * action pinned full-width at the bottom instead; [onBack] goes unused there.
  */
 @Composable
 fun VehicleFormScreen(
@@ -67,7 +68,7 @@ fun VehicleFormScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onDelete: (() -> Unit)? = null,
-    navigationSymbol: String = "close",
+    embedded: Boolean = false,
 ) {
     val unitSystem = currentUnitSystem()
     val metric = usesMetric(unitSystem)
@@ -123,31 +124,50 @@ fun VehicleFormScreen(
     }
 
     Scaffold(
-        modifier = modifier,
+        // Embedded, the whole form lifts over the keyboard: the pinned save stays reachable and
+        // the field viewport shrinks exactly once — imePadding() consumes the inset, so the
+        // content's own imePadding (still needed without a bottom bar) measures zero inside.
+        modifier = if (embedded) modifier.imePadding() else modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(stringResource(if (editing) R.string.garage_edit_vehicle else R.string.garage_add_vehicle))
-                },
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        MaterialSymbol(
-                            symbolName = navigationSymbol,
-                            contentDescription = stringResource(R.string.action_back),
-                        )
-                    }
-                },
-                actions = {
-                    Button(modifier = Modifier.padding(end = 8.dp), onClick = ::save, enabled = canSave) {
-                        Text(stringResource(R.string.action_save))
-                    }
-                },
-            )
+            if (!embedded) {
+                TopAppBar(
+                    title = {
+                        Text(stringResource(if (editing) R.string.garage_edit_vehicle else R.string.garage_add_vehicle))
+                    },
+                    colors =
+                        TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        ),
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            MaterialSymbol(
+                                symbolName = "close",
+                                contentDescription = stringResource(R.string.action_back),
+                            )
+                        }
+                    },
+                    actions = {
+                        Button(modifier = Modifier.padding(end = 8.dp), onClick = ::save, enabled = canSave) {
+                            Text(stringResource(R.string.action_save))
+                        }
+                    },
+                )
+            }
+        },
+        bottomBar = {
+            if (embedded) {
+                Button(
+                    onClick = ::save,
+                    enabled = canSave,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
+                ) {
+                    Text(stringResource(R.string.action_save))
+                }
+            }
         },
     ) { innerPadding ->
         Column(
