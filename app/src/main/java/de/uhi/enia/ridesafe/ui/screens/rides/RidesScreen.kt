@@ -76,7 +76,6 @@ import de.uhi.enia.ridesafe.ui.components.ListGroupItem
 import de.uhi.enia.ridesafe.ui.components.ListGroupItemGap
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.RECORDING_BAR_INSET
-import de.uhi.enia.ridesafe.util.currentCurrencySetting
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDayHeader
 import de.uhi.enia.ridesafe.util.formatDistance
@@ -997,7 +996,7 @@ internal fun RefuelTimelineRow(
     // Regional conventions, not the in-app language's likely region (SET-07).
     val locale = formattingLocale()
     val refuel = row.refuel
-    val currency = currentCurrencySetting().currency
+    val currency = refuelCurrency(refuel.currencyCode, locale)
     val fractionDigits = currency.defaultFractionDigits.takeIf { it >= 0 } ?: 2
     val total = java.math.BigDecimal.valueOf(refuel.totalPriceMinor, fractionDigits)
     val currencyFormat = NumberFormat.getCurrencyInstance(locale).apply { this.currency = currency }

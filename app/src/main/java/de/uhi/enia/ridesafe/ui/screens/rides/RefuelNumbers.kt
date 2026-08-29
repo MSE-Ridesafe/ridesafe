@@ -56,6 +56,12 @@ fun pricePerLiter(
 
 fun defaultCurrency(locale: Locale): Currency = runCatching { Currency.getInstance(locale) }.getOrElse { Currency.getInstance("EUR") }
 
+/** The currency a refuel row was recorded in; an unknown stored code falls back to the locale default. */
+fun refuelCurrency(
+    currencyCode: String,
+    locale: Locale,
+): Currency = runCatching { Currency.getInstance(currencyCode) }.getOrElse { defaultCurrency(locale) }
+
 /** Editable plain decimal text using the locale's decimal mark and no grouping separators. */
 fun formatRefuelInput(
     value: BigDecimal,
@@ -102,7 +108,7 @@ fun refuelFormInitialValues(
     locale: Locale,
     zoneId: ZoneId = ZoneId.systemDefault(),
 ): RefuelFormInitialValues {
-    val currency = runCatching { Currency.getInstance(refuel.currencyCode) }.getOrElse { defaultCurrency(locale) }
+    val currency = refuelCurrency(refuel.currencyCode, locale)
     val fractionDigits = currency.defaultFractionDigits.takeIf { it >= 0 } ?: 2
     val dateTime = Instant.ofEpochMilli(refuel.timestampEpochMs).atZone(zoneId)
     return RefuelFormInitialValues(
