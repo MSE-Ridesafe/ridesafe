@@ -63,15 +63,14 @@ fun EntryProviderScope<NavKey>.settingsEntries(
     ) {
         ListPaneFocusSink {
             SettingsScreen(
+                selected = selected,
                 onOpenLanguage = { onOpen(SettingsLanguageRoute) },
                 onOpenTheme = { onOpen(SettingsThemeRoute) },
                 onOpenUnits = { onOpen(SettingsUnitsRoute) },
                 onOpenAutoTrack = { onOpen(SettingsAutoTrackRoute) },
                 onOpenReconnectGrace = { onOpen(SettingsReconnectGraceRoute) },
                 onOpenMinRideLength = { onOpen(SettingsMinRideLengthRoute) },
-                onOpenSavedAddresses = { onOpen(SavedAddressesRoute) },
-                selected = selected,
-            )
+            ) { onOpen(SavedAddressesRoute) }
         }
     }
     savedAddressEntries(

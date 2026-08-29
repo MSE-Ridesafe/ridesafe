@@ -70,8 +70,8 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     // The sub-screen currently in the detail pane, so the menu can mark the row it belongs to.
     // Null on a phone, where the sub-screen covers the menu instead of sitting beside it.
-    selected: NavKey? = null,
     modifier: Modifier = Modifier,
+    selected: NavKey? = null,
     onOpenLanguage: () -> Unit,
     onOpenTheme: () -> Unit,
     onOpenUnits: () -> Unit,
@@ -191,9 +191,9 @@ fun SettingsScreen(
 
 @Composable
 fun LanguageSettingsScreen(
+    modifier: Modifier = Modifier,
     onBack: () -> Unit,
     showBack: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -214,37 +214,38 @@ fun LanguageSettingsScreen(
         )
 
     SettingsSelectionScreen(
+        modifier = modifier,
         title = stringResource(R.string.settings_language_title),
         description = stringResource(R.string.settings_language_detail_description),
         onBack = onBack,
         showBack = showBack,
-        modifier = modifier,
-    ) {
-        options.forEach { (tag, labelRes) ->
-            SelectableSettingRow(
-                title = stringResource(labelRes),
-                selected = tag == currentLang,
-                onClick = {
-                    val locales =
-                        if (tag == "system") {
-                            LocaleList.getEmptyLocaleList()
-                        } else {
-                            LocaleList.forLanguageTags(tag)
+        {
+            options.forEach { (tag, labelRes) ->
+                SelectableSettingRow(
+                    title = stringResource(labelRes),
+                    selected = tag == currentLang,
+                    onClick = {
+                        val locales =
+                            if (tag == "system") {
+                                LocaleList.getEmptyLocaleList()
+                            } else {
+                                LocaleList.forLanguageTags(tag)
+                            }
+                        scope.launch {
+                            SettingsFade.applyAcrossRestart { localeManager.applicationLocales = locales }
                         }
-                    scope.launch {
-                        SettingsFade.applyAcrossRestart { localeManager.applicationLocales = locales }
-                    }
-                },
-            )
-        }
-    }
+                    },
+                )
+            }
+        },
+    )
 }
 
 @Composable
 fun ThemeSettingsScreen(
+    modifier: Modifier = Modifier,
     onBack: () -> Unit,
     showBack: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -257,29 +258,30 @@ fun ThemeSettingsScreen(
         )
 
     SettingsSelectionScreen(
+        modifier = modifier,
         title = stringResource(R.string.settings_theme_title),
         description = stringResource(R.string.settings_theme_detail_description),
         onBack = onBack,
         showBack = showBack,
-        modifier = modifier,
-    ) {
-        options.forEach { (option, labelRes) ->
-            SelectableSettingRow(
-                title = stringResource(labelRes),
-                selected = option == theme,
-                onClick = {
-                    scope.launch { SettingsFade.applyWhileHidden { ThemePrefs.set(context, option) } }
-                },
-            )
-        }
-    }
+        {
+            options.forEach { (option, labelRes) ->
+                SelectableSettingRow(
+                    title = stringResource(labelRes),
+                    selected = option == theme,
+                    onClick = {
+                        scope.launch { SettingsFade.applyWhileHidden { ThemePrefs.set(context, option) } }
+                    },
+                )
+            }
+        },
+    )
 }
 
 @Composable
 fun UnitSettingsScreen(
+    modifier: Modifier = Modifier,
     onBack: () -> Unit,
     showBack: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -292,29 +294,30 @@ fun UnitSettingsScreen(
         )
 
     SettingsSelectionScreen(
+        modifier = modifier,
         title = stringResource(R.string.settings_units_title),
         description = stringResource(R.string.settings_units_detail_description),
         onBack = onBack,
         showBack = showBack,
-        modifier = modifier,
-    ) {
-        options.forEach { (option, labelRes) ->
-            SelectableSettingRow(
-                title = stringResource(labelRes),
-                selected = option == unitSystem,
-                onClick = {
-                    scope.launch { SettingsFade.applyWhileHidden { UnitPrefs.set(context, option) } }
-                },
-            )
-        }
-    }
+        {
+            options.forEach { (option, labelRes) ->
+                SelectableSettingRow(
+                    title = stringResource(labelRes),
+                    selected = option == unitSystem,
+                    onClick = {
+                        scope.launch { SettingsFade.applyWhileHidden { UnitPrefs.set(context, option) } }
+                    },
+                )
+            }
+        },
+    )
 }
 
 @Composable
 fun AutoTrackSettingsScreen(
+    modifier: Modifier = Modifier,
     onBack: () -> Unit,
     showBack: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     // Turning a mode on is where its permissions are first asked for (NFR-05). The mode is
@@ -335,85 +338,88 @@ fun AutoTrackSettingsScreen(
         )
 
     SettingsSelectionScreen(
+        modifier = modifier,
         title = stringResource(R.string.settings_auto_track_title),
         description = stringResource(R.string.settings_auto_track_detail_description),
         onBack = onBack,
         showBack = showBack,
-        modifier = modifier,
-    ) {
-        options.forEach { (option, labelRes) ->
-            SelectableSettingRow(
-                title = stringResource(labelRes),
-                selected = option == autoTrackMode,
-                onClick = {
-                    applyAutoTrackMode(context, option)
-                    val request = bundleRequest(missingPermissionsFor(context, option))
-                    if (request.isNotEmpty()) permissionLauncher.launch(request)
-                },
-            )
-        }
-    }
+        {
+            options.forEach { (option, labelRes) ->
+                SelectableSettingRow(
+                    title = stringResource(labelRes),
+                    selected = option == autoTrackMode,
+                    onClick = {
+                        applyAutoTrackMode(context, option)
+                        val request = bundleRequest(missingPermissionsFor(context, option))
+                        if (request.isNotEmpty()) permissionLauncher.launch(request)
+                    },
+                )
+            }
+        },
+    )
 }
 
 @Composable
 fun ReconnectGraceSettingsScreen(
+    modifier: Modifier = Modifier,
     onBack: () -> Unit,
     showBack: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val grace = ReconnectGracePrefs.get(context)
 
     SettingsSelectionScreen(
+        modifier = modifier,
         title = stringResource(R.string.settings_reconnect_grace_title),
         description = stringResource(R.string.settings_reconnect_grace_detail_description),
         onBack = onBack,
         showBack = showBack,
-        modifier = modifier,
-    ) {
-        ReconnectGrace.entries.forEach { option ->
-            SelectableSettingRow(
-                title = stringResource(reconnectGraceLabelRes(option)),
-                selected = option == grace,
-                onClick = { ReconnectGracePrefs.set(context, option) },
-            )
-        }
-    }
+        {
+            ReconnectGrace.entries.forEach { option ->
+                SelectableSettingRow(
+                    title = stringResource(reconnectGraceLabelRes(option)),
+                    selected = option == grace,
+                    onClick = { ReconnectGracePrefs.set(context, option) },
+                )
+            }
+        },
+    )
 }
 
 @Composable
 fun MinRideLengthSettingsScreen(
+    modifier: Modifier = Modifier,
     onBack: () -> Unit,
     showBack: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val minRideLength = MinRideLengthPrefs.get(context)
 
     SettingsSelectionScreen(
+        modifier = modifier,
         title = stringResource(R.string.settings_min_ride_length_title),
         description = stringResource(R.string.settings_min_ride_length_detail_description),
         onBack = onBack,
         showBack = showBack,
-        modifier = modifier,
-    ) {
-        MinRideLength.entries.forEach { option ->
-            SelectableSettingRow(
-                title = stringResource(minRideLengthLabelRes(option)),
-                selected = option == minRideLength,
-                onClick = { MinRideLengthPrefs.set(context, option) },
-            )
-        }
-    }
+        {
+            MinRideLength.entries.forEach { option ->
+                SelectableSettingRow(
+                    title = stringResource(minRideLengthLabelRes(option)),
+                    selected = option == minRideLength,
+                    onClick = { MinRideLengthPrefs.set(context, option) },
+                )
+            }
+        },
+    )
 }
 
 @Composable
 private fun SettingsSelectionScreen(
+    modifier: Modifier = Modifier,
     title: String,
     description: String,
     onBack: () -> Unit,
     showBack: Boolean = true,
-    modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Scaffold(
