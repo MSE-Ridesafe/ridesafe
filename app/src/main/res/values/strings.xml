@@ -492,4 +492,5 @@
     <string name="onboarding_autotrack_title">Record rides automatically</string>
     <string name="onboarding_autotrack_body">With automatic recording on, a ride starts when your linked device connects and ends when you park — no taps needed. It requires a few permissions, which appear below once enabled. You can change all of this in Settings later.</string>
     <string name="onboarding_autotrack_toggle">Enable automatic recording</string>
+    <string name="onboarding_place_intro">Name the places you park — rides then show \"Home\" or \"Work\" instead of a street address. Start with your home.</string>
 </resources>

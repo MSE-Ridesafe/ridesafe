@@ -492,4 +492,5 @@
     <string name="onboarding_autotrack_title">Fahrten automatisch aufzeichnen</string>
     <string name="onboarding_autotrack_body">Mit automatischer Aufzeichnung beginnt eine Fahrt, sobald sich dein verknüpftes Gerät verbindet, und endet, wenn du parkst — ganz ohne Tippen. Dafür sind einige Berechtigungen nötig, die nach dem Aktivieren unten erscheinen. Alles davon lässt sich später in den Einstellungen ändern.</string>
     <string name="onboarding_autotrack_toggle">Automatische Aufzeichnung aktivieren</string>
+    <string name="onboarding_place_intro">Benenne die Orte, an denen du parkst — Fahrten zeigen dann \"Zuhause\" oder \"Arbeit\" statt einer Straßenadresse. Beginne mit deinem Zuhause.</string>
 </resources>

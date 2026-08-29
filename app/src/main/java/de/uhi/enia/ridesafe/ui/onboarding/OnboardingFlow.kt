@@ -56,8 +56,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.viewmodel.compose.viewModel
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
+import de.uhi.enia.ridesafe.data.SavedPlaceKind
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.VehicleDao
 import de.uhi.enia.ridesafe.navigation.RidesafeApp
@@ -72,6 +74,8 @@ import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.screens.garage.BluetoothPickerDialog
 import de.uhi.enia.ridesafe.ui.screens.garage.TrackingCard
 import de.uhi.enia.ridesafe.ui.screens.garage.VehicleFormScreen
+import de.uhi.enia.ridesafe.ui.screens.settings.SavedAddressFormScreen
+import de.uhi.enia.ridesafe.ui.screens.settings.SavedAddressViewModel
 import de.uhi.enia.ridesafe.ui.theme.RidesafeTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -88,6 +92,7 @@ enum class OnboardingStep {
     CAR,
     BLUETOOTH,
     AUTO_TRACK,
+    PLACE,
 }
 
 /** The steps that act on the created car, and so drop out when the car step was skipped. */
@@ -227,6 +232,12 @@ fun OnboardingFlow(onFinished: () -> Unit) {
                         )
 
                     OnboardingStep.AUTO_TRACK -> AutoTrackPage(onContinue = ::advance)
+
+                    OnboardingStep.PLACE ->
+                        PlacePage(
+                            onSaved = ::advance,
+                            onSkip = ::advance,
+                        )
                 }
             }
         }
@@ -501,6 +512,45 @@ private fun AutoTrackPage(onContinue: () -> Unit) {
         // Renders only while something is missing, so granting everything clears the page down
         // to its switch — the built-in "you're done" signal.
         PermissionAlertCard()
+    }
+}
+
+/**
+ * ONB-05: save a first place (ADR-01/05) with the real address editor, preset to the Home
+ * shortcut — or to a custom place on a replay where Home already exists (each shortcut is a
+ * singleton). Saving goes through [SavedAddressViewModel] so rides are re-matched (ADR-07),
+ * which matters when replaying with a logbook.
+ */
+@Composable
+private fun PlacePage(
+    onSaved: () -> Unit,
+    onSkip: () -> Unit,
+) {
+    val viewModel: SavedAddressViewModel = viewModel()
+    val addresses by viewModel.addresses.collectAsState()
+    Column(Modifier.fillMaxSize()) {
+        Text(
+            text = stringResource(R.string.onboarding_place_intro),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+        )
+        SavedAddressFormScreen(
+            existing = null,
+            presetKind =
+                if (addresses.none { it.kind == SavedPlaceKind.HOME }) {
+                    SavedPlaceKind.HOME
+                } else {
+                    SavedPlaceKind.CUSTOM
+                },
+            savedAddresses = addresses,
+            onSave = {
+                viewModel.add(it)
+                onSaved()
+            },
+            onBack = onSkip,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
