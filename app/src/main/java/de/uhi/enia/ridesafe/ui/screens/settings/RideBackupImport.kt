@@ -69,37 +69,32 @@ private data class EntityImportMapping(
     val insertedArchiveIds: Set<Long>,
 )
 
-internal fun interface ImportFilePublisher {
-    suspend fun publish(
-        source: File,
-        destination: File,
-    )
-}
-
-private val atomicImportFilePublisher =
-    ImportFilePublisher { source, destination ->
-        destination.parentFile?.mkdirs()
-        require(!destination.exists()) { "Import destination already exists: ${destination.name}" }
-        val temporary = File(destination.parentFile, ".ridesafe_import_${UUID.randomUUID()}.tmp")
-        try {
-            FileOutputStream(temporary).use { output ->
-                source.inputStream().buffered().use { input -> copyCancellable(input, output) }
-                output.fd.sync()
-            }
-            Files.move(
-                temporary.toPath(),
-                destination.toPath(),
-                StandardCopyOption.ATOMIC_MOVE,
-            )
-        } finally {
-            if (temporary.exists()) temporary.delete()
+/** Copy-then-atomic-rename, so a cancelled or crashed import never leaves a half-written file. */
+private suspend fun publishImportFile(
+    source: File,
+    destination: File,
+) {
+    destination.parentFile?.mkdirs()
+    require(!destination.exists()) { "Import destination already exists: ${destination.name}" }
+    val temporary = File(destination.parentFile, ".ridesafe_import_${UUID.randomUUID()}.tmp")
+    try {
+        FileOutputStream(temporary).use { output ->
+            source.inputStream().buffered().use { input -> copyCancellable(input, output) }
+            output.fd.sync()
         }
+        Files.move(
+            temporary.toPath(),
+            destination.toPath(),
+            StandardCopyOption.ATOMIC_MOVE,
+        )
+    } finally {
+        if (temporary.exists()) temporary.delete()
     }
+}
 
 internal class RideBackupImporter(
     private val app: Application,
     private val db: RidesafeDatabase = RidesafeDatabase.getInstance(app),
-    private val filePublisher: ImportFilePublisher = atomicImportFilePublisher,
 ) {
     suspend fun inspect(uri: Uri): RideBackupImportPreview =
         withLocalArchive(uri) { archive ->
@@ -405,7 +400,7 @@ internal class RideBackupImporter(
         destination: File,
         published: MutableList<File>,
     ) {
-        filePublisher.publish(source, destination)
+        publishImportFile(source, destination)
         published += destination
     }
 
