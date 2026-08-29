@@ -16,11 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -43,6 +40,8 @@ import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
 import de.uhi.enia.ridesafe.data.fixedIcon
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
+import de.uhi.enia.ridesafe.ui.components.ListGroupItem
+import de.uhi.enia.ridesafe.ui.components.ListGroupItemGap
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 
 /** The singleton shortcut kinds, in display order. */
@@ -143,16 +142,9 @@ fun SavedAddressesScreen(
                 item { EmptySavedAddresses() }
             } else {
                 item {
-                    Card(
-                        shape = MaterialTheme.shapes.extraLarge,
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column {
-                            addresses.forEachIndexed { index, address ->
-                                if (index > 0) {
-                                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-                                }
+                    Column(verticalArrangement = Arrangement.spacedBy(ListGroupItemGap)) {
+                        addresses.forEachIndexed { index, address ->
+                            ListGroupItem(index = index, count = addresses.size) {
                                 SavedAddressRow(address = address, onClick = { onEdit(address.id) })
                             }
                         }

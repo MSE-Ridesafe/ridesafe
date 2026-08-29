@@ -22,10 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -58,6 +55,9 @@ import de.uhi.enia.ridesafe.rides.recording.ReconnectGracePrefs
 import de.uhi.enia.ridesafe.rides.trigger.AutoTrackMode
 import de.uhi.enia.ridesafe.rides.trigger.AutoTrackPrefs
 import de.uhi.enia.ridesafe.rides.trigger.applyAutoTrackMode
+import de.uhi.enia.ridesafe.ui.components.ListGroupItem
+import de.uhi.enia.ridesafe.ui.components.ListGroupItemGap
+import de.uhi.enia.ridesafe.ui.components.ListItemGroup
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.onboarding.OnboardingPrefs
 import de.uhi.enia.ridesafe.ui.theme.ThemePrefs
@@ -122,112 +122,127 @@ fun SettingsScreen(
                 SettingsCategoryHeader(text = stringResource(R.string.settings_category_preferences))
             }
             item {
-                SettingsGroupCard {
-                    SettingsListItem(
-                        iconName = "language",
-                        title = stringResource(R.string.settings_language_title),
-                        subtitle = currentLanguageLabel(),
-                        isOpen = selected == SettingsLanguageRoute,
-                        onClick = onOpenLanguage,
-                    )
-                    SettingsDivider()
-                    SettingsListItem(
-                        iconName = "straighten",
-                        title = stringResource(R.string.settings_units_title),
-                        subtitle = unitSystemLabel(unitSystem),
-                        isOpen = selected == SettingsUnitsRoute,
-                        onClick = onOpenUnits,
-                    )
-                    SettingsDivider()
-                    SettingsListItem(
-                        iconName = "payments",
-                        title = stringResource(R.string.settings_currency_title),
-                        subtitle = currencyLabel(currency),
-                        isOpen = selected == SettingsCurrencyRoute,
-                        onClick = onOpenCurrency,
-                    )
-                    SettingsDivider()
-                    SettingsListItem(
-                        iconName = "dark_mode",
-                        title = stringResource(R.string.settings_theme_title),
-                        subtitle = themeSettingLabel(ThemePrefs.get(context)),
-                        isOpen = selected == SettingsThemeRoute,
-                        onClick = onOpenTheme,
-                    )
-                }
+                ListItemGroup(
+                    {
+                        SettingsListItem(
+                            iconName = "language",
+                            title = stringResource(R.string.settings_language_title),
+                            subtitle = currentLanguageLabel(),
+                            isOpen = selected == SettingsLanguageRoute,
+                            onClick = onOpenLanguage,
+                        )
+                    },
+                    {
+                        SettingsListItem(
+                            iconName = "straighten",
+                            title = stringResource(R.string.settings_units_title),
+                            subtitle = unitSystemLabel(unitSystem),
+                            isOpen = selected == SettingsUnitsRoute,
+                            onClick = onOpenUnits,
+                        )
+                    },
+                    {
+                        SettingsListItem(
+                            iconName = "payments",
+                            title = stringResource(R.string.settings_currency_title),
+                            subtitle = currencyLabel(currency),
+                            isOpen = selected == SettingsCurrencyRoute,
+                            onClick = onOpenCurrency,
+                        )
+                    },
+                    {
+                        SettingsListItem(
+                            iconName = "dark_mode",
+                            title = stringResource(R.string.settings_theme_title),
+                            subtitle = themeSettingLabel(ThemePrefs.get(context)),
+                            isOpen = selected == SettingsThemeRoute,
+                            onClick = onOpenTheme,
+                        )
+                    },
+                )
             }
             item {
                 SettingsCategoryHeader(text = stringResource(R.string.settings_category_places))
             }
             item {
-                SettingsGroupCard {
-                    SettingsListItem(
-                        iconName = "location_on",
-                        title = stringResource(R.string.settings_saved_addresses_title),
-                        subtitle = stringResource(R.string.settings_saved_addresses_summary),
-                        isOpen = selected == SavedAddressesRoute,
-                        onClick = onOpenSavedAddresses,
-                    )
-                }
+                ListItemGroup(
+                    {
+                        SettingsListItem(
+                            iconName = "location_on",
+                            title = stringResource(R.string.settings_saved_addresses_title),
+                            subtitle = stringResource(R.string.settings_saved_addresses_summary),
+                            isOpen = selected == SavedAddressesRoute,
+                            onClick = onOpenSavedAddresses,
+                        )
+                    },
+                )
             }
             item {
                 SettingsCategoryHeader(text = stringResource(R.string.settings_category_ride_recording))
             }
             item {
-                SettingsGroupCard {
-                    SettingsListItem(
-                        iconName = "route",
-                        title = stringResource(R.string.settings_auto_track_title),
-                        subtitle = autoTrackModeLabel(autoTrackMode),
-                        isOpen = selected == SettingsAutoTrackRoute,
-                        onClick = onOpenAutoTrack,
-                    )
-                    SettingsDivider()
-                    SettingsListItem(
-                        iconName = "bluetooth_searching",
-                        title = stringResource(R.string.settings_reconnect_grace_title),
-                        subtitle = stringResource(reconnectGraceLabelRes(reconnectGrace)),
-                        isOpen = selected == SettingsReconnectGraceRoute,
-                        onClick = onOpenReconnectGrace,
-                    )
-                    SettingsDivider()
-                    SettingsListItem(
-                        iconName = "timer",
-                        title = stringResource(R.string.settings_min_ride_length_title),
-                        subtitle = stringResource(minRideLengthLabelRes(minRideLength)),
-                        isOpen = selected == SettingsMinRideLengthRoute,
-                        onClick = onOpenMinRideLength,
-                    )
-                }
+                ListItemGroup(
+                    {
+                        SettingsListItem(
+                            iconName = "route",
+                            title = stringResource(R.string.settings_auto_track_title),
+                            subtitle = autoTrackModeLabel(autoTrackMode),
+                            isOpen = selected == SettingsAutoTrackRoute,
+                            onClick = onOpenAutoTrack,
+                        )
+                    },
+                    {
+                        SettingsListItem(
+                            iconName = "bluetooth_searching",
+                            title = stringResource(R.string.settings_reconnect_grace_title),
+                            subtitle = stringResource(reconnectGraceLabelRes(reconnectGrace)),
+                            isOpen = selected == SettingsReconnectGraceRoute,
+                            onClick = onOpenReconnectGrace,
+                        )
+                    },
+                    {
+                        SettingsListItem(
+                            iconName = "timer",
+                            title = stringResource(R.string.settings_min_ride_length_title),
+                            subtitle = stringResource(minRideLengthLabelRes(minRideLength)),
+                            isOpen = selected == SettingsMinRideLengthRoute,
+                            onClick = onOpenMinRideLength,
+                        )
+                    },
+                )
             }
             item {
                 SettingsCategoryHeader(text = stringResource(R.string.settings_category_backup_restore))
             }
             item {
-                SettingsGroupCard {
-                    SettingsListItem(
-                        iconName = "settings_backup_restore",
-                        title = stringResource(R.string.settings_backup_import_title),
-                        subtitle = stringResource(R.string.settings_backup_import_summary),
-                        isOpen = selected == SettingsBackupImportRoute,
-                        onClick = onOpenBackupImport,
-                    )
-                }
+                ListItemGroup(
+                    {
+                        SettingsListItem(
+                            iconName = "settings_backup_restore",
+                            title = stringResource(R.string.settings_backup_import_title),
+                            subtitle = stringResource(R.string.settings_backup_import_summary),
+                            isOpen = selected == SettingsBackupImportRoute,
+                            onClick = onOpenBackupImport,
+                        )
+                    },
+                )
             }
             item {
                 SettingsCategoryHeader(text = stringResource(R.string.settings_category_help))
             }
             item {
-                SettingsGroupCard {
-                    // An action, not a sub-screen: the wizard replaces the whole app UI (ONB-07).
-                    SettingsListItem(
-                        iconName = "school",
-                        title = stringResource(R.string.settings_onboarding_replay_title),
-                        subtitle = stringResource(R.string.settings_onboarding_replay_summary),
-                        isOpen = false,
-                        onClick = { OnboardingPrefs.replayRequested = true },
-                    )
-                }
+                ListItemGroup(
+                    {
+                        // An action, not a sub-screen: the wizard replaces the whole app UI (ONB-07).
+                        SettingsListItem(
+                            iconName = "school",
+                            title = stringResource(R.string.settings_onboarding_replay_title),
+                            subtitle = stringResource(R.string.settings_onboarding_replay_summary),
+                            isOpen = false,
+                            onClick = { OnboardingPrefs.replayRequested = true },
+                        )
+                    },
+                )
             }
         }
     }
@@ -264,8 +279,10 @@ fun LanguageSettingsScreen(
         onBack = onBack,
         showBack = showBack,
     ) {
-        options.forEach { (tag, labelRes) ->
+        options.forEachIndexed { index, (tag, labelRes) ->
             SelectableSettingRow(
+                index = index,
+                count = options.size,
                 title = stringResource(labelRes),
                 selected = tag == currentLang,
                 onClick = {
@@ -307,8 +324,10 @@ fun ThemeSettingsScreen(
         onBack = onBack,
         showBack = showBack,
         {
-            options.forEach { (option, labelRes) ->
+            options.forEachIndexed { index, (option, labelRes) ->
                 SelectableSettingRow(
+                    index = index,
+                    count = options.size,
                     title = stringResource(labelRes),
                     selected = option == theme,
                     onClick = {
@@ -343,8 +362,10 @@ fun UnitSettingsScreen(
         onBack = onBack,
         showBack = showBack,
     ) {
-        options.forEach { (option, labelRes) ->
+        options.forEachIndexed { index, (option, labelRes) ->
             SelectableSettingRow(
+                index = index,
+                count = options.size,
                 title = stringResource(labelRes),
                 selected = option == unitSystem,
                 onClick = {
@@ -379,8 +400,10 @@ fun CurrencySettingsScreen(
         showBack = showBack,
         modifier = modifier,
     ) {
-        options.forEach { (option, labelRes) ->
+        options.forEachIndexed { index, (option, labelRes) ->
             SelectableSettingRow(
+                index = index,
+                count = options.size,
                 title = stringResource(labelRes),
                 selected = option == selectedCurrency,
                 onClick = {
@@ -422,8 +445,10 @@ fun AutoTrackSettingsScreen(
         onBack = onBack,
         showBack = showBack,
     ) {
-        options.forEach { (option, labelRes) ->
+        options.forEachIndexed { index, (option, labelRes) ->
             SelectableSettingRow(
+                index = index,
+                count = options.size,
                 title = stringResource(labelRes),
                 selected = option == autoTrackMode,
                 onClick = {
@@ -452,8 +477,10 @@ fun ReconnectGraceSettingsScreen(
         onBack = onBack,
         showBack = showBack,
     ) {
-        ReconnectGrace.entries.forEach { option ->
+        ReconnectGrace.entries.forEachIndexed { index, option ->
             SelectableSettingRow(
+                index = index,
+                count = ReconnectGrace.entries.size,
                 title = stringResource(reconnectGraceLabelRes(option)),
                 selected = option == grace,
                 onClick = { ReconnectGracePrefs.set(context, option) },
@@ -478,8 +505,10 @@ fun MinRideLengthSettingsScreen(
         onBack = onBack,
         showBack = showBack,
     ) {
-        MinRideLength.entries.forEach { option ->
+        MinRideLength.entries.forEachIndexed { index, option ->
             SelectableSettingRow(
+                index = index,
+                count = MinRideLength.entries.size,
                 title = stringResource(minRideLengthLabelRes(option)),
                 selected = option == minRideLength,
                 onClick = { MinRideLengthPrefs.set(context, option) },
@@ -540,7 +569,11 @@ private fun SettingsSelectionScreen(
                 )
             }
             item {
-                Column(content = content)
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(ListGroupItemGap),
+                    content = content,
+                )
             }
         }
     }
@@ -596,43 +629,36 @@ private fun SettingsListItem(
 }
 
 @Composable
-private fun SettingsGroupCard(content: @Composable ColumnScope.() -> Unit) {
-    Card(
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(content = content)
-    }
-}
-
-@Composable
 private fun SelectableSettingRow(
+    index: Int,
+    count: Int,
     title: String,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    ListItem(
-        modifier =
-            Modifier.selectable(
-                selected = selected,
-                role = Role.RadioButton,
-                onClick = onClick,
-            ),
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        headlineContent = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-            )
-        },
-        trailingContent = {
-            RadioButton(
-                selected = selected,
-                onClick = null,
-            )
-        },
-    )
+    ListGroupItem(index = index, count = count) {
+        ListItem(
+            modifier =
+                Modifier.selectable(
+                    selected = selected,
+                    role = Role.RadioButton,
+                    onClick = onClick,
+                ),
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            headlineContent = {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
+            trailingContent = {
+                RadioButton(
+                    selected = selected,
+                    onClick = null,
+                )
+            },
+        )
+    }
 }
 
 @Composable
@@ -642,14 +668,6 @@ private fun SettingsCategoryHeader(text: String) {
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(start = 8.dp, top = 24.dp, end = 8.dp, bottom = 8.dp),
-    )
-}
-
-@Composable
-private fun SettingsDivider() {
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 80.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
     )
 }
 
