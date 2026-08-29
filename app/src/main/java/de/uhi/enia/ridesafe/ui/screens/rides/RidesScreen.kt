@@ -106,6 +106,8 @@ fun RidesScreen(
     onOpenAnalysisQueue: () -> Unit,
     onMerge: (List<Long>, List<Long>) -> Unit,
     onUnmerge: (Long) -> Unit,
+    onAttach: (List<Long>, List<Long>) -> Unit,
+    onDetach: (List<Long>) -> Unit,
     onDelete: (List<Long>, List<Long>) -> Unit,
     logbookOperationState: LogbookOperationState,
     onLogbookOperationResultConsumed: () -> Unit,
@@ -171,17 +173,10 @@ fun RidesScreen(
     // Contiguity (MRG-02) is judged against every ride, not the shown ones: a filtered-out ride
     // between two selected ones still breaks the run, and merging across it would be wrong.
     val allRides = remember(entries) { entries.flatMap { it.rides } }
-    val mixedMergeCheck =
+    // Merge, unmerge, attach or detach — one primary action, picked from what is selected.
+    val action =
         remember(selectedRideEntries, selectedRefuelRecords, allRides) {
-            checkMixedMerge(selectedRideEntries, selectedRefuelRecords, allRides)
-        }
-    val selectedMergedGroupId =
-        remember(selectedRideEntries, selectedRefuelRecords) {
-            if (selectedRefuelRecords.isEmpty()) {
-                (selectedRideEntries.singleOrNull() as? LogbookEntry.Merged)?.groupId
-            } else {
-                null
-            }
+            logbookAction(selectedRideEntries, selectedRefuelRecords, allRides)
         }
 
     fun exitSelection() {
@@ -283,22 +278,24 @@ fun RidesScreen(
                     SelectionTopBar(
                         count = selected.size,
                         allSelected = selectAllKeys.isNotEmpty() && selectAllKeys.all { it in selected },
-                        mergeCheck = mixedMergeCheck.rideCheck,
-                        mergeRefuelCheck = mixedMergeCheck.refuelCheck,
-                        unmergeGroupId = selectedMergedGroupId,
+                        action = action,
                         operationRunning = logbookOperationState == LogbookOperationState.Running,
                         onExit = ::exitSelection,
                         onSelectAll = { selectedKeys = selectAllKeys },
                         onDeselectAll = { selectedKeys = emptySet() },
-                        onMerge = {
-                            onMerge(
-                                selectedRideEntries.flatMap { it.rideIds },
-                                selectedRefuelRecords.map { it.id },
-                            )
-                        },
-                        onUnmerge = { groupId ->
-                            onUnmerge(groupId)
-                            exitSelection()
+                        onAction = {
+                            val rideIds = selectedRideEntries.flatMap { it.rideIds }
+                            val refuelIds = selectedRefuelRecords.map { it.id }
+                            when (action.kind) {
+                                LogbookActionKind.MERGE -> onMerge(rideIds, refuelIds)
+                                LogbookActionKind.ATTACH -> onAttach(rideIds, refuelIds)
+                                LogbookActionKind.DETACH -> onDetach(refuelIds)
+                                // Un-merging is not a logbook operation, so it clears the selection itself.
+                                LogbookActionKind.UNMERGE -> {
+                                    action.unmergeGroupId?.let(onUnmerge)
+                                    exitSelection()
+                                }
+                            }
                         },
                         exportEnabled = selectedRideEntries.isNotEmpty() && exportState != RideExportState.Exporting,
                         onExport = { pendingExportRequests = exportRequests(entries, selected) },
@@ -735,15 +732,12 @@ private fun RideSnackbarHost(hostState: SnackbarHostState) {
 private fun SelectionTopBar(
     count: Int,
     allSelected: Boolean,
-    mergeCheck: MergeCheck,
-    mergeRefuelCheck: RefuelAssociationCheck,
-    unmergeGroupId: Long?,
+    action: LogbookAction,
     operationRunning: Boolean,
     onExit: () -> Unit,
     onSelectAll: () -> Unit,
     onDeselectAll: () -> Unit,
-    onMerge: () -> Unit,
-    onUnmerge: (Long) -> Unit,
+    onAction: () -> Unit,
     exportEnabled: Boolean,
     onExport: () -> Unit,
     deleteEnabled: Boolean,
@@ -772,50 +766,28 @@ private fun SelectionTopBar(
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(
-                    enabled =
-                        !operationRunning &&
-                            (
-                                unmergeGroupId != null ||
-                                    (mergeCheck == MergeCheck.OK && mergeRefuelCheck == RefuelAssociationCheck.OK)
-                            ),
+                    enabled = !operationRunning && action.enabled,
                     onClick = {
                         menuOpen = false
-                        unmergeGroupId?.let(onUnmerge) ?: onMerge()
+                        onAction()
                     },
                     text = {
                         Column {
-                            Text(
-                                stringResource(
-                                    if (unmergeGroupId != null) R.string.ride_action_unmerge else R.string.ride_action_merge,
-                                ),
-                            )
-                            // When disabled, tell the user why merging isn't available right now (MRG-08).
-                            if (unmergeGroupId == null) {
-                                mergeDisabledReason(mergeCheck)?.let { reason ->
-                                    Text(
-                                        text = stringResource(reason),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                            if (unmergeGroupId == null && mergeCheck == MergeCheck.OK) {
-                                associationDisabledReason(mergeRefuelCheck)?.let { reason ->
-                                    Text(
-                                        text = stringResource(reason),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
+                            Text(stringResource(actionLabel(action.kind)))
+                            // When disabled, tell the user why the action isn't available right now (MRG-08).
+                            listOfNotNull(
+                                mergeDisabledReason(action.rideCheck),
+                                associationDisabledReason(action.refuelCheck),
+                            ).forEach { reason ->
+                                Text(
+                                    text = stringResource(reason),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
                     },
-                    leadingIcon = {
-                        MaterialSymbol(
-                            symbolName = if (unmergeGroupId != null) "call_split" else "merge",
-                            contentDescription = null,
-                        )
-                    },
+                    leadingIcon = { MaterialSymbol(symbolName = actionIcon(action.kind), contentDescription = null) },
                 )
                 DropdownMenuItem(
                     enabled = exportEnabled && !operationRunning,
@@ -850,6 +822,22 @@ private fun SelectionTopBar(
         },
     )
 }
+
+private fun actionLabel(kind: LogbookActionKind): Int =
+    when (kind) {
+        LogbookActionKind.MERGE -> R.string.ride_action_merge
+        LogbookActionKind.UNMERGE -> R.string.ride_action_unmerge
+        LogbookActionKind.ATTACH -> R.string.ride_action_attach_refuel
+        LogbookActionKind.DETACH -> R.string.ride_action_detach_refuel
+    }
+
+private fun actionIcon(kind: LogbookActionKind): String =
+    when (kind) {
+        LogbookActionKind.MERGE -> "merge"
+        LogbookActionKind.UNMERGE -> "call_split"
+        LogbookActionKind.ATTACH -> "link"
+        LogbookActionKind.DETACH -> "link_off"
+    }
 
 /** The reason string for a disabled Merge action, or null when merging is allowed (MRG-08). */
 private fun mergeDisabledReason(check: MergeCheck): Int? =

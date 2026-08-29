@@ -76,6 +76,54 @@ fun checkMixedMerge(
     return MixedMergeCheck(rideCheck)
 }
 
+/** What the selection's primary action does — the Logbook bar offers exactly one of these. */
+enum class LogbookActionKind { MERGE, UNMERGE, ATTACH, DETACH }
+
+/**
+ * The primary action for the current selection, plus why it is disabled (MRG-08). Attaching a Refuel
+ * to a journey is not a merge: it only anchors the Refuel to a ride, so a *single* ride is a valid
+ * target and no merge group is created. Refuels without a ride have nothing to anchor to, so that
+ * selection can only ever be a detach.
+ */
+data class LogbookAction(
+    val kind: LogbookActionKind,
+    val rideCheck: MergeCheck = MergeCheck.OK,
+    val refuelCheck: RefuelAssociationCheck = RefuelAssociationCheck.OK,
+    val unmergeGroupId: Long? = null,
+) {
+    val enabled get() = rideCheck == MergeCheck.OK && refuelCheck == RefuelAssociationCheck.OK
+}
+
+fun logbookAction(
+    selectedRides: List<LogbookEntry>,
+    selectedRefuels: List<Refuel>,
+    allRides: List<Ride>,
+): LogbookAction {
+    val merged = selectedRides.singleOrNull() as? LogbookEntry.Merged
+    return when {
+        selectedRefuels.isEmpty() && merged != null ->
+            LogbookAction(LogbookActionKind.UNMERGE, unmergeGroupId = merged.groupId)
+
+        // Rides only, or several journeys plus Refuels: merging, with the Refuels carried along.
+        selectedRefuels.isEmpty() || selectedRides.size > 1 ->
+            checkMixedMerge(selectedRides, selectedRefuels, allRides).let {
+                LogbookAction(LogbookActionKind.MERGE, it.rideCheck, it.refuelCheck)
+            }
+
+        selectedRides.isEmpty() ->
+            LogbookAction(
+                LogbookActionKind.DETACH,
+                refuelCheck = checkRemoveRefuelsFromRide(selectedRides, selectedRefuels, allRides),
+            )
+
+        else ->
+            LogbookAction(
+                LogbookActionKind.ATTACH,
+                refuelCheck = checkAddRefuelsToRide(selectedRides, selectedRefuels, allRides),
+            )
+    }
+}
+
 /** Closest start; exact distance ties prefer the earlier start and then lower persistent id. */
 fun closestRideAnchor(
     refuel: Refuel,

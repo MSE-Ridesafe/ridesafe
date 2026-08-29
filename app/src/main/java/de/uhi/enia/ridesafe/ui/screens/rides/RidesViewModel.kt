@@ -484,7 +484,10 @@ class RidesViewModel(
         success: LogbookOperation,
         block: suspend () -> Unit,
     ) {
-        if (_logbookOperationState.value != LogbookOperationState.Idle) return
+        // Only a running operation blocks the next one. A finished one may still be waiting for its
+        // snackbar — the Logbook list isn't composed while a detail screen covers it — and that must
+        // not swallow the user's next action.
+        if (_logbookOperationState.value == LogbookOperationState.Running) return
         _logbookOperationState.value = LogbookOperationState.Running
         viewModelScope.launch {
             _logbookOperationState.value =

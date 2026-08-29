@@ -291,6 +291,8 @@
     <string name="ride_not_selected">Nicht ausgewählt</string>
     <string name="ride_action_merge">Zusammenführen</string>
     <string name="ride_action_unmerge">Trennen</string>
+    <string name="ride_action_attach_refuel">Zur Fahrt hinzufügen</string>
+    <string name="ride_action_detach_refuel">Von Fahrt entfernen</string>
     <string name="ride_action_export">Exportieren</string>
     <string name="ride_action_delete">Löschen</string>
     <string name="ride_delete_title">Ausgewählte Einträge löschen?</string>

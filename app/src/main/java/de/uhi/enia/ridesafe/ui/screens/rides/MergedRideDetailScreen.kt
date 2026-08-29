@@ -4,6 +4,7 @@ package de.uhi.enia.ridesafe.ui.screens.rides
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -74,6 +75,7 @@ fun MergedRideDetailScreen(
     rideEvents: List<RideEvent>,
     refuels: List<RefuelRow>,
     onOpenRefuel: (Long) -> Unit,
+    onDetachRefuel: (Long) -> Unit,
     onBack: () -> Unit,
     onUnmergeAll: () -> Unit,
     onUnmerge: (stopIds: List<Long>) -> Unit,
@@ -168,6 +170,7 @@ fun MergedRideDetailScreen(
                 stops = stops,
                 refuels = refuels,
                 onOpenRefuel = onOpenRefuel,
+                onDetachRefuel = onDetachRefuel,
                 onUnmergeAll = onUnmergeAll,
                 onUnmerge = onUnmerge,
             )
@@ -188,14 +191,16 @@ fun MergedRideDetailScreen(
  * timeline — origin, each parked waypoint (with its arrival time and a "left … · parked …" note), then
  * the destination (MRG-07: the boundary is one place, not a drawn connection). The header's "Manage
  * stops" toggle flips it to un-merge mode (MRG-04, MRG-11): the legs get end-only selection checkboxes
- * plus "Unmerge all" / "Unmerge (n)". For a two-stop merge the per-stop checkboxes are omitted since
- * peeling one stop dissolves the pair anyway — only "Unmerge all" is offered.
+ * plus "Unmerge all" / "Unmerge (n)", and each refuel gets a detach button that only breaks that one
+ * anchor. For a two-stop merge the per-stop checkboxes are omitted since peeling one stop dissolves
+ * the pair anyway — only "Unmerge all" is offered.
  */
 @Composable
 private fun MergedJourneyCard(
     stops: List<Ride>,
     refuels: List<RefuelRow>,
     onOpenRefuel: (Long) -> Unit,
+    onDetachRefuel: (Long) -> Unit,
     onUnmergeAll: () -> Unit,
     onUnmerge: (stopIds: List<Long>) -> Unit,
 ) {
@@ -242,50 +247,9 @@ private fun MergedJourneyCard(
                 }
             }
 
-            if (!managing) {
-                val children = combinedJourneyChildren(stops, refuels)
-                children.forEachIndexed { childIndex, child ->
-                    if (childIndex > 0) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-                    }
-                    when (child) {
-                        is CombinedJourneyChild.RideChild -> {
-                            val ride = child.ride
-                            StopRow(
-                                label = stringResource(R.string.ride_stop_label, stops.indexOfFirst { it.id == ride.id } + 1),
-                                destination =
-                                    ride.endAddress?.let { shortAddress(it) }
-                                        ?: stringResource(R.string.ride_address_unknown),
-                                supporting =
-                                    buildString {
-                                        append(formatTimeOfDay(context, ride.startedAtEpochMs))
-                                        ride.endedAtEpochMs?.let { append(" – ").append(formatTimeOfDay(context, it)) }
-                                        ride.distanceMeters?.let { append("  •  ").append(formatDistance(it, unitSystem)) }
-                                    },
-                                showCheckbox = false,
-                                checked = false,
-                                checkboxEnabled = false,
-                                onToggle = {},
-                            )
-                        }
-
-                        is CombinedJourneyChild.RefuelChild -> {
-                            RefuelTimelineRow(
-                                row = child.row,
-                                selectionMode = false,
-                                selected = false,
-                                onClick = { onOpenRefuel(child.row.refuel.id) },
-                                onLongClick = {},
-                                showVehicle = false,
-                            )
-                        }
-                    }
-                }
-                return@Column
-            }
-
-            // Manage mode: the legs, peelable from the ends only (MRG-11).
-            if (selectable) {
+            // The journey reads the same in both modes, so it is one list either way; manage mode
+            // just adds the end-only peel checkboxes (MRG-11) and a per-refuel detach.
+            if (managing && selectable) {
                 Text(
                     text = stringResource(R.string.ride_merged_unmerge_hint),
                     style = MaterialTheme.typography.bodySmall,
@@ -293,24 +257,63 @@ private fun MergedJourneyCard(
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                 )
             }
-            stops.forEachIndexed { index, ride ->
-                if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-                val canToggle = canToggleStop(index, selected, n)
-                StopRow(
-                    label = stringResource(R.string.ride_stop_label, index + 1),
-                    destination = ride.endAddress?.let { shortAddress(it) } ?: stringResource(R.string.ride_address_unknown),
-                    supporting =
-                        buildString {
-                            append(formatTimeOfDay(context, ride.startedAtEpochMs))
-                            ride.endedAtEpochMs?.let { append(" – ").append(formatTimeOfDay(context, it)) }
-                            ride.distanceMeters?.let { append("  •  ").append(formatDistance(it, unitSystem)) }
-                        },
-                    showCheckbox = selectable,
-                    checked = index in selected,
-                    checkboxEnabled = canToggle,
-                    onToggle = { if (canToggle) selected = if (index in selected) selected - index else selected + index },
-                )
+            combinedJourneyChildren(stops, refuels).forEachIndexed { childIndex, child ->
+                if (childIndex > 0) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
+                }
+                when (child) {
+                    is CombinedJourneyChild.RideChild -> {
+                        val ride = child.ride
+                        val index = stops.indexOfFirst { it.id == ride.id }
+                        val canToggle = canToggleStop(index, selected, n)
+                        StopRow(
+                            label = stringResource(R.string.ride_stop_label, index + 1),
+                            destination =
+                                ride.endAddress?.let { shortAddress(it) }
+                                    ?: stringResource(R.string.ride_address_unknown),
+                            supporting =
+                                buildString {
+                                    append(formatTimeOfDay(context, ride.startedAtEpochMs))
+                                    ride.endedAtEpochMs?.let { append(" – ").append(formatTimeOfDay(context, it)) }
+                                    ride.distanceMeters?.let { append("  •  ").append(formatDistance(it, unitSystem)) }
+                                },
+                            showCheckbox = managing && selectable,
+                            checked = index in selected,
+                            checkboxEnabled = canToggle,
+                            onToggle = {
+                                if (canToggle) selected = if (index in selected) selected - index else selected + index
+                            },
+                        )
+                    }
+
+                    is CombinedJourneyChild.RefuelChild -> {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                RefuelTimelineRow(
+                                    row = child.row,
+                                    selectionMode = false,
+                                    selected = false,
+                                    onClick = { onOpenRefuel(child.row.refuel.id) },
+                                    onLongClick = {},
+                                    showVehicle = false,
+                                )
+                            }
+                            // A refuel is anchored to a stop, not to the merge: detaching one leaves
+                            // the trip merged instead of forcing an un-merge to get rid of it.
+                            if (managing) {
+                                IconButton(onClick = { onDetachRefuel(child.row.refuel.id) }) {
+                                    MaterialSymbol(
+                                        symbolName = "link_off",
+                                        contentDescription = stringResource(R.string.ride_action_detach_refuel),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
+            if (!managing) return@Column
+
             Row(
                 modifier =
                     Modifier

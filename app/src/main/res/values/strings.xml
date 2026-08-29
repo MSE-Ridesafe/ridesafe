@@ -292,6 +292,8 @@
     <string name="ride_not_selected">Not selected</string>
     <string name="ride_action_merge">Merge</string>
     <string name="ride_action_unmerge">Unmerge</string>
+    <string name="ride_action_attach_refuel">Add to ride</string>
+    <string name="ride_action_detach_refuel">Remove from ride</string>
     <string name="ride_action_export">Export</string>
     <string name="ride_action_delete">Delete</string>
     <string name="ride_delete_title">Delete selected entries?</string>
