@@ -82,9 +82,13 @@ fun VehicleFormScreen(
     var mileage by rememberSaveable { mutableStateOf(initialMileage?.toString() ?: "") }
     var fuelEconomy by rememberSaveable { mutableStateOf(existing?.fuelEconomy?.toString() ?: "") }
     var tankSize by rememberSaveable { mutableStateOf(existing?.tankSize?.toString() ?: "") }
-    var fuelType by rememberSaveable { mutableStateOf(existing?.fuelType ?: FuelType.PETROL) }
+    var vehicleType by rememberSaveable { mutableStateOf(existing?.vehicleType.orEmpty()) }
+    var engine by rememberSaveable { mutableStateOf(existing?.engine.orEmpty()) }
+    var manufacturingCountry by rememberSaveable { mutableStateOf(existing?.manufacturingCountry.orEmpty()) }
+    var fuelType by rememberSaveable { mutableStateOf(existing?.fuelType ?: FuelType.UNSPECIFIED) }
     var makePrimary by rememberSaveable { mutableStateOf(existing?.isPrimary ?: false) }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
+    var showExtendedInformation by rememberSaveable { mutableStateOf(false) }
 
     val mileageValue = mileage.toIntOrNull()
     val canSave =
@@ -108,6 +112,9 @@ fun VehicleFormScreen(
                     year = year.toIntOrNull(),
                     fuelEconomy = fuelEconomy.toDoubleOrNull(),
                     tankSize = tankSize.toDoubleOrNull(),
+                    vehicleType = vehicleType.trim().ifBlank { null },
+                    engine = engine.trim().ifBlank { null },
+                    manufacturingCountry = manufacturingCountry.trim().ifBlank { null },
                 )
         onSave(edited, makePrimary)
     }
@@ -181,8 +188,6 @@ fun VehicleFormScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            FuelTypeDropdown(selected = fuelType, onSelected = { fuelType = it })
-
             OutlinedTextField(
                 value = mileage,
                 onValueChange = { mileage = it.filter(Char::isDigit) },
@@ -200,43 +205,107 @@ fun VehicleFormScreen(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedTextField(
-                value = fuelEconomy,
-                onValueChange = { fuelEconomy = it },
-                label = {
-                    Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_fuel_economy)))
-                },
-                suffix = { Text(stringResource(R.string.unit_fuel_economy)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = tankSize,
-                onValueChange = { tankSize = it },
-                label = {
-                    Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_tank_size)))
-                },
-                suffix = { Text(stringResource(R.string.unit_liter)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
 
-            Row(
+            OutlinedButton(
+                onClick = { showExtendedInformation = !showExtendedInformation },
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = stringResource(R.string.add_vehicle_set_primary),
+                    text = stringResource(R.string.vehicle_extended_information),
                     modifier = Modifier.weight(1f),
                 )
-                // Can't demote the current primary directly (GAR-07) — promote another instead.
-                Switch(
-                    checked = makePrimary,
-                    onCheckedChange = { makePrimary = it },
-                    enabled = existing?.isPrimary != true,
+                MaterialSymbol(
+                    symbolName = if (showExtendedInformation) "expand_less" else "expand_more",
+                    contentDescription = null,
+                    size = 22.dp,
                 )
+            }
+
+            if (showExtendedInformation) {
+                Text(
+                    text = stringResource(R.string.vehicle_section_fuel),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                FuelTypeDropdown(selected = fuelType, onSelected = { fuelType = it })
+                OutlinedTextField(
+                    value = fuelEconomy,
+                    onValueChange = { fuelEconomy = it },
+                    label = {
+                        Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_fuel_economy)))
+                    },
+                    suffix = { Text(stringResource(R.string.unit_fuel_economy)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = tankSize,
+                    onValueChange = { tankSize = it },
+                    label = {
+                        Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_tank_size)))
+                    },
+                    suffix = { Text(stringResource(R.string.unit_liter)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                Text(
+                    text = stringResource(R.string.vehicle_section_information),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                OutlinedTextField(
+                    value = vehicleType,
+                    onValueChange = { vehicleType = it },
+                    label = {
+                        Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_type)))
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = engine,
+                    onValueChange = { engine = it },
+                    label = {
+                        Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_engine)))
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = manufacturingCountry,
+                    onValueChange = { manufacturingCountry = it },
+                    label = {
+                        Text(
+                            stringResource(
+                                R.string.vehicle_label_optional,
+                                stringResource(R.string.vehicle_manufacturing_country),
+                            ),
+                        )
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.add_vehicle_set_primary),
+                        modifier = Modifier.weight(1f),
+                    )
+                    // Can't demote the current primary directly (GAR-07) — promote another instead.
+                    Switch(
+                        checked = makePrimary,
+                        onCheckedChange = { makePrimary = it },
+                        enabled = existing?.isPrimary != true,
+                    )
+                }
             }
 
             if (onDelete != null) {
@@ -308,7 +377,9 @@ private fun FuelTypeDropdown(
             value = stringResource(selected.labelRes()),
             onValueChange = {},
             readOnly = true,
-            label = { Text(stringResource(R.string.vehicle_fuel_type)) },
+            label = {
+                Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_fuel_type)))
+            },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier =
                 Modifier

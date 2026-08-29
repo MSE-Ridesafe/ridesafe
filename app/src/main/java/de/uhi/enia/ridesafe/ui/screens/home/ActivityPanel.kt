@@ -1,7 +1,8 @@
 package de.uhi.enia.ridesafe.ui.screens.home
 
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,29 +16,43 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import de.uhi.enia.ridesafe.util.formattingLocale
 import java.time.LocalDate
-import java.time.YearMonth
-import kotlin.math.max
 
 @Composable
 fun ActivitySection(activityByDay: Map<LocalDate, ActivityBar>) {
-    var selectedTimeRange by rememberSaveable { mutableStateOf(ActivityTimeRange.WEEK) }
     var selectedMetric by rememberSaveable { mutableStateOf(ActivityChartMetric.DISTANCE) }
+    var startDayOffset by rememberSaveable { mutableStateOf(0) }
+    val locale = LocalLocale.current.platformLocale
     var weekOffset by rememberSaveable { mutableStateOf(0) }
     var monthOffset by rememberSaveable { mutableStateOf(0) }
     val today = LocalDate.now()
+    val initialMonday = startOfCalendarWeek(today)
+    val selectedStartDay = initialMonday.plusDays(startDayOffset.toLong())
+    val chartBars = buildActivityWindow(activityByDay, selectedStartDay.minusDays(1), dayCount = 9)
+    val dateRange = formatActivityDateRange(weeklyBars, locale)
+    val maxValue = activityScaleMaximum(activityByDay.values, selectedMetric)
     val selectedWeekEnd = today.plusDays(weekOffset * 7L)
     val selectedMonth = YearMonth.from(today).plusMonths(monthOffset.toLong())
     val weeklyBars = buildRollingWeekActivity(activityByDay, selectedWeekEnd)
@@ -55,43 +70,56 @@ fun ActivitySection(activityByDay: Map<LocalDate, ActivityBar>) {
         )
     val subtitle =
         stringResource(
-            when (selectedTimeRange) {
-                ActivityTimeRange.WEEK -> {
-                    when (selectedMetric) {
-                        ActivityChartMetric.DISTANCE -> R.string.home_activity_distance_week
-                        ActivityChartMetric.TRAVEL_TIME -> R.string.home_activity_time_week
-                    }
-                }
-
-                ActivityTimeRange.MONTH -> {
-                    when (selectedMetric) {
-                        ActivityChartMetric.DISTANCE -> R.string.home_activity_distance_month
-                        ActivityChartMetric.TRAVEL_TIME -> R.string.home_activity_time_month
-                    }
-                }
+            when (selectedMetric) {
+                ActivityChartMetric.DISTANCE -> R.string.home_activity_distance_week
+                ActivityChartMetric.TRAVEL_TIME -> R.string.home_activity_time_week
+                ActivityChartMetric.COST -> R.string.home_activity_cost_week
             },
         )
-    val canNavigateForward =
-        when (selectedTimeRange) {
-            ActivityTimeRange.WEEK -> weekOffset < 0
-            ActivityTimeRange.MONTH -> monthOffset < 0
-        }
-    val onNavigatePeriod: (Int) -> Unit = { direction ->
-        when (selectedTimeRange) {
-            ActivityTimeRange.WEEK -> {
-                val nextOffset = weekOffset + direction
-                if (nextOffset <= 0) {
-                    weekOffset = nextOffset
-                }
-            }
+    val onNavigateDays: (Int) -> Boolean = { dayDelta ->
+        startDayOffset += dayDelta
+        true
+    }
+    var chartWidthPx by remember { mutableIntStateOf(0) }
+    var dragOffsetPx by remember { mutableFloatStateOf(0f) }
+    var snapJob by remember { mutableStateOf<Job?>(null) }
+    val scope = rememberCoroutineScope()
+    val spacingPx = with(LocalDensity.current) { 8.dp.toPx() }
+    val dayStepPx = if (chartWidthPx > 0) (chartWidthPx + spacingPx) / 7f else 0f
 
-            ActivityTimeRange.MONTH -> {
-                val nextOffset = monthOffset + direction
-                if (nextOffset <= 0) {
-                    monthOffset = nextOffset
-                }
-            }
+    fun settleDrag() {
+        if (dayStepPx <= 0f) {
+            dragOffsetPx = 0f
+            return
         }
+        val dayShift =
+            when {
+                dragOffsetPx <= -dayStepPx / 2f -> 1
+                dragOffsetPx >= dayStepPx / 2f -> -1
+                else -> 0
+            }
+        val canShift = true
+        val targetOffset =
+            when {
+                !canShift -> 0f
+                dayShift > 0 -> -dayStepPx
+                dayShift < 0 -> dayStepPx
+                else -> 0f
+            }
+        snapJob =
+            scope.launch {
+                animate(
+                    initialValue = dragOffsetPx,
+                    targetValue = targetOffset,
+                    animationSpec =
+                        spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessLow,
+                        ),
+                ) { value, _ -> dragOffsetPx = value }
+                if (canShift && dayShift != 0) onNavigateDays(dayShift)
+                dragOffsetPx = 0f
+            }
     }
 
     Card(
@@ -126,67 +154,70 @@ fun ActivitySection(activityByDay: Map<LocalDate, ActivityBar>) {
                 selected = selectedMetric,
                 onSelected = { selectedMetric = it },
             )
-            ActivityTimeRangeChips(
-                selected = selectedTimeRange,
-                onSelected = { selectedTimeRange = it },
-                dateRange = dateRange,
+            Text(
+                text = dateRange,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.End,
+                modifier = Modifier.fillMaxWidth(),
             )
             Box(
                 modifier =
-                    Modifier.activitySwipeNavigation(
-                        enabledForward = canNavigateForward,
-                        onNavigate = onNavigatePeriod,
-                    ),
+                    Modifier
+                        .fillMaxWidth()
+                        .onSizeChanged { chartWidthPx = it.width }
+                        .activityDragNavigation(
+                            onDragStart = {
+                                snapJob?.cancel()
+                                snapJob = null
+                            },
+                            onDrag = { delta ->
+                                if (dayStepPx <= 0f) return@activityDragNavigation
+                                var nextOffset = dragOffsetPx + delta
+                                while (nextOffset <= -dayStepPx) {
+                                    if (onNavigateDays(1)) {
+                                        nextOffset += dayStepPx
+                                    } else {
+                                        nextOffset = nextOffset.coerceAtLeast(-dayStepPx)
+                                        break
+                                    }
+                                }
+                                while (nextOffset >= dayStepPx) {
+                                    if (onNavigateDays(-1)) {
+                                        nextOffset -= dayStepPx
+                                    }
+                                }
+                                dragOffsetPx = nextOffset
+                            },
+                            onDragEnd = ::settleDrag,
+                        ),
             ) {
-                Crossfade(
-                    targetState = selectedTimeRange,
-                    animationSpec = tween(durationMillis = 250),
-                    label = "activity_visualization",
-                ) { timeRange ->
-                    when (timeRange) {
-                        ActivityTimeRange.WEEK -> {
-                            WeeklyBarChart(
-                                bars = weeklyBars,
-                                selectedMetric = selectedMetric,
-                                maxValue = maxValue,
-                            )
-                        }
-
-                        ActivityTimeRange.MONTH -> {
-                            MonthlyHeatMap(
-                                days = monthlyActivity,
-                                selectedMetric = selectedMetric,
-                                maxValue = maxValue,
-                            )
-                        }
-                    }
-                }
+                WeeklyBarChart(
+                    bars = chartBars,
+                    selectedMetric = selectedMetric,
+                    maxValue = maxValue,
+                    dragOffsetPx = dragOffsetPx,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun Modifier.activitySwipeNavigation(
-    enabledForward: Boolean,
-    onNavigate: (Int) -> Unit,
+private fun Modifier.activityDragNavigation(
+    onDragStart: () -> Unit,
+    onDrag: (Float) -> Unit,
+    onDragEnd: () -> Unit,
 ): Modifier {
-    var dragAmount by remember { mutableStateOf(0f) }
-    return pointerInput(enabledForward, onNavigate) {
+    val currentOnDragStart by rememberUpdatedState(onDragStart)
+    val currentOnDrag by rememberUpdatedState(onDrag)
+    val currentOnDragEnd by rememberUpdatedState(onDragEnd)
+    return pointerInput(Unit) {
         detectHorizontalDragGestures(
-            onDragStart = { dragAmount = 0f },
-            onHorizontalDrag = { _, delta ->
-                dragAmount += delta
-            },
-            onDragEnd = {
-                val threshold = 48f
-                when {
-                    dragAmount <= -threshold && enabledForward -> onNavigate(1)
-                    dragAmount >= threshold -> onNavigate(-1)
-                }
-                dragAmount = 0f
-            },
-            onDragCancel = { dragAmount = 0f },
+            onDragStart = { currentOnDragStart() },
+            onHorizontalDrag = { _, delta -> currentOnDrag(delta) },
+            onDragEnd = { currentOnDragEnd() },
+            onDragCancel = { currentOnDragEnd() },
         )
     }
 }

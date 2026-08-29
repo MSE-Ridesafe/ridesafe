@@ -8,6 +8,7 @@ import de.uhi.enia.ridesafe.data.RideAnalysisState
 import de.uhi.enia.ridesafe.data.RideDynamics
 import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
+import de.uhi.enia.ridesafe.rides.RideDataCoordinator
 import de.uhi.enia.ridesafe.rides.recording.LocationSample
 import de.uhi.enia.ridesafe.rides.recording.RideSample
 import de.uhi.enia.ridesafe.rides.recording.forEachSampleInTimeOrder
@@ -297,6 +298,10 @@ class RideAnalysisPipeline(
     }
 
     private suspend fun runRide(ride: Ride) {
+        RideDataCoordinator.withRide(ride.id) { runRideCoordinated(ride) }
+    }
+
+    private suspend fun runRideCoordinated(ride: Ride) {
         val file = File(ridesDir(appContext), ride.sampleFile)
         if (!file.exists()) return // nothing to derive from; stays unstamped and is retried later
 

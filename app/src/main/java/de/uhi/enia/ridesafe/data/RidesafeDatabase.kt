@@ -10,6 +10,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.serialization.json.Json
 
+const val RIDESAFE_DATABASE_VERSION = 23
+
 /** JSON for the small owned values kept in a single column (BT devices, eco, dynamics, score). */
 private val columnJson = Json { ignoreUnknownKeys = true }
 
@@ -353,9 +355,109 @@ private val MIGRATION_15_16 =
         }
     }
 
+/** Adds independently persisted refueling history without modifying any existing table or row. */
+val MIGRATION_16_17 =
+    object : Migration(16, 17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS refuels (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "vehicleId INTEGER NOT NULL, " +
+                    "timestampEpochMs INTEGER NOT NULL, " +
+                    "fuelAmountMilliliters INTEGER NOT NULL, " +
+                    "totalPriceMinor INTEGER NOT NULL, " +
+                    "currencyCode TEXT NOT NULL, " +
+                    "odometerMeters INTEGER NOT NULL, " +
+                    "stationAddress TEXT, " +
+                    "isFullTank INTEGER NOT NULL DEFAULT 0)",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_refuels_timestampEpochMs ON refuels(timestampEpochMs)",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_refuels_vehicleId ON refuels(vehicleId)")
+        }
+    }
+
+/** Adds an optional physical-ride anchor used to resolve a Refuel's current logical journey. */
+val MIGRATION_17_18 =
+    object : Migration(17, 18) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE refuels ADD COLUMN journeyAnchorRideId INTEGER")
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_refuels_journeyAnchorRideId ON refuels(journeyAnchorRideId)",
+            )
+        }
+    }
+
+/** Allows a Refuel station to reference a Saved Place while preserving custom station text. */
+val MIGRATION_18_19 =
+    object : Migration(18, 19) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE refuels ADD COLUMN stationSavedAddressId INTEGER")
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_refuels_stationSavedAddressId ON refuels(stationSavedAddressId)",
+            )
+        }
+    }
+
+/** Removes obsolete Refuel station/address data while preserving every fuel and cost field. */
+val MIGRATION_19_20 =
+    object : Migration(19, 20) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP INDEX IF EXISTS index_refuels_stationSavedAddressId")
+            db.execSQL("ALTER TABLE refuels DROP COLUMN stationSavedAddressId")
+            db.execSQL("ALTER TABLE refuels DROP COLUMN stationAddress")
+        }
+    }
+
+/** Adds archive-stable vehicle identity and modification time without changing any relationships. */
+val MIGRATION_20_21 =
+    object : Migration(20, 21) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE vehicles ADD COLUMN vehicleUuid TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE vehicles ADD COLUMN updatedAtEpochMs INTEGER NOT NULL DEFAULT 0")
+            db.execSQL(
+                "UPDATE vehicles SET vehicleUuid = lower(" +
+                    "hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || " +
+                    "substr(hex(randomblob(2)), 2) || '-' || " +
+                    "substr('89ab', abs(random() % 4) + 1, 1) || substr(hex(randomblob(2)), 2) || '-' || " +
+                    "hex(randomblob(6))) WHERE vehicleUuid = ''",
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS index_vehicles_vehicleUuid ON vehicles(vehicleUuid)",
+            )
+        }
+    }
+
+/** Adds archive-stable identity to every physical ride while retaining all local relationships. */
+val MIGRATION_21_22 =
+    object : Migration(21, 22) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE rides ADD COLUMN rideUuid TEXT NOT NULL DEFAULT ''")
+            db.execSQL(
+                "UPDATE rides SET rideUuid = lower(" +
+                    "hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || " +
+                    "substr(hex(randomblob(2)), 2) || '-' || " +
+                    "substr('89ab', abs(random() % 4) + 1, 1) || substr(hex(randomblob(2)), 2) || '-' || " +
+                    "hex(randomblob(6))) WHERE rideUuid = ''",
+            )
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_rides_rideUuid ON rides(rideUuid)")
+        }
+    }
+
+/** Adds optional, manually maintained vehicle specifications without requiring an external API. */
+val MIGRATION_22_23 =
+    object : Migration(22, 23) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE vehicles ADD COLUMN vehicleType TEXT")
+            db.execSQL("ALTER TABLE vehicles ADD COLUMN engine TEXT")
+            db.execSQL("ALTER TABLE vehicles ADD COLUMN manufacturingCountry TEXT")
+        }
+    }
+
 @Database(
-    entities = [Vehicle::class, Ride::class, SavedAddress::class, RideEvent::class, RideAnalysisState::class],
-    version = 16,
+    entities = [Vehicle::class, Ride::class, SavedAddress::class, RideEvent::class, RideAnalysisState::class, Refuel::class],
+    version = RIDESAFE_DATABASE_VERSION,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -369,6 +471,8 @@ abstract class RidesafeDatabase : RoomDatabase() {
     abstract fun rideEventDao(): RideEventDao
 
     abstract fun rideAnalysisDao(): RideAnalysisDao
+
+    abstract fun refuelDao(): RefuelDao
 
     companion object {
         @Volatile private var instance: RidesafeDatabase? = null
@@ -396,6 +500,13 @@ abstract class RidesafeDatabase : RoomDatabase() {
                         MIGRATION_13_14,
                         MIGRATION_14_15,
                         MIGRATION_15_16,
+                        MIGRATION_16_17,
+                        MIGRATION_17_18,
+                        MIGRATION_18_19,
+                        MIGRATION_19_20,
+                        MIGRATION_20_21,
+                        MIGRATION_21_22,
+                        MIGRATION_22_23,
                     ).build()
                     .also { instance = it }
             }
