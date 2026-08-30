@@ -212,6 +212,8 @@ internal class StreamingDetector(
         state.speedMps = a.speed + (b.speed - a.speed) * f
         state.lat = a.lat + (b.lat - a.lat) * f
         state.lon = a.lon + (b.lon - a.lon) * f
+        state.previousFixSpeedMps = a.speed.toDouble()
+        state.currentFixSpeedMps = b.speed.toDouble()
         return true
     }
 

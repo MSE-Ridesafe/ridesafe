@@ -49,6 +49,9 @@ class RideEventsTest {
         // Overrides the constant quaternion per sample — how a test models a rotation vector whose
         // reading moves (or errs) over time while the device accel stays in the true device axes.
         quaternionAt: ((Double) -> FloatArray)? = null,
+        // Doppler speed over time. Longitudinal maneuvers must move this consistently with their
+        // force — the detector discards a braking or acceleration event the car's speed belies.
+        speedAt: ((Double) -> Double)? = null,
         deviceAccelAt: (Double) -> Triple<Double, Double, Double>,
     ): RideSamples {
         // Positions are integrated along the travel bearing rather than assumed straight, so a test
@@ -57,20 +60,21 @@ class RideEventsTest {
         var lat = 50.0
         var lon = 8.0
         for (second in 0..seconds.toInt()) {
+            val v = speedAt?.invoke(second.toDouble()) ?: speedMps
             locations.add(
                 LocationSample(
                     t = second * 1_000_000_000L,
                     lat = lat,
                     lon = lon,
                     alt = 0.0,
-                    speed = speedMps.toFloat(),
+                    speed = v.toFloat(),
                     bearing = 90f, // overwritten by the Kalman pass inside the detector
                     accuracy = 5f,
                 ),
             )
             val heading = Math.toRadians(travelBearingAt(second.toDouble()))
-            lat += (speedMps * cos(heading)) / METERS_PER_DEGREE_LAT
-            lon += (speedMps * sin(heading)) / METERS_PER_DEGREE_LON
+            lat += (v * cos(heading)) / METERS_PER_DEGREE_LAT
+            lon += (v * sin(heading)) / METERS_PER_DEGREE_LON
         }
         val accel = ArrayList<MotionSample>()
         val gyro = ArrayList<MotionSample>()
@@ -113,6 +117,24 @@ class RideEventsTest {
     }
 
     /**
+     * Doppler speed dropping [decelMps2] × the braking window, flat on either side — the speed
+     * trace every braking synthetic needs so its event survives the Doppler agreement check.
+     */
+    private fun speedDrop(
+        initial: Double,
+        decelMps2: Double,
+        from: Double,
+        to: Double,
+    ): (Double) -> Double =
+        { t ->
+            when {
+                t < from -> initial
+                t < to -> initial - decelMps2 * (t - from)
+                else -> initial - decelMps2 * (to - from)
+            }
+        }
+
+    /**
      * A phone yawed 90° in the mount, in a car braking eastward at 0.35 g. Hand-computed: with the
      * device's +x pointing north and +y pointing west, a world reading of (east −3.43, north 0,
      * up 9.81) lands on the device axes as (0, +3.43, 9.81). The detector must undo that and report
@@ -122,7 +144,7 @@ class RideEventsTest {
     fun resolvesBrakingThroughAnArbitraryPhoneOrientation() {
         val events =
             detectRideEvents(
-                ride(seconds = 20.0, quaternion = YAWED_90) { t ->
+                ride(seconds = 20.0, quaternion = YAWED_90, speedAt = speedDrop(20.0, 3.43, 10.0, 12.0)) { t ->
                     if (t >= 10.0 && t <= 12.0) {
                         Triple(0.0, 3.43, GRAVITY)
                     } else {
@@ -194,7 +216,7 @@ class RideEventsTest {
     fun oneSustainedBrakeWithADipStaysOneEvent() {
         val events =
             detectRideEvents(
-                ride(seconds = 20.0) { t ->
+                ride(seconds = 20.0, speedAt = speedDrop(20.0, 3.43, 10.0, 13.0)) { t ->
                     // 0.35 g held for three seconds, with the driver lifting off entirely for 200 ms
                     // in the middle — long enough to fall under the sustain level, short enough that
                     // the merge gap should fold it back into the same event.
@@ -267,7 +289,7 @@ class RideEventsTest {
     fun abruptBrakeToModestForceIsHarsh() {
         val events =
             detectRideEvents(
-                ride(seconds = 20.0) { t ->
+                ride(seconds = 20.0, speedAt = speedDrop(20.0, 3.14, 10.0, 11.0)) { t ->
                     val decel =
                         if (t >= 10.0 && t < 11.0) 3.14 else 0.0 // 0.32 g, applied as a step
                     Triple(-decel, 0.0, GRAVITY)
@@ -296,7 +318,7 @@ class RideEventsTest {
     fun smoothButHardBrakingIsStillHarsh() {
         val events =
             detectRideEvents(
-                ride(seconds = 20.0) { t ->
+                ride(seconds = 20.0, speedAt = speedDrop(20.0, 2.95, 10.0, 13.0)) { t ->
                     val decel =
                         if (t >= 10.0 && t < 13.0) 5.9 * (t - 10.0) / 3.0 else 0.0 // ramp to 0.6 g
                     Triple(-decel, 0.0, GRAVITY)
@@ -331,7 +353,7 @@ class RideEventsTest {
     fun abruptButTrivialTwitchIsRejected() {
         val events =
             detectRideEvents(
-                ride(seconds = 20.0) { t ->
+                ride(seconds = 20.0, speedAt = speedDrop(20.0, 1.77, 10.0, 11.0)) { t ->
                     val decel =
                         if (t >= 10.0 && t < 11.0) 1.77 else 0.0 // 0.18 g, applied instantly
                     Triple(-decel, 0.0, GRAVITY)
@@ -440,6 +462,7 @@ class RideEventsTest {
                         180.0
                     }
                 },
+                speedAt = speedDrop(20.0, 3.43, 45.0, 47.0),
             ) { t ->
                 // The car is still travelling east throughout, and brakes at 45 s.
                 val decel = if (t >= 45.0 && t < 47.0) 3.43 else 0.0 // 0.35 g
@@ -517,6 +540,7 @@ class RideEventsTest {
                         val yaw = Math.toRadians(35.0) * sin(2 * Math.PI * 0.15 * t)
                         floatArrayOf(0f, 0f, sin(yaw / 2).toFloat(), cos(yaw / 2).toFloat())
                     },
+                    speedAt = speedDrop(20.0, 3.43, 45.0, 47.0),
                 ) { t ->
                     val decel = if (t >= 45.0 && t < 47.0) 3.43 else 0.0 // 0.35 g eastward brake
                     Triple(-decel, 0.0, GRAVITY)
@@ -546,7 +570,12 @@ class RideEventsTest {
         val biased = floatArrayOf(0f, 0f, sin(yaw / 2).toFloat(), cos(yaw / 2).toFloat())
         val events =
             detectRideEvents(
-                ride(seconds = 20.0, quaternion = biased) { t ->
+                ride(
+                    seconds = 20.0,
+                    quaternion = biased,
+                    speedMps = 24.0,
+                    speedAt = speedDrop(24.0, 8.83, 10.4, 12.0),
+                ) { t ->
                     // 0.9 g reached in 0.4 s and held — an emergency stop, abrupt on purpose so the
                     // leaked lateral share clears the cornering entry gate if nothing stops it.
                     val decel =
@@ -569,10 +598,38 @@ class RideEventsTest {
         Assert.assertEquals(RideEventType.BRAKING, events[0].type)
     }
 
+    /**
+     * The mount-lurch regression, from a real ride where flooring the throttle made the loosely
+     * lying phone slide backwards — a textbook 0.3 g braking spike on the accelerometer while the
+     * car's Doppler speed was rising. The accelerometer measures the phone; only the car earns
+     * events. With no speed drop to corroborate it, the "brake" must be discarded.
+     */
+    @Test
+    fun phantomBrakingWithoutASpeedDropIsVetoed() {
+        val events =
+            detectRideEvents(
+                ride(seconds = 20.0) { t ->
+                    // An abrupt half-second backwards jolt — clears the jerk gate, the peak floor
+                    // and the minimum duration, so only the Doppler check stands in its way.
+                    val jolt = if (t >= 10.0 && t < 10.5) 3.2 else 0.0
+                    Triple(-jolt, 0.0, GRAVITY)
+                },
+                rideStartElapsedNanos = 0L,
+            )
+
+        Assert.assertTrue(
+            "a brake the car's speed contradicts must be discarded, got $events",
+            events.isEmpty(),
+        )
+    }
+
     /** A poorly-fixed stretch produces no events at all, rather than events built on a bad position. */
     @Test
     fun inaccurateFixesSuppressDetection() {
-        val clean = ride(seconds = 20.0) { t -> if (t >= 10.0 && t < 12.0) Triple(-3.43, 0.0, GRAVITY) else Triple(0.0, 0.0, GRAVITY) }
+        val clean =
+            ride(seconds = 20.0, speedAt = speedDrop(20.0, 3.43, 10.0, 12.0)) { t ->
+                if (t >= 10.0 && t < 12.0) Triple(-3.43, 0.0, GRAVITY) else Triple(0.0, 0.0, GRAVITY)
+            }
         Assert.assertEquals(
             "control: the same ride with good fixes registers",
             1,
@@ -645,7 +702,7 @@ class RideEventsTest {
         // But the bypass must survive for braking, where 0.5 g is a hard stop at any speed.
         val smoothStop =
             detectRideEvents(
-                ride(seconds = 20.0) { t ->
+                ride(seconds = 20.0, speedAt = speedDrop(20.0, 2.95, 10.0, 13.0)) { t ->
                     val decel =
                         if (t >= 10.0 && t < 13.0) 5.9 * (t - 10.0) / 3.0 else 0.0 // ramp to 0.6 g
                     Triple(-decel, 0.0, GRAVITY)

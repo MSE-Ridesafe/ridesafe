@@ -18,6 +18,16 @@ import de.uhi.enia.ridesafe.data.RideEventType
  * On close an event is kept only if it lasted at least [RideEventConfig.minDurationMs] and its peak
  * force cleared [DirectionThresholds.minPeakG] — the check that discards a sudden but trivial twitch.
  *
+ * A braking or acceleration event must additionally be corroborated by the car itself: across the
+ * event, GPS Doppler speed has to move in the claimed direction by at least
+ * [RideEventConfig.dvAgreementFraction] of what the claimed force would produce (floored at
+ * [RideEventConfig.dvAgreementFloorMps]). The accelerometer measures the phone, Doppler measures
+ * the car, and when they disagree the phone moved in its mount — a loose phone lurching backwards
+ * under a hard launch is indistinguishable from a harsh brake on the accelerometer alone. The
+ * speeds compared are those of the fix before the event opened and the newest fix by the time it
+ * closes, so the window spans the whole maneuver at fix granularity. Cornering is exempt: it moves
+ * no speed, and its own corroboration is the gyro (see the cornering signal in StreamingDetector).
+ *
  * Note which type owns which knob: the thresholds describing *this* direction live on
  * [DirectionThresholds], since braking, acceleration and cornering each need their own; the timing
  * rules that apply to every direction alike live on [RideEventConfig].
@@ -43,6 +53,8 @@ internal class EventAccumulator(
     private var peakSpeed = 0.0
     private var peakLat: Double? = null
     private var peakLon: Double? = null
+    private var speedBeforeOpen = 0.0
+    private var latestFixSpeed = 0.0
 
     fun feed(
         nanos: Long,
@@ -50,6 +62,9 @@ internal class EventAccumulator(
         jerkGPerS: Double,
         state: TrackState?,
     ) {
+        // Tracked outside the open/closed logic on purpose: the fix that corroborates an event's
+        // tail often arrives while the event is already coasting through its merge gap.
+        if (state != null) latestFixSpeed = state.currentFixSpeedMps
         val sustains = jerkGPerS >= thresholds.exitJerkGPerS || magnitudeG >= thresholds.minPeakG
         if (open) {
             if (sustains) {
@@ -69,6 +84,8 @@ internal class EventAccumulator(
             peakJerk = 0.0
             sum = 0.0
             count = 0
+            // Opening requires an ungated sample, so bracketing fixes exist here by construction.
+            speedBeforeOpen = state?.previousFixSpeedMps ?: latestFixSpeed
             extend(nanos, magnitudeG, jerkGPerS, state)
         }
     }
@@ -91,12 +108,26 @@ internal class EventAccumulator(
         }
     }
 
+    /**
+     * Whether the car's Doppler speed confirms this finished event's claimed direction and rough
+     * size. Applied on the finished event like the peak floor, because only there are the average
+     * force and duration known.
+     */
+    private fun corroborated(durationMs: Long): Boolean {
+        if (type == RideEventType.CORNERING || count == 0) return true
+        val dv = latestFixSpeed - speedBeforeOpen
+        val needed =
+            (config.dvAgreementFraction * (sum / count) * G * (durationMs / 1000.0))
+                .coerceAtLeast(config.dvAgreementFloorMps)
+        return if (type == RideEventType.BRAKING) dv <= -needed else dv >= needed
+    }
+
     private fun flush() {
         val durationMs = (endNanos - startNanos) / 1_000_000
         // The peak-force floor is applied here, on the finished event, not per sample: jerk peaks at
         // a maneuver's onset while the force is still near zero, so a per-sample gate would have
         // thrown away the very spike that opened it.
-        if (durationMs >= config.minDurationMs && count > 0 && peak >= thresholds.minPeakG) {
+        if (durationMs >= config.minDurationMs && count > 0 && peak >= thresholds.minPeakG && corroborated(durationMs)) {
             collected.add(
                 RideEvent(
                     type = type,

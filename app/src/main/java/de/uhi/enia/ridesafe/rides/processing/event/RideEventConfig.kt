@@ -139,6 +139,20 @@ data class DirectionThresholds(
  * axis. Raise it to gather samples faster, at the cost of that lag skewing the result; lower it and
  * calibration may never collect enough samples on a winding route.
  *
+ * @property dvAgreementFraction How much of a braking/acceleration event's claimed speed change the
+ * GPS Doppler speed must confirm before the event is kept, as a fraction of `avgG · duration`.
+ * The accelerometer measures the phone; Doppler measures the car; an event the car's speed trace
+ * contradicts is the phone moving in its mount — a loose phone lurching backwards under launch
+ * reads as a textbook harsh brake, and did, on a replayed ride whose speed rose 6 km/h through its
+ * own "braking" event. Kept well under 1 because Doppler is a 1 Hz average that legitimately
+ * undercounts a sub-second stab; raise it and short real events start dying with the fakes, lower
+ * it and only sign-flipped artifacts are caught. Cornering is never checked — it moves no speed.
+ *
+ * @property dvAgreementFloorMps The least speed change ever demanded by that check, in m/s. The
+ * fraction of a brief event's Δv can fall under GPS noise; this floor keeps the demand meaningful.
+ * Raise it and short-but-real events are vetoed for lack of evidence; lower it toward zero and a
+ * flat speed trace stops counting against anything.
+ *
  * @property alignmentMinSamples How many qualifying fixes are needed before the estimated axis is
  * trusted at all. Raise it and more rides fall back to GPS heading, which is meaningless at low
  * speed and wrong when a fix jumps; lower it and a handful of fixes can set the axis for a whole ride.
@@ -167,6 +181,8 @@ data class RideEventConfig(
     val lowPassHz: Double = 2.0,
     val maxSampleAgeNanos: Long = 1_000_000_000,
     val maxFixAccuracyMeters: Double = 30.0,
+    val dvAgreementFraction: Double = 0.3,
+    val dvAgreementFloorMps: Double = 0.8,
     val alignmentMinSpeedMps: Double = 8.0,
     val alignmentMaxTurnDeg: Double = 5.0,
     val alignmentMinSamples: Int = 20,
