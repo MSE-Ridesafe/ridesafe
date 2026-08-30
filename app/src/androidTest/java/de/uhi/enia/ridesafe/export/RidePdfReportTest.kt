@@ -149,14 +149,17 @@ class RidePdfReportTest {
             resolver
                 .query(
                     saved.uri,
-                    arrayOf(MediaStore.MediaColumns.MIME_TYPE, MediaStore.MediaColumns.IS_PENDING),
+                    arrayOf(MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.IS_PENDING),
                     null,
                     null,
                     null,
                 )!!
                 .use { cursor ->
                     assertTrue(cursor.moveToFirst())
-                    assertTrue(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)) == "text/csv")
+                    // The published row's MIME is rescanned from the extension (.csv -> text/comma-separated-values),
+                    // so it says nothing about us. What we control is the name: a MIME that disagreed with the
+                    // extension would make MediaStore rename the file to ".csv.<other>" behind our back.
+                    assertTrue(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)) == saved.fileName)
                     assertTrue(cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.IS_PENDING)) == 0)
                 }
         } finally {
