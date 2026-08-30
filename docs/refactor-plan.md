@@ -170,7 +170,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
 - [x] **P3.3** `RideFilterUi.kt` (741) → `RideSearchBar.kt`, `ActiveFilterChips.kt`
   (+ chips + `dateChipLabel`), `RideFilterSheet.kt` (+ `SectionLabel`, `DistanceField`
   until P2.9), `RideFilterControls.kt` (`FilterDropdown`, `DateBoundButton`).
-- [ ] **P3.4** `RideDetailScreen.kt` (430) → `JourneyTimeline.kt` (constants +
+- [x] **P3.4** `RideDetailScreen.kt` (430) → `JourneyTimeline.kt` (constants +
   `JourneyStop` + `JourneyCard` + `JourneyTimeline` + `JourneyStopRow` + `Connector`,
   ~200 lines — a coherent public component family), `AssociatedRefuelsCard.kt`
   (named, replacing the inline card); root keeps ~140.
@@ -252,7 +252,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
   debounce + distance sort → the P3.9 state holder; sort key is domain logic.
 - [ ] **P4.8** **[behavioral]** `RecordRideFab` calls `RideRecordingService.start` +
   raises a `Toast` directly (`HomeScreen.kt:247-251`) — route through a callback/VM.
-- [ ] **P4.9** `stopFor` (`RideDetailScreen.kt:142-157`, haversine + address comparison →
+- [x] **P4.9** `stopFor` (`RideDetailScreen.kt:142-157`, haversine + address comparison →
   `JourneyStop`) → non-composable `journeyStopFor(...)`; distance/avg-speed fallback
   derivation (`:111-116`) belongs beside the pipeline.
 - [x] **P4.10** `rideEndpointLabel` + `String.lineOne()` (`AnalysisQueue.kt:292-303`)
