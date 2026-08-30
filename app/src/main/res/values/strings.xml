@@ -27,7 +27,6 @@
     </plurals>
     <string name="home_garage_total_mileage">Total mileage</string>
     <string name="recording_active_ride">Active ride</string>
-    <string name="home_vehicle_fuel_consumption">Fuel consumption</string>
     <string name="home_total_distance">Total Distance</string>
     <string name="home_total_travel_time">Total Travel Time</string>
     <string name="home_total_recorded_rides">Total Recorded Rides</string>

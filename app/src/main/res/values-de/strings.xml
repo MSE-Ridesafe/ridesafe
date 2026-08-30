@@ -27,7 +27,6 @@
     </plurals>
     <string name="home_garage_total_mileage">Gesamtkilometerstand</string>
     <string name="recording_active_ride">Aktive Fahrt</string>
-    <string name="home_vehicle_fuel_consumption">Kraftstoffverbrauch</string>
     <string name="home_total_distance">Gesamte Strecke</string>
     <string name="home_total_travel_time">Gesamte Fahrzeit</string>
     <string name="home_total_recorded_rides">Aufgezeichnete Fahrten</string>
