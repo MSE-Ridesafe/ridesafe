@@ -254,10 +254,10 @@ internal class StreamingDetector(
         // be compared, or the jump over the gap reads as a violent maneuver.
         if (hasState) {
             val windowDv = speedWindow.update(nanos, state.speedMps)
-            armedAccelerating =
-                if (armedAccelerating) windowDv >= config.sustainedAccelDvMps * ARMED_EXIT_FRACTION else windowDv >= config.sustainedAccelDvMps
-            armedBraking =
-                if (armedBraking) windowDv <= -config.sustainedBrakeDvMps * ARMED_EXIT_FRACTION else windowDv <= -config.sustainedBrakeDvMps
+            val accelArm = config.sustainedAccelDvMps * (if (armedAccelerating) ARMED_EXIT_FRACTION else 1.0)
+            val brakeArm = config.sustainedBrakeDvMps * (if (armedBraking) ARMED_EXIT_FRACTION else 1.0)
+            armedAccelerating = windowDv >= accelArm
+            armedBraking = windowDv <= -brakeArm
         } else {
             speedWindow.clear()
             armedAccelerating = false

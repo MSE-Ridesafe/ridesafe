@@ -121,24 +121,31 @@ score for every ride on next launch, which is the entire migration.
 
 ## Validation against the logbook
 
-All 96 rides in today's backup were replayed through the final design:
+All 96 rides in today's backup were replayed through the finished Kotlin implementation
+(`RealRideReplayTest`, pointed at the backup's `f/rides/`):
 
-- **Ride 127** comes out as: ACCEL 200.3s, ACCEL ~245s *(recovered)*, CORNER 298.7s
-  *(recovered)*, hard brake ~205s *(recovered via Δv)*; the fake brake at 240.1s and fake accel
-  at 208.7s are vetoed. Matches the driver's account.
-- **Ride 129** comes out as: ACCEL ~48s (the launch), CORNER 106.6s (the slalom, alone), BRAKE
-  269.4s (the stop, alone), ACCEL ~278s (pulling away hard after the stop). Matches the
-  driver's account; the slalom's three-way misfire and the stop's fake corner are gone.
-- **Logbook-wide**: 29 stored events → 22 proposed; every removal is a verified artifact
-  (gyro-uncorroborated corners, Doppler-contradicted longitudinals), every addition a verified
-  real maneuver. No ride's count exploded; 34 short/parked rides still yield nothing.
+- **Ride 127** comes out as: ACCEL 200.2s, ACCEL 245.2s *(the maneuver the fake brake had
+  eaten)*, CORNER 298.7s *(the missing corner)*; the fake brake at 240.1s and the phantom accel
+  at 208.7s are vetoed by Doppler. Matches the driver's account.
+- **Ride 129** comes out as: ACCEL 48.5s (the launch), CORNER 106.6s (the slalom, alone), BRAKE
+  269.4s at a true 1.11 g (the stop, alone), ACCEL 278.5s (pulling away hard after the stop).
+  Matches the driver's account; the slalom's three-way misfire and the stop's fake corner are
+  gone.
+- **Logbook-wide**: 29 stored events → 21, across 9 rides. Every removal was audited against
+  the raw data and is a confirmed artifact — corners the gyro never witnessed (rides 22, 74,
+  46's brake-corner pair), longitudinals the Doppler contradicts (ride 33's "0.71 g brake"
+  during which speed drifted −3 km/h over six seconds; ride 127's mount lurch). The few
+  additions (rides 93, 115, 129's launch) are Doppler-corroborated sustained maneuvers. No
+  ride's count exploded; short/parked rides still yield nothing.
 
 ## Known limits (deliberate)
 
-- A loosely lying phone underreports per-axis force; sub-second stabs it absorbs are gone for
-  good. The Δv path recovers only maneuvers long enough for GPS to see (≥ ~2 s). A rigid mount
-  remains the honest fix.
+- A loosely lying phone underreports per-axis force; maneuvers it absorbs are recovered by the
+  Δv path only when their hard phase outlasts roughly the 3 s window — the arm inherently lags
+  by the window's length, so a 2 s hidden brake stays missed (observed once on ride 127, at
+  202s). A rigid mount remains the honest fix.
 - Events opened by the Δv path report the Doppler-measured peak and near-zero jerk — accurate,
   but timed to fix granularity (±1 s).
 - The Δv arm thresholds (+24/−40 km/h per 3 s) are calibrated on this logbook; they are config
-  knobs like every other threshold and re-tunable through the version-bump loop.
+  knobs like every other threshold and re-tunable through the version-bump loop, using
+  `RealRideReplayTest` against extracted ride files.

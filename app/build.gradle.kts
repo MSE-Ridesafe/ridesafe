@@ -46,7 +46,12 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
     // The pipeline and the sample reader log; without this, android.util.Log throws in JVM tests.
-    testOptions { unitTests.isReturnDefaultValues = true }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+        // Forwarded into the test JVM for RealRideReplayTest, which is skipped when unset —
+        // Gradle test workers don't inherit the command line's -D properties on their own.
+        unitTests.all { it.systemProperty("ridesafe.replay.dir", System.getProperty("ridesafe.replay.dir") ?: "") }
+    }
 
     buildFeatures {
         compose = true
