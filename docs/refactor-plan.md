@@ -32,7 +32,7 @@ Phase 5. Phase 2 first shrinks the big files so the Phase 3 splits get smaller.
   `car/CarScreens.kt` (non-UI code importing a screen package) and
   `ui/components/RecordingStatusBar.kt` (shared component depending on a feature).
   `FuelType.labelRes()` and `previewVehicles` stay in `VehicleUi.kt`.
-- [ ] **P1.2** Split `TimelineEntry` + `buildTimeline` + selection helpers
+- [x] **P1.2** Split `TimelineEntry` + `buildTimeline` + selection helpers
   (`RidesViewModel.kt:607-690`, plus `LogbookEntry` at `:78-108`) into
   `ui/screens/rides/TimelineEntry.kt`. Zero imports touched (same package);
   `TimelineEntryTest.kt` already exists and finally gets a matching source file.
