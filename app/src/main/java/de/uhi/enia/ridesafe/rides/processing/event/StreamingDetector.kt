@@ -71,6 +71,9 @@ internal class StreamingDetector(
     private var smoothedLongitudinal = 0.0
     private var smoothedLateral = 0.0
     private var smoothedYawRate = 0.0
+    // Carried across gated stretches so the cornering signal (which needs a speed) keeps tracking
+    // while gated, the same way the rate trackers do — a gate lifting must not read as a step.
+    private var lastSpeedMps = 0.0
     private var previousNanos = 0L
     private var seeded = false
 
@@ -233,9 +236,16 @@ internal class StreamingDetector(
         smoothedLateral += alpha * (lateral - smoothedLateral)
         smoothedYawRate += alpha * (yawRate - smoothedYawRate)
 
+        if (hasState) lastSpeedMps = state.speedMps
+
         val brakingG = (-smoothedLongitudinal / G).coerceAtLeast(0.0)
         val acceleratingG = (smoothedLongitudinal / G).coerceAtLeast(0.0)
-        val corneringG = abs(smoothedLateral) / G
+        // Cornering is the lower of two independent witnesses to the same physics: the felt lateral
+        // force, and v·ω — what the lateral force *must* be if the car is really turning (a = v²/r,
+        // ω = v/r). Lateral force without matching yaw is not cornering: it is braking bleeding
+        // through a slightly-off axis, or the phone shifting in its mount, and on replayed rides
+        // every false cornering event failed exactly this test while every real corner passed it.
+        val corneringG = minOf(abs(smoothedLateral), abs(lastSpeedMps * smoothedYawRate)) / G
 
         // Rates track the real signal even while gated, so lifting a gate doesn't read as a step
         // change and fire a phantom event. Only the onset counts: easing off a brake is a negative

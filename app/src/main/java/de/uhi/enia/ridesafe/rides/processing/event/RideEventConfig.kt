@@ -71,7 +71,11 @@ data class DirectionThresholds(
  * a standing start.
  *
  * @property cornering Cornering thresholds. No force bypass, and a slightly higher floor since
- * 0.25 g is an unremarkable corner.
+ * 0.25 g is an unremarkable corner. The entry gate sits a notch under the braking one: the
+ * cornering signal is the *lower* of accelerometer lateral and gyro-derived v·ω, so the false
+ * positives a stricter gate once guarded against — longitudinal bleed, mount wobble — are already
+ * dead, and the razor-edge misses (a real evasive steer measured at 0.88 g/s against a 0.9 gate)
+ * were what the strictness actually bought.
  *
  * @property jerkBaselineMs The time baseline over which rate of change is measured. Differencing
  * adjacent 50 Hz samples divides by 0.02 s, turning even 0.003 g of residual ripple into 0.15 g/s —
@@ -153,7 +157,7 @@ data class DirectionThresholds(
 data class RideEventConfig(
     val braking: DirectionThresholds = DirectionThresholds(0.9, 0.65, 0.25, 0.45),
     val acceleration: DirectionThresholds = DirectionThresholds(0.7, 0.5, 0.25, 0.32),
-    val cornering: DirectionThresholds = DirectionThresholds(0.9, 0.65, 0.30, null),
+    val cornering: DirectionThresholds = DirectionThresholds(0.8, 0.65, 0.30, null),
     val jerkBaselineMs: Long = 100,
     val minDurationMs: Long = 250,
     val mergeGapMs: Long = 500,

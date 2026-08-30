@@ -232,20 +232,22 @@ class RideEventsTest {
      */
     @Test
     fun smoothTightCornerIsNotHarsh() {
+        // Lateral force ramped in linearly over 1.5 s, held, then eased off just as gently. The
+        // yaw rate follows the same profile (a = v·ω), so the gyro corroborates a real corner and
+        // the jerk gate alone is what must reject it.
+        fun profile(t: Double) =
+            when {
+                t < 10.0 -> 0.0
+                t < 11.5 -> (t - 10.0) / 1.5
+                t < 13.0 -> 1.0
+                t < 14.5 -> (14.5 - t) / 1.5
+                else -> 0.0
+            }
         val events =
             detectRideEvents(
-                ride(seconds = 20.0, speedMps = 5.0) { t ->
-                    // Lateral force ramped in linearly over 1.5 s, held, then eased off just as gently.
-                    val lateral =
-                        when {
-                            t < 10.0 -> 0.0
-                            t < 11.5 -> 4.2 * (t - 10.0) / 1.5
-                            t < 13.0 -> 4.2
-                            t < 14.5 -> 4.2 * (14.5 - t) / 1.5
-                            else -> 0.0
-                        }
+                ride(seconds = 20.0, speedMps = 5.0, yawRateAt = { t -> (4.2 / 5.0) * profile(t) }) { t ->
                     // Heading is east, so a lateral force lies on the device's north axis.
-                    Triple(0.0, lateral, GRAVITY)
+                    Triple(0.0, 4.2 * profile(t), GRAVITY)
                 },
                 rideStartElapsedNanos = 0L,
             )
@@ -530,6 +532,43 @@ class RideEventsTest {
         )
     }
 
+    /**
+     * The fake-corner regression, from a real emergency stop that was stored as braking *plus*
+     * cornering. A calibration bias — here a rotation vector with a constant 30° yaw error, the
+     * magnetometer's doing in a real car — leaks sin 30° of a hard brake onto the lateral axis:
+     * 0.45 g of "cornering" from a dead-straight stop, over both the peak floor and the entry gate.
+     * The gyro shows no yaw, so the cornering signal (the lower of felt lateral and v·ω) stays at
+     * zero and only the brake may be reported.
+     */
+    @Test
+    fun brakeLeakThroughABiasedAxisCannotBecomeCornering() {
+        val yaw = Math.toRadians(30.0)
+        val biased = floatArrayOf(0f, 0f, sin(yaw / 2).toFloat(), cos(yaw / 2).toFloat())
+        val events =
+            detectRideEvents(
+                ride(seconds = 20.0, quaternion = biased) { t ->
+                    // 0.9 g reached in 0.4 s and held — an emergency stop, abrupt on purpose so the
+                    // leaked lateral share clears the cornering entry gate if nothing stops it.
+                    val decel =
+                        when {
+                            t < 10.0 -> 0.0
+                            t < 10.4 -> 8.83 * (t - 10.0) / 0.4
+                            t < 12.0 -> 8.83
+                            else -> 0.0
+                        }
+                    Triple(-decel, 0.0, GRAVITY)
+                },
+                rideStartElapsedNanos = 0L,
+            )
+
+        Assert.assertTrue(
+            "a straight-line stop must not produce cornering, got $events",
+            events.none { it.type == RideEventType.CORNERING },
+        )
+        Assert.assertEquals("the brake itself must survive, got $events", 1, events.size)
+        Assert.assertEquals(RideEventType.BRAKING, events[0].type)
+    }
+
     /** A poorly-fixed stretch produces no events at all, rather than events built on a bad position. */
     @Test
     fun inaccurateFixesSuppressDetection() {
@@ -564,22 +603,29 @@ class RideEventsTest {
      */
     @Test
     fun smoothLowSpeedTurnsAreNotHarshEvenAboveHalfAG() {
-        // Lateral force ramped in over turnInSec, held, then unwound just as gently.
+        // Lateral force ramped in over turnInSec, held, then unwound just as gently — with the yaw
+        // rate the geometry implies (ω = v/r), so the gyro agrees this is genuine cornering.
         fun corner(
             speedMps: Double,
             radiusM: Double,
             turnInSec: Double,
-        ) = ride(seconds = 25.0, speedMps = speedMps) { t ->
-            val lateral = speedMps * speedMps / radiusM
-            val held =
+        ): RideSamples {
+            fun held(t: Double) =
                 when {
                     t < 10.0 -> 0.0
-                    t < 10.0 + turnInSec -> lateral * (t - 10.0) / turnInSec
-                    t < 12.5 -> lateral
-                    t < 12.5 + turnInSec -> lateral * (12.5 + turnInSec - t) / turnInSec
+                    t < 10.0 + turnInSec -> (t - 10.0) / turnInSec
+                    t < 12.5 -> 1.0
+                    t < 12.5 + turnInSec -> (12.5 + turnInSec - t) / turnInSec
                     else -> 0.0
                 }
-            Triple(0.0, held, GRAVITY) // heading is east, so lateral force lies on the north axis
+            return ride(
+                seconds = 25.0,
+                speedMps = speedMps,
+                yawRateAt = { t -> (speedMps / radiusM) * held(t) },
+            ) { t ->
+                // heading is east, so lateral force lies on the north axis
+                Triple(0.0, (speedMps * speedMps / radiusM) * held(t), GRAVITY)
+            }
         }
 
         // 30 km/h into a side street: 0.59 g, but built over 0.8 s = 0.73 g/s, under the jerk gate.
