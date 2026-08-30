@@ -17,6 +17,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 
@@ -24,7 +25,9 @@ import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
  * The ride's numbers as a chromeless typographic readout — deliberately the only un-carded content
  * on the detail screens, so the trip's magnitude reads as the headline rather than one more box in
  * the card stack: distance as the hero line, duration under it, the two speeds as a quiet third
- * line. Icons carry the labels visually; each line speaks its full label to accessibility.
+ * line. Each stat wears the dashboard cards' anatomy — icon with its label beside it, the value
+ * beneath — so detail and dashboard speak one visual language; the per-line sizes and colors keep
+ * the three-tier hierarchy.
  */
 @Composable
 internal fun RideStatsReadout(
@@ -94,17 +97,27 @@ private fun StatLine(
     valueColor: Color = MaterialTheme.colorScheme.onSurface,
 ) {
     val description = "$label: $value"
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = Modifier.clearAndSetSemantics { contentDescription = description },
     ) {
-        MaterialSymbol(
-            symbolName = icon,
-            contentDescription = null,
-            size = iconSize,
-            color = iconColor,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            MaterialSymbol(
+                symbolName = icon,
+                contentDescription = null,
+                size = iconSize,
+                color = iconColor,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge.copy(lineHeight = 18.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
         Text(
             text = value,
             style = style,

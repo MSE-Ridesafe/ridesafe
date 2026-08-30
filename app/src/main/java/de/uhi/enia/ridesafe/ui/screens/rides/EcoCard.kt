@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.RideEco
-import de.uhi.enia.ridesafe.rides.processing.score.ecoLevel
 import de.uhi.enia.ridesafe.ui.components.CardDivider
 import de.uhi.enia.ridesafe.ui.components.EcoLevelDisplay
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
@@ -60,17 +59,18 @@ private data class EcoBucket(
  * subtitle coaches rather than scolds, because a driver told off by their own logbook stops opening
  * it; even the bottom level frames the gap as headroom.
  *
- * [eco] is the ride's stored profile; the caller renders nothing when it is null. The level can
- * still be null for a profile with too little driving to judge — then the card shows only the
- * breakdown, since the regime split is honest at any length.
+ * [eco] is the ride's stored profile; the caller renders nothing when it is null. [level] is the
+ * rating the caller derived under the ANL-01/ANL-03 coupling (see isRated) — null means the ride
+ * is unrated, and the card says so in the level's place rather than silently dropping the bar,
+ * while the breakdown still shows: the regime split is honest at any length, only the rating isn't.
  */
 @Composable
 fun EcoCard(
     eco: RideEco,
+    level: Int?,
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val level = ecoLevel(eco)
     val buckets =
         listOf(
             EcoBucket(stringResource(R.string.ride_eco_idle), scheme.error, eco.idleSeconds),
@@ -101,6 +101,13 @@ fun EcoCard(
 
             if (level != null) {
                 EcoLevelDisplay(level = level)
+            } else {
+                // Same voice and styling as SafetyScoreCard's emptyText: absence is stated, not shown.
+                Text(
+                    text = stringResource(R.string.ride_eco_unscoreable),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = scheme.onSurfaceVariant,
+                )
             }
 
             if (buckets.isNotEmpty() && totalSeconds > 0) {

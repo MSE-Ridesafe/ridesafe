@@ -8,11 +8,13 @@ import androidx.lifecycle.viewModelScope
 import de.uhi.enia.ridesafe.data.BtDevice
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.Vehicle
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Garage state, app-scoped (hoisted in RidesafeApp) so the list/detail/add screens share
@@ -56,6 +58,15 @@ class GarageViewModel(
             }.onFailure { error ->
                 Log.e("GarageViewModel", "Unable to store the vehicle image", error)
             }
+        }
+    }
+
+    fun removeVehicleImage(vehicle: Vehicle) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { deleteVehicleImage(getApplication(), vehicle) }
+            // Touch the row so every VehicleImage cache key (uuid + updatedAt) rolls over and the
+            // placeholder replaces the photo everywhere, dashboard included.
+            dao.update(vehicle.copy(updatedAtEpochMs = System.currentTimeMillis()))
         }
     }
 

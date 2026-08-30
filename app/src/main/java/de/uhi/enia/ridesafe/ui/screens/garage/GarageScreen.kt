@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.ui.components.EmptyState
+import de.uhi.enia.ridesafe.ui.components.LicensePlateChip
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -145,17 +146,7 @@ private fun VehicleCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Card(
-                    shape = MaterialTheme.shapes.extraSmall,
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                ) {
-                    Text(
-                        text = vehicle.licensePlate,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                    )
-                }
+                LicensePlateChip(plate = vehicle.licensePlate)
             }
             if (vehicle.isPrimary) {
                 MaterialSymbol(

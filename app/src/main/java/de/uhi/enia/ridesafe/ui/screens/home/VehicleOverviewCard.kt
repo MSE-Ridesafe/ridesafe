@@ -18,22 +18,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Vehicle
+import de.uhi.enia.ridesafe.ui.components.LicensePlateChip
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.screens.garage.VehicleImage
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatOdometer
 
+/**
+ * The dashboard's header card: the car, its plate as the garage draws it, and the odometer as the
+ * one headline figure — it moves with every refuel, unlike the rated consumption that used to sit
+ * beside it and never changed.
+ */
 @Composable
 fun VehicleCard(vehicle: Vehicle?) {
     val unitSystem = currentUnitSystem()
-    val context = LocalContext.current
     Card(
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
@@ -64,30 +70,17 @@ fun VehicleCard(vehicle: Vehicle?) {
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    vehicle?.let {
-                        Text(
-                            text = "${it.year ?: stringResource(R.string.value_not_set)} - ${it.licensePlate}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                    vehicle?.licensePlate?.takeIf { it.isNotBlank() }?.let {
+                        LicensePlateChip(plate = it)
                     }
                 }
             }
             if (vehicle != null) {
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
-                    InfoChip(
-                        label = stringResource(R.string.vehicle_mileage),
-                        value = formatOdometer(vehicle.mileageKm, unitSystem),
-                        modifier = Modifier.weight(1f),
-                    )
-                    InfoChip(
-                        label = stringResource(R.string.home_vehicle_fuel_consumption),
-                        value = formatFuelConsumption(context, vehicle.fuelEconomy),
-                        modifier = Modifier.weight(1f),
-                    )
-                }
+                HeadlineMetric(
+                    icon = "road",
+                    label = stringResource(R.string.vehicle_mileage),
+                    value = formatOdometer(vehicle.mileageKm, unitSystem),
+                )
             }
         }
     }
@@ -95,8 +88,7 @@ fun VehicleCard(vehicle: Vehicle?) {
 
 /**
  * The header card's "All vehicles" face: the whole garage as one entry, with the fleet's combined
- * odometer. Rated consumption has no meaningful sum, so the chip row shrinks to the one figure
- * that does.
+ * odometer as the same headline chip the single-car face carries.
  */
 @Composable
 fun GarageSummaryCard(vehicles: List<Vehicle>) {
@@ -144,11 +136,56 @@ fun GarageSummaryCard(vehicles: List<Vehicle>) {
                     )
                 }
             }
-            InfoChip(
+            HeadlineMetric(
+                icon = "road",
                 label = stringResource(R.string.home_garage_total_mileage),
                 value = formatOdometer(vehicles.sumOf { it.mileageKm }, unitSystem),
-                modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+}
+
+/**
+ * The header card's one figure, drawn exactly like a carousel metric card's content — icon beside
+ * the label, the value big beneath, no nested surface — so the dashboard's cards read as one
+ * visual language.
+ */
+@Composable
+private fun HeadlineMetric(
+    icon: String,
+    label: String,
+    value: String,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            MaterialSymbol(
+                symbolName = icon,
+                contentDescription = null,
+                color = MaterialTheme.colorScheme.primary,
+                size = 24.dp,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge.copy(lineHeight = 18.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Text(
+            text = value,
+            style =
+                MaterialTheme.typography.displaySmall.copy(
+                    fontSize = 30.sp,
+                    lineHeight = 30.sp * 1.12f,
+                    fontWeight = FontWeight.SemiBold,
+                ),
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

@@ -6,8 +6,11 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -23,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.rides.recording.RideRecordingService
 import de.uhi.enia.ridesafe.ui.components.EcoSection
+import de.uhi.enia.ridesafe.ui.components.EmptyState
 
 @Composable
 fun HomeScreen(
@@ -97,10 +101,18 @@ fun HomeScreen(
                     monthDistanceMeters = state.currentMonthDistanceMeters,
                     monthDurationMillis = state.currentMonthDurationMillis,
                     monthRideCount = state.currentMonthRecordedRides,
+                    highlights = state.highlights,
                 )
             }
-            // The core feature (DSH-06) sits right under the mileage summary. Absent entirely until
-            // a first ride has been scored — an empty gauge would only advertise a missing feature.
+            // The core feature (DSH-06) sits right under the mileage summary. Until a first ride
+            // has been scored the gauges stay away (empty ones would only advertise a missing
+            // feature), but with BOTH score cards gone — fresh install, or a car without analyzed
+            // rides — one placeholder says why instead of the dashboard silently thinning out.
+            if (state.safetyAllTime == null && state.ecoLevel == null) {
+                item {
+                    ScoresEmptyCard()
+                }
+            }
             if (state.safetyAllTime != null) {
                 item {
                     SafetyScoreSection(
@@ -122,15 +134,29 @@ fun HomeScreen(
                 }
             }
             item {
-                HighlightsCard(
-                    highlights = state.highlights,
-                )
-            }
-            item {
                 ActivitySection(
                     activityByDay = state.activityByDay,
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ScoresEmptyCard() {
+    Card(
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        EmptyState(
+            symbolName = "speed",
+            title = stringResource(R.string.home_scores_empty_title),
+            message = stringResource(R.string.home_scores_empty_message),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+        )
     }
 }

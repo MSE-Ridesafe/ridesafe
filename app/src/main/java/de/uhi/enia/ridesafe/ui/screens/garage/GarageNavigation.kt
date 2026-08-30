@@ -83,6 +83,7 @@ fun EntryProviderScope<NavKey>.garageEntries(
             },
             showBack = showBack,
             onChooseImage = { uri -> vehicle?.let { viewModel.setVehicleImage(it, uri) } },
+            onRemoveImage = { vehicle?.let { viewModel.removeVehicleImage(it) } },
             onLinkBluetooth = { device -> vehicle?.let { viewModel.linkBluetooth(it, device) } },
         ) { address -> vehicle?.let { viewModel.unlinkBluetooth(it, address) } }
     }

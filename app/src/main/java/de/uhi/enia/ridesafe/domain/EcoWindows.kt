@@ -15,8 +15,8 @@ import de.uhi.enia.ridesafe.data.RideEco
  * ride's stops carry their own profiles and summing them is already the whole trip's profile.
  *
  * [vehicleId] narrows to one car's rides; null pools every ride, including those recorded in no
- * vehicle. Rides without a profile contribute nothing, and null comes back when nothing at all was
- * profiled — no data, never "perfectly efficient".
+ * vehicle. Rides that aren't rated (see [isRated] — both scores or neither) contribute nothing,
+ * and null comes back when nothing rated is in the set — no data, never "perfectly efficient".
  */
 fun ecoProfileForRides(
     rides: List<Ride>,
@@ -24,5 +24,5 @@ fun ecoProfileForRides(
 ): RideEco? =
     rides
         .filter { vehicleId == null || it.vehicleId == vehicleId }
-        .mapNotNull { it.eco }
+        .mapNotNull { it.ratedEco }
         .reduceOrNull(RideEco::plus)

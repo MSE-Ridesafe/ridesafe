@@ -19,6 +19,7 @@ import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.summarizeMerge
 import de.uhi.enia.ridesafe.domain.safetyScoreForRides
+import de.uhi.enia.ridesafe.rides.processing.score.ecoLevel
 import de.uhi.enia.ridesafe.ui.components.DetailScaffold
 import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
 import de.uhi.enia.ridesafe.util.currentUnitSystem
@@ -102,11 +103,13 @@ fun MergedRideDetailScreen(
         )
 
         // The whole trip's score: the stops' penalties and exposure summed, mapped once — never
-        // an average of their scores (see SafetyScoreWindows). Hidden when no stop was scoreable.
-        safetyScoreForRides(stops)?.let { SafetyScoreCard(score = it) }
+        // an average of their scores (see SafetyScoreWindows). Hidden when no stop was rated.
+        val tripScore = safetyScoreForRides(stops)
+        tripScore?.let { SafetyScoreCard(score = it) }
 
         // The trip's efficiency, same card as a single ride's — the aggregates add up across
         // stops and the level is derived once from the whole trip's driving (MRG-05 rule).
-        summary.eco?.let { EcoCard(eco = it) }
+        // Same ANL-01/ANL-03 coupling as a single ride: no trip safety score, no trip level.
+        summary.eco?.let { EcoCard(eco = it, level = if (tripScore != null) ecoLevel(it) else null) }
     }
 }

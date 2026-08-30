@@ -16,12 +16,12 @@ import java.time.temporal.TemporalAdjusters
  * Unlike mileage, this does **not** go through [logicalRideJourneys]: a merged ride's stops are
  * ordinary ride rows, and summing their penalties and their driving time is already the right
  * answer, so folding them into one journey first would only add a step that changes nothing. Rides
- * with no score contribute nothing, exactly as a ride with no distance contributes nothing to
- * mileage.
+ * that aren't rated (see [isRated] — both scores or neither) contribute nothing, exactly as a ride
+ * with no distance contributes nothing to mileage.
  *
  * Null means the window holds no scoreable driving at all — not a bad score, and not zero.
  */
-fun safetyScoreForRides(rides: List<Ride>): SafetyScore? = aggregateScore(rides.mapNotNull { it.score })
+fun safetyScoreForRides(rides: List<Ride>): SafetyScore? = aggregateScore(rides.mapNotNull { it.ratedScore })
 
 /** One calendar month, matching how [journeyTotalsForMonth] slices mileage. */
 fun safetyScoreForMonth(
@@ -55,10 +55,10 @@ fun weeklySafetyScores(
     zone: ZoneId,
 ): Map<LocalDate, Int> =
     rides
-        .filter { it.score != null }
+        .filter { it.isRated() }
         .groupBy { it.startedAtEpochMs.toLocalDate(zone).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)) }
         .mapNotNull { (weekStart, weekRides) ->
-            aggregateScore(weekRides.mapNotNull { it.score })?.let { weekStart to it.total }
+            aggregateScore(weekRides.mapNotNull { it.ratedScore })?.let { weekStart to it.total }
         }.toMap()
 
 /**
@@ -70,10 +70,10 @@ fun monthlySafetyScores(
     zone: ZoneId,
 ): Map<YearMonth, Int> =
     rides
-        .filter { it.score != null }
+        .filter { it.isRated() }
         .groupBy { YearMonth.from(it.startedAtEpochMs.toLocalDate(zone)) }
         .mapNotNull { (month, monthRides) ->
-            aggregateScore(monthRides.mapNotNull { it.score })?.let { month to it.total }
+            aggregateScore(monthRides.mapNotNull { it.ratedScore })?.let { month to it.total }
         }.toMap()
 
 /**
@@ -89,12 +89,12 @@ fun allTimeSafetyScoreHistory(
 ): List<Pair<LocalDate, Int>> {
     val byDay =
         rides
-            .filter { it.score != null }
+            .filter { it.isRated() }
             .groupBy { it.startedAtEpochMs.toLocalDate(zone) }
             .toSortedMap()
     val soFar = mutableListOf<SafetyScore>()
     return byDay.mapNotNull { (day, dayRides) ->
-        soFar += dayRides.mapNotNull { it.score }
+        soFar += dayRides.mapNotNull { it.ratedScore }
         aggregateScore(soFar)?.let { day to it.total }
     }
 }

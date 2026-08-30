@@ -27,7 +27,6 @@
     </plurals>
     <string name="home_garage_total_mileage">Gesamtkilometerstand</string>
     <string name="recording_active_ride">Aktive Fahrt</string>
-    <string name="home_vehicle_fuel_consumption">Kraftstoffverbrauch</string>
     <string name="home_total_distance">Gesamte Strecke</string>
     <string name="home_total_travel_time">Gesamte Fahrzeit</string>
     <string name="home_total_recorded_rides">Aufgezeichnete Fahrten</string>
@@ -170,6 +169,10 @@
     <string name="garage_primary">Primär</string>
     <string name="garage_vehicle_image">Fahrzeugbild</string>
     <string name="vehicle_choose_image">Fahrzeugfoto auswählen</string>
+    <string name="vehicle_photo_edit">Fahrzeugfoto bearbeiten</string>
+    <string name="vehicle_photo_sheet_title">Fahrzeugfoto</string>
+    <string name="vehicle_photo_replace">Foto ersetzen</string>
+    <string name="vehicle_photo_remove">Foto entfernen</string>
     <string name="garage_primary_marker">Primärfahrzeug</string>
 
     <string name="vehicle_nickname">Spitzname</string>
@@ -307,8 +310,12 @@
     <!-- Barrierefreiheit: Beschriftung der Anzeige, dann ihr Wert. -->
     <string name="safety_score_gauge">%1$s: %2$d von 100</string>
     <string name="ride_score_unscoreable">Zu wenig auswertbare Fahrzeit, um diese Fahrt zu bewerten.</string>
+    <string name="ride_eco_unscoreable">Zu wenig auswertbare Fahrzeit, um die Effizienz dieser Fahrt zu bewerten.</string>
     <string name="home_score_period_all">Insgesamt</string>
     <string name="home_score_empty">Keine bewerteten Fahrten in diesem Zeitraum.</string>
+    <!-- Dashboard-Platzhalter, solange weder Sicherheit noch Öko etwas zu bewerten haben. -->
+    <string name="home_scores_empty_title">Noch keine Bewertungen</string>
+    <string name="home_scores_empty_message">Noch nicht genug Fahrtdaten für Sicherheits- und Öko-Bewertung.</string>
     <!-- Diagramm-Untertitel je Zeitraum und die Kalenderwochen-Beschriftung eines Wochenbalkens. -->
     <string name="home_score_dev_week">Score-Entwicklung der letzten Wochen</string>
     <string name="home_score_dev_month">Score-Entwicklung der letzten Monate</string>

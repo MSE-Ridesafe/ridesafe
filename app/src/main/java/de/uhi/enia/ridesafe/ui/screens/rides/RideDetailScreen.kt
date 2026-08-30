@@ -13,7 +13,10 @@ import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.SavedAddress
+import de.uhi.enia.ridesafe.domain.ratedEco
+import de.uhi.enia.ridesafe.domain.ratedScore
 import de.uhi.enia.ridesafe.rides.processing.latLngDistanceMeters
+import de.uhi.enia.ridesafe.rides.processing.score.ecoLevel
 import de.uhi.enia.ridesafe.ui.components.CardDivider
 import de.uhi.enia.ridesafe.ui.components.DetailScaffold
 import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
@@ -109,16 +112,18 @@ fun RideDetailScreen(
         // reads in one glance before the safety/eco judgments below.
 
         // The score sits directly under the map that shows its events (ANL-01). Three states:
-        // scored; analysed but unscoreable (too little measurable driving — say so rather than
+        // rated; analysed but unrated (too little measurable driving for the safety score OR the
+        // eco level — the two rate together or not at all, see isRated — say so rather than
         // hiding, or the absence reads as a bug); not analysed / no motion sensors (nothing).
-        ride.score?.let { SafetyScoreCard(score = it) }
+        ride.ratedScore?.let { SafetyScoreCard(score = it) }
             ?: ride.dynamics?.let {
                 SafetyScoreCard(score = null, emptyText = stringResource(R.string.ride_score_unscoreable))
             }
 
         // Absent for a ride still being analysed and for one with no usable track — "no
         // profile", not "a perfectly efficient drive". Kinematic, so it needs no vehicle.
-        ride.eco?.let { EcoCard(eco = it) }
+        // The level rides the same coupling as the score above: both or neither.
+        ride.eco?.let { EcoCard(eco = it, level = ecoLevel(ride.ratedEco)) }
 
         if (refuels.isNotEmpty()) {
             SectionCard(title = stringResource(R.string.refuel_associated_section)) {

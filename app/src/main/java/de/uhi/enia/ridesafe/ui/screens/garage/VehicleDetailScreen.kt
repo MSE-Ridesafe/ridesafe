@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -59,6 +60,7 @@ fun VehicleDetailScreen(
     onDelete: () -> Unit,
     showBack: Boolean = true,
     onChooseImage: (Uri) -> Unit,
+    onRemoveImage: () -> Unit,
     onLinkBluetooth: (BtDevice) -> Unit = {},
     onUnlinkBluetooth: (String) -> Unit = {},
 ) {
@@ -67,6 +69,7 @@ fun VehicleDetailScreen(
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
     var showBluetoothPicker by rememberSaveable { mutableStateOf(false) }
     var showExtendedInformation by rememberSaveable { mutableStateOf(false) }
+    var showPhotoSheet by rememberSaveable { mutableStateOf(false) }
     val bluetoothPermissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) showBluetoothPicker = true
@@ -95,12 +98,25 @@ fun VehicleDetailScreen(
         if (vehicle == null) return@DetailScaffold
 
         val notSet = stringResource(R.string.value_not_set)
+        // Cheap stat call, re-checked whenever the row is touched — setVehicleImage/removeVehicleImage
+        // bump updatedAtEpochMs, the same key VehicleImage reloads on.
+        val hasImage =
+            remember(vehicle.vehicleUuid, vehicle.updatedAtEpochMs) {
+                vehicleImageFile(context, vehicle).exists()
+            }
         VehicleHeader(
             vehicle = vehicle,
-            onChooseImage = {
-                imagePicker.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                )
+            hasImage = hasImage,
+            onEditImage = {
+                // With a photo the tap asks what to do with it; without one the only sensible
+                // answer is the picker, so it opens directly instead of behind a one-option sheet.
+                if (hasImage) {
+                    showPhotoSheet = true
+                } else {
+                    imagePicker.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                    )
+                }
             },
         )
 
@@ -174,6 +190,22 @@ fun VehicleDetailScreen(
         )
     }
 
+    if (showPhotoSheet) {
+        VehiclePhotoSheet(
+            onReplace = {
+                showPhotoSheet = false
+                imagePicker.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                )
+            },
+            onRemove = {
+                showPhotoSheet = false
+                onRemoveImage()
+            },
+            onDismiss = { showPhotoSheet = false },
+        )
+    }
+
     if (showDeleteDialog && vehicle != null) {
         ConfirmDestructiveDialog(
             title = stringResource(R.string.garage_delete_confirm_title),
@@ -206,9 +238,11 @@ fun VehicleDetailScreen(
 @Composable
 private fun VehicleHeader(
     vehicle: Vehicle,
-    onChooseImage: () -> Unit,
+    hasImage: Boolean,
+    onEditImage: () -> Unit,
 ) {
-    val chooseImageLabel = stringResource(R.string.vehicle_choose_image)
+    val editImageLabel =
+        stringResource(if (hasImage) R.string.vehicle_photo_edit else R.string.vehicle_choose_image)
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(20.dp),
@@ -216,7 +250,7 @@ private fun VehicleHeader(
     ) {
         Box {
             VehicleImage(
-                modifier = Modifier.clickable(onClickLabel = chooseImageLabel, onClick = onChooseImage),
+                modifier = Modifier.clickable(onClickLabel = editImageLabel, onClick = onEditImage),
                 vehicle = vehicle,
                 size = 120.dp,
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -227,13 +261,13 @@ private fun VehicleHeader(
                         .align(Alignment.BottomEnd)
                         .clip(MaterialTheme.shapes.small)
                         .background(MaterialTheme.colorScheme.primaryContainer)
-                        .clickable(onClickLabel = chooseImageLabel, onClick = onChooseImage)
+                        .clickable(onClickLabel = editImageLabel, onClick = onEditImage)
                         .padding(7.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 MaterialSymbol(
-                    symbolName = "add_a_photo",
-                    contentDescription = chooseImageLabel,
+                    symbolName = if (hasImage) "photo_camera" else "add_a_photo",
+                    contentDescription = editImageLabel,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     size = 20.dp,
                 )
