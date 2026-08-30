@@ -2,7 +2,6 @@ package de.uhi.enia.ridesafe.ui.components.map
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,7 +16,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.Dp
@@ -106,14 +104,7 @@ fun MapPreview(
             if (framing?.isEmpty() != true) {
                 val coverAlpha by animateFloatAsState(if (mapLoaded) 0f else 1f, tween(400), label = "previewCover")
                 if (coverAlpha > 0f) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .matchParentSize()
-                                .alpha(coverAlpha)
-                                .background(MaterialTheme.colorScheme.surfaceBright),
-                        contentAlignment = Alignment.Center,
-                    ) { MapLoadingIndicator() }
+                    MapLoadingCover(Modifier.alpha(coverAlpha))
                 }
             }
         }

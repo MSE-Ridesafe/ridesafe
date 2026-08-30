@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -36,7 +35,7 @@ fun VehicleCard(vehicle: Vehicle?) {
     val unitSystem = currentUnitSystem()
     val context = LocalContext.current
     Card(
-        shape = RoundedCornerShape(28.dp),
+        shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -103,7 +102,7 @@ fun VehicleCard(vehicle: Vehicle?) {
 fun GarageSummaryCard(vehicles: List<Vehicle>) {
     val unitSystem = currentUnitSystem()
     Card(
-        shape = RoundedCornerShape(28.dp),
+        shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
         modifier = Modifier.fillMaxWidth(),
     ) {

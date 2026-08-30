@@ -131,7 +131,7 @@ internal fun RideBackupImportScreen(
                 navigationIcon = {
                     if (showBack) {
                         IconButton(onClick = onBack, enabled = !busy) {
-                            MaterialSymbol("arrow_back", stringResource(R.string.action_back))
+                            MaterialSymbol(symbolName = "arrow_back", contentDescription = stringResource(R.string.action_back))
                         }
                     }
                 },

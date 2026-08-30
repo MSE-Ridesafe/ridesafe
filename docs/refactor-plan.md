@@ -133,9 +133,9 @@ Similarity was verified per site — "identical" below means byte-identical modu
 - [ ] **P2.12** `EnumDropdown` — shared `ExposedDropdownMenuBox` shell for
   `FuelTypeDropdown` (`VehicleFormScreen.kt:387-422`) and `VehicleDropdown`
   (`RefuelFormScreen.kt:402-463`) only. See R6 for the two dropdowns that must NOT join.
-- [ ] **P2.13** `MapLoadingCover` next to `MapLoadingIndicator` — 3 identical sites
+- [x] **P2.13** `MapLoadingCover` next to `MapLoadingIndicator` — 3 identical sites
   (`SavedAddressFormScreen.kt:588,704`, `map/MapPreview.kt:108-117`). ~-4.
-- [ ] **P2.14** Token drift fixes: replace `RoundedCornerShape(28.dp)` with
+- [x] **P2.14** Token drift fixes: replace `RoundedCornerShape(28.dp)` with
   `MaterialTheme.shapes.extraLarge` at 4 home-card sites (`VehicleOverviewCard.kt:39,106`,
   `SummaryCards.kt:176`, `HighlightsCard.kt:35` — same value, hardcoded); consider
   `RidesafeCard(contentPadding, spacing)` for the 18-site card shell if P2.7 leaves

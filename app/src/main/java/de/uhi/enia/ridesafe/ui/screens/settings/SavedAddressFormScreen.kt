@@ -8,7 +8,6 @@ import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -89,7 +88,7 @@ import de.uhi.enia.ridesafe.ui.components.ConfirmDestructiveDialog
 import de.uhi.enia.ridesafe.ui.components.DestructiveOutlinedButton
 import de.uhi.enia.ridesafe.ui.components.FormScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.ui.components.map.MapLoadingIndicator
+import de.uhi.enia.ridesafe.ui.components.map.MapLoadingCover
 import de.uhi.enia.ridesafe.ui.components.map.rememberIsOnline
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatShortDistance
@@ -538,10 +537,7 @@ fun SavedAddressFormScreen(
                     // It draws over the pin but under nothing clickable, so the tap-to-open
                     // overlay beneath keeps working.
                     if (!online && !mapLoaded) {
-                        Box(
-                            modifier = Modifier.matchParentSize().background(MaterialTheme.colorScheme.surfaceBright),
-                            contentAlignment = Alignment.Center,
-                        ) { MapLoadingIndicator() }
+                        MapLoadingCover()
                     }
                 }
             }
@@ -649,10 +645,7 @@ fun SavedAddressFormScreen(
                     // Covers the blank map and the pin while offline; the app bar stays above it so
                     // closing the picker keeps working without a connection.
                     if (!online && !mapLoaded) {
-                        Box(
-                            modifier = Modifier.matchParentSize().background(MaterialTheme.colorScheme.surfaceBright),
-                            contentAlignment = Alignment.Center,
-                        ) { MapLoadingIndicator() }
+                        MapLoadingCover()
                     }
 
                     TopAppBar(
