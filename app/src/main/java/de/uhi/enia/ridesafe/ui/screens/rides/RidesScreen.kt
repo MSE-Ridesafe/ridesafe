@@ -34,7 +34,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -108,7 +107,6 @@ fun RidesScreen(
     val recording by RecordingStatus.running.collectAsState()
     val recordingInset = if (recording != null) RECORDING_BAR_INSET else 0.dp
 
-    var selectionMode by rememberSaveable { mutableStateOf(false) }
     var handledSelectionDismissRequest by rememberSaveable {
         mutableIntStateOf(selectionDismissRequests.value)
     }
@@ -116,11 +114,6 @@ fun RidesScreen(
     var pendingExportRequests by remember { mutableStateOf<List<RideExportRequest>?>(null) }
     var deleteConfirmationOpen by rememberSaveable { mutableStateOf(false) }
     var deleteOperationPending by rememberSaveable { mutableStateOf(false) }
-    // Selection is by entry key; keys that no longer exist (data changed) are ignored below.
-    var selectedKeys by
-        rememberSaveable(
-            stateSaver = listSaver(save = { it.toList() }, restore = { it.toSet() }),
-        ) { mutableStateOf(emptySet<String>()) }
     var filtersOpen by rememberSaveable { mutableStateOf(false) }
 
     // Each entry's searchable text, built once per data change; a keystroke then only scans it.
@@ -141,36 +134,13 @@ fun RidesScreen(
             }
         }
 
-    // Selection tracks what is on screen: a ride hidden by the filter counts as deselected, so
-    // "select all" means all the *shown* rides and no invisible ride can be swept into a merge.
-    val selectAllKeys = remember(visibleTimeline) { timelineSelectionKeys(visibleTimeline) }
-    val liveKeys = remember(visibleTimeline) { visibleTimelineSelectionKeys(visibleTimeline) }
-    val selected = selectedKeys.intersect(liveKeys)
-    val selectedRideEntries = remember(timeline, selected) { selectedRideLogbookEntries(timeline, selected) }
-    val selectedRefuelRecords = remember(timeline, selected) { selectedRefuels(timeline, selected) }
-    // Contiguity (MRG-02) is judged against every ride, not the shown ones: a filtered-out ride
-    // between two selected ones still breaks the run, and merging across it would be wrong.
-    val allRides = remember(entries) { entries.flatMap { it.rides } }
-    // Merge, unmerge, attach or detach — one primary action, picked from what is selected.
-    val action =
-        remember(selectedRideEntries, selectedRefuelRecords, allRides) {
-            logbookAction(selectedRideEntries, selectedRefuelRecords, allRides)
-        }
-
-    fun exitSelection() {
-        selectionMode = false
-        selectedKeys = emptySet()
-    }
-
-    fun toggle(key: String) {
-        selectedKeys = if (key in selected) selected - key else selected + key
-    }
+    val selection = rememberLogbookSelection(timeline, visibleTimeline, entries)
 
     val selectionDismissRequest = selectionDismissRequests.value
     LaunchedEffect(selectionDismissRequest) {
         if (selectionDismissRequest != handledSelectionDismissRequest) {
             handledSelectionDismissRequest = selectionDismissRequest
-            exitSelection()
+            selection.exit()
         }
     }
 
@@ -222,7 +192,7 @@ fun RidesScreen(
                 deleteOperationPending = false
                 // A Snackbar suspends until it times out. Finish the operation first so the
                 // completed selection disappears immediately and a later action is never ignored.
-                exitSelection()
+                selection.exit()
                 onLogbookOperationResultConsumed()
                 snackbarHostState.showSnackbar(message)
             }
@@ -248,34 +218,34 @@ fun RidesScreen(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             snackbarHost = { AppSnackbarHost(snackbarHostState) },
             topBar = {
-                if (selectionMode) {
+                if (selection.selectionMode) {
                     SelectionTopBar(
-                        count = selected.size,
-                        allSelected = selectAllKeys.isNotEmpty() && selectAllKeys.all { it in selected },
-                        action = action,
+                        count = selection.selected.size,
+                        allSelected = selection.selectAllKeys.isNotEmpty() && selection.selectAllKeys.all { it in selection.selected },
+                        action = selection.action,
                         operationRunning = logbookOperationState == LogbookOperationState.Running,
-                        onExit = ::exitSelection,
-                        onSelectAll = { selectedKeys = selectAllKeys },
-                        onDeselectAll = { selectedKeys = emptySet() },
+                        onExit = selection.exit,
+                        onSelectAll = selection.selectAll,
+                        onDeselectAll = selection.deselectAll,
                         onAction = {
-                            val rideIds = selectedRideEntries.flatMap { it.rideIds }
-                            val refuelIds = selectedRefuelRecords.map { it.id }
-                            when (action.kind) {
+                            val rideIds = selection.selectedRideEntries.flatMap { it.rideIds }
+                            val refuelIds = selection.selectedRefuelRecords.map { it.id }
+                            when (selection.action.kind) {
                                 LogbookActionKind.MERGE -> onMerge(rideIds, refuelIds)
                                 LogbookActionKind.ATTACH -> onAttach(rideIds, refuelIds)
                                 LogbookActionKind.DETACH -> onDetach(refuelIds)
                                 // Un-merging is not a logbook operation, so it clears the selection itself.
                                 LogbookActionKind.UNMERGE -> {
-                                    action.unmergeGroupId?.let(onUnmerge)
-                                    exitSelection()
+                                    selection.action.unmergeGroupId?.let(onUnmerge)
+                                    selection.exit()
                                 }
                             }
                         },
-                        exportEnabled = selectedRideEntries.isNotEmpty() && exportState != RideExportState.Exporting,
-                        onExport = { pendingExportRequests = exportRequests(entries, selected) },
+                        exportEnabled = selection.selectedRideEntries.isNotEmpty() && exportState != RideExportState.Exporting,
+                        onExport = { pendingExportRequests = exportRequests(entries, selection.selected) },
                         deleteEnabled =
-                            selected.isNotEmpty() &&
-                                selectedRideEntries.flatMap { it.rides }.all { it.endedAtEpochMs != null },
+                            selection.selected.isNotEmpty() &&
+                                selection.selectedRideEntries.flatMap { it.rides }.all { it.endedAtEpochMs != null },
                         onDelete = { deleteConfirmationOpen = true },
                     )
                 } else {
@@ -402,12 +372,12 @@ fun RidesScreen(
                                                 Column {
                                                     LogbookRow(
                                                         entry = entry,
-                                                        selectionMode = selectionMode,
-                                                        selected = entry.key in selected,
+                                                        selectionMode = selection.selectionMode,
+                                                        selected = entry.key in selection.selected,
                                                         isOpen = entry.key == selectedKey,
                                                         onClick = {
-                                                            if (selectionMode) {
-                                                                toggle(entry.key)
+                                                            if (selection.selectionMode) {
+                                                                selection.toggle(entry.key)
                                                             } else {
                                                                 when (entry) {
                                                                     is LogbookEntry.Single -> onOpenRide(entry.row.ride.id)
@@ -416,8 +386,8 @@ fun RidesScreen(
                                                             }
                                                         },
                                                         onLongClick = {
-                                                            selectionMode = true
-                                                            toggle(entry.key)
+                                                            selection.enter()
+                                                            selection.toggle(entry.key)
                                                         },
                                                     )
                                                     // Keep the compact main timeline focused on the combined
@@ -429,16 +399,16 @@ fun RidesScreen(
                                                             val key = "f${nested.refuel.id}"
                                                             RefuelTimelineRow(
                                                                 row = nested,
-                                                                selectionMode = selectionMode,
-                                                                selected = key in selected,
+                                                                selectionMode = selection.selectionMode,
+                                                                selected = key in selection.selected,
                                                                 isOpen = key == selectedKey,
                                                                 nested = true,
                                                                 onClick = {
-                                                                    if (selectionMode) toggle(key) else onOpenRefuel(nested.refuel.id)
+                                                                    if (selection.selectionMode) selection.toggle(key) else onOpenRefuel(nested.refuel.id)
                                                                 },
                                                                 onLongClick = {
-                                                                    selectionMode = true
-                                                                    toggle(key)
+                                                                    selection.enter()
+                                                                    selection.toggle(key)
                                                                 },
                                                             )
                                                         }
@@ -449,19 +419,19 @@ fun RidesScreen(
                                             is TimelineEntry.RefuelEntry -> {
                                                 RefuelTimelineRow(
                                                     row = timelineEntry.row,
-                                                    selectionMode = selectionMode,
-                                                    selected = timelineEntry.stableKey in selected,
+                                                    selectionMode = selection.selectionMode,
+                                                    selected = timelineEntry.stableKey in selection.selected,
                                                     isOpen = timelineEntry.stableKey == selectedKey,
                                                     onClick = {
-                                                        if (selectionMode) {
-                                                            toggle(timelineEntry.stableKey)
+                                                        if (selection.selectionMode) {
+                                                            selection.toggle(timelineEntry.stableKey)
                                                         } else {
                                                             onOpenRefuel(timelineEntry.row.refuel.id)
                                                         }
                                                     },
                                                     onLongClick = {
-                                                        selectionMode = true
-                                                        toggle(timelineEntry.stableKey)
+                                                        selection.enter()
+                                                        selection.toggle(timelineEntry.stableKey)
                                                     },
                                                 )
                                             }
@@ -531,8 +501,8 @@ fun RidesScreen(
             onConfirm = {
                 deleteOperationPending = true
                 onDelete(
-                    selectedRideEntries.flatMap { it.rideIds },
-                    selectedRefuelRecords.map { it.id },
+                    selection.selectedRideEntries.flatMap { it.rideIds },
+                    selection.selectedRefuelRecords.map { it.id },
                 )
             },
             onDismiss = { deleteConfirmationOpen = false },
