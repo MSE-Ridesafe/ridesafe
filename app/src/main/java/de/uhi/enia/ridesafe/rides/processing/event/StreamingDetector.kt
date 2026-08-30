@@ -43,7 +43,7 @@ import kotlin.math.sqrt
  * rides each get their own, which is what keeps parallel analysis safe.
  */
 internal class StreamingDetector(
-    private val forward: DoubleArray?,
+    private val forward: AxisTimeline?,
     private val config: RideEventConfig,
     rideStartElapsedNanos: Long,
 ) {
@@ -80,6 +80,7 @@ internal class StreamingDetector(
     private var smoothedLongitudinal = 0.0
     private var smoothedLateral = 0.0
     private var smoothedYawRate = 0.0
+
     // Carried across gated stretches so the cornering signal (which needs a speed) keeps tracking
     // while gated, the same way the rate trackers do — a gate lifting must not read as a step.
     private var lastSpeedMps = 0.0
@@ -91,7 +92,14 @@ internal class StreamingDetector(
     private val pendingLateral = DoubleArray(CAPACITY)
     private val pendingYaw = DoubleArray(CAPACITY)
     private val pendingGyroMagnitude = DoubleArray(CAPACITY)
+    private val pendingAxisValid = BooleanArray(CAPACITY)
+    private val pendingReseed = BooleanArray(CAPACITY)
     private var pendingCount = 0
+
+    // The axis the previously queued sample projected against, by identity: a different array means
+    // a different mounting epoch, whose first sample must re-seed the projection filters rather
+    // than let the basis change masquerade as jerk.
+    private var queuedAxis: DoubleArray? = null
 
     fun onFix(filtered: LocationSample) {
         previousFix = currentFix
@@ -151,13 +159,14 @@ internal class StreamingDetector(
         val hy = ay - vertical * upY
         val hz = az - vertical * upZ
 
-        // Project onto the calibrated forward axis, levelled into the horizontal plane, and onto
-        // its rightward perpendicular (forward × up). Without an axis both stay zero — there is no
-        // per-sample fallback on purpose: the old GPS-heading one manufactured events whenever the
-        // interpolated course lagged the car's real heading, which is exactly what a slalom does.
+        // Project onto the calibrated forward axis of the sample's own mounting epoch, levelled
+        // into the horizontal plane, and onto its rightward perpendicular (forward × up). Without
+        // an axis both stay zero — there is no per-sample fallback on purpose: the old GPS-heading
+        // one manufactured events whenever the interpolated course lagged the car's real heading,
+        // which is exactly what a slalom does.
         var longitudinal = 0.0
         var lateral = 0.0
-        val axis = forward
+        val axis = forward?.axisAt(sample.t)
         if (axis != null) {
             val axisDotUp = axis[0] * upX + axis[1] * upY + axis[2] * upZ
             var fx = axis[0] - axisDotUp * upX
@@ -179,6 +188,9 @@ internal class StreamingDetector(
         pendingNanos[pendingCount] = sample.t
         pendingLongitudinal[pendingCount] = longitudinal
         pendingLateral[pendingCount] = lateral
+        pendingAxisValid[pendingCount] = axis != null
+        pendingReseed[pendingCount] = axis != null && axis !== queuedAxis
+        queuedAxis = axis
         pendingYaw[pendingCount] =
             if (!gyroFresh) 0.0 else verticalComponent(matrix, gyro!!.x.toDouble(), gyro.y.toDouble(), gyro.z.toDouble())
         pendingGyroMagnitude[pendingCount] =
@@ -191,7 +203,15 @@ internal class StreamingDetector(
         var kept = 0
         for (i in 0 until pendingCount) {
             if (pendingNanos[i] <= limit) {
-                process(pendingNanos[i], pendingLongitudinal[i], pendingLateral[i], pendingYaw[i], pendingGyroMagnitude[i])
+                process(
+                    pendingNanos[i],
+                    pendingLongitudinal[i],
+                    pendingLateral[i],
+                    pendingYaw[i],
+                    pendingGyroMagnitude[i],
+                    pendingAxisValid[i],
+                    pendingReseed[i],
+                )
                 continue
             }
             pendingNanos[kept] = pendingNanos[i]
@@ -199,6 +219,8 @@ internal class StreamingDetector(
             pendingLateral[kept] = pendingLateral[i]
             pendingYaw[kept] = pendingYaw[i]
             pendingGyroMagnitude[kept] = pendingGyroMagnitude[i]
+            pendingAxisValid[kept] = pendingAxisValid[i]
+            pendingReseed[kept] = pendingReseed[i]
             kept++
         }
         pendingCount = kept
@@ -233,19 +255,31 @@ internal class StreamingDetector(
         lateral: Double,
         yawRate: Double,
         gyroMagnitude: Double,
+        axisValid: Boolean,
+        reseed: Boolean,
     ) {
         val hasState = trackStateAt(nanos)
 
         // One-pole low-pass, dt from the real timestamps — sensor delivery is never truly uniform.
         // Filtering runs even on gated samples so the state stays warm and doesn't jump when the
         // gate lifts. The first sample seeds the filter outright instead of ramping up from zero.
+        // A new mounting epoch re-seeds the two projections the same way and clears their rate
+        // trackers: the basis changed, and the step from the old axis to the new is not jerk.
         val dt = if (seeded) ((nanos - previousNanos) / 1e9).coerceIn(1e-4, 1.0) else 0.0
         val alpha = if (seeded) dt / (dt + rc) else 1.0
         previousNanos = nanos
         seeded = true
         profile.addElapsed(dt)
-        smoothedLongitudinal += alpha * (longitudinal - smoothedLongitudinal)
-        smoothedLateral += alpha * (lateral - smoothedLateral)
+        if (reseed) {
+            smoothedLongitudinal = longitudinal
+            smoothedLateral = lateral
+            brakingRate.clear()
+            acceleratingRate.clear()
+            corneringRate.clear()
+        } else {
+            smoothedLongitudinal += alpha * (longitudinal - smoothedLongitudinal)
+            smoothedLateral += alpha * (lateral - smoothedLateral)
+        }
         smoothedYawRate += alpha * (yawRate - smoothedYawRate)
 
         if (hasState) lastSpeedMps = state.speedMps
@@ -302,7 +336,7 @@ internal class StreamingDetector(
         // The IMU speed cross-check needs a lateral signal to exist, so without an axis the GPS
         // speed stands alone — dividing an identically-zero lateral by yaw would gate out every turn.
         val imuSpeed =
-            if (forward != null && abs(smoothedYawRate) >= config.minYawForImuSpeedRadPerS) {
+            if (axisValid && abs(smoothedYawRate) >= config.minYawForImuSpeedRadPerS) {
                 abs(smoothedLateral) / abs(smoothedYawRate)
             } else {
                 null
@@ -320,10 +354,11 @@ internal class StreamingDetector(
 
         braking.feed(nanos, brakingG, brakingJerk, state, armedBraking)
         accelerating.feed(nanos, acceleratingG, acceleratingJerk, state, armedAccelerating)
-        if (forward == null) {
-            // No calibrated axis: the Doppler-armed longitudinal path above is all there is.
-            // Cornering has no car-side instrument of its own here, and the profile must not count
-            // this time as measured — an axis-less ride stays unscoreable rather than flawless.
+        if (!axisValid) {
+            // No calibrated axis over this stretch: the Doppler-armed longitudinal path above is
+            // all there is. Cornering has no car-side instrument of its own here, and the profile
+            // must not count this time as measured — axis-less driving stays unscoreable rather
+            // than flawless.
             cornering.feed(nanos, 0.0, 0.0, null)
             return
         }

@@ -138,6 +138,28 @@ All 96 rides in today's backup were replayed through the finished Kotlin impleme
   additions (rides 93, 115, 129's launch) are Doppler-corroborated sustained maneuvers. No
   ride's count exploded; short/parked rides still yield nothing.
 
+## Follow-up (same day): scoring coupling and re-seated phones
+
+Driver review of the reworked build surfaced two downstream gaps.
+
+**The score ignored what detection had learned.** The Home ride's acceleration score sat at 93
+despite two confirmed hard launches, one full-throttle: both entered through the Doppler-armed
+path, so the accelerometer-side jerk histograms — 70% of the penalty weight — never saw them.
+Fix: detected events now add their own penalty (`ScoreWeights.eventWeight`), priced by the same
+density curve from each event's measured average/peak g and duration. Whatever detection learns
+to see, the score charges for, with no separate tuning pass. Near-floor events cost fractions of
+a second, so clean rides are untouched (ride 127: 93 → 92) while the Home ride's acceleration
+lands at 61 and its emergency stop pulls braking to 5. ScoreStage v3.
+
+**A re-seated phone voided whole rides.** The 16:42 Bördestraße ride (5.8 km, 11 min) reported
+"no sufficient data": the driver re-seated the phone ~3.5 minutes in, the axis contributions
+split into two clusters ~130° apart, and the whole-ride average failed coherence — correctly, but
+at the cost of the entire ride. Calibration is now segmented per mounting epoch: five consecutive
+contributions disagreeing with the running mean by >45° close an epoch and seed the next, each
+epoch is accepted on its own count and coherence, and detection re-seeds its projection filters at
+the boundary while the unproven gap between epochs stays unmeasurable. The ride now scores (327 s
+qualified, 47% coverage) with no invented events. AXIS_VERSION 3, EVENTS_VERSION 12.
+
 ## Known limits (deliberate)
 
 - A loosely lying phone underreports per-axis force; maneuvers it absorbs are recovered by the

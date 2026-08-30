@@ -9,6 +9,7 @@ import de.uhi.enia.ridesafe.data.RideDynamics
 import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.rides.RideDataCoordinator
+import de.uhi.enia.ridesafe.rides.processing.event.AxisTimeline
 import de.uhi.enia.ridesafe.rides.recording.LocationSample
 import de.uhi.enia.ridesafe.rides.recording.RideSample
 import de.uhi.enia.ridesafe.rides.recording.forEachSampleInTimeOrder
@@ -80,8 +81,8 @@ class RideAnalysisContext(
     /** Whether the ride recorded any acceleration at all — without it there is nothing to detect. */
     var hasAccel = false
 
-    /** Unit vector of the vehicle's forward axis in the device frame; null when unrecoverable. */
-    var forwardAxis: DoubleArray? = null
+    /** The vehicle's forward axis per mounting epoch; null when no epoch was recoverable. */
+    internal var forwardAxis: AxisTimeline? = null
 
     /** Distance + average speed off the filtered track. */
     var metrics: RideMetrics? = null

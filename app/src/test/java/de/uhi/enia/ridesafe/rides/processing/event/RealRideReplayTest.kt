@@ -44,7 +44,11 @@ class RealRideReplayTest {
                 .orEmpty()
                 .sortedBy { it.name }
         for (file in files) {
-            val startNanos = file.name.removePrefix("ride_").substringBefore('.').toLongOrNull() ?: continue
+            val startNanos =
+                file.name
+                    .removePrefix("ride_")
+                    .substringBefore('.')
+                    .toLongOrNull() ?: continue
             val samples = read(file)
             // Driven by hand rather than through detectRideEvents so the dynamics profile — the
             // scoring input — comes out of the very same pass as the events.
@@ -95,13 +99,18 @@ class RealRideReplayTest {
         input.bufferedReader().useLines { lines ->
             for (line in lines) {
                 when (val sample = runCatching { json.decodeFromString<RideSample>(line) }.getOrNull()) {
-                    is LocationSample -> locations.add(sample)
-                    is MotionSample ->
+                    is LocationSample -> {
+                        locations.add(sample)
+                    }
+
+                    is MotionSample -> {
                         when (sample.sensor) {
                             MotionSensor.ACCEL -> accel.add(sample)
                             MotionSensor.GYRO -> gyro.add(sample)
                             MotionSensor.ROTATION -> rotation.add(sample)
                         }
+                    }
+
                     null -> {}
                 }
             }

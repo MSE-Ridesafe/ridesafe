@@ -16,8 +16,8 @@ import de.uhi.enia.ridesafe.rides.recording.MotionSensor
 import de.uhi.enia.ridesafe.rides.recording.trackDistanceMeters
 import de.uhi.enia.ridesafe.util.haversineMeters
 
-const val AXIS_VERSION = 2
-const val EVENTS_VERSION = 11
+const val AXIS_VERSION = 3
+const val EVENTS_VERSION = 12
 const val ENDPOINTS_VERSION = 1
 
 /**
@@ -71,9 +71,10 @@ class RouteStage(
 }
 
 /**
- * The vehicle's forward axis in the device frame, plus enough of a census to tell an unanalysable
- * ride from a clean one. Whole-ride statistic, and nothing can be split into longitudinal and
- * lateral without it — which is the sole reason detection needs a second pass over the file.
+ * The vehicle's forward axis in the device frame — one per mounting epoch, segmented where the
+ * phone was re-seated mid-ride — plus enough of a census to tell an unanalysable ride from a clean
+ * one. A whole-ride statistic either way, and nothing can be split into longitudinal and lateral
+ * without it — which is the sole reason detection needs a second pass over the file.
  *
  * ponytail: the axis is recomputed every time because it is never stored. Persisting it in a
  * sidecar next to the route would make a pure detector re-tune single-pass; worth doing if
@@ -170,6 +171,11 @@ class ForwardAxisStage : RideStage {
  * magnetometer wander merely scatters the samples around it. The split itself is now computed in
  * the device frame — same math as the world-frame projection it replaces, minus the stale-matrix
  * heading and with the yaw-immunity explicit. See docs/event-detection-rework.md.
+ * v12: the forward axis is segmented per mounting epoch ([AXIS_VERSION] 3), so a phone re-seated
+ * mid-ride no longer voids the whole ride's calibration — a real 12-minute ride was reading as
+ * "too little measurable driving" because one re-seat at minute 3 scattered the single-axis
+ * average past any acceptance bar. Detection re-seeds its projection filters at each epoch
+ * boundary and treats the unproven gap between epochs as unmeasurable.
  */
 class RideEventStage(
     private val db: RidesafeDatabase,

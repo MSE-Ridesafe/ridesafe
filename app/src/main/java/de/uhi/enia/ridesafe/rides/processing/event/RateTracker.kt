@@ -23,6 +23,12 @@ internal class RateTracker(
     private var head = 0 // index of the oldest retained entry
     private var size = 0
 
+    /** Forget the buffered history — for a signal whose basis just changed, not merely its value. */
+    fun clear() {
+        size = 0
+        head = 0
+    }
+
     fun update(
         nanos: Long,
         value: Double,

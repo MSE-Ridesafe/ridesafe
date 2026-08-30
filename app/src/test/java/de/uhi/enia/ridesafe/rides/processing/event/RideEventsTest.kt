@@ -701,6 +701,54 @@ class RideEventsTest {
         Assert.assertTrue("a launch blip must not become an event, got $events", events.isEmpty())
     }
 
+    /**
+     * The re-seated phone, from a real 12-minute ride that read as "too little measurable driving":
+     * the driver picked the phone up three minutes in and put it back differently, and the single
+     * whole-ride axis average scattered past any acceptance bar. Calibration now segments per
+     * mounting epoch, so a hard brake in each half must be recognised — from two different device
+     * orientations in one ride — while the frame switch itself invents nothing.
+     */
+    @Test
+    fun reseatedPhoneMidRideStillResolvesBothHalves() {
+        val events =
+            detectRideEvents(
+                ride(
+                    seconds = 120.0,
+                    // Level for the first minute, then re-seated yawed 90° in the mount.
+                    quaternionAt = { t -> if (t < 60.0) LEVEL else YAWED_90 },
+                    speedAt = { t ->
+                        when {
+                            t < 30.0 -> 20.0
+
+                            t < 32.0 -> 20.0 - 3.43 * (t - 30.0)
+
+                            // first brake
+                            t < 90.0 -> 13.14
+
+                            t < 92.0 -> 13.14 - 3.43 * (t - 90.0)
+
+                            // second brake
+                            else -> 6.28
+                        }
+                    },
+                ) { t ->
+                    val decel = if ((t >= 30.0 && t < 32.0) || (t >= 90.0 && t < 92.0)) 3.43 else 0.0
+                    if (t < 60.0) {
+                        Triple(-decel, 0.0, GRAVITY) // level: braking eastward reads on -x
+                    } else {
+                        Triple(0.0, decel, GRAVITY) // yawed 90°: the same braking reads on +y
+                    }
+                },
+                rideStartElapsedNanos = 0L,
+            )
+
+        Assert.assertEquals("both halves' brakes must be found, got $events", 2, events.size)
+        Assert.assertTrue(
+            "and both must stay braking, got $events",
+            events.all { it.type == RideEventType.BRAKING },
+        )
+    }
+
     /** A poorly-fixed stretch produces no events at all, rather than events built on a bad position. */
     @Test
     fun inaccurateFixesSuppressDetection() {
