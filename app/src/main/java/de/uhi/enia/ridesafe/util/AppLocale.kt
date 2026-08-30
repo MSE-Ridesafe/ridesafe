@@ -96,3 +96,9 @@ fun mergeRegional(
         // A device locale weird enough to break the Builder just formats as itself.
         regional
     }
+
+/** The in-app language tag chosen in per-app language settings, or null when following the system. */
+fun currentAppLanguageTag(context: Context): String? {
+    val locales = context.getSystemService(LocaleManager::class.java).applicationLocales
+    return if (locales.isEmpty) null else locales.get(0).language
+}

@@ -265,7 +265,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
   (`VehicleDetailScreen.kt:248-250`; `AppPermission.BLUETOOTH.isGranted` exists and
   onboarding already uses it); `BluetoothDevices.bonded(context)` read in two composables
   (`OnboardingFlow.kt:558`, `VehicleDetailScreen.kt:238`) → hoist into the P2.16 dialog.
-- [ ] **P4.13** `currentLanguageLabel` (`SettingsScreen.kt:691-701`) — non-composable
+- [x] **P4.13** `currentLanguageLabel` (`SettingsScreen.kt:691-701`) — non-composable
   `currentAppLanguageTag(context)` in `util/AppLocale.kt`; only the `stringResource`
   switch stays in UI.
 - [x] **P4.14** Export-open intent resolution (`RidesScreen.kt:198-229`, resolves against

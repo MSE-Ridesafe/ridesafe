@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import de.uhi.enia.ridesafe.R
+import de.uhi.enia.ridesafe.util.currentAppLanguageTag
 import kotlinx.coroutines.launch
 
 @Composable
@@ -68,13 +69,9 @@ fun LanguageSettingsScreen(
 }
 
 @Composable
-internal fun currentLanguageLabel(): String {
-    val localeManager = LocalContext.current.getSystemService(LocaleManager::class.java)
-    val locales = localeManager.applicationLocales
-    val language = if (locales.isEmpty) "system" else locales.get(0).language
-    return when (language) {
+internal fun currentLanguageLabel(): String =
+    when (currentAppLanguageTag(LocalContext.current)) {
         "en" -> stringResource(R.string.language_english)
         "de" -> stringResource(R.string.language_german)
         else -> stringResource(R.string.language_system)
     }
-}
