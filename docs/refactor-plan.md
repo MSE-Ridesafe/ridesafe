@@ -218,7 +218,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
 
 ### home
 
-- [ ] **P3.13** `HomeScreen.kt` (316) → `VehicleSelectorTitle.kt` (+ `VehicleMenuItem`),
+- [x] **P3.13** `HomeScreen.kt` (316) → `VehicleSelectorTitle.kt` (+ `VehicleMenuItem`),
   `RecordRideFab.kt` (own feature: permission launcher + service start + picker dialog);
   root keeps ~100 and matches its neighbours (home is already the best-structured package).
 
