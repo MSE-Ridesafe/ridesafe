@@ -339,3 +339,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
 | Date | Items landed | Notes |
 |---|---|---|
 | 2026-08-30 | — | Plan created. |
+| 2026-08-30 | P1.1–P1.18 | Phase 1 complete: backup/ and export/ packages exist; all zero-churn splits done. |
+| 2026-08-30 | P2.1–P2.10, P2.13–P2.16 | Component library built (FormScaffold, DetailScaffold, EmptyState, ConfirmDestructiveDialog, DestructiveOutlinedButton, SectionTitle/SectionCard/CardDivider, BackNavIcon, NumberField, TimelineListRow, MapLoadingCover, AppSnackbarHost, ProgressRing, animatePlacement, EcoSection). P2.11/P2.12 rejected with reasons. |
+| 2026-08-30 | P3.1–P3.6, P3.8, P3.10–P3.13 | All screen files split; largest remaining UI file is SavedAddressFormScreen (658). P3.7 skipped (optional, file defensible). P3.9's deep split deferred to the P4.7 design checkpoint (P4.4/P4.5 landed). |
+| 2026-08-30 | P4.1–P4.5, P4.9–P4.14 | Logic out of composables done except the [behavioral] trio P4.6/P4.7/P4.8 — held for the checkpoint with Phase 5. |
