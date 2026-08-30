@@ -304,8 +304,6 @@
     <string name="ride_action_delete">Löschen</string>
     <string name="ride_delete_title">Ausgewählte Einträge löschen?</string>
     <string name="ride_delete_message">Die ausgewählten Fahrten und ihre zugehörigen Tankvorgänge werden dauerhaft gelöscht. Bei zusammengeführten Fahrten sind alle Stopps enthalten; dies kann nicht rückgängig gemacht werden.</string>
-    <string name="ride_delete_confirm">Löschen</string>
-    <string name="ride_delete_cancel">Abbrechen</string>
     <string name="ride_delete_success">Ausgewählte Einträge gelöscht.</string>
     <string name="ride_delete_error">Die ausgewählten Einträge konnten nicht gelöscht werden. Deine Daten wurden nicht verändert.</string>
     <string name="ride_export_format_title">Exportformat auswählen</string>

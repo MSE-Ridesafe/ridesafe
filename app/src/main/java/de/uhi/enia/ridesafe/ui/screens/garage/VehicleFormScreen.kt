@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -19,7 +17,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,6 +32,8 @@ import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.FuelType
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.displayTitle
+import de.uhi.enia.ridesafe.ui.components.ConfirmDestructiveDialog
+import de.uhi.enia.ridesafe.ui.components.DestructiveOutlinedButton
 import de.uhi.enia.ridesafe.ui.components.FormScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.currentUnitSystem
@@ -272,57 +271,21 @@ fun VehicleFormScreen(
         }
 
         if (onDelete != null) {
-            OutlinedButton(
+            DestructiveOutlinedButton(
+                label = stringResource(R.string.garage_delete_vehicle),
                 onClick = { showDeleteDialog = true },
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                MaterialSymbol(symbolName = "delete", contentDescription = null, size = 18.dp)
-                Text(
-                    text = stringResource(R.string.garage_delete_vehicle),
-                    modifier = Modifier.padding(start = 8.dp),
-                )
-            }
+            )
         }
     }
 
     if (showDeleteDialog && onDelete != null) {
-        DeleteVehicleDialog(
-            vehicleName = existing?.displayTitle().orEmpty(),
+        ConfirmDestructiveDialog(
+            title = stringResource(R.string.garage_delete_confirm_title),
+            message = stringResource(R.string.garage_delete_confirm_message, existing?.displayTitle().orEmpty()),
             onConfirm = onDelete,
             onDismiss = { showDeleteDialog = false },
         )
     }
-}
-
-/** Confirmation prompt shown before deleting a vehicle (UX-01). */
-@Composable
-internal fun DeleteVehicleDialog(
-    vehicleName: String,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = { MaterialSymbol(symbolName = "delete", contentDescription = null, modifier = Modifier.size(24.dp)) },
-        title = { Text(stringResource(R.string.garage_delete_confirm_title)) },
-        text = { Text(stringResource(R.string.garage_delete_confirm_message, vehicleName)) },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onDismiss()
-                    onConfirm()
-                },
-            ) {
-                Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_cancel))
-            }
-        },
-    )
 }
 
 @Composable

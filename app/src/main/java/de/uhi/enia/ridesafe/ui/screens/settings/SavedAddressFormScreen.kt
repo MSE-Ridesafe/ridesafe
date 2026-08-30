@@ -24,8 +24,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -41,7 +39,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -88,6 +85,8 @@ import de.uhi.enia.ridesafe.rides.processing.addressLines
 import de.uhi.enia.ridesafe.rides.processing.forwardGeocodeSuggestions
 import de.uhi.enia.ridesafe.rides.processing.reverseGeocode
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
+import de.uhi.enia.ridesafe.ui.components.ConfirmDestructiveDialog
+import de.uhi.enia.ridesafe.ui.components.DestructiveOutlinedButton
 import de.uhi.enia.ridesafe.ui.components.FormScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.map.MapLoadingIndicator
@@ -593,14 +592,10 @@ fun SavedAddressFormScreen(
             }
 
             if (onDelete != null) {
-                OutlinedButton(
+                DestructiveOutlinedButton(
+                    label = stringResource(R.string.saved_address_delete),
                     onClick = { showDeleteDialog = true },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    MaterialSymbol(symbolName = "delete", contentDescription = null, size = 18.dp)
-                    Text(stringResource(R.string.saved_address_delete), modifier = Modifier.padding(start = 8.dp))
-                }
+                )
             }
         }
     }
@@ -709,24 +704,11 @@ fun SavedAddressFormScreen(
     }
 
     if (showDeleteDialog && onDelete != null) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            icon = { MaterialSymbol(symbolName = "delete", contentDescription = null, modifier = Modifier.size(24.dp)) },
-            title = { Text(stringResource(R.string.saved_address_delete_confirm_title)) },
-            text = { Text(stringResource(R.string.saved_address_delete_confirm_message, existing?.label.orEmpty())) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDeleteDialog = false
-                    onDelete()
-                }) {
-                    Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
+        ConfirmDestructiveDialog(
+            title = stringResource(R.string.saved_address_delete_confirm_title),
+            message = stringResource(R.string.saved_address_delete_confirm_message, existing?.label.orEmpty()),
+            onConfirm = onDelete,
+            onDismiss = { showDeleteDialog = false },
         )
     }
 }

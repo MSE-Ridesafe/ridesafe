@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -74,6 +73,7 @@ import de.uhi.enia.ridesafe.export.buildOpenExportIntent
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.rides.recording.RecordingStatus
+import de.uhi.enia.ridesafe.ui.components.ConfirmDestructiveDialog
 import de.uhi.enia.ridesafe.ui.components.EmptyState
 import de.uhi.enia.ridesafe.ui.components.ListGroupItem
 import de.uhi.enia.ridesafe.ui.components.ListGroupItemGap
@@ -556,33 +556,17 @@ fun RidesScreen(
     }
 
     if (deleteConfirmationOpen) {
-        AlertDialog(
-            onDismissRequest = { deleteConfirmationOpen = false },
-            icon = { MaterialSymbol(symbolName = "delete", contentDescription = null) },
-            title = { Text(stringResource(R.string.ride_delete_title)) },
-            text = { Text(stringResource(R.string.ride_delete_message)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        deleteConfirmationOpen = false
-                        deleteOperationPending = true
-                        onDelete(
-                            selectedRideEntries.flatMap { it.rideIds },
-                            selectedRefuelRecords.map { it.id },
-                        )
-                    },
-                ) {
-                    Text(
-                        text = stringResource(R.string.ride_delete_confirm),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
+        ConfirmDestructiveDialog(
+            title = stringResource(R.string.ride_delete_title),
+            message = stringResource(R.string.ride_delete_message),
+            onConfirm = {
+                deleteOperationPending = true
+                onDelete(
+                    selectedRideEntries.flatMap { it.rideIds },
+                    selectedRefuelRecords.map { it.id },
+                )
             },
-            dismissButton = {
-                TextButton(onClick = { deleteConfirmationOpen = false }) {
-                    Text(stringResource(R.string.ride_delete_cancel))
-                }
-            },
+            onDismiss = { deleteConfirmationOpen = false },
         )
     }
 }

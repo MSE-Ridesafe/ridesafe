@@ -305,8 +305,6 @@
     <string name="ride_action_delete">Delete</string>
     <string name="ride_delete_title">Delete selected entries?</string>
     <string name="ride_delete_message">The selected rides and their attached refuels will be permanently deleted. For grouped rides, this includes every stop and cannot be undone.</string>
-    <string name="ride_delete_confirm">Delete</string>
-    <string name="ride_delete_cancel">Cancel</string>
     <string name="ride_delete_success">Selected entries deleted.</string>
     <string name="ride_delete_error">Could not delete the selected entries. Your data was not changed.</string>
     <string name="ride_export_format_title">Choose export format</string>

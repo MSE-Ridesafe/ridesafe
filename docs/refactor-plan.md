@@ -105,11 +105,11 @@ Similarity was verified per site — "identical" below means byte-identical modu
   `EmptyRides`, `NoMatchingRides`, `EmptySavedAddresses` (4 byte-identical),
   `EmptyQueue` (same shape; its 48.dp icon + missing spacer are drift — keep only the
   deliberate `primary` tint via param). Net ~-71.
-- [ ] **P2.4** `ConfirmDestructiveDialog` — sites: `VehicleFormScreen.kt:358-385`,
+- [x] **P2.4** `ConfirmDestructiveDialog` — sites: `VehicleFormScreen.kt:358-385`,
   `SavedAddressFormScreen.kt:759-779`, `RidesScreen.kt:546-575` (identical). Surfaces a
   strings cleanup: rides uses bespoke `ride_delete_confirm/cancel` where the others use
   `action_delete/action_cancel`. Net ~-36.
-- [ ] **P2.5** `DestructiveOutlinedButton` — `VehicleFormScreen.kt:332-344`,
+- [x] **P2.5** `DestructiveOutlinedButton` — `VehicleFormScreen.kt:332-344`,
   `VehicleDetailScreen.kt:207-217`, `SavedAddressFormScreen.kt:642-651` (identical). ~-16.
 - [ ] **P2.6** `SectionTitle(text, modifier)` — the `titleSmall` + `primary` header token
   written longhand at 11 sites; padding stays at call sites. Do NOT fold in

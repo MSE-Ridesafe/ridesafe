@@ -24,7 +24,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,6 +50,8 @@ import de.uhi.enia.ridesafe.data.BtDevice
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.displayTitle
 import de.uhi.enia.ridesafe.rides.trigger.BluetoothDevices
+import de.uhi.enia.ridesafe.ui.components.ConfirmDestructiveDialog
+import de.uhi.enia.ridesafe.ui.components.DestructiveOutlinedButton
 import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.DetailScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
@@ -175,22 +176,16 @@ fun VehicleDetailScreen(
             )
         }
 
-        OutlinedButton(
+        DestructiveOutlinedButton(
+            label = stringResource(R.string.garage_delete_vehicle),
             onClick = { showDeleteDialog = true },
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            MaterialSymbol(symbolName = "delete", contentDescription = null, size = 18.dp)
-            Text(
-                text = stringResource(R.string.garage_delete_vehicle),
-                modifier = Modifier.padding(start = 8.dp),
-            )
-        }
+        )
     }
 
     if (showDeleteDialog && vehicle != null) {
-        DeleteVehicleDialog(
-            vehicleName = vehicle.displayTitle(),
+        ConfirmDestructiveDialog(
+            title = stringResource(R.string.garage_delete_confirm_title),
+            message = stringResource(R.string.garage_delete_confirm_message, vehicle.displayTitle()),
             onConfirm = onDelete,
             onDismiss = { showDeleteDialog = false },
         )
