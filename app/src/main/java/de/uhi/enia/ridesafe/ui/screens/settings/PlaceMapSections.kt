@@ -125,89 +125,85 @@ internal fun PlaceMapPreviewCard(
  * handling): a free camera with a fixed center pin — deliberately not a map Marker, so the pin
  * remains perfectly centered throughout pan, fling, pinch and zoom gestures. Confirm hands back
  * the camera's target.
+ *
+ * Plain in-hierarchy content for [de.uhi.enia.ridesafe.ui.components.map.FullScreenMapHost],
+ * never a Dialog: the Maps SDK leaves some features partly transparent, and a dialog's own
+ * window lets the compositor blend that alpha over the screen behind it (see
+ * [de.uhi.enia.ridesafe.ui.components.map.FullScreenMapRequest]).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun PlaceMapPickerDialog(
+internal fun PlaceMapPicker(
     cameraPositionState: CameraPositionState,
     radiusMeters: Double,
     onConfirm: (LatLng) -> Unit,
-    onDismiss: () -> Unit,
+    onClose: () -> Unit,
 ) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties =
-            DialogProperties(
-                usePlatformDefaultWidth = false,
-                decorFitsSystemWindows = false,
-            ),
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.surface,
     ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surface,
-        ) {
-            Box(Modifier.fillMaxSize()) {
-                MapSurface(
-                    framing = emptyList(),
-                    liteMode = false,
-                    cameraPositionState = cameraPositionState,
-                ) {
-                    Circle(
-                        center = cameraPositionState.position.target,
-                        radius = radiusMeters,
-                        strokeColor = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 4f,
-                        fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                    )
-                }
-
-                MaterialSymbol(
-                    symbolName = "location_on",
-                    contentDescription = stringResource(R.string.saved_address_marker),
-                    fill = true,
-                    size = 56.dp,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.align(Alignment.Center).offset(y = (-28).dp),
+        Box(Modifier.fillMaxSize()) {
+            MapSurface(
+                framing = emptyList(),
+                liteMode = false,
+                cameraPositionState = cameraPositionState,
+            ) {
+                Circle(
+                    center = cameraPositionState.position.target,
+                    radius = radiusMeters,
+                    strokeColor = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 4f,
+                    fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                 )
+            }
 
-                TopAppBar(
-                    title = { Text(stringResource(R.string.saved_address_map_picker_title)) },
-                    navigationIcon = {
-                        IconButton(onClick = onDismiss) {
-                            MaterialSymbol(
-                                symbolName = "close",
-                                contentDescription = stringResource(R.string.action_cancel),
-                            )
-                        }
-                    },
-                    actions = {
-                        FilledIconButton(
-                            onClick = { onConfirm(cameraPositionState.position.target) },
-                            modifier = Modifier.padding(end = 8.dp),
-                        ) {
-                            MaterialSymbol(
-                                symbolName = "check",
-                                contentDescription = stringResource(R.string.action_done),
-                            )
-                        }
-                    },
-                    colors =
-                        TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-                        ),
-                    modifier = Modifier.align(Alignment.TopCenter),
+            MaterialSymbol(
+                symbolName = "location_on",
+                contentDescription = stringResource(R.string.saved_address_marker),
+                fill = true,
+                size = 56.dp,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.Center).offset(y = (-28).dp),
+            )
+
+            TopAppBar(
+                title = { Text(stringResource(R.string.saved_address_map_picker_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onClose) {
+                        MaterialSymbol(
+                            symbolName = "close",
+                            contentDescription = stringResource(R.string.action_cancel),
+                        )
+                    }
+                },
+                actions = {
+                    FilledIconButton(
+                        onClick = { onConfirm(cameraPositionState.position.target) },
+                        modifier = Modifier.padding(end = 8.dp),
+                    ) {
+                        MaterialSymbol(
+                            symbolName = "check",
+                            contentDescription = stringResource(R.string.action_done),
+                        )
+                    }
+                },
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+                    ),
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.saved_address_map_picker_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 )
-
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)),
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.saved_address_map_picker_hint),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    )
-                }
             }
         }
     }

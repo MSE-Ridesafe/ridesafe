@@ -41,6 +41,8 @@ import de.uhi.enia.ridesafe.ui.components.ConfirmDestructiveDialog
 import de.uhi.enia.ridesafe.ui.components.DestructiveOutlinedButton
 import de.uhi.enia.ridesafe.ui.components.FormScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.map.FullScreenMapRequest
+import de.uhi.enia.ridesafe.ui.components.map.LocalFullScreenMap
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatShortDistance
 import kotlinx.coroutines.delay
@@ -91,7 +93,6 @@ fun SavedAddressFormScreen(
     var resolvedAddress by remember { mutableStateOf(existing?.address) }
     var locationFailed by remember { mutableStateOf(false) }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
-    var showMapPicker by rememberSaveable { mutableStateOf(false) }
 
     val cameraPositionState =
         rememberCameraPositionState {
@@ -102,14 +103,32 @@ fun SavedAddressFormScreen(
             position = CameraPosition.fromLatLngZoom(point ?: FALLBACK_CENTER, if (point != null) 15f else 5f)
         }
 
+    // Recenter the camera when the point jumps via search / my-location (not on drag or tap).
+    var recenterTo by remember { mutableStateOf<LatLng?>(null) }
+
+    // The picker rides the app-root FullScreenMapHost — inside the activity's own opaque window,
+    // never a Dialog, whose separate window blends the map's semi-transparent features over the
+    // screen behind it (see FullScreenMapRequest).
+    val fullScreenMap = LocalFullScreenMap.current
+
     fun openMapPicker() {
         val center = point ?: cameraPositionState.position.target
         val zoom = if (point != null) maxOf(cameraPositionState.position.zoom, 15f) else cameraPositionState.position.zoom
         pickerCameraPositionState.position = CameraPosition.fromLatLngZoom(center, zoom)
-        showMapPicker = true
+        fullScreenMap.value =
+            FullScreenMapRequest { onClose ->
+                PlaceMapPicker(
+                    cameraPositionState = pickerCameraPositionState,
+                    radiusMeters = radius.toDouble(),
+                    onConfirm = { selected ->
+                        point = selected
+                        recenterTo = selected
+                        onClose()
+                    },
+                    onClose = onClose,
+                )
+            }
     }
-    // Recenter the camera when the point jumps via search / my-location (not on drag or tap).
-    var recenterTo by remember { mutableStateOf<LatLng?>(null) }
     LaunchedEffect(recenterTo) {
         recenterTo?.let { cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(it, 15f)) }
     }
@@ -268,19 +287,6 @@ fun SavedAddressFormScreen(
                 )
             }
         }
-    }
-
-    if (showMapPicker) {
-        PlaceMapPickerDialog(
-            cameraPositionState = pickerCameraPositionState,
-            radiusMeters = radius.toDouble(),
-            onConfirm = { selected ->
-                point = selected
-                recenterTo = selected
-                showMapPicker = false
-            },
-            onDismiss = { showMapPicker = false },
-        )
     }
 
     if (showDeleteDialog && onDelete != null) {
