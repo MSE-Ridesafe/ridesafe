@@ -250,7 +250,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
 - [ ] **P4.7** **[behavioral]** `SavedAddressFormScreen` platform calls out of
   composition: `locate()`/`requestLocate()` (FusedLocationProvider callbacks), geocode
   debounce + distance sort → the P3.9 state holder; sort key is domain logic.
-- [ ] **P4.8** **[behavioral]** `RecordRideFab` calls `RideRecordingService.start` +
+- [x] **P4.8** **[behavioral]** `RecordRideFab` calls `RideRecordingService.start` +
   raises a `Toast` directly (`HomeScreen.kt:247-251`) — route through a callback/VM.
 - [x] **P4.9** `stopFor` (`RideDetailScreen.kt:142-157`, haversine + address comparison →
   `JourneyStop`) → non-composable `journeyStopFor(...)`; distance/avg-speed fallback

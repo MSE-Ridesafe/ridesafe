@@ -3,7 +3,6 @@
 package de.uhi.enia.ridesafe.ui.screens.home
 
 import android.Manifest
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -37,7 +36,6 @@ import de.uhi.enia.ridesafe.data.displayTitle
 import de.uhi.enia.ridesafe.permissions.AppPermission
 import de.uhi.enia.ridesafe.permissions.PermissionState
 import de.uhi.enia.ridesafe.rides.recording.RecordingStatus
-import de.uhi.enia.ridesafe.rides.recording.RideRecordingService
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 
 /**
@@ -47,21 +45,18 @@ import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
  * ride runs, so this button steps aside for it rather than offering the same thing twice.
  */
 @Composable
-internal fun RecordRideFab(vehicles: List<Vehicle>) {
+internal fun RecordRideFab(
+    vehicles: List<Vehicle>,
+    onStartRide: (vehicleId: Long?) -> Unit,
+) {
     val context = LocalContext.current
     val running by RecordingStatus.running.collectAsState()
     var picking by remember { mutableStateOf(false) }
 
-    fun startRide(vehicleId: Long?) {
-        if (!RideRecordingService.start(context, vehicleId, manual = true)) {
-            Toast.makeText(context, R.string.home_record_failed, Toast.LENGTH_LONG).show()
-        }
-    }
-
     // Which car is this ride on (TRK-08)? Only worth asking when the garage leaves a choice — and
     // it has to be asked up front, since a ride's vehicle can't be changed afterwards.
     fun beginRide() {
-        if (vehicles.size > 1) picking = true else startRide(vehicles.firstOrNull()?.id)
+        if (vehicles.size > 1) picking = true else onStartRide(vehicles.firstOrNull()?.id)
     }
 
     // A ride needs GPS, so this is where location gets requested (NFR-05): Settings only demands it
@@ -110,7 +105,7 @@ internal fun RecordRideFab(vehicles: List<Vehicle>) {
                             modifier =
                                 Modifier.clickable {
                                     picking = false
-                                    startRide(vehicle.id)
+                                    onStartRide(vehicle.id)
                                 },
                         )
                     }

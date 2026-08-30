@@ -2,6 +2,7 @@
 
 package de.uhi.enia.ridesafe.ui.screens.home
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,9 +19,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
+import de.uhi.enia.ridesafe.rides.recording.RideRecordingService
 import de.uhi.enia.ridesafe.ui.components.EcoSection
 
 @Composable
@@ -29,6 +32,7 @@ fun HomeScreen(
     onSelectVehicle: (Long?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -53,7 +57,18 @@ fun HomeScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
             )
         },
-        floatingActionButton = { RecordRideFab(vehicles = state.vehicles) },
+        floatingActionButton = {
+            RecordRideFab(
+                vehicles = state.vehicles,
+                onStartRide = { vehicleId ->
+                    // Failure means the service refused the manual start (already recording, or
+                    // location revoked between the FAB's check and here) — worth saying out loud.
+                    if (!RideRecordingService.start(context, vehicleId, manual = true)) {
+                        Toast.makeText(context, R.string.home_record_failed, Toast.LENGTH_LONG).show()
+                    }
+                },
+            )
+        },
     ) { innerPadding ->
         LazyColumn(
             modifier =
