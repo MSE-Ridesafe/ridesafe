@@ -28,7 +28,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -54,6 +53,7 @@ import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisJob
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
+import de.uhi.enia.ridesafe.ui.components.BackNavIcon
 import de.uhi.enia.ridesafe.ui.components.EmptyState
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.formatRideDateTime
@@ -239,16 +239,7 @@ fun AnalysisQueueScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                navigationIcon = {
-                    if (showBack) {
-                        IconButton(onClick = onBack) {
-                            MaterialSymbol(
-                                symbolName = "arrow_back",
-                                contentDescription = stringResource(R.string.action_back),
-                            )
-                        }
-                    }
-                },
+                navigationIcon = { BackNavIcon(onBack = onBack, showBack = showBack) },
             )
         },
     ) { innerPadding ->

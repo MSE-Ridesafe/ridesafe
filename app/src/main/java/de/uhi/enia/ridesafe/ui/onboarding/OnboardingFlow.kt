@@ -71,7 +71,7 @@ import de.uhi.enia.ridesafe.rides.trigger.AutoTrackMode
 import de.uhi.enia.ridesafe.rides.trigger.AutoTrackPrefs
 import de.uhi.enia.ridesafe.rides.trigger.BluetoothDevices
 import de.uhi.enia.ridesafe.rides.trigger.applyAutoTrackMode
-import de.uhi.enia.ridesafe.ui.components.EcoLevelDisplay
+import de.uhi.enia.ridesafe.ui.components.BackNavIcon
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
 import de.uhi.enia.ridesafe.ui.screens.garage.BluetoothPickerDialog
@@ -323,12 +323,7 @@ private fun WizardHeader(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
     ) {
-        IconButton(onClick = onBack) {
-            MaterialSymbol(
-                symbolName = "arrow_back",
-                contentDescription = stringResource(R.string.action_back),
-            )
-        }
+        BackNavIcon(onBack = onBack)
         Row(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier =

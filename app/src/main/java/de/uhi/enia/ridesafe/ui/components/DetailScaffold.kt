@@ -44,16 +44,7 @@ fun DetailScaffold(
             TopAppBar(
                 title = title,
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                navigationIcon = {
-                    if (showBack) {
-                        IconButton(onClick = onBack) {
-                            MaterialSymbol(
-                                symbolName = "arrow_back",
-                                contentDescription = stringResource(R.string.action_back),
-                            )
-                        }
-                    }
-                },
+                navigationIcon = { BackNavIcon(onBack = onBack, showBack = showBack) },
                 actions = actions,
             )
         },
@@ -68,5 +59,22 @@ fun DetailScaffold(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             content = content,
         )
+    }
+}
+
+/** The guarded back arrow every top bar shares; [showBack] hides it in the pinned two-pane detail. */
+@Composable
+fun BackNavIcon(
+    onBack: () -> Unit,
+    showBack: Boolean = true,
+    enabled: Boolean = true,
+) {
+    if (showBack) {
+        IconButton(onClick = onBack, enabled = enabled) {
+            MaterialSymbol(
+                symbolName = "arrow_back",
+                contentDescription = stringResource(R.string.action_back),
+            )
+        }
     }
 }

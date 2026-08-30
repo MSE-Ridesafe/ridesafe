@@ -119,7 +119,7 @@ Similarity was verified per site — "identical" below means byte-identical modu
   attached-refuels card (`MergedJourneyCard` keeps its shell — its Top-aligned header is a
   documented deliberate divergence — and takes SectionTitle/CardDivider only). `DetailCard` is a thin wrapper.
   Include `CardDivider()` (the `surfaceContainerHighest` divider written at 6 sites). ~-28.
-- [ ] **P2.8** `BackNavIcon(showBack, symbolName = "arrow_back", onBack)` — mop-up for
+- [x] **P2.8** `BackNavIcon(showBack, symbolName = "arrow_back", onBack)` — mop-up for
   the ~4 sites P2.1/P2.2 don't absorb (8 identical sites today). ~-54 before absorption.
 - [ ] **P2.9** `NumberField` — promote `RefuelFormScreen.DecimalField:513-533` to
   `ui/components/`; converts `DistanceField` (`RideFilterUi.kt:674-689`) and the four
