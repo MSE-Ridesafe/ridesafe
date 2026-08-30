@@ -158,7 +158,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
 
 ### rides
 
-- [ ] **P3.1** `RidesScreen.kt` (1123) → keep root + `DayHeader` (~370 after P2); extract
+- [x] **P3.1** `RidesScreen.kt` (1123) → keep root + `DayHeader` (~370 after P2); extract
   `LogbookRow.kt`, `RidesSelectionTopBar.kt` (+ its four enum→resource mappers, see P4.1),
   `RideExportFormatSheet.kt` (sheet + `ExportFormatOption`), empty states → P2.3,
   selection-state block (`:136-179`) → `rememberLogbookSelection(...)` in

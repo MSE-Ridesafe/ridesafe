@@ -5,40 +5,28 @@ package de.uhi.enia.ridesafe.ui.screens.rides
 import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -47,23 +35,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import de.uhi.enia.ridesafe.R
-import de.uhi.enia.ridesafe.data.MergeCheck
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.export.RideExportFormat
@@ -71,8 +53,8 @@ import de.uhi.enia.ridesafe.export.RideExportRequest
 import de.uhi.enia.ridesafe.export.SavedRideExport
 import de.uhi.enia.ridesafe.export.buildOpenExportIntent
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
-import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.rides.recording.RecordingStatus
+import de.uhi.enia.ridesafe.ui.components.AppSnackbarHost
 import de.uhi.enia.ridesafe.ui.components.CardDivider
 import de.uhi.enia.ridesafe.ui.components.ConfirmDestructiveDialog
 import de.uhi.enia.ridesafe.ui.components.EmptyState
@@ -81,16 +63,8 @@ import de.uhi.enia.ridesafe.ui.components.ListGroupItemGap
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.RECORDING_BAR_INSET
 import de.uhi.enia.ridesafe.ui.components.SectionTitle
-import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDayHeader
-import de.uhi.enia.ridesafe.util.formatDistance
-import de.uhi.enia.ridesafe.util.formatDuration
-import de.uhi.enia.ridesafe.util.formatDurationMs
-import de.uhi.enia.ridesafe.util.formatTimeOfDay
-import de.uhi.enia.ridesafe.util.formattingLocale
 import de.uhi.enia.ridesafe.util.toLocalDate
-import kotlinx.coroutines.launch
-import java.text.NumberFormat
 import java.time.LocalDate
 
 @Composable
@@ -276,7 +250,7 @@ fun RidesScreen(
     Box(modifier = modifier.fillMaxSize()) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            snackbarHost = { RideSnackbarHost(snackbarHostState) },
+            snackbarHost = { AppSnackbarHost(snackbarHostState) },
             topBar = {
                 if (selectionMode) {
                     SelectionTopBar(
@@ -571,476 +545,6 @@ fun RidesScreen(
 }
 
 @Composable
-private fun ExportFormatSheet(
-    onFormatSelected: (RideExportFormat) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
-    var selectionInProgress by remember { mutableStateOf(false) }
-
-    fun select(format: RideExportFormat) {
-        if (selectionInProgress) return
-        selectionInProgress = true
-        scope.launch {
-            sheetState.hide()
-            onFormatSelected(format)
-        }
-    }
-
-    ModalBottomSheet(
-        onDismissRequest = { if (!selectionInProgress) onDismiss() },
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        dragHandle = {
-            BottomSheetDefaults.DragHandle(
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-            )
-        },
-    ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-        ) {
-            Column(
-                modifier = Modifier.padding(start = 24.dp, top = 4.dp, end = 24.dp, bottom = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.ride_action_export),
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-                Text(
-                    text = stringResource(R.string.ride_export_format_title),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            ExportFormatOption(
-                title = stringResource(R.string.ride_export_format_pdf),
-                description = stringResource(R.string.ride_export_format_pdf_description),
-                symbolName = "picture_as_pdf",
-                enabled = !selectionInProgress,
-                onClick = { select(RideExportFormat.PDF) },
-            )
-            HorizontalDivider(
-                modifier = Modifier.padding(start = 72.dp, end = 24.dp),
-                color = MaterialTheme.colorScheme.outlineVariant,
-            )
-            ExportFormatOption(
-                title = stringResource(R.string.ride_export_format_csv),
-                description = stringResource(R.string.ride_export_format_csv_description),
-                symbolName = "table_view",
-                enabled = !selectionInProgress,
-                onClick = { select(RideExportFormat.CSV) },
-            )
-            HorizontalDivider(
-                modifier = Modifier.padding(start = 72.dp, end = 24.dp),
-                color = MaterialTheme.colorScheme.outlineVariant,
-            )
-            ExportFormatOption(
-                title = stringResource(R.string.ride_export_format_zip),
-                description = stringResource(R.string.ride_export_format_zip_description),
-                symbolName = "folder_zip",
-                enabled = !selectionInProgress,
-                onClick = { select(RideExportFormat.ZIP) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun ExportFormatOption(
-    title: String,
-    description: String,
-    symbolName: String,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    ListItem(
-        modifier =
-            Modifier
-                .padding(horizontal = 8.dp)
-                .fillMaxWidth()
-                .clip(MaterialTheme.shapes.large)
-                .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
-        colors =
-            ListItemDefaults.colors(
-                containerColor = Color.Transparent,
-                headlineColor = MaterialTheme.colorScheme.onSurface,
-                supportingColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                trailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                disabledHeadlineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                disabledLeadingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                disabledTrailingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-            ),
-        headlineContent = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-            )
-        },
-        supportingContent = {
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        },
-        leadingContent = {
-            MaterialSymbol(
-                symbolName = symbolName,
-                contentDescription = null,
-            )
-        },
-        trailingContent = {
-            MaterialSymbol(
-                symbolName = "chevron_right",
-                contentDescription = null,
-            )
-        },
-    )
-}
-
-@Composable
-private fun RideSnackbarHost(hostState: SnackbarHostState) {
-    SnackbarHost(
-        hostState = hostState,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-    ) { data ->
-        Snackbar(
-            snackbarData = data,
-            shape = MaterialTheme.shapes.medium,
-            containerColor = MaterialTheme.colorScheme.inverseSurface,
-            contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-            actionColor = MaterialTheme.colorScheme.inversePrimary,
-            dismissActionContentColor = MaterialTheme.colorScheme.inverseOnSurface,
-        )
-    }
-}
-
-@Composable
-private fun SelectionTopBar(
-    count: Int,
-    allSelected: Boolean,
-    action: LogbookAction,
-    operationRunning: Boolean,
-    onExit: () -> Unit,
-    onSelectAll: () -> Unit,
-    onDeselectAll: () -> Unit,
-    onAction: () -> Unit,
-    exportEnabled: Boolean,
-    onExport: () -> Unit,
-    deleteEnabled: Boolean,
-    onDelete: () -> Unit,
-) {
-    var menuOpen by remember { mutableStateOf(false) }
-
-    TopAppBar(
-        title = { Text(stringResource(R.string.ride_selection_count, count)) },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-        navigationIcon = {
-            IconButton(onClick = onExit) {
-                MaterialSymbol(symbolName = "close", contentDescription = stringResource(R.string.action_exit_selection))
-            }
-        },
-        actions = {
-            IconButton(onClick = if (allSelected) onDeselectAll else onSelectAll) {
-                MaterialSymbol(
-                    symbolName = "select_all",
-                    contentDescription =
-                        stringResource(if (allSelected) R.string.action_deselect_all else R.string.action_select_all),
-                )
-            }
-            IconButton(onClick = { menuOpen = true }) {
-                MaterialSymbol(symbolName = "more_vert", contentDescription = stringResource(R.string.action_more))
-            }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(
-                    enabled = !operationRunning && action.enabled,
-                    onClick = {
-                        menuOpen = false
-                        onAction()
-                    },
-                    text = {
-                        Column {
-                            Text(stringResource(actionLabel(action.kind)))
-                            // When disabled, tell the user why the action isn't available right now (MRG-08).
-                            listOfNotNull(
-                                mergeDisabledReason(action.rideCheck),
-                                associationDisabledReason(action.refuelCheck),
-                            ).forEach { reason ->
-                                Text(
-                                    text = stringResource(reason),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    },
-                    leadingIcon = { MaterialSymbol(symbolName = actionIcon(action.kind), contentDescription = null) },
-                )
-                DropdownMenuItem(
-                    enabled = exportEnabled && !operationRunning,
-                    onClick = {
-                        menuOpen = false
-                        onExport()
-                    },
-                    text = { Text(stringResource(R.string.ride_action_export)) },
-                    leadingIcon = { MaterialSymbol(symbolName = "download", contentDescription = null) },
-                )
-                DropdownMenuItem(
-                    enabled = deleteEnabled && !operationRunning,
-                    onClick = {
-                        menuOpen = false
-                        onDelete()
-                    },
-                    text = {
-                        Text(
-                            text = stringResource(R.string.ride_action_delete),
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    },
-                    leadingIcon = {
-                        MaterialSymbol(
-                            symbolName = "delete",
-                            contentDescription = null,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    },
-                )
-            }
-        },
-    )
-}
-
-private fun actionLabel(kind: LogbookActionKind): Int =
-    when (kind) {
-        LogbookActionKind.MERGE -> R.string.ride_action_merge
-        LogbookActionKind.UNMERGE -> R.string.ride_action_unmerge
-        LogbookActionKind.ATTACH -> R.string.ride_action_attach_refuel
-        LogbookActionKind.DETACH -> R.string.ride_action_detach_refuel
-    }
-
-private fun actionIcon(kind: LogbookActionKind): String =
-    when (kind) {
-        LogbookActionKind.MERGE -> "merge"
-        LogbookActionKind.UNMERGE -> "call_split"
-        LogbookActionKind.ATTACH -> "link"
-        LogbookActionKind.DETACH -> "link_off"
-    }
-
-/** The reason string for a disabled Merge action, or null when merging is allowed (MRG-08). */
-private fun mergeDisabledReason(check: MergeCheck): Int? =
-    when (check) {
-        MergeCheck.OK -> null
-        MergeCheck.NOT_ENOUGH -> R.string.merge_reason_not_enough
-        MergeCheck.MIXED_VEHICLE -> R.string.merge_reason_mixed_vehicle
-        MergeCheck.NOT_CONTIGUOUS -> R.string.merge_reason_not_contiguous
-    }
-
-private fun associationDisabledReason(check: RefuelAssociationCheck): Int? =
-    when (check) {
-        RefuelAssociationCheck.OK -> null
-        RefuelAssociationCheck.VEHICLE_MISMATCH -> R.string.refuel_reason_vehicle_mismatch
-        RefuelAssociationCheck.OTHER_JOURNEY -> R.string.refuel_reason_other_ride
-        RefuelAssociationCheck.NO_CHANGES -> R.string.refuel_reason_already_attached
-        RefuelAssociationCheck.NOT_ALL_ATTACHED -> R.string.refuel_reason_not_all_attached
-        RefuelAssociationCheck.WRONG_SELECTION -> null
-    }
-
-@Composable
 private fun DayHeader(text: String) {
     SectionTitle(text = text, modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp))
 }
-
-@Composable
-private fun LogbookRow(
-    entry: LogbookEntry,
-    selectionMode: Boolean,
-    selected: Boolean,
-    isOpen: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-) {
-    val unitSystem = currentUnitSystem()
-    val context = LocalContext.current
-
-    val overline: String?
-    val headline: String
-    val supporting: String
-    val icon: String
-    when (entry) {
-        is LogbookEntry.Single -> {
-            val ride = entry.row.ride
-            overline = entry.row.vehicleName
-            // Prefer a matched saved place's label + icon (ADR-08), else the raw destination address.
-            headline =
-                entry.row.endPlace?.label
-                    ?: ride.endAddress?.let { shortAddress(it) }
-                    ?: stringResource(R.string.ride_address_unknown)
-            supporting =
-                listOfNotNull(
-                    rideTimeRange(context, ride.startedAtEpochMs, ride.endedAtEpochMs),
-                    formatDuration(ride.startedAtEpochMs, ride.endedAtEpochMs),
-                ).joinToString("  •  ")
-            icon = entry.row.endPlace?.icon ?: "route"
-        }
-
-        is LogbookEntry.Merged -> {
-            val s = entry.summary
-            // The merged trip's final destination = the newest stop's end (stops are oldest-first).
-            val destPlace = entry.stops.last().endPlace
-            val badge =
-                stringResource(R.string.ride_merged_label) + " · " +
-                    pluralStringResource(R.plurals.ride_stops_count, s.stopCount, s.stopCount)
-            overline = listOfNotNull(entry.vehicleName, badge).joinToString(" · ")
-            headline =
-                destPlace?.label
-                    ?: s.endAddress?.let { shortAddress(it) }
-                    ?: stringResource(R.string.ride_address_unknown)
-            supporting =
-                listOfNotNull(
-                    s.distanceMeters?.let { formatDistance(it, unitSystem) },
-                    formatDurationMs(s.movingDurationMs),
-                ).joinToString("  •  ")
-            // Keep the "merge" icon so a merged trip stays visually distinct in the list.
-            icon = "merge"
-        }
-    }
-
-    ListItem(
-        modifier =
-            Modifier.combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick,
-            ),
-        colors =
-            ListItemDefaults.colors(
-                containerColor =
-                    if (isOpen) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
-            ),
-        leadingContent = {
-            if (selectionMode) {
-                SelectionCircle(selected = selected)
-            } else {
-                MaterialSymbol(symbolName = icon, contentDescription = null)
-            }
-        },
-        overlineContent = overline?.let { { Text(it) } },
-        headlineContent = {
-            Text(
-                headline,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleMedium,
-            )
-        },
-        supportingContent = { Text(supporting, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        trailingContent =
-            if (selectionMode) {
-                null
-            } else {
-                {
-                    MaterialSymbol(
-                        symbolName = "chevron_right",
-                        contentDescription = stringResource(R.string.ride_open),
-                    )
-                }
-            },
-    )
-}
-
-@Composable
-internal fun RefuelTimelineRow(
-    row: RefuelRow,
-    selectionMode: Boolean,
-    selected: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    nested: Boolean = false,
-    showVehicle: Boolean = true,
-    // True while this refuel's editor fills the detail pane, mirroring LogbookRow's tint.
-    isOpen: Boolean = false,
-) {
-    val context = LocalContext.current
-    // Regional conventions, not the in-app language's likely region (SET-07).
-    val locale = formattingLocale()
-    val refuel = row.refuel
-    val currency = refuelCurrency(refuel.currencyCode, locale)
-    val fractionDigits = currency.defaultFractionDigits.takeIf { it >= 0 } ?: 2
-    val total = java.math.BigDecimal.valueOf(refuel.totalPriceMinor, fractionDigits)
-    val currencyFormat = NumberFormat.getCurrencyInstance(locale).apply { this.currency = currency }
-    val unitPrice =
-        pricePerLiter(refuel.totalPriceMinor, refuel.fuelAmountMilliliters, fractionDigits)
-            ?.let(currencyFormat::format)
-
-    ListItem(
-        modifier =
-            Modifier
-                .then(if (nested) Modifier.padding(start = 24.dp) else Modifier)
-                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        colors =
-            ListItemDefaults.colors(
-                containerColor =
-                    if (isOpen) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
-            ),
-        leadingContent = {
-            if (selectionMode) {
-                SelectionCircle(selected)
-            } else {
-                MaterialSymbol(symbolName = "local_gas_station", contentDescription = null)
-            }
-        },
-        overlineContent =
-            if (showVehicle) {
-                { Text(row.vehicleName ?: stringResource(R.string.refuel_unknown_vehicle)) }
-            } else {
-                null
-            },
-        headlineContent = {
-            Text(
-                stringResource(R.string.refuel_label),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleMedium,
-            )
-        },
-        supportingContent = {
-            Text(
-                buildList {
-                    add(formatTimeOfDay(context, refuel.timestampEpochMs))
-                    add(currencyFormat.format(total))
-                    unitPrice?.let { add(stringResource(R.string.refuel_price_per_liter_value, it)) }
-                }.joinToString("  •  "),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-    )
-}
-
-/** The native Android selection indicator: a filled primary check when selected, an empty circle otherwise. */
-@Composable
-private fun SelectionCircle(selected: Boolean) {
-    MaterialSymbol(
-        symbolName = if (selected) "check_circle" else "radio_button_unchecked",
-        contentDescription = stringResource(if (selected) R.string.ride_selected else R.string.ride_not_selected),
-        fill = selected,
-        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
-
-/** "14:32 – 14:58" (or just the start while a ride is in progress). */
-private fun rideTimeRange(
-    context: android.content.Context,
-    startMs: Long,
-    endMs: Long?,
-): String =
-    buildString {
-        append(formatTimeOfDay(context, startMs))
-        endMs?.let { append(" – ").append(formatTimeOfDay(context, it)) }
-    }
