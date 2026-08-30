@@ -140,7 +140,7 @@ Similarity was verified per site — "identical" below means byte-identical modu
   `RidesafeCard(contentPadding, spacing)` for the 18-site card shell if P2.7 leaves
   enough repetition. Fix the one positional `MaterialSymbol` call
   (`RideBackupImportScreen.kt:131`); `checkIfSelected` leading-icon helper (3 chip sites).
-- [ ] **P2.15** Onboarding reuses `EcoSection`: `OnboardingFlow.kt:720-733` hand-rolls it
+- [x] **P2.15** Onboarding reuses `EcoSection`: `OnboardingFlow.kt:720-733` hand-rolls it
   next to a line that already correctly reuses `SafetyScoreCard`. 14 lines → 1.
 - [ ] **P2.16** Promote already-shared-in-spirit components trapped in wrong files:
   `BluetoothPickerDialog` + `TrackingCard` (`VehicleDetailScreen.kt:334-451`, imported by

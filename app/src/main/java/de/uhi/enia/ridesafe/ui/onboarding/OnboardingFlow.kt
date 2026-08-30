@@ -77,6 +77,7 @@ import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
 import de.uhi.enia.ridesafe.ui.screens.garage.BluetoothPickerDialog
 import de.uhi.enia.ridesafe.ui.screens.garage.TrackingCard
 import de.uhi.enia.ridesafe.ui.screens.garage.VehicleFormScreen
+import de.uhi.enia.ridesafe.ui.screens.home.EcoSection
 import de.uhi.enia.ridesafe.ui.screens.settings.SavedAddressFormScreen
 import de.uhi.enia.ridesafe.ui.screens.settings.SavedAddressViewModel
 import kotlinx.coroutines.flow.first
@@ -717,20 +718,7 @@ private fun ScoresPage(onFinish: () -> Unit) {
             color = MaterialTheme.colorScheme.primary,
         )
         SafetyScoreCard(score = SampleScore)
-        Card(
-            shape = MaterialTheme.shapes.extraLarge,
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(
-                    text = stringResource(R.string.ride_detail_section_eco),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                EcoLevelDisplay(level = 2)
-            }
-        }
+        EcoSection(level = 2)
     }
 }
 
