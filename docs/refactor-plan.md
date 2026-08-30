@@ -72,16 +72,16 @@ breaks. Do before P1.13 (export depends on backup, not vice versa).
 
 The filename is a lie — it holds CSV, ZIP dispatch, MediaStore, and notifications.
 
-- [ ] **P1.13** `export/RideExportModels.kt` ← `RideExportRequest/Item/Format/Journey`,
+- [x] **P1.13** `export/RideExportModels.kt` ← `RideExportRequest/Item/Format/Journey`,
   `SavedRideExport`, `CompletedRideExport` (pure DTOs).
-- [ ] **P1.14** `export/RideExportJourneys.kt` ← `exportRequests`, `buildExportJourneys`,
+- [x] **P1.14** `export/RideExportJourneys.kt` ← `buildExportJourneys` (NOT `exportRequests` — it maps LogbookEntry, a UI model, so it stayed in ui/screens/rides/RideExportController.kt),
   `Ride.toExportItem`, `actualExportAddress` (pure mapping, already unit-tested).
-- [ ] **P1.15** `export/RideExporter.kt` ← `RideExporter`, `saveToDownloads`, filename
+- [x] **P1.15** `export/RideExporter.kt` ← `RideExporter`, `saveToDownloads`, filename
   helpers, `cleanupStaleTemps`, `notifyExportComplete`, notification/intent helpers.
-- [ ] **P1.16** `export/RideCsvWriter.kt` ← CSV building + `RideExportValueFormatter` +
+- [x] **P1.16** `export/RideCsvWriter.kt` ← CSV building + `RideExportValueFormatter` +
   `AndroidRideExportValueFormatter`.
-- [ ] **P1.17** `export/RidePdfReport.kt` ← `RidePdfReport` + `PageWriter`.
-- [ ] **P1.18** `RideExportState` + `RideExportController` stay in `ui/screens/rides/`
+- [x] **P1.17** `export/RidePdfReport.kt` ← `RidePdfReport` + `PageWriter`.
+- [x] **P1.18** `RideExportState` + `RideExportController` stay in `ui/screens/rides/`
   (screen state machine). Move `RidePdfExportTest.kt` + `RideCsvExportTest.kt` to
   `app/src/test/.../export/`.
 

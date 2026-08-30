@@ -19,7 +19,7 @@ import de.uhi.enia.ridesafe.rides.processing.EVENTS_VERSION
 import de.uhi.enia.ridesafe.rides.processing.ROUTE_VERSION
 import de.uhi.enia.ridesafe.rides.processing.processedRouteFile
 import de.uhi.enia.ridesafe.rides.recording.ridesDir
-import de.uhi.enia.ridesafe.ui.screens.rides.RideExportRequest
+import de.uhi.enia.ridesafe.export.RideExportRequest
 import de.uhi.enia.ridesafe.util.copyCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
