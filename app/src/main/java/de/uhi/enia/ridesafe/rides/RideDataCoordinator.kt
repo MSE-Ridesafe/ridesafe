@@ -13,11 +13,6 @@ import java.util.concurrent.ConcurrentHashMap
 internal object RideDataCoordinator {
     private val locks = ConcurrentHashMap<Long, Mutex>()
 
-    suspend fun <T> withRide(
-        rideId: Long,
-        block: suspend () -> T,
-    ): T = withRides(listOf(rideId), block)
-
     suspend fun <T> withRides(
         rideIds: Collection<Long>,
         block: suspend () -> T,

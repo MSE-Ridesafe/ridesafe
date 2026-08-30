@@ -3,12 +3,8 @@ package de.uhi.enia.ridesafe.util
 import android.content.Context
 import android.text.format.DateUtils
 import de.uhi.enia.ridesafe.R
-import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-
-/** The calendar day a ride falls on, in the device's zone — the rides list's grouping key. */
-fun rideDay(epochMs: Long): LocalDate = Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()).toLocalDate()
 
 /** Time of day in the device region's conventions (12/24-h), e.g. "14:32". */
 fun formatTimeOfDay(
@@ -77,3 +73,17 @@ fun formatDayHeader(
             )
         }
     }
+
+/**
+ * Abbreviated single date for compact chips and buttons, e.g. "Aug 30, 2026".
+ * "24 Aug 2026" — short enough for a chip and a half-width button.
+ * */
+fun formatShortDate(
+    context: Context,
+    day: LocalDate,
+): String =
+    DateUtils.formatDateTime(
+        context,
+        day.startOfDayMs(),
+        DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_ABBREV_MONTH or DateUtils.FORMAT_SHOW_YEAR,
+    )

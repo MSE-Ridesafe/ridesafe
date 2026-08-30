@@ -8,11 +8,18 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Ride recording: GPS track (TRK-01), kept alive in the background via a location
-         foreground service (TRK-05) started from the Bluetooth trigger. -->
+         foreground service (TRK-05) started from the Bluetooth trigger. Background location
+         is core functionality: recording starts from that trigger while the app is
+         backgrounded, and an FGS started from the background gets no location without it.
+         The Play policy insights are declaration reminders; this app is not Play-published. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission
+        android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
+        tools:ignore="BackgroundLocationPolicy" />
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE"
+        tools:ignore="ForegroundServicesPolicy" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -74,9 +81,12 @@
             android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
 
+        <!-- Must be exported so the Android Auto host can bind; access is gated in code by
+             createHostValidator (Google-signed hosts only in release builds). -->
         <service
             android:name=".car.RidesafeCarAppService"
-            android:exported="true">
+            android:exported="true"
+            tools:ignore="ExportedService">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
                 <!-- POI is the closest of the categories a car app may declare; a ride logger has

@@ -4,10 +4,12 @@ import android.content.Context
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.PolyUtil
 import de.uhi.enia.ridesafe.data.Ride
-import de.uhi.enia.ridesafe.rides.recording.EARTH_RADIUS_M
 import de.uhi.enia.ridesafe.rides.recording.LocationSample
-import de.uhi.enia.ridesafe.rides.recording.haversineMeters
 import de.uhi.enia.ridesafe.rides.recording.ridesDir
+import de.uhi.enia.ridesafe.util.EARTH_RADIUS_M
+import de.uhi.enia.ridesafe.util.haversineMeters
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.apache.commons.math3.filter.DefaultMeasurementModel
 import org.apache.commons.math3.filter.DefaultProcessModel
 import org.apache.commons.math3.filter.KalmanFilter
@@ -67,48 +69,40 @@ fun simplifyRoute(
 ): List<LatLng> = if (points.size < 3) points else PolyUtil.simplify(points, toleranceMeters)
 
 /** Store a route as a Google encoded-polyline string (compact); empty list -> empty file. */
-fun writeProcessedRoute(
+suspend fun writeProcessedRoute(
     file: File,
     points: List<LatLng>,
-) {
-    file.parentFile?.mkdirs()
-    // Deliberately does not contain ".route": stale-route pruning must never mistake an in-flight
-    // publication for an old sidecar.
-    val temporary = File(file.parentFile, ".ridesafe_sidecar_${System.nanoTime()}.tmp")
-    try {
-        FileOutputStream(temporary).use { output ->
-            output.write(PolyUtil.encode(points).toByteArray(Charsets.UTF_8))
-            output.fd.sync()
+): Unit =
+    withContext(Dispatchers.IO) {
+        file.parentFile?.mkdirs()
+        // Deliberately does not contain ".route": stale-route pruning must never mistake an in-flight
+        // publication for an old sidecar.
+        val temporary = File(file.parentFile, ".ridesafe_sidecar_${System.nanoTime()}.tmp")
+        try {
+            FileOutputStream(temporary).use { output ->
+                output.write(PolyUtil.encode(points).toByteArray(Charsets.UTF_8))
+                output.fd.sync()
+            }
+            Files.move(
+                temporary.toPath(),
+                file.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+        } finally {
+            if (temporary.exists()) temporary.delete()
         }
-        Files.move(
-            temporary.toPath(),
-            file.toPath(),
-            StandardCopyOption.ATOMIC_MOVE,
-            StandardCopyOption.REPLACE_EXISTING,
-        )
-    } finally {
-        if (temporary.exists()) temporary.delete()
     }
-}
 
 /** Read back a sidecar route; null when it doesn't exist yet or can't be decoded. */
-fun readProcessedRoute(file: File): List<LatLng>? =
-    if (file.exists()) runCatching { PolyUtil.decode(file.readText()) }.getOrNull() else null
+suspend fun readProcessedRoute(file: File): List<LatLng>? =
+    withContext(Dispatchers.IO) {
+        if (file.exists()) runCatching { PolyUtil.decode(file.readText()) }.getOrNull() else null
+    }
 
 /** Great-circle length of a [LatLng] path — the fallback distance for a ride not yet processed. */
-fun latLngDistanceMeters(points: List<LatLng>): Double {
-    var total = 0.0
-    for (i in 1 until points.size) {
-        total +=
-            haversineMeters(
-                points[i - 1].latitude,
-                points[i - 1].longitude,
-                points[i].latitude,
-                points[i].longitude,
-            )
-    }
-    return total
-}
+fun latLngDistanceMeters(points: List<LatLng>): Double =
+    points.zipWithNext().sumOf { (a, b) -> haversineMeters(a.latitude, a.longitude, b.latitude, b.longitude) }
 
 /**
  * The GPS track filter as an incremental stage: feed it fixes in order, it hands back filtered ones.

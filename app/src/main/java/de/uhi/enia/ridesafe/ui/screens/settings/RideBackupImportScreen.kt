@@ -6,6 +6,7 @@ import android.app.Application
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.PluralsRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -19,7 +20,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -32,12 +32,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.uhi.enia.ridesafe.R
+import de.uhi.enia.ridesafe.backup.RideBackupImportCount
+import de.uhi.enia.ridesafe.backup.RideBackupImportPreview
+import de.uhi.enia.ridesafe.backup.RideBackupImportResult
+import de.uhi.enia.ridesafe.backup.RideBackupImporter
+import de.uhi.enia.ridesafe.ui.components.BackNavIcon
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -108,9 +114,9 @@ internal class RideBackupImportViewModel(
 
 @Composable
 internal fun RideBackupImportScreen(
+    modifier: Modifier = Modifier,
     onBack: () -> Unit,
     showBack: Boolean = true,
-    modifier: Modifier = Modifier,
     importViewModel: RideBackupImportViewModel = viewModel(),
 ) {
     val state by importViewModel.state.collectAsState()
@@ -125,13 +131,7 @@ internal fun RideBackupImportScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_backup_import_title)) },
-                navigationIcon = {
-                    if (showBack) {
-                        IconButton(onClick = onBack, enabled = !busy) {
-                            MaterialSymbol("arrow_back", stringResource(R.string.action_back))
-                        }
-                    }
-                },
+                navigationIcon = { BackNavIcon(onBack = onBack, showBack = showBack, enabled = !busy) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
             )
         },
@@ -189,15 +189,19 @@ internal fun RideBackupImportScreen(
                 onDismissRequest = importViewModel::dismiss,
                 title = { Text(stringResource(R.string.settings_backup_import_confirm_title)) },
                 text = {
-                    Text(
-                        stringResource(
-                            R.string.settings_backup_import_confirm_message,
-                            current.preview.rides,
-                            current.preview.vehicles,
-                            current.preview.savedAddresses,
-                            current.preview.refuels,
-                        ),
-                    )
+                    val preview = current.preview
+                    val items =
+                        listOf(
+                            pluralStringResource(R.plurals.settings_backup_import_preview_rides, preview.rides, preview.rides),
+                            pluralStringResource(R.plurals.settings_backup_import_preview_vehicles, preview.vehicles, preview.vehicles),
+                            pluralStringResource(
+                                R.plurals.settings_backup_import_preview_places,
+                                preview.savedAddresses,
+                                preview.savedAddresses,
+                            ),
+                            pluralStringResource(R.plurals.settings_backup_import_preview_refuels, preview.refuels, preview.refuels),
+                        ).joinToString("\n") { "• $it" }
+                    Text(stringResource(R.string.settings_backup_import_confirm_message, items))
                 },
                 confirmButton = {
                     TextButton(
@@ -213,19 +217,15 @@ internal fun RideBackupImportScreen(
                 onDismissRequest = importViewModel::dismiss,
                 title = { Text(stringResource(R.string.settings_backup_import_success_title)) },
                 text = {
-                    Text(
-                        stringResource(
-                            R.string.settings_backup_import_success_message,
-                            current.result.rides.imported,
-                            current.result.vehicles.imported,
-                            current.result.savedAddresses.imported,
-                            current.result.refuels.imported,
-                            current.result.rides.alreadyPresent,
-                            current.result.vehicles.alreadyPresent,
-                            current.result.savedAddresses.alreadyPresent,
-                            current.result.refuels.alreadyPresent,
-                        ),
-                    )
+                    val result = current.result
+                    val items =
+                        listOf(
+                            resultLine(R.plurals.settings_backup_import_result_rides, result.rides),
+                            resultLine(R.plurals.settings_backup_import_result_vehicles, result.vehicles),
+                            resultLine(R.plurals.settings_backup_import_result_places, result.savedAddresses),
+                            resultLine(R.plurals.settings_backup_import_result_refuels, result.refuels),
+                        ).joinToString("\n") { "• $it" }
+                    Text(stringResource(R.string.settings_backup_import_success_message, items))
                 },
                 confirmButton = { TextButton(onClick = importViewModel::dismiss) { Text(stringResource(R.string.action_done)) } },
             )
@@ -240,8 +240,13 @@ internal fun RideBackupImportScreen(
             )
         }
 
-        else -> {
-            Unit
-        }
+        else -> {}
     }
 }
+
+/** One "%d things (%d already existed)" bullet line, pluralized on the imported count. */
+@Composable
+private fun resultLine(
+    @PluralsRes res: Int,
+    count: RideBackupImportCount,
+): String = pluralStringResource(res, count.imported, count.imported, count.alreadyPresent)

@@ -25,7 +25,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Hosts ride recording in the foreground (TRK-05) so capture survives the app being backgrounded
- * and the launching Bluetooth-receiver process going cold. Driven by [ServiceRideRecorder]: a
+ * and the launching Bluetooth-receiver process going cold. Driven by the recorder wired up in
+ * [de.uhi.enia.ridesafe.RidesafeApplication]: a
  * mapped-device connect starts it, a disconnect stops it. One service lifecycle == one ride —
  * including across a short dropout: a disconnect only ends the ride once the reconnect grace
  * expires without the car coming back (TRK-09), so the service stays up in between.
@@ -109,7 +110,7 @@ class RideRecordingService : Service() {
                 .setSmallIcon(R.drawable.ic_recording)
                 .setOngoing(true)
                 .build()
-        // location type is safe: ServiceRideRecorder only starts us with the permission held.
+        // location type is safe: the auto-track wiring only starts us with the permission held.
         ServiceCompat.startForeground(
             this,
             NOTIFICATION_ID,

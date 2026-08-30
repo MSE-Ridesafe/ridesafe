@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.util.currentCurrencySetting
 import de.uhi.enia.ridesafe.util.formattingLocale
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -42,7 +43,7 @@ import java.time.LocalDate
 @Composable
 fun ActivitySection(activityByDay: Map<LocalDate, ActivityBar>) {
     var selectedMetric by rememberSaveable { mutableStateOf(ActivityChartMetric.DISTANCE) }
-    var startDayOffset by rememberSaveable { mutableStateOf(0) }
+    var startDayOffset by rememberSaveable { mutableIntStateOf(0) }
     // The region's conventions, not the in-app language's — a device set to English in
     // Germany still reads "25.08." here (see docs/regional-formatting.md).
     val locale = formattingLocale()
@@ -52,7 +53,7 @@ fun ActivitySection(activityByDay: Map<LocalDate, ActivityBar>) {
     val weeklyBars = buildSevenDayActivity(activityByDay, selectedStartDay)
     val chartBars = buildActivityWindow(activityByDay, selectedStartDay.minusDays(1), dayCount = 9)
     val dateRange = formatActivityDateRange(weeklyBars, locale)
-    val maxValue = activityScaleMaximum(activityByDay.values, selectedMetric)
+    val maxValue = activityScaleMaximum(activityByDay.values, selectedMetric, currentCurrencySetting().currencyCode)
     val subtitle =
         stringResource(
             when (selectedMetric) {

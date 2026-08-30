@@ -13,8 +13,8 @@ import de.uhi.enia.ridesafe.rides.processing.score.scoreRide
 import de.uhi.enia.ridesafe.rides.recording.LocationSample
 import de.uhi.enia.ridesafe.rides.recording.MotionSample
 import de.uhi.enia.ridesafe.rides.recording.MotionSensor
-import de.uhi.enia.ridesafe.rides.recording.haversineMeters
 import de.uhi.enia.ridesafe.rides.recording.trackDistanceMeters
+import de.uhi.enia.ridesafe.util.haversineMeters
 
 const val AXIS_VERSION = 1
 const val EVENTS_VERSION = 10
@@ -79,14 +79,12 @@ class RouteStage(
  * sidecar next to the route would make a pure detector re-tune single-pass; worth doing if
  * threshold tuning starts feeling slow, and it needs its own staleness rule when it lands.
  */
-class ForwardAxisStage(
-    config: RideEventConfig = RideEventConfig(),
-) : RideStage {
+class ForwardAxisStage : RideStage {
     override val id = "axis"
     override val version = AXIS_VERSION
     override val dependsOn = listOf("route")
 
-    private val estimator = ForwardAxisEstimator(config)
+    private val estimator = ForwardAxisEstimator(RideEventConfig())
     private var accelCount = 0L
     private var firstAccel = Long.MAX_VALUE
     private var lastAccel = Long.MIN_VALUE
@@ -167,7 +165,6 @@ class ForwardAxisStage(
  */
 class RideEventStage(
     private val db: RidesafeDatabase,
-    private val config: RideEventConfig = RideEventConfig(),
 ) : RideStage {
     override val id = "events"
     override val version = EVENTS_VERSION
@@ -179,7 +176,7 @@ class RideEventStage(
     /** Null for a ride that recorded no acceleration: there is nothing to detect, so skip the pass. */
     override fun sink(ctx: RideAnalysisContext): SampleSink? {
         if (!ctx.hasAccel) return null
-        val detector = StreamingDetector(ctx.forwardAxis, config, ctx.ride.startedElapsedNanos)
+        val detector = StreamingDetector(ctx.forwardAxis, RideEventConfig(), ctx.ride.startedElapsedNanos)
         this.detector = detector
         return SampleSink { sample ->
             when (sample) {
@@ -234,8 +231,6 @@ class RideEventStage(
  */
 class ScoreStage(
     private val db: RidesafeDatabase,
-    private val config: RideEventConfig = RideEventConfig(),
-    private val weights: ScoreWeights = ScoreWeights(),
 ) : RideStage {
     override val id = "score"
     override val version = 2
@@ -244,7 +239,7 @@ class ScoreStage(
 
     override suspend fun finish(ctx: RideAnalysisContext) {
         val dynamics = ctx.dynamics
-        val score = dynamics?.let { scoreRide(it, config, weights) }
+        val score = dynamics?.let { scoreRide(it, RideEventConfig(), ScoreWeights()) }
         db.rideDao().setScore(ctx.ride.id, score)
         // The calibration record: collect these across the logbook to judge the ScoreWeights
         // constants against real driving, and bump [version] after changing any — which re-derives

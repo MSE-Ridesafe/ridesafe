@@ -21,7 +21,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -134,17 +133,17 @@ fun SummaryMetricCarousel(
             pageSpacing = 14.dp,
             modifier = Modifier.fillMaxWidth(),
         ) { page ->
-            val pageOffset =
-                ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction)
-                    .absoluteValue
-                    .coerceIn(0f, 1f)
-            val pageScale = lerp(start = 0.98f, stop = 1f, fraction = 1f - pageOffset)
             MetricCard(
                 metric = metrics[page],
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .graphicsLayer {
+                            val pageOffset =
+                                ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction)
+                                    .absoluteValue
+                                    .coerceIn(0f, 1f)
+                            val pageScale = lerp(start = 0.98f, stop = 1f, fraction = 1f - pageOffset)
                             scaleX = pageScale
                             scaleY = pageScale
                         },
@@ -173,7 +172,7 @@ private fun MetricCard(
     modifier: Modifier = Modifier,
 ) {
     Card(
-        shape = RoundedCornerShape(28.dp),
+        shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
         modifier =
             modifier

@@ -27,6 +27,7 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.GoogleMapComposable
 import com.google.maps.android.compose.MapProperties
@@ -133,6 +134,11 @@ private fun fittingCamera(
  *
  * [bottomPadding] is how much of the map something else covers (a sheet), kept out of both the
  * framing and the camera's idea of center.
+ *
+ * [cameraPositionState] hands the camera to the caller instead: the map is born at its current
+ * position and every later move goes through it — for surfaces whose camera *is* the value being
+ * edited (the place picker) or follows caller-side state (the place preview). [framing] is ignored
+ * then, and [focus] animates the caller's state.
  */
 @Composable
 internal fun MapSurface(
@@ -141,6 +147,7 @@ internal fun MapSurface(
     modifier: Modifier = Modifier,
     bottomPadding: Dp = 0.dp,
     focus: MapFocus? = null,
+    cameraPositionState: CameraPositionState? = null,
     onLoaded: (() -> Unit)? = null,
     content: MapContent,
 ) {
@@ -165,23 +172,27 @@ internal fun MapSurface(
     // rail, whole frames mid-zoom — blends with the screen behind the map instead. Same color as
     // the loading cover below, so the fade between them shows no shift.
     BoxWithConstraints(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceBright)) {
+        // Read the external camera's position once: it only seeds GoogleMapOptions (the map must be
+        // born in place); tracking it afterwards would recompose this surface on every pan.
+        val externalBirth = remember { cameraPositionState?.position }
         val camera =
-            remember(framing, maxWidth, maxHeight, bottomPadding) {
-                fittingCamera(framing, maxWidth.value, (maxHeight - bottomPadding).value)
-            }
-        val cameraPositionState = rememberCameraPositionState { position = camera }
+            externalBirth
+                ?: remember(framing, maxWidth, maxHeight, bottomPadding) {
+                    fittingCamera(framing, maxWidth.value, (maxHeight - bottomPadding).value)
+                }
+        val activeCamera = cameraPositionState ?: rememberCameraPositionState { position = camera }
 
         // Move to whatever took the camera over, close enough to read it. Zoom only ever goes in:
         // the map opens framed on everything, and a pan alone leaves the target one dot among many.
         LaunchedEffect(focus) {
             val target = focus ?: return@LaunchedEffect
-            val zoom = maxOf(cameraPositionState.position.zoom, target.zoom)
-            cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(target.target, zoom), 400)
+            val zoom = maxOf(activeCamera.position.zoom, target.zoom)
+            activeCamera.animate(CameraUpdateFactory.newLatLngZoom(target.target, zoom), 400)
         }
 
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
-            cameraPositionState = cameraPositionState,
+            cameraPositionState = activeCamera,
             googleMapOptionsFactory = { GoogleMapOptions().liteMode(liteMode).camera(camera).backgroundColor(mapBackground) },
             contentPadding = PaddingValues(bottom = bottomPadding),
             properties = MapProperties(mapStyleOptions = mapStyle),

@@ -1,12 +1,10 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Ridesafe</string>
     <string name="nav_home">Home</string>
     <string name="nav_rides">Rides</string>
     <string name="nav_garage">Garage</string>
     <string name="nav_settings">Settings</string>
-    
-    <string name="greeting_hello">Hello %1$s!</string>
-    
+
     <string name="settings_language_title">App Language</string>
     
     <string name="language_system">System Default</string>
@@ -20,8 +18,15 @@
     <string name="home_no_primary_vehicle">No primary vehicle</string>
     <string name="home_unknown_vehicle">Vehicle</string>
     <string name="home_add_vehicle_hint">Add a vehicle in Garage</string>
+    <!-- Top-bar vehicle selector: what a tap on the title does (TalkBack action label). -->
+    <string name="home_vehicle_filter_cd">Filter by vehicle</string>
+    <!-- "All vehicles" header card: vehicle count and the fleet's combined odometer chip. -->
+    <plurals name="home_garage_vehicle_count">
+        <item quantity="one">%d vehicle</item>
+        <item quantity="other">%d vehicles</item>
+    </plurals>
+    <string name="home_garage_total_mileage">Total mileage</string>
     <string name="recording_active_ride">Active ride</string>
-    <string name="home_started_at">Started at %1$s</string>
     <string name="home_vehicle_fuel_consumption">Fuel consumption</string>
     <string name="home_total_distance">Total Distance</string>
     <string name="home_total_travel_time">Total Travel Time</string>
@@ -56,10 +61,44 @@
     <string name="settings_backup_import_checking">Checking backup…</string>
     <string name="settings_backup_import_importing">Importing backup…</string>
     <string name="settings_backup_import_confirm_title">Import this backup?</string>
-    <string name="settings_backup_import_confirm_message">This backup contains:\n\n• %1$d rides\n• %2$d vehicles\n• %3$d places\n• %4$d refuels\n\nYour existing data will be kept, and only missing items will be imported.</string>
+    <!-- %1$s is the bullet list built from the settings_backup_import_preview_* plurals. -->
+    <string name="settings_backup_import_confirm_message">This backup contains:\n\n%1$s\n\nYour existing data will be kept, and only missing items will be imported.</string>
+    <plurals name="settings_backup_import_preview_rides">
+        <item quantity="one">%d ride</item>
+        <item quantity="other">%d rides</item>
+    </plurals>
+    <plurals name="settings_backup_import_preview_vehicles">
+        <item quantity="one">%d vehicle</item>
+        <item quantity="other">%d vehicles</item>
+    </plurals>
+    <plurals name="settings_backup_import_preview_places">
+        <item quantity="one">%d place</item>
+        <item quantity="other">%d places</item>
+    </plurals>
+    <plurals name="settings_backup_import_preview_refuels">
+        <item quantity="one">%d refuel</item>
+        <item quantity="other">%d refuels</item>
+    </plurals>
     <string name="settings_backup_import_confirm">Import</string>
     <string name="settings_backup_import_success_title">Backup imported</string>
-    <string name="settings_backup_import_success_message">Imported from this backup:\n\n• %1$d rides (%5$d already existed)\n• %2$d vehicles (%6$d already existed)\n• %3$d places (%7$d already existed)\n• %4$d refuels (%8$d already existed)</string>
+    <!-- %1$s is the bullet list built from the settings_backup_import_result_* plurals. -->
+    <string name="settings_backup_import_success_message">Imported from this backup:\n\n%1$s</string>
+    <plurals name="settings_backup_import_result_rides">
+        <item quantity="one">%1$d ride (%2$d already existed)</item>
+        <item quantity="other">%1$d rides (%2$d already existed)</item>
+    </plurals>
+    <plurals name="settings_backup_import_result_vehicles">
+        <item quantity="one">%1$d vehicle (%2$d already existed)</item>
+        <item quantity="other">%1$d vehicles (%2$d already existed)</item>
+    </plurals>
+    <plurals name="settings_backup_import_result_places">
+        <item quantity="one">%1$d place (%2$d already existed)</item>
+        <item quantity="other">%1$d places (%2$d already existed)</item>
+    </plurals>
+    <plurals name="settings_backup_import_result_refuels">
+        <item quantity="one">%1$d refuel (%2$d already existed)</item>
+        <item quantity="other">%1$d refuels (%2$d already existed)</item>
+    </plurals>
     <string name="settings_backup_import_error_title">Could not import backup</string>
     <string name="settings_backup_import_error_message">The archive was not changed or could not be restored safely. %1$s</string>
     <string name="settings_units_title">Distance Units</string>
@@ -73,7 +112,6 @@
     <string name="unit_system_automatic">Automatic (Based on language)</string>
     <string name="unit_system_metric">Metric (Kilometers)</string>
     <string name="unit_system_imperial">Imperial (Miles)</string>
-    <string name="sample_distance_label">Sample Distance: %1$s</string>
 
     <string name="settings_theme_title">App Theme</string>
     <string name="settings_theme_detail_description">Choose whether Ridesafe appears light or dark, or follows the system setting.</string>
@@ -124,7 +162,6 @@
     <string name="action_delete">Delete</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_clear">Clear</string>
-    <string name="action_close">Close</string>
     <string name="garage_add_vehicle">Add vehicle</string>
     <string name="garage_edit_vehicle">Edit vehicle</string>
     <string name="garage_delete_vehicle">Delete vehicle</string>
@@ -200,10 +237,7 @@
     <string name="refuel_error_total">Enter a non-negative price using the currency\'s minor units.</string>
     <string name="refuel_error_odometer">Enter a non-negative odometer reading.</string>
     <string name="refuel_save_failed">Could not save the refuel. Your entries have been kept; please try again.</string>
-    <string name="refuel_row_amount_price">%1$s L · %2$s</string>
     <string name="refuel_price_per_liter_value">%1$s/L</string>
-    <string name="refuel_action_add_to_ride">Add refuel to ride</string>
-    <string name="refuel_action_remove_from_ride">Remove from ride</string>
     <string name="refuel_attached_success">Refuel added to ride.</string>
     <string name="refuel_detached_success">Refuel removed from ride.</string>
     <string name="ride_merge_success">Rides merged.</string>
@@ -220,7 +254,6 @@
     <string name="rides_empty_message">Recorded rides and refuels will show up here.</string>
     <string name="ride_day_today">Today</string>
     <string name="ride_day_yesterday">Yesterday</string>
-    <string name="ride_max_speed_short">max %1$s</string>
     <string name="ride_open">Open ride</string>
     <string name="ride_start_marker">Start</string>
     <string name="ride_end_marker">End</string>
@@ -239,10 +272,6 @@
         <item quantity="other">%d events</item>
     </plurals>
     <string name="ride_detail_section_distance">Distance</string>
-    <string name="ride_detail_from">From</string>
-    <string name="ride_detail_to">To</string>
-    <string name="ride_detail_start">Start</string>
-    <string name="ride_detail_end">End</string>
     <string name="ride_detail_duration">Duration</string>
     <string name="ride_stat_avg_speed">Avg speed</string>
     <string name="ride_stat_max_speed">Max speed</string>
@@ -283,7 +312,6 @@
     <string name="ride_score_unscoreable">Not enough measurable driving to score this ride.</string>
     <string name="home_score_period_all">All time</string>
     <string name="home_score_empty">No scored rides in this period.</string>
-    <string name="home_eco_empty">No rated rides for this selection yet.</string>
     <!-- Chart subtitle per period, and the calendar-week label under a weekly bar. -->
     <string name="home_score_dev_week">Score development over the past weeks</string>
     <string name="home_score_dev_month">Score development over the past months</string>
@@ -296,7 +324,8 @@
         <item quantity="one">%1$d stop</item>
         <item quantity="other">%1$d stops</item>
     </plurals>
-    <string name="ride_selection_count">%1$d selected</string>
+    <!-- "selected" needs no plural form; keep the compact top-bar label. -->
+    <string name="ride_selection_count" tools:ignore="PluralsCandidate">%1$d selected</string>
     <string name="action_select_all">Select all</string>
     <string name="action_deselect_all">Deselect all</string>
     <string name="action_more">More options</string>
@@ -305,12 +334,12 @@
     <string name="ride_not_selected">Not selected</string>
     <string name="ride_action_merge">Merge</string>
     <string name="ride_action_unmerge">Unmerge</string>
+    <string name="ride_action_attach_refuel">Add to ride</string>
+    <string name="ride_action_detach_refuel">Remove from ride</string>
     <string name="ride_action_export">Export</string>
     <string name="ride_action_delete">Delete</string>
     <string name="ride_delete_title">Delete selected entries?</string>
     <string name="ride_delete_message">The selected rides and their attached refuels will be permanently deleted. For grouped rides, this includes every stop and cannot be undone.</string>
-    <string name="ride_delete_confirm">Delete</string>
-    <string name="ride_delete_cancel">Cancel</string>
     <string name="ride_delete_success">Selected entries deleted.</string>
     <string name="ride_delete_error">Could not delete the selected entries. Your data was not changed.</string>
     <string name="ride_export_format_title">Choose export format</string>
@@ -333,11 +362,9 @@
     <string name="ride_journey_section">Journey</string>
     <string name="ride_action_manage_stops">Manage stops</string>
     <string name="action_done">Done</string>
-    <string name="ride_merged_parked_note">Left %1$s · parked %2$s</string>
-    <string name="ride_merged_stops_section">Stops</string>
     <string name="ride_stop_label">Stop %1$d</string>
-    <string name="ride_stop_select">Select stop to un-merge</string>
     <string name="ride_merged_unmerge_hint">Only the first or last stops can be removed.</string>
+    <string name="ride_waypoint_departed">Left %1$s · parked %2$s</string>
     <string name="ride_action_unmerge_all">Unmerge all</string>
     <string name="ride_action_unmerge_selected">Unmerge (%1$d)</string>
 
@@ -354,7 +381,6 @@
     <string name="saved_address_edit_title">Edit place</string>
     <string name="saved_address_label">Label</string>
     <string name="saved_address_search">Search address</string>
-    <string name="saved_address_search_failed">No match found</string>
     <string name="saved_address_search_clear">Clear search</string>
     <string name="saved_address_search_recent">Recent searches</string>
     <string name="saved_address_search_more_characters">Enter at least three characters.</string>
@@ -393,7 +419,11 @@
     <string name="analysis_status_count">%1$d of %2$d</string>
     <string name="analysis_status_open">Show analysis queue</string>
     <string name="analysis_queue_title">Analysis queue</string>
-    <string name="analysis_queue_subtitle">%1$d of %2$d rides analyzed</string>
+    <!-- Quantity keys on the total (%2$d): "1 of 1 ride" / "0 of 2 rides". -->
+    <plurals name="analysis_queue_subtitle">
+        <item quantity="one">%1$d of %2$d ride analyzed</item>
+        <item quantity="other">%1$d of %2$d rides analyzed</item>
+    </plurals>
     <string name="analysis_queue_done">Done</string>
     <string name="analysis_queue_waiting">Waiting…</string>
     <string name="analysis_queue_empty_title">All rides analyzed</string>

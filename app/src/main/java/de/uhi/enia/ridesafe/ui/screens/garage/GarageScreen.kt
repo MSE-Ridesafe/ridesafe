@@ -37,26 +37,24 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Vehicle
+import de.uhi.enia.ridesafe.ui.components.EmptyState
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.ui.theme.RidesafeTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
 fun GarageScreen(
+    modifier: Modifier = Modifier,
     vehicles: List<Vehicle>,
     onVehicleClick: (Long) -> Unit,
-    onAddVehicle: () -> Unit,
     // The vehicle whose detail pane is showing. Null on a phone, where the detail covers the list.
+    onAddVehicle: () -> Unit,
     selectedId: Long? = null,
-    modifier: Modifier = Modifier,
 ) {
     Scaffold(
         modifier = modifier,
@@ -85,7 +83,10 @@ fun GarageScreen(
         },
     ) { innerPadding ->
         if (vehicles.isEmpty()) {
-            EmptyGarage(
+            EmptyState(
+                symbolName = "directions_car",
+                title = stringResource(R.string.garage_empty_title),
+                message = stringResource(R.string.garage_empty_message),
                 modifier =
                     Modifier
                         .padding(innerPadding)
@@ -171,9 +172,9 @@ private fun VehicleCard(
 /** Vehicle photo, with the car symbol retained as the empty-state fallback. */
 @Composable
 internal fun VehicleImage(
+    modifier: Modifier = Modifier,
     vehicle: Vehicle? = null,
     size: Dp,
-    modifier: Modifier = Modifier,
     color: Color? = null,
 ) {
     val context = LocalContext.current
@@ -209,44 +210,4 @@ internal fun VehicleImage(
             )
         }
     }
-}
-
-@Composable
-private fun EmptyGarage(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        MaterialSymbol(
-            symbolName = "directions_car",
-            contentDescription = null,
-            size = 64.dp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.size(16.dp))
-        Text(
-            text = stringResource(R.string.garage_empty_title),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Spacer(Modifier.size(4.dp))
-        Text(
-            text = stringResource(R.string.garage_empty_message),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
-@Preview
-@Composable
-private fun GarageScreenPreview() {
-    RidesafeTheme { GarageScreen(previewVehicles, {}, {}) }
-}
-
-@Preview
-@Composable
-private fun GarageEmptyPreview() {
-    RidesafeTheme { GarageScreen(emptyList(), {}, {}) }
 }

@@ -25,14 +25,12 @@ import de.uhi.enia.ridesafe.R
 
 /**
  * A Composable that renders a Google Material Symbol by loading the font and using its ligature features.
- * Supports custom size, color, and variable font axes such as fill, weight, and grade.
+ * Supports custom size, color, and the fill axis.
  *
  * @param symbolName The ligature name of the symbol (e.g. "home", "favorite", "settings").
  * @param contentDescription The description of the symbol for accessibility. If null, the symbol is treated as decorative.
  * @param modifier The modifier to apply to the text layout.
  * @param fill True to render the filled version of the symbol.
- * @param weight The font weight (100 to 700). Default is 400.
- * @param grade The font grade (-25 to 200). Default is 0.
  * @param size The size of the symbol layout. Default is 24.dp.
  * @param color The color of the symbol. Default is LocalContentColor.current.
  */
@@ -42,8 +40,6 @@ fun MaterialSymbol(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     fill: Boolean = false,
-    weight: Int = 400,
-    grade: Int = 0,
     size: Dp = 24.dp,
     color: Color = LocalContentColor.current,
 ) {
@@ -60,15 +56,13 @@ fun MaterialSymbol(
     // Remembered so recomposition (every frame of any animation over icons) reuses the instance
     // instead of allocating a fresh FontFamily + variation-settings chain per icon per frame.
     val dynamicFontFamily =
-        remember(fill, weight, grade, size) {
+        remember(fill, size) {
             FontFamily(
                 Font(
                     resId = R.font.material_symbols_outlined,
                     variationSettings =
                         FontVariation.Settings(
                             FontVariation.Setting("FILL", if (fill) 1f else 0f),
-                            FontVariation.weight(weight),
-                            FontVariation.Setting("GRAD", grade.toFloat()),
                             FontVariation.Setting("opsz", size.value),
                         ),
                 ),

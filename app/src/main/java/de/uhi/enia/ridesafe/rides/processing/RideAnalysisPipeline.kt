@@ -298,7 +298,7 @@ class RideAnalysisPipeline(
     }
 
     private suspend fun runRide(ride: Ride) {
-        RideDataCoordinator.withRide(ride.id) { runRideCoordinated(ride) }
+        RideDataCoordinator.withRides(listOf(ride.id)) { runRideCoordinated(ride) }
     }
 
     private suspend fun runRideCoordinated(ride: Ride) {
@@ -405,7 +405,7 @@ internal suspend fun streamSamples(
     sinks: List<SampleSink>,
     cachedFixes: List<ReleasedFix>? = null,
     onProgress: ((Float) -> Unit)? = null,
-): List<ReleasedFix>? {
+): List<ReleasedFix> {
     // Nothing to do only when there is no one to feed *and* the fixes are already in hand. A pass
     // can legitimately have no sinks and still need this: a stage that reads the filtered track
     // without wanting a per-sample callback (see [RideStage.needsSamples]) has nowhere else to get

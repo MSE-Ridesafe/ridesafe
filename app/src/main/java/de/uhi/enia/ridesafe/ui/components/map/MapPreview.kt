@@ -2,9 +2,9 @@ package de.uhi.enia.ridesafe.ui.components.map
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,12 +17,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.CameraPositionState
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -53,14 +53,26 @@ private const val TRANSITION_SETTLE_MS = 350L
  * them cheap. Lite maps open the Google Maps app when tapped, so when [onExpand] is given the tap is
  * swallowed by an overlay and handed over instead — pair it with [FullScreenMapRequest] to open the
  * same content full-screen.
+ *
+ * [cameraPositionState] hands the camera to the caller (see [MapSurface]) — [framing] is ignored
+ * then and the card always has content, but the settle deferral and the single cover still apply.
+ * [liteMode] can be turned off for a preview whose camera keeps moving with caller state; a static
+ * snapshot cannot animate.
+ *
+ * [overlay] is Compose content drawn over the map but *under* the loading cover (and under the
+ * [onExpand] tap layer) — a centered pin, say. It appears only once the map does, so nothing
+ * floats over the spinner while the map loads or the device is offline.
  */
 @Composable
 fun MapPreview(
     framing: List<LatLng>?,
     modifier: Modifier = Modifier,
     height: Dp = MapPreviewHeight,
+    cameraPositionState: CameraPositionState? = null,
+    liteMode: Boolean = true,
     onExpand: (() -> Unit)? = null,
     expandLabel: String? = null,
+    overlay: (@Composable BoxScope.() -> Unit)? = null,
     empty: @Composable () -> Unit = {},
     content: MapContent,
 ) {
@@ -77,20 +89,22 @@ fun MapPreview(
     ) {
         Box(Modifier.fillMaxSize()) {
             when {
-                // Still waiting on the route or the transition: the cover below is the whole content.
-                framing == null || !settled -> {}
+                // Still waiting on the data or the transition: the cover below is the whole content.
+                !settled || (cameraPositionState == null && framing == null) -> {}
 
-                framing.isEmpty() -> {
+                cameraPositionState == null && framing != null && framing.isEmpty() -> {
                     empty()
                 }
 
                 else -> {
                     MapSurface(
-                        framing = framing,
-                        liteMode = true,
+                        framing = framing.orEmpty(),
+                        liteMode = liteMode,
+                        cameraPositionState = cameraPositionState,
                         onLoaded = { mapLoaded = true },
                         content = content,
                     )
+                    overlay?.invoke(this)
                     if (onExpand != null) {
                         Box(
                             Modifier
@@ -103,17 +117,10 @@ fun MapPreview(
             // The one cover, alive from the card's first frame until the map reports in, so its
             // spinner never restarts between the waits. A framing that turns out empty drops it on
             // the spot instead — there is no map coming to fade over.
-            if (framing?.isEmpty() != true) {
+            if (cameraPositionState != null || framing?.isEmpty() != true) {
                 val coverAlpha by animateFloatAsState(if (mapLoaded) 0f else 1f, tween(400), label = "previewCover")
                 if (coverAlpha > 0f) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .matchParentSize()
-                                .alpha(coverAlpha)
-                                .background(MaterialTheme.colorScheme.surfaceBright),
-                        contentAlignment = Alignment.Center,
-                    ) { MapLoadingIndicator() }
+                    MapLoadingCover(Modifier.alpha(coverAlpha))
                 }
             }
         }

@@ -2,11 +2,8 @@ package de.uhi.enia.ridesafe.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import kotlin.math.asin
-import kotlin.math.cos
-import kotlin.math.min
-import kotlin.math.sin
-import kotlin.math.sqrt
+import de.uhi.enia.ridesafe.util.haversineMeters
+import java.util.Locale
 
 /**
  * A user-saved address / "place" (entity DR-ADR). Anchored to an exact GPS point
@@ -76,20 +73,34 @@ fun matchAddress(
         ?.first
 }
 
-// ponytail: a tiny self-contained haversine keeps the data layer dependency-free (tracking/ has its
-// own private copy for track length). Good enough for ≤500 m radius checks.
-private const val EARTH_RADIUS_M = 6_371_000.0
+/**
+ * Case- and punctuation-insensitive form used wherever two user-entered strings are compared for
+ * identity — place labels and addresses, license plates, geocoder search results.
+ */
+fun normalizeForMatching(value: String): String = value.filter(Char::isLetterOrDigit).uppercase(Locale.ROOT)
 
-fun haversineMeters(
-    lat1: Double,
-    lon1: Double,
-    lat2: Double,
-    lon2: Double,
-): Double {
-    val dLat = Math.toRadians(lat2 - lat1)
-    val dLon = Math.toRadians(lon2 - lon1)
-    val a =
-        sin(dLat / 2) * sin(dLat / 2) +
-            cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLon / 2) * sin(dLon / 2)
-    return 2 * EARTH_RADIUS_M * asin(min(1.0, sqrt(a)))
+/**
+ * The already-saved place a picked search result duplicates (ADR-09): same normalized address, or
+ * within 15 m of an existing center. [editedId] excludes the place being edited from its own check.
+ */
+fun findExistingSavedPlace(
+    address: String,
+    latitude: Double,
+    longitude: Double,
+    savedAddresses: List<SavedAddress>,
+    editedId: Long?,
+): SavedAddress? {
+    val normalizedResult = normalizeForMatching(address)
+    return savedAddresses
+        .asSequence()
+        .filterNot { it.id == editedId }
+        .map { saved -> saved to haversineMeters(saved.latitude, saved.longitude, latitude, longitude) }
+        .filter { (saved, distance) ->
+            val sameAddress =
+                saved.address
+                    ?.let(::normalizeForMatching)
+                    ?.takeIf(String::isNotEmpty) == normalizedResult
+            sameAddress || distance <= 15.0
+        }.minByOrNull { it.second }
+        ?.first
 }

@@ -9,7 +9,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
-import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
+import de.uhi.enia.ridesafe.data.displayTitle
 import de.uhi.enia.ridesafe.util.inAppLanguage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

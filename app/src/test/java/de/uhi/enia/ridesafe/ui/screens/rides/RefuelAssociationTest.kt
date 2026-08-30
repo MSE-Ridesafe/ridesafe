@@ -4,6 +4,8 @@ import de.uhi.enia.ridesafe.data.MergeCheck
 import de.uhi.enia.ridesafe.data.Refuel
 import de.uhi.enia.ridesafe.data.Ride
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RefuelAssociationTest {
@@ -104,6 +106,33 @@ class RefuelAssociationTest {
             checkMixedMerge(listOf(entry(a), entry(b)), listOf(refuel(10, 150, anchor = c.id)), listOf(a, b, c)).refuelCheck,
         )
         assertEquals(MergeCheck.NOT_ENOUGH, checkMixedMerge(listOf(entry(a)), listOf(refuel(10, 150)), listOf(a, b)).rideCheck)
+    }
+
+    @Test
+    fun theSelectionPicksMergeUnmergeAttachOrDetach() {
+        val a = ride(1, 100, groupId = 1)
+        val b = ride(2, 200, groupId = 1)
+        val c = ride(3, 300)
+        val all = listOf(a, b, c)
+
+        // One ride plus a refuel attaches — no second ride needed, and no merge group is created.
+        val attach = logbookAction(listOf(entry(c)), listOf(refuel(10, 350)), all)
+        assertEquals(LogbookActionKind.ATTACH, attach.kind)
+        assertTrue(attach.enabled)
+
+        // Refuels on their own can only be detached; two of them never merge into anything.
+        val detach = logbookAction(emptyList(), listOf(refuel(10, 350, anchor = c.id)), all)
+        assertEquals(LogbookActionKind.DETACH, detach.kind)
+        assertTrue(detach.enabled)
+        val unattached = logbookAction(emptyList(), listOf(refuel(10, 350), refuel(11, 360)), all)
+        assertEquals(LogbookActionKind.DETACH, unattached.kind)
+        assertFalse(unattached.enabled)
+
+        assertEquals(LogbookActionKind.MERGE, logbookAction(listOf(entry(a, b), entry(c)), emptyList(), all).kind)
+        assertEquals(LogbookActionKind.UNMERGE, logbookAction(listOf(entry(a, b)), emptyList(), all).kind)
+        assertEquals(1L, logbookAction(listOf(entry(a, b)), emptyList(), all).unmergeGroupId)
+        // A lone single ride is still a (disabled) merge, with the reason the user knows.
+        assertEquals(MergeCheck.NOT_ENOUGH, logbookAction(listOf(entry(c)), emptyList(), all).rideCheck)
     }
 
     @Test

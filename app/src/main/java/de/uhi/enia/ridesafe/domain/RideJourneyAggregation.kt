@@ -2,8 +2,8 @@ package de.uhi.enia.ridesafe.domain
 
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.summarizeMerge
+import de.uhi.enia.ridesafe.util.toLocalDate
 import java.time.DayOfWeek
-import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
@@ -72,8 +72,6 @@ fun totalJourneyDistanceMeters(journeys: List<LogicalRideJourney>): Double = jou
 
 fun totalJourneyTravelDurationMillis(journeys: List<LogicalRideJourney>): Long = journeys.sumOf { it.travelDurationMillis }
 
-fun totalJourneyCount(journeys: List<LogicalRideJourney>): Int = journeys.size
-
 fun journeyTotalsForMonth(
     journeys: List<LogicalRideJourney>,
     month: YearMonth,
@@ -86,7 +84,7 @@ fun journeyTotalsForMonth(
     return JourneyPeriodTotals(
         distanceMeters = totalJourneyDistanceMeters(monthJourneys),
         durationMillis = totalJourneyTravelDurationMillis(monthJourneys),
-        journeyCount = totalJourneyCount(monthJourneys),
+        journeyCount = monthJourneys.size,
     )
 }
 
@@ -122,7 +120,5 @@ fun journeyActivityByDay(
                 durationMillis = dayJourneys.sumOf { it.travelDurationMillis },
             )
         }
-
-private fun Long.toLocalDate(zone: ZoneId): LocalDate = Instant.ofEpochMilli(this).atZone(zone).toLocalDate()
 
 private fun Ride.durationMillis(): Long = endedAtEpochMs?.let { (it - startedAtEpochMs).coerceAtLeast(0L) } ?: 0L

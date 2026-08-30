@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
 import com.google.android.gms.maps.model.LatLng
 import de.uhi.enia.ridesafe.data.MergeCheck
-import de.uhi.enia.ridesafe.data.MergedSummary
 import de.uhi.enia.ridesafe.data.Refuel
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RideEvent
@@ -16,18 +15,18 @@ import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.canMerge
 import de.uhi.enia.ridesafe.data.consolidateSavedAddressDuplicates
+import de.uhi.enia.ridesafe.data.displayTitle
 import de.uhi.enia.ridesafe.data.mergeGroupIdFor
 import de.uhi.enia.ridesafe.data.rematchRides
 import de.uhi.enia.ridesafe.data.summarizeMerge
+import de.uhi.enia.ridesafe.export.RideExportFormat
+import de.uhi.enia.ridesafe.export.RideExportRequest
+import de.uhi.enia.ridesafe.export.RideExporter
 import de.uhi.enia.ridesafe.rides.RideDataCoordinator
+import de.uhi.enia.ridesafe.rides.RideFileStore
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisPipeline
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
-import de.uhi.enia.ridesafe.rides.processing.processedRouteFile
-import de.uhi.enia.ridesafe.rides.processing.readProcessedRoute
 import de.uhi.enia.ridesafe.rides.processing.reverseGeocode
-import de.uhi.enia.ridesafe.rides.recording.readRideLocations
-import de.uhi.enia.ridesafe.rides.recording.ridesDir
-import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,21 +39,6 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
-
-/** A ride plus its vehicle's display name (null when recorded in an unmapped/unassigned vehicle). */
-data class RideRow(
-    val ride: Ride,
-    val vehicleName: String?,
-    val startPlace: SavedAddress? = null,
-    val endPlace: SavedAddress? = null,
-)
-
-data class RefuelRow(
-    val refuel: Refuel,
-    val vehicleName: String?,
-)
 
 enum class LogbookOperation { MERGED, ATTACHED, DETACHED, DELETED }
 
@@ -68,39 +52,6 @@ sealed interface LogbookOperationState {
     ) : LogbookOperationState
 
     data object Error : LogbookOperationState
-}
-
-/**
- * One row of the Logbook list: either a standalone ride or a merged ride collapsed into a single
- * entry (§3.8). [rideIds] is what the selection/merge machinery operates on — for a merged entry it's
- * all of its stops, since selecting a merged ride in the list means selecting the whole trip.
- */
-sealed interface LogbookEntry {
-    val sortEpochMs: Long
-    val key: String
-    val rides: List<Ride>
-
-    val rideIds: List<Long> get() = rides.map { it.id }
-
-    data class Single(
-        val row: RideRow,
-    ) : LogbookEntry {
-        override val sortEpochMs get() = row.ride.startedAtEpochMs
-        override val key get() = "r${row.ride.id}"
-        override val rides get() = listOf(row.ride)
-    }
-
-    data class Merged(
-        val groupId: Long,
-        val stops: List<RideRow>, // chronological (oldest first)
-        val summary: MergedSummary,
-        val vehicleName: String?,
-    ) : LogbookEntry {
-        // Sort/day-group a merged trip by its most recent stop, so it slots into the newest-first list.
-        override val sortEpochMs get() = stops.maxOf { it.ride.startedAtEpochMs }
-        override val key get() = "g$groupId"
-        override val rides get() = stops.map { it.ride }
-    }
 }
 
 /**
@@ -119,6 +70,7 @@ class RidesViewModel(
     private val refuelDao = db.refuelDao()
 
     private val pipeline = RideAnalysisPipeline(app, db)
+    private val fileStore = RideFileStore(app)
     private val rideExporter = RideExporter(app)
 
     private val exportController =
@@ -439,37 +391,8 @@ class RidesViewModel(
 
             // Database rows are the source of truth. Clean up their private sample and derived
             // files while the same per-ride locks used by analysis/export are still held.
-            val directory = ridesDir(getApplication())
-            ridesToDelete.forEach { ride ->
-                runCatching {
-                    safeRideFile(directory, ride.sampleFile)?.delete()
-                    safePrivateFile(directory, processedRouteFile(getApplication(), ride))?.delete()
-                }.onFailure {
-                    // The database deletion has committed, so a stale private sidecar must not turn
-                    // a successful user action into a misleading failure. It is harmless and can be
-                    // removed by later maintenance.
-                    Log.w("LogbookDelete", "Could not clean private files for ride ${ride.id}", it)
-                }
-            }
+            ridesToDelete.forEach(fileStore::deletePrivateFiles)
         }
-    }
-
-    private fun safeRideFile(
-        directory: File,
-        relativeName: String,
-    ): File? {
-        val root = directory.canonicalFile
-        val candidate = File(root, relativeName).canonicalFile
-        return candidate.takeIf { it.parentFile == root }
-    }
-
-    private fun safePrivateFile(
-        directory: File,
-        file: File,
-    ): File? {
-        val root = directory.canonicalFile
-        val candidate = file.canonicalFile
-        return candidate.takeIf { it.parentFile == root }
     }
 
     fun consumeLogbookOperationResult() {
@@ -484,7 +407,10 @@ class RidesViewModel(
         success: LogbookOperation,
         block: suspend () -> Unit,
     ) {
-        if (_logbookOperationState.value != LogbookOperationState.Idle) return
+        // Only a running operation blocks the next one. A finished one may still be waiting for its
+        // snackbar — the Logbook list isn't composed while a detail screen covers it — and that must
+        // not swallow the user's next action.
+        if (_logbookOperationState.value == LogbookOperationState.Running) return
         _logbookOperationState.value = LogbookOperationState.Running
         viewModelScope.launch {
             _logbookOperationState.value =
@@ -572,18 +498,8 @@ class RidesViewModel(
         return entries.sortedByDescending { it.sortEpochMs }
     }
 
-    /**
-     * The route to draw for a ride (off the main thread): the processed, RDP-simplified sidecar when
-     * it exists (fast path — no raw-file read), else the raw fixes for a ride not processed yet.
-     */
-    suspend fun route(ride: Ride): List<LatLng> =
-        withContext(Dispatchers.IO) {
-            readProcessedRoute(processedRouteFile(getApplication(), ride))
-                ?: run {
-                    val file = File(ridesDir(getApplication()), ride.sampleFile)
-                    if (file.exists()) readRideLocations(file).map { LatLng(it.lat, it.lon) } else emptyList()
-                }
-        }
+    /** See [RideFileStore.route] — the sidecar fast path, else the raw fixes. */
+    suspend fun route(ride: Ride): List<LatLng> = fileStore.route(ride)
 
     /** Reverse-geocode whichever endpoints lack an address and persist; a no-op if nothing resolves. */
     private suspend fun fillAddresses(ride: Ride) {
@@ -598,94 +514,4 @@ class RidesViewModel(
             rideDao.setAddresses(ride.id, start, end)
         }
     }
-}
-
-/** A heterogeneous Rides-page event; ride-only behavior stays inside [LogbookEntry]. */
-sealed interface TimelineEntry {
-    val sortEpochMs: Long
-    val stableKey: String
-
-    data class RideEntry(
-        val entry: LogbookEntry,
-        val refuels: List<RefuelRow> = emptyList(),
-    ) : TimelineEntry {
-        override val sortEpochMs get() = entry.sortEpochMs
-        override val stableKey get() = entry.key
-    }
-
-    data class RefuelEntry(
-        val row: RefuelRow,
-    ) : TimelineEntry {
-        override val sortEpochMs get() = row.refuel.timestampEpochMs
-        override val stableKey get() = "f${row.refuel.id}"
-    }
-}
-
-/** Newest first; exact ties put rides before refuels, then use the stable persistent key. */
-val timelineEntryComparator =
-    compareByDescending<TimelineEntry> { it.sortEpochMs }
-        .thenBy { if (it is TimelineEntry.RideEntry) 0 else 1 }
-        .thenByDescending { it.stableKey }
-
-fun rideLogbookEntries(timeline: List<TimelineEntry>): List<LogbookEntry> = timeline.mapNotNull { (it as? TimelineEntry.RideEntry)?.entry }
-
-fun timelineSelectionKeys(timeline: List<TimelineEntry>): Set<String> = timeline.mapTo(linkedSetOf()) { it.stableKey }
-
-fun visibleTimelineSelectionKeys(timeline: List<TimelineEntry>): Set<String> =
-    timeline.flatMapTo(linkedSetOf()) { entry ->
-        listOf(entry.stableKey) +
-            if (entry is TimelineEntry.RideEntry && entry.entry is LogbookEntry.Single) {
-                entry.refuels.map { "f${it.refuel.id}" }
-            } else {
-                emptyList()
-            }
-    }
-
-fun selectedRefuels(
-    timeline: List<TimelineEntry>,
-    selectedKeys: Set<String>,
-): List<Refuel> =
-    timeline
-        .flatMap { entry ->
-            when (entry) {
-                is TimelineEntry.RefuelEntry -> listOf(entry.row)
-                is TimelineEntry.RideEntry -> entry.refuels
-            }
-        }.filter { "f${it.refuel.id}" in selectedKeys }
-        .map { it.refuel }
-
-fun selectedRideLogbookEntries(
-    timeline: List<TimelineEntry>,
-    selectedKeys: Set<String>,
-): List<LogbookEntry> = rideLogbookEntries(timeline).filter { it.key in selectedKeys }
-
-fun buildTimeline(
-    rideEntries: List<LogbookEntry>,
-    refuelRows: List<RefuelRow>,
-): List<TimelineEntry> {
-    val entryKeyByRideId =
-        buildMap {
-            rideEntries.forEach { entry -> entry.rideIds.forEach { put(it, entry.key) } }
-        }
-    val attachedByKey =
-        refuelRows
-            .mapNotNull { row ->
-                row.refuel.journeyAnchorRideId
-                    ?.let(entryKeyByRideId::get)
-                    ?.let { it to row }
-            }.groupBy({ it.first }, { it.second })
-    val attachedIds = attachedByKey.values.flatten().mapTo(hashSetOf()) { it.refuel.id }
-    return buildList {
-        rideEntries.forEach { entry ->
-            add(
-                TimelineEntry.RideEntry(
-                    entry,
-                    attachedByKey[entry.key].orEmpty().sortedWith(
-                        compareBy<RefuelRow> { it.refuel.timestampEpochMs }.thenBy { it.refuel.id },
-                    ),
-                ),
-            )
-        }
-        refuelRows.filterNot { it.refuel.id in attachedIds }.forEach { add(TimelineEntry.RefuelEntry(it)) }
-    }.sortedWith(timelineEntryComparator)
 }

@@ -26,15 +26,16 @@ import androidx.lifecycle.repeatOnLifecycle
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.Vehicle
+import de.uhi.enia.ridesafe.data.displayTitle
 import de.uhi.enia.ridesafe.rides.recording.RecordingStatus
 import de.uhi.enia.ridesafe.rides.recording.RideRecordingService
 import de.uhi.enia.ridesafe.rides.recording.RunningRide
-import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Ridesafe on the Android Auto screen (TRK-07): start a ride, stop it, throw it away, and see how
@@ -52,7 +53,7 @@ class RidesafeCarAppService : CarAppService() {
         } else {
             HostValidator
                 .Builder(applicationContext)
-                .addAllowedHosts(androidx.car.app.R.array.hosts_allowlist_sample)
+                .addAllowedHosts(R.array.car_hosts_allowlist)
                 .build()
         }
 
@@ -104,7 +105,7 @@ private class RideControlScreen(
                         invalidate()
                         // Idle: paint once and wait for the next start/stop instead of polling.
                         if (running == null) break
-                        delay(1_000) // ponytail: 1 Hz is the coarsest tick a seconds display can have
+                        delay(1_000.milliseconds) // ponytail: 1 Hz is the coarsest tick a seconds display can have
                     }
                 }
             }

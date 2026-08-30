@@ -14,6 +14,7 @@ fun EntryProviderScope<NavKey>.homeEntries(viewModel: HomeViewModel) {
         val state by viewModel.dashboard.collectAsState()
         HomeScreen(
             state = state,
+            onSelectVehicle = viewModel::selectVehicle,
         )
     }
 }

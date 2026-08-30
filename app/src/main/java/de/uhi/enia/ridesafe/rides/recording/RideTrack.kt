@@ -3,6 +3,7 @@ package de.uhi.enia.ridesafe.rides.recording
 import android.content.Context
 import android.util.Log
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
+import de.uhi.enia.ridesafe.util.haversineMeters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -156,15 +157,8 @@ private class CountingInputStream(
 }
 
 /** Total path length in meters, summed great-circle over consecutive fixes (ANL-02 primitive). */
-fun trackDistanceMeters(locations: List<LocationSample>): Double {
-    var total = 0.0
-    for (i in 1 until locations.size) {
-        val a = locations[i - 1]
-        val b = locations[i]
-        total += haversineMeters(a.lat, a.lon, b.lat, b.lon)
-    }
-    return total
-}
+fun trackDistanceMeters(locations: List<LocationSample>): Double =
+    locations.zipWithNext().sumOf { (a, b) -> haversineMeters(a.lat, a.lon, b.lat, b.lon) }
 
 /**
  * Delete a logged ride and the sample file that belongs to it — what the car screen's "delete this

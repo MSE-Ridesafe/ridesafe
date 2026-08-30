@@ -2,45 +2,28 @@
 
 package de.uhi.enia.ridesafe.ui.screens.rides
 
-import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -49,44 +32,36 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import de.uhi.enia.ridesafe.R
-import de.uhi.enia.ridesafe.data.MergeCheck
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.Vehicle
+import de.uhi.enia.ridesafe.export.RideExportFormat
+import de.uhi.enia.ridesafe.export.RideExportRequest
+import de.uhi.enia.ridesafe.export.SavedRideExport
+import de.uhi.enia.ridesafe.export.canOpenExportedFile
+import de.uhi.enia.ridesafe.export.openExportedFile
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
-import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.rides.recording.RecordingStatus
+import de.uhi.enia.ridesafe.ui.components.AppSnackbarHost
+import de.uhi.enia.ridesafe.ui.components.CardDivider
+import de.uhi.enia.ridesafe.ui.components.ConfirmDestructiveDialog
+import de.uhi.enia.ridesafe.ui.components.EmptyState
 import de.uhi.enia.ridesafe.ui.components.ListGroupItem
 import de.uhi.enia.ridesafe.ui.components.ListGroupItemGap
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.RECORDING_BAR_INSET
-import de.uhi.enia.ridesafe.util.currentCurrencySetting
-import de.uhi.enia.ridesafe.util.currentUnitSystem
+import de.uhi.enia.ridesafe.ui.components.SectionTitle
 import de.uhi.enia.ridesafe.util.formatDayHeader
-import de.uhi.enia.ridesafe.util.formatDistance
-import de.uhi.enia.ridesafe.util.formatDuration
-import de.uhi.enia.ridesafe.util.formatDurationMs
-import de.uhi.enia.ridesafe.util.formatTimeOfDay
-import de.uhi.enia.ridesafe.util.formattingLocale
-import de.uhi.enia.ridesafe.util.rideDay
-import kotlinx.coroutines.launch
-import java.text.NumberFormat
+import de.uhi.enia.ridesafe.util.toLocalDate
 import java.time.LocalDate
 
 @Composable
@@ -106,6 +81,8 @@ fun RidesScreen(
     onOpenAnalysisQueue: () -> Unit,
     onMerge: (List<Long>, List<Long>) -> Unit,
     onUnmerge: (Long) -> Unit,
+    onAttach: (List<Long>, List<Long>) -> Unit,
+    onDetach: (List<Long>) -> Unit,
     onDelete: (List<Long>, List<Long>) -> Unit,
     logbookOperationState: LogbookOperationState,
     onLogbookOperationResultConsumed: () -> Unit,
@@ -128,7 +105,6 @@ fun RidesScreen(
     val recording by RecordingStatus.running.collectAsState()
     val recordingInset = if (recording != null) RECORDING_BAR_INSET else 0.dp
 
-    var selectionMode by rememberSaveable { mutableStateOf(false) }
     var handledSelectionDismissRequest by rememberSaveable {
         mutableIntStateOf(selectionDismissRequests.value)
     }
@@ -136,11 +112,6 @@ fun RidesScreen(
     var pendingExportRequests by remember { mutableStateOf<List<RideExportRequest>?>(null) }
     var deleteConfirmationOpen by rememberSaveable { mutableStateOf(false) }
     var deleteOperationPending by rememberSaveable { mutableStateOf(false) }
-    // Selection is by entry key; keys that no longer exist (data changed) are ignored below.
-    var selectedKeys by
-        rememberSaveable(
-            stateSaver = listSaver(save = { it.toList() }, restore = { it.toSet() }),
-        ) { mutableStateOf(emptySet<String>()) }
     var filtersOpen by rememberSaveable { mutableStateOf(false) }
 
     // Each entry's searchable text, built once per data change; a keystroke then only scans it.
@@ -161,43 +132,13 @@ fun RidesScreen(
             }
         }
 
-    // Selection tracks what is on screen: a ride hidden by the filter counts as deselected, so
-    // "select all" means all the *shown* rides and no invisible ride can be swept into a merge.
-    val selectAllKeys = remember(visibleTimeline) { timelineSelectionKeys(visibleTimeline) }
-    val liveKeys = remember(visibleTimeline) { visibleTimelineSelectionKeys(visibleTimeline) }
-    val selected = selectedKeys.intersect(liveKeys)
-    val selectedRideEntries = remember(timeline, selected) { selectedRideLogbookEntries(timeline, selected) }
-    val selectedRefuelRecords = remember(timeline, selected) { selectedRefuels(timeline, selected) }
-    // Contiguity (MRG-02) is judged against every ride, not the shown ones: a filtered-out ride
-    // between two selected ones still breaks the run, and merging across it would be wrong.
-    val allRides = remember(entries) { entries.flatMap { it.rides } }
-    val mixedMergeCheck =
-        remember(selectedRideEntries, selectedRefuelRecords, allRides) {
-            checkMixedMerge(selectedRideEntries, selectedRefuelRecords, allRides)
-        }
-    val selectedMergedGroupId =
-        remember(selectedRideEntries, selectedRefuelRecords) {
-            if (selectedRefuelRecords.isEmpty()) {
-                (selectedRideEntries.singleOrNull() as? LogbookEntry.Merged)?.groupId
-            } else {
-                null
-            }
-        }
-
-    fun exitSelection() {
-        selectionMode = false
-        selectedKeys = emptySet()
-    }
-
-    fun toggle(key: String) {
-        selectedKeys = if (key in selected) selected - key else selected + key
-    }
+    val selection = rememberLogbookSelection(timeline, visibleTimeline, entries)
 
     val selectionDismissRequest = selectionDismissRequests.value
     LaunchedEffect(selectionDismissRequest) {
         if (selectionDismissRequest != handledSelectionDismissRequest) {
             handledSelectionDismissRequest = selectionDismissRequest
-            exitSelection()
+            selection.exit()
         }
     }
 
@@ -210,18 +151,14 @@ fun RidesScreen(
                         uri = exportState.export.contentUri.toUri(),
                         format = exportState.export.format,
                     )
-                val openIntent = buildOpenExportIntent(saved)
-                val canOpen = openIntent.resolveActivity(context.packageManager) != null
+                val canOpen = canOpenExportedFile(context, saved)
                 val result =
                     snackbarHostState.showSnackbar(
                         message = exportSuccessMessage,
                         actionLabel = openFileLabel.takeIf { canOpen },
                         duration = SnackbarDuration.Long,
                     )
-                if (result == SnackbarResult.ActionPerformed) {
-                    runCatching { context.startActivity(openIntent) }
-                        .onFailure { Log.w("RideExport", "Could not open exported file", it) }
-                }
+                if (result == SnackbarResult.ActionPerformed) openExportedFile(context, saved)
                 onExportResultConsumed()
             }
 
@@ -230,9 +167,7 @@ fun RidesScreen(
                 onExportResultConsumed()
             }
 
-            RideExportState.Idle, RideExportState.Exporting -> {
-                Unit
-            }
+            RideExportState.Idle, RideExportState.Exporting -> {}
         }
     }
 
@@ -243,10 +178,10 @@ fun RidesScreen(
     val operationError = stringResource(R.string.refuel_association_error)
     val deleteError = stringResource(R.string.ride_delete_error)
     LaunchedEffect(logbookOperationState) {
-        when (val state = logbookOperationState) {
+        when (logbookOperationState) {
             is LogbookOperationState.Success -> {
                 val message =
-                    when (state.operation) {
+                    when (logbookOperationState.operation) {
                         LogbookOperation.ATTACHED -> attachSuccess
                         LogbookOperation.DETACHED -> detachSuccess
                         LogbookOperation.MERGED -> mergeSuccess
@@ -255,7 +190,7 @@ fun RidesScreen(
                 deleteOperationPending = false
                 // A Snackbar suspends until it times out. Finish the operation first so the
                 // completed selection disappears immediately and a later action is never ignored.
-                exitSelection()
+                selection.exit()
                 onLogbookOperationResultConsumed()
                 snackbarHostState.showSnackbar(message)
             }
@@ -268,9 +203,7 @@ fun RidesScreen(
                 snackbarHostState.showSnackbar(message)
             }
 
-            LogbookOperationState.Idle, LogbookOperationState.Running -> {
-                Unit
-            }
+            LogbookOperationState.Idle, LogbookOperationState.Running -> {}
         }
     }
 
@@ -281,34 +214,45 @@ fun RidesScreen(
     Box(modifier = modifier.fillMaxSize()) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            snackbarHost = { RideSnackbarHost(snackbarHostState) },
+            snackbarHost = { AppSnackbarHost(snackbarHostState) },
             topBar = {
-                if (selectionMode) {
+                if (selection.selectionMode) {
                     SelectionTopBar(
-                        count = selected.size,
-                        allSelected = selectAllKeys.isNotEmpty() && selectAllKeys.all { it in selected },
-                        mergeCheck = mixedMergeCheck.rideCheck,
-                        mergeRefuelCheck = mixedMergeCheck.refuelCheck,
-                        unmergeGroupId = selectedMergedGroupId,
+                        count = selection.selected.size,
+                        allSelected = selection.selectAllKeys.isNotEmpty() && selection.selectAllKeys.all { it in selection.selected },
+                        action = selection.action,
                         operationRunning = logbookOperationState == LogbookOperationState.Running,
-                        onExit = ::exitSelection,
-                        onSelectAll = { selectedKeys = selectAllKeys },
-                        onDeselectAll = { selectedKeys = emptySet() },
-                        onMerge = {
-                            onMerge(
-                                selectedRideEntries.flatMap { it.rideIds },
-                                selectedRefuelRecords.map { it.id },
-                            )
+                        onExit = selection.exit,
+                        onSelectAll = selection.selectAll,
+                        onDeselectAll = selection.deselectAll,
+                        onAction = {
+                            val rideIds = selection.selectedRideEntries.flatMap { it.rideIds }
+                            val refuelIds = selection.selectedRefuelRecords.map { it.id }
+                            when (selection.action.kind) {
+                                LogbookActionKind.MERGE -> {
+                                    onMerge(rideIds, refuelIds)
+                                }
+
+                                LogbookActionKind.ATTACH -> {
+                                    onAttach(rideIds, refuelIds)
+                                }
+
+                                LogbookActionKind.DETACH -> {
+                                    onDetach(refuelIds)
+                                }
+
+                                // Un-merging is not a logbook operation, so it clears the selection itself.
+                                LogbookActionKind.UNMERGE -> {
+                                    selection.action.unmergeGroupId?.let(onUnmerge)
+                                    selection.exit()
+                                }
+                            }
                         },
-                        onUnmerge = { groupId ->
-                            onUnmerge(groupId)
-                            exitSelection()
-                        },
-                        exportEnabled = selectedRideEntries.isNotEmpty() && exportState != RideExportState.Exporting,
-                        onExport = { pendingExportRequests = exportRequests(entries, selected) },
+                        exportEnabled = selection.selectedRideEntries.isNotEmpty() && exportState != RideExportState.Exporting,
+                        onExport = { pendingExportRequests = exportRequests(entries, selection.selected) },
                         deleteEnabled =
-                            selected.isNotEmpty() &&
-                                selectedRideEntries.flatMap { it.rides }.all { it.endedAtEpochMs != null },
+                            selection.selected.isNotEmpty() &&
+                                selection.selectedRideEntries.flatMap { it.rides }.all { it.endedAtEpochMs != null },
                         onDelete = { deleteConfirmationOpen = true },
                     )
                 } else {
@@ -340,7 +284,10 @@ fun RidesScreen(
             ) {
                 if (timeline.isEmpty()) {
                     // An empty logbook has nothing to search, so the search bar stays away entirely.
-                    EmptyRides(
+                    EmptyState(
+                        symbolName = "route",
+                        title = stringResource(R.string.rides_empty_title),
+                        message = stringResource(R.string.rides_empty_message),
                         modifier =
                             Modifier
                                 .fillMaxSize()
@@ -369,20 +316,26 @@ fun RidesScreen(
                         onFilterChange = onFilterChange,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
-                    NoMatchingRides(
-                        onClear = { onFilterChange(RideFilter()) },
+                    EmptyState(
+                        symbolName = "search_off",
+                        title = stringResource(R.string.rides_no_matches_title),
+                        message = stringResource(R.string.rides_no_matches_message),
                         modifier =
                             Modifier
                                 .fillMaxSize()
                                 .padding(32.dp),
-                    )
+                    ) {
+                        TextButton(onClick = { onFilterChange(RideFilter()) }) {
+                            Text(stringResource(R.string.rides_filter_clear_all))
+                        }
+                    }
                     return@Column
                 }
 
                 // One card per calendar day; entries arrive newest-first, so insertion order gives newest day
                 // first, newest entry first within each day.
                 val groups =
-                    remember(visibleTimeline) { visibleTimeline.groupByTo(LinkedHashMap()) { rideDay(it.sortEpochMs) } }
+                    remember(visibleTimeline) { visibleTimeline.groupByTo(LinkedHashMap()) { it.sortEpochMs.toLocalDate() } }
                 val today = LocalDate.now()
 
                 LazyColumn(
@@ -426,12 +379,12 @@ fun RidesScreen(
                                                 Column {
                                                     LogbookRow(
                                                         entry = entry,
-                                                        selectionMode = selectionMode,
-                                                        selected = entry.key in selected,
+                                                        selectionMode = selection.selectionMode,
+                                                        selected = entry.key in selection.selected,
                                                         isOpen = entry.key == selectedKey,
                                                         onClick = {
-                                                            if (selectionMode) {
-                                                                toggle(entry.key)
+                                                            if (selection.selectionMode) {
+                                                                selection.toggle(entry.key)
                                                             } else {
                                                                 when (entry) {
                                                                     is LogbookEntry.Single -> onOpenRide(entry.row.ride.id)
@@ -440,8 +393,8 @@ fun RidesScreen(
                                                             }
                                                         },
                                                         onLongClick = {
-                                                            selectionMode = true
-                                                            toggle(entry.key)
+                                                            selection.enter()
+                                                            selection.toggle(entry.key)
                                                         },
                                                     )
                                                     // Keep the compact main timeline focused on the combined
@@ -449,23 +402,26 @@ fun RidesScreen(
                                                     // in the combined-ride detail timeline.
                                                     if (entry is LogbookEntry.Single) {
                                                         timelineEntry.refuels.forEach { nested ->
-                                                            HorizontalDivider(
-                                                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                                                modifier = Modifier.padding(start = 40.dp),
-                                                            )
+                                                            CardDivider(modifier = Modifier.padding(start = 40.dp))
                                                             val key = "f${nested.refuel.id}"
                                                             RefuelTimelineRow(
                                                                 row = nested,
-                                                                selectionMode = selectionMode,
-                                                                selected = key in selected,
+                                                                selectionMode = selection.selectionMode,
+                                                                selected = key in selection.selected,
                                                                 isOpen = key == selectedKey,
                                                                 nested = true,
                                                                 onClick = {
-                                                                    if (selectionMode) toggle(key) else onOpenRefuel(nested.refuel.id)
+                                                                    if (selection.selectionMode) {
+                                                                        selection.toggle(
+                                                                            key,
+                                                                        )
+                                                                    } else {
+                                                                        onOpenRefuel(nested.refuel.id)
+                                                                    }
                                                                 },
                                                                 onLongClick = {
-                                                                    selectionMode = true
-                                                                    toggle(key)
+                                                                    selection.enter()
+                                                                    selection.toggle(key)
                                                                 },
                                                             )
                                                         }
@@ -476,19 +432,19 @@ fun RidesScreen(
                                             is TimelineEntry.RefuelEntry -> {
                                                 RefuelTimelineRow(
                                                     row = timelineEntry.row,
-                                                    selectionMode = selectionMode,
-                                                    selected = timelineEntry.stableKey in selected,
+                                                    selectionMode = selection.selectionMode,
+                                                    selected = timelineEntry.stableKey in selection.selected,
                                                     isOpen = timelineEntry.stableKey == selectedKey,
                                                     onClick = {
-                                                        if (selectionMode) {
-                                                            toggle(timelineEntry.stableKey)
+                                                        if (selection.selectionMode) {
+                                                            selection.toggle(timelineEntry.stableKey)
                                                         } else {
                                                             onOpenRefuel(timelineEntry.row.refuel.id)
                                                         }
                                                     },
                                                     onLongClick = {
-                                                        selectionMode = true
-                                                        toggle(timelineEntry.stableKey)
+                                                        selection.enter()
+                                                        selection.toggle(timelineEntry.stableKey)
                                                     },
                                                 )
                                             }
@@ -552,589 +508,22 @@ fun RidesScreen(
     }
 
     if (deleteConfirmationOpen) {
-        AlertDialog(
-            onDismissRequest = { deleteConfirmationOpen = false },
-            icon = { MaterialSymbol(symbolName = "delete", contentDescription = null) },
-            title = { Text(stringResource(R.string.ride_delete_title)) },
-            text = { Text(stringResource(R.string.ride_delete_message)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        deleteConfirmationOpen = false
-                        deleteOperationPending = true
-                        onDelete(
-                            selectedRideEntries.flatMap { it.rideIds },
-                            selectedRefuelRecords.map { it.id },
-                        )
-                    },
-                ) {
-                    Text(
-                        text = stringResource(R.string.ride_delete_confirm),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
+        ConfirmDestructiveDialog(
+            title = stringResource(R.string.ride_delete_title),
+            message = stringResource(R.string.ride_delete_message),
+            onConfirm = {
+                deleteOperationPending = true
+                onDelete(
+                    selection.selectedRideEntries.flatMap { it.rideIds },
+                    selection.selectedRefuelRecords.map { it.id },
+                )
             },
-            dismissButton = {
-                TextButton(onClick = { deleteConfirmationOpen = false }) {
-                    Text(stringResource(R.string.ride_delete_cancel))
-                }
-            },
+            onDismiss = { deleteConfirmationOpen = false },
         )
     }
 }
-
-@Composable
-private fun ExportFormatSheet(
-    onFormatSelected: (RideExportFormat) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
-    var selectionInProgress by remember { mutableStateOf(false) }
-
-    fun select(format: RideExportFormat) {
-        if (selectionInProgress) return
-        selectionInProgress = true
-        scope.launch {
-            sheetState.hide()
-            onFormatSelected(format)
-        }
-    }
-
-    ModalBottomSheet(
-        onDismissRequest = { if (!selectionInProgress) onDismiss() },
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        dragHandle = {
-            BottomSheetDefaults.DragHandle(
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-            )
-        },
-    ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-        ) {
-            Column(
-                modifier = Modifier.padding(start = 24.dp, top = 4.dp, end = 24.dp, bottom = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.ride_action_export),
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-                Text(
-                    text = stringResource(R.string.ride_export_format_title),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            ExportFormatOption(
-                title = stringResource(R.string.ride_export_format_pdf),
-                description = stringResource(R.string.ride_export_format_pdf_description),
-                symbolName = "picture_as_pdf",
-                enabled = !selectionInProgress,
-                onClick = { select(RideExportFormat.PDF) },
-            )
-            HorizontalDivider(
-                modifier = Modifier.padding(start = 72.dp, end = 24.dp),
-                color = MaterialTheme.colorScheme.outlineVariant,
-            )
-            ExportFormatOption(
-                title = stringResource(R.string.ride_export_format_csv),
-                description = stringResource(R.string.ride_export_format_csv_description),
-                symbolName = "table_view",
-                enabled = !selectionInProgress,
-                onClick = { select(RideExportFormat.CSV) },
-            )
-            HorizontalDivider(
-                modifier = Modifier.padding(start = 72.dp, end = 24.dp),
-                color = MaterialTheme.colorScheme.outlineVariant,
-            )
-            ExportFormatOption(
-                title = stringResource(R.string.ride_export_format_zip),
-                description = stringResource(R.string.ride_export_format_zip_description),
-                symbolName = "folder_zip",
-                enabled = !selectionInProgress,
-                onClick = { select(RideExportFormat.ZIP) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun ExportFormatOption(
-    title: String,
-    description: String,
-    symbolName: String,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    ListItem(
-        modifier =
-            Modifier
-                .padding(horizontal = 8.dp)
-                .fillMaxWidth()
-                .clip(MaterialTheme.shapes.large)
-                .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
-        colors =
-            ListItemDefaults.colors(
-                containerColor = Color.Transparent,
-                headlineColor = MaterialTheme.colorScheme.onSurface,
-                supportingColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                trailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                disabledHeadlineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                disabledLeadingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                disabledTrailingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-            ),
-        headlineContent = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-            )
-        },
-        supportingContent = {
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        },
-        leadingContent = {
-            MaterialSymbol(
-                symbolName = symbolName,
-                contentDescription = null,
-            )
-        },
-        trailingContent = {
-            MaterialSymbol(
-                symbolName = "chevron_right",
-                contentDescription = null,
-            )
-        },
-    )
-}
-
-@Composable
-private fun RideSnackbarHost(hostState: SnackbarHostState) {
-    SnackbarHost(
-        hostState = hostState,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-    ) { data ->
-        Snackbar(
-            snackbarData = data,
-            shape = MaterialTheme.shapes.medium,
-            containerColor = MaterialTheme.colorScheme.inverseSurface,
-            contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-            actionColor = MaterialTheme.colorScheme.inversePrimary,
-            dismissActionContentColor = MaterialTheme.colorScheme.inverseOnSurface,
-        )
-    }
-}
-
-@Composable
-private fun SelectionTopBar(
-    count: Int,
-    allSelected: Boolean,
-    mergeCheck: MergeCheck,
-    mergeRefuelCheck: RefuelAssociationCheck,
-    unmergeGroupId: Long?,
-    operationRunning: Boolean,
-    onExit: () -> Unit,
-    onSelectAll: () -> Unit,
-    onDeselectAll: () -> Unit,
-    onMerge: () -> Unit,
-    onUnmerge: (Long) -> Unit,
-    exportEnabled: Boolean,
-    onExport: () -> Unit,
-    deleteEnabled: Boolean,
-    onDelete: () -> Unit,
-) {
-    var menuOpen by remember { mutableStateOf(false) }
-
-    TopAppBar(
-        title = { Text(stringResource(R.string.ride_selection_count, count)) },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-        navigationIcon = {
-            IconButton(onClick = onExit) {
-                MaterialSymbol(symbolName = "close", contentDescription = stringResource(R.string.action_exit_selection))
-            }
-        },
-        actions = {
-            IconButton(onClick = if (allSelected) onDeselectAll else onSelectAll) {
-                MaterialSymbol(
-                    symbolName = "select_all",
-                    contentDescription =
-                        stringResource(if (allSelected) R.string.action_deselect_all else R.string.action_select_all),
-                )
-            }
-            IconButton(onClick = { menuOpen = true }) {
-                MaterialSymbol(symbolName = "more_vert", contentDescription = stringResource(R.string.action_more))
-            }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(
-                    enabled =
-                        !operationRunning &&
-                            (
-                                unmergeGroupId != null ||
-                                    (mergeCheck == MergeCheck.OK && mergeRefuelCheck == RefuelAssociationCheck.OK)
-                            ),
-                    onClick = {
-                        menuOpen = false
-                        unmergeGroupId?.let(onUnmerge) ?: onMerge()
-                    },
-                    text = {
-                        Column {
-                            Text(
-                                stringResource(
-                                    if (unmergeGroupId != null) R.string.ride_action_unmerge else R.string.ride_action_merge,
-                                ),
-                            )
-                            // When disabled, tell the user why merging isn't available right now (MRG-08).
-                            if (unmergeGroupId == null) {
-                                mergeDisabledReason(mergeCheck)?.let { reason ->
-                                    Text(
-                                        text = stringResource(reason),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                            if (unmergeGroupId == null && mergeCheck == MergeCheck.OK) {
-                                associationDisabledReason(mergeRefuelCheck)?.let { reason ->
-                                    Text(
-                                        text = stringResource(reason),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                        }
-                    },
-                    leadingIcon = {
-                        MaterialSymbol(
-                            symbolName = if (unmergeGroupId != null) "call_split" else "merge",
-                            contentDescription = null,
-                        )
-                    },
-                )
-                DropdownMenuItem(
-                    enabled = exportEnabled && !operationRunning,
-                    onClick = {
-                        menuOpen = false
-                        onExport()
-                    },
-                    text = { Text(stringResource(R.string.ride_action_export)) },
-                    leadingIcon = { MaterialSymbol(symbolName = "download", contentDescription = null) },
-                )
-                DropdownMenuItem(
-                    enabled = deleteEnabled && !operationRunning,
-                    onClick = {
-                        menuOpen = false
-                        onDelete()
-                    },
-                    text = {
-                        Text(
-                            text = stringResource(R.string.ride_action_delete),
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    },
-                    leadingIcon = {
-                        MaterialSymbol(
-                            symbolName = "delete",
-                            contentDescription = null,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    },
-                )
-            }
-        },
-    )
-}
-
-/** The reason string for a disabled Merge action, or null when merging is allowed (MRG-08). */
-private fun mergeDisabledReason(check: MergeCheck): Int? =
-    when (check) {
-        MergeCheck.OK -> null
-        MergeCheck.NOT_ENOUGH -> R.string.merge_reason_not_enough
-        MergeCheck.MIXED_VEHICLE -> R.string.merge_reason_mixed_vehicle
-        MergeCheck.NOT_CONTIGUOUS -> R.string.merge_reason_not_contiguous
-    }
-
-private fun associationDisabledReason(check: RefuelAssociationCheck): Int? =
-    when (check) {
-        RefuelAssociationCheck.OK -> null
-        RefuelAssociationCheck.VEHICLE_MISMATCH -> R.string.refuel_reason_vehicle_mismatch
-        RefuelAssociationCheck.OTHER_JOURNEY -> R.string.refuel_reason_other_ride
-        RefuelAssociationCheck.NO_CHANGES -> R.string.refuel_reason_already_attached
-        RefuelAssociationCheck.NOT_ALL_ATTACHED -> R.string.refuel_reason_not_all_attached
-        RefuelAssociationCheck.WRONG_SELECTION -> null
-    }
 
 @Composable
 private fun DayHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp),
-    )
-}
-
-@Composable
-private fun LogbookRow(
-    entry: LogbookEntry,
-    selectionMode: Boolean,
-    selected: Boolean,
-    isOpen: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-) {
-    val unitSystem = currentUnitSystem()
-    val context = LocalContext.current
-
-    val overline: String?
-    val headline: String
-    val supporting: String
-    val icon: String
-    when (entry) {
-        is LogbookEntry.Single -> {
-            val ride = entry.row.ride
-            overline = entry.row.vehicleName
-            // Prefer a matched saved place's label + icon (ADR-08), else the raw destination address.
-            headline =
-                entry.row.endPlace?.label
-                    ?: ride.endAddress?.let { shortAddress(it) }
-                    ?: stringResource(R.string.ride_address_unknown)
-            supporting =
-                listOfNotNull(
-                    rideTimeRange(context, ride.startedAtEpochMs, ride.endedAtEpochMs),
-                    formatDuration(ride.startedAtEpochMs, ride.endedAtEpochMs),
-                ).joinToString("  •  ")
-            icon = entry.row.endPlace?.icon ?: "route"
-        }
-
-        is LogbookEntry.Merged -> {
-            val s = entry.summary
-            // The merged trip's final destination = the newest stop's end (stops are oldest-first).
-            val destPlace = entry.stops.last().endPlace
-            val badge =
-                stringResource(R.string.ride_merged_label) + " · " +
-                    pluralStringResource(R.plurals.ride_stops_count, s.stopCount, s.stopCount)
-            overline = listOfNotNull(entry.vehicleName, badge).joinToString(" · ")
-            headline =
-                destPlace?.label
-                    ?: s.endAddress?.let { shortAddress(it) }
-                    ?: stringResource(R.string.ride_address_unknown)
-            supporting =
-                listOfNotNull(
-                    s.distanceMeters?.let { formatDistance(it, unitSystem) },
-                    formatDurationMs(s.movingDurationMs),
-                ).joinToString("  •  ")
-            // Keep the "merge" icon so a merged trip stays visually distinct in the list.
-            icon = "merge"
-        }
-    }
-
-    ListItem(
-        modifier =
-            Modifier.combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick,
-            ),
-        colors =
-            ListItemDefaults.colors(
-                containerColor =
-                    if (isOpen) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
-            ),
-        leadingContent = {
-            if (selectionMode) {
-                SelectionCircle(selected = selected)
-            } else {
-                MaterialSymbol(symbolName = icon, contentDescription = null)
-            }
-        },
-        overlineContent = overline?.let { { Text(it) } },
-        headlineContent = {
-            Text(
-                headline,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleMedium,
-            )
-        },
-        supportingContent = { Text(supporting, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        trailingContent =
-            if (selectionMode) {
-                null
-            } else {
-                {
-                    MaterialSymbol(
-                        symbolName = "chevron_right",
-                        contentDescription = stringResource(R.string.ride_open),
-                    )
-                }
-            },
-    )
-}
-
-@Composable
-internal fun RefuelTimelineRow(
-    row: RefuelRow,
-    selectionMode: Boolean,
-    selected: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    nested: Boolean = false,
-    showVehicle: Boolean = true,
-    // True while this refuel's editor fills the detail pane, mirroring LogbookRow's tint.
-    isOpen: Boolean = false,
-) {
-    val context = LocalContext.current
-    // Regional conventions, not the in-app language's likely region (SET-07).
-    val locale = formattingLocale()
-    val refuel = row.refuel
-    val currency = currentCurrencySetting().currency
-    val fractionDigits = currency.defaultFractionDigits.takeIf { it >= 0 } ?: 2
-    val total = java.math.BigDecimal.valueOf(refuel.totalPriceMinor, fractionDigits)
-    val currencyFormat = NumberFormat.getCurrencyInstance(locale).apply { this.currency = currency }
-    val unitPrice =
-        pricePerLiter(refuel.totalPriceMinor, refuel.fuelAmountMilliliters, fractionDigits)
-            ?.let(currencyFormat::format)
-
-    ListItem(
-        modifier =
-            Modifier
-                .then(if (nested) Modifier.padding(start = 24.dp) else Modifier)
-                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        colors =
-            ListItemDefaults.colors(
-                containerColor =
-                    if (isOpen) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
-            ),
-        leadingContent = {
-            if (selectionMode) {
-                SelectionCircle(selected)
-            } else {
-                MaterialSymbol(symbolName = "local_gas_station", contentDescription = null)
-            }
-        },
-        overlineContent =
-            if (showVehicle) {
-                { Text(row.vehicleName ?: stringResource(R.string.refuel_unknown_vehicle)) }
-            } else {
-                null
-            },
-        headlineContent = {
-            Text(
-                stringResource(R.string.refuel_label),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleMedium,
-            )
-        },
-        supportingContent = {
-            Text(
-                buildList {
-                    add(formatTimeOfDay(context, refuel.timestampEpochMs))
-                    add(currencyFormat.format(total))
-                    unitPrice?.let { add(stringResource(R.string.refuel_price_per_liter_value, it)) }
-                }.joinToString("  •  "),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-    )
-}
-
-/** The native Android selection indicator: a filled primary check when selected, an empty circle otherwise. */
-@Composable
-private fun SelectionCircle(selected: Boolean) {
-    MaterialSymbol(
-        symbolName = if (selected) "check_circle" else "radio_button_unchecked",
-        contentDescription = stringResource(if (selected) R.string.ride_selected else R.string.ride_not_selected),
-        fill = selected,
-        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
-
-/** "14:32 – 14:58" (or just the start while a ride is in progress). */
-private fun rideTimeRange(
-    context: android.content.Context,
-    startMs: Long,
-    endMs: Long?,
-): String =
-    buildString {
-        append(formatTimeOfDay(context, startMs))
-        endMs?.let { append(" – ").append(formatTimeOfDay(context, it)) }
-    }
-
-/**
- * The search/filter came up empty — deliberately distinct from an empty logbook (there *are* rides,
- * they just don't match), and it offers the way back out rather than leaving the user to hunt for it.
- */
-@Composable
-private fun NoMatchingRides(
-    onClear: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        MaterialSymbol(
-            symbolName = "search_off",
-            contentDescription = null,
-            size = 64.dp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.size(16.dp))
-        Text(
-            text = stringResource(R.string.rides_no_matches_title),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Spacer(Modifier.size(4.dp))
-        Text(
-            text = stringResource(R.string.rides_no_matches_message),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.size(16.dp))
-        TextButton(onClick = onClear) {
-            Text(stringResource(R.string.rides_filter_clear_all))
-        }
-    }
-}
-
-@Composable
-private fun EmptyRides(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        MaterialSymbol(
-            symbolName = "route",
-            contentDescription = null,
-            size = 64.dp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.size(16.dp))
-        Text(
-            text = stringResource(R.string.rides_empty_title),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Spacer(Modifier.size(4.dp))
-        Text(
-            text = stringResource(R.string.rides_empty_message),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-    }
+    SectionTitle(text = text, modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp))
 }

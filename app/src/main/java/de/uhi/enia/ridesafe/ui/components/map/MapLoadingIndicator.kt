@@ -2,6 +2,9 @@ package de.uhi.enia.ridesafe.ui.components.map
 
 import android.net.ConnectivityManager
 import android.net.Network
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
@@ -76,4 +79,16 @@ internal fun MapLoadingIndicator() {
             )
         }
     }
+}
+
+/** Opaque cover centered on [MapLoadingIndicator], hiding a map surface that has not loaded yet. */
+@Composable
+fun BoxScope.MapLoadingCover(modifier: Modifier = Modifier) {
+    Box(
+        modifier =
+            modifier
+                .matchParentSize()
+                .background(MaterialTheme.colorScheme.surfaceBright),
+        contentAlignment = Alignment.Center,
+    ) { MapLoadingIndicator() }
 }

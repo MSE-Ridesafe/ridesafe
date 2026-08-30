@@ -51,6 +51,14 @@ class RefuelNumbersTest {
     }
 
     @Test
+    fun resolvesStoredCurrencyCodeWithLocaleFallback() {
+        assertEquals("JPY", refuelCurrency("JPY", Locale.GERMANY).currencyCode)
+        assertEquals(0, refuelCurrency("JPY", Locale.GERMANY).defaultFractionDigits)
+        assertEquals("EUR", refuelCurrency("not-a-code", Locale.GERMANY).currencyCode)
+        assertEquals("USD", refuelCurrency("", Locale.US).currencyCode)
+    }
+
+    @Test
     fun editValuesUseStoredTimeAndGermanEditableDecimals() {
         val zone = ZoneId.of("Europe/Berlin")
         val timestamp =

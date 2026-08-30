@@ -92,6 +92,8 @@ fun EntryProviderScope<NavKey>.ridesEntries(
                 onOpenAnalysisQueue = { onOpen(AnalysisQueueRoute) },
                 onMerge = viewModel::merge,
                 onUnmerge = viewModel::unmergeAll,
+                onAttach = viewModel::attachRefuels,
+                onDetach = viewModel::detachRefuels,
                 onDelete = viewModel::deleteEntries,
                 logbookOperationState = logbookOperationState,
                 onLogbookOperationResultConsumed = viewModel::consumeLogbookOperationResult,
@@ -108,8 +110,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
         RefuelFormScreen(
             vehicles = vehicles,
             onSave = viewModel::addRefuel,
-            onBack = { onBack(key) },
-        )
+        ) { onBack(key) }
     }
     entry<EditRefuelRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = RIDES_SCENE)) { key ->
         val loaded by produceState<Result<de.uhi.enia.ridesafe.data.Refuel?>?>(initialValue = null, key.id) {
@@ -130,8 +131,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
                         vehicles = vehicles,
                         existing = refuel,
                         onSave = viewModel::updateRefuel,
-                        onBack = { onBack(key) },
-                    )
+                    ) { onBack(key) }
                 }
             }
         }
@@ -141,7 +141,12 @@ fun EntryProviderScope<NavKey>.ridesEntries(
         val analysis by viewModel.analysisProgress.collectAsState()
         // Merged entries carry their stops, so flattening covers every ride a job can point at.
         val rides = remember(entries) { entries.flatMap { it.rides }.associateBy { it.id } }
-        AnalysisQueueScreen(progress = analysis, rides = rides, onBack = { onBack(AnalysisQueueRoute) }, showBack = showBack)
+        AnalysisQueueScreen(
+            progress = analysis,
+            rides = rides,
+            onBack = { onBack(AnalysisQueueRoute) },
+            showBack = showBack,
+        )
     }
     entry<MergedRideDetailRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = RIDES_SCENE)) { key ->
         val stops by viewModel.groupStops(key.groupId).collectAsState(initial = null)
@@ -157,6 +162,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             rideEvents = groupEvents,
             refuels = refuels,
             onOpenRefuel = { onOpen(EditRefuelRoute(it)) },
+            onDetachRefuel = { viewModel.detachRefuels(listOf(it)) },
             onBack = { onBack(key) },
             onUnmergeAll = { viewModel.unmergeAll(key.groupId) },
             onUnmerge = { viewModel.unmerge(key.groupId, it) },

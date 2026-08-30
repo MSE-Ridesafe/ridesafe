@@ -38,7 +38,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -123,7 +122,6 @@ private fun popOwn(
  * and push it onto the tab's back stack. Adding a tab: new root route + entry builder + an
  * AppDestinations entry + a back stack below.
  */
-@PreviewScreenSizes
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun RidesafeApp() {

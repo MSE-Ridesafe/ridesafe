@@ -1,6 +1,7 @@
 package de.uhi.enia.ridesafe.ui.components
 
 import android.os.SystemClock
+import android.text.format.DateUtils
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -33,11 +34,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Vehicle
+import de.uhi.enia.ridesafe.data.displayTitle
 import de.uhi.enia.ridesafe.rides.recording.RecordingStatus
 import de.uhi.enia.ridesafe.rides.recording.RideRecordingService
-import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
-import de.uhi.enia.ridesafe.ui.screens.home.formatLiveRideDuration
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val BAR_MS = 250
 
@@ -73,7 +74,7 @@ fun RecordingStatusBar(
         val startedAt = running?.startedElapsedNanos ?: return@LaunchedEffect
         while (true) {
             elapsedMs = (SystemClock.elapsedRealtimeNanos() - startedAt) / 1_000_000
-            delay(1_000) // ponytail: 1 Hz, the coarsest tick a seconds display can have
+            delay(1_000.milliseconds) // ponytail: 1 Hz, the coarsest tick a seconds display can have
         }
     }
 
@@ -111,7 +112,7 @@ fun RecordingStatusBar(
                     )
                 }
                 Text(
-                    text = formatLiveRideDuration(0, elapsedMs),
+                    text = DateUtils.formatElapsedTime((elapsedMs / 1_000).coerceAtLeast(0)),
                     style = MaterialTheme.typography.titleMedium,
                 )
                 val context = LocalContext.current

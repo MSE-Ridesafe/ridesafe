@@ -20,9 +20,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -76,7 +76,7 @@ fun WeeklyBarChart(
             verticalAlignment = Alignment.Bottom,
         ) {
             bars.forEachIndexed { index, bar ->
-                val value = bar.valueFor(selectedMetric)
+                val value = bar.valueFor(selectedMetric, currency.currencyCode)
                 val left = (index - 1) * dayStepPx + dragOffsetPx
                 val visibleWidth = (minOf(left + barWidthPx, viewportWidthPx) - maxOf(left, 0f)).coerceAtLeast(0f)
                 val visibleFraction = if (barWidthPx > 0f) visibleWidth / barWidthPx else 0f
@@ -121,7 +121,12 @@ private fun ActivityBarColumn(
     modifier: Modifier = Modifier,
 ) {
     val locale = LocalLocale.current.platformLocale
-    val hideZeroLabel = !hasValue && LocalConfiguration.current.screenWidthDp < 360
+    val widthDp =
+        with(LocalDensity.current) {
+            LocalWindowInfo.current.containerSize.width
+                .toDp()
+        }
+    val hideZeroLabel = !hasValue && widthDp < 360.dp
     val barHeight = max(if (hasValue) 18f else 8f, 100f * fraction).dp
 
     Column(
@@ -191,6 +196,6 @@ private fun ActivityBar.labelFor(
             NumberFormat
                 .getCurrencyInstance(locale)
                 .apply { this.currency = currency }
-                .format(BigDecimal.valueOf(costMinor, fractionDigits))
+                .format(BigDecimal.valueOf(costMinorByCurrency[currency.currencyCode] ?: 0L, fractionDigits))
         }
     }
