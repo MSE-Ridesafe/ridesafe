@@ -163,7 +163,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
   `RideExportFormatSheet.kt` (sheet + `ExportFormatOption`), empty states → P2.3,
   selection-state block (`:136-179`) → `rememberLogbookSelection(...)` in
   `LogbookSelectionState.kt`.
-- [ ] **P3.2** `AnalysisQueue.kt` (470) — three unrelated surfaces → `AnalysisStatusBar.kt`,
+- [x] **P3.2** `AnalysisQueue.kt` (470) — three unrelated surfaces → `AnalysisStatusBar.kt`,
   `AnalysisQueueScreen.kt` (+ `QueueCard`, `EmptyQueue`), `AnalysisQueueRows.kt`
   (`rememberQueueRows` state holder), `AnalysisNoticeCard.kt` (sole consumer is
   RideDetailScreen), `ProgressRing` → P2.16.
@@ -255,7 +255,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
 - [ ] **P4.9** `stopFor` (`RideDetailScreen.kt:142-157`, haversine + address comparison →
   `JourneyStop`) → non-composable `journeyStopFor(...)`; distance/avg-speed fallback
   derivation (`:111-116`) belongs beside the pipeline.
-- [ ] **P4.10** `rideEndpointLabel` + `String.lineOne()` (`AnalysisQueue.kt:292-303`)
+- [x] **P4.10** `rideEndpointLabel` + `String.lineOne()` (`AnalysisQueue.kt:292-303`)
   collapse onto `rides/processing/Geocoding.kt`'s existing `addressLines()`/`shortAddress()`.
 - [ ] **P4.11** `RefuelFormScreen.save()` arithmetic (`:202-244`) → outbound
   `refuelFromForm(...)` in `RefuelNumbers.kt` (which already owns the inbound half);
