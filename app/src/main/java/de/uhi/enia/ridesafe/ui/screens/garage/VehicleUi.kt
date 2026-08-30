@@ -46,3 +46,8 @@ internal val previewVehicles =
             year = 2021,
         ),
     )
+
+/** Nickname when set, else make + model — the detail screen's title. */
+internal fun Vehicle.nicknameTitle(): String = name.trim().ifBlank { makeAndModel() }
+
+internal fun Vehicle.makeAndModel(): String = "$make $model".trim()

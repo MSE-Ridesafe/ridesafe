@@ -143,7 +143,7 @@ Similarity was verified per site — "identical" below means byte-identical modu
   (`RideBackupImportScreen.kt:131`); `checkIfSelected` leading-icon helper (3 chip sites).
 - [x] **P2.15** Onboarding reuses `EcoSection`: `OnboardingFlow.kt:720-733` hand-rolls it
   next to a line that already correctly reuses `SafetyScoreCard`. 14 lines → 1.
-- [ ] **P2.16** (folded into the Phase 3 splits per area) Promote already-shared-in-spirit components trapped in wrong files: EcoSection (now also used by onboarding) joins the list;
+- [x] **P2.16** (folded into the Phase 3 splits per area) Promote already-shared-in-spirit components trapped in wrong files: EcoSection (now also used by onboarding) joins the list;
   `BluetoothPickerDialog` + `TrackingCard` (`VehicleDetailScreen.kt:334-451`, imported by
   onboarding) → own files (garage or `ui/components`); `VehicleImage` (imported by home's
   `VehicleOverviewCard`) → `ui/components/VehicleImage.kt`; `SelectionCircle`,
@@ -210,9 +210,9 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
 
 ### garage
 
-- [ ] **P3.11** `VehicleDetailScreen.kt` (452) → extract `TrackingCard` +
+- [x] **P3.11** `VehicleDetailScreen.kt` (452) → extract `TrackingCard` +
   `BluetoothPickerDialog` (P2.16); root + `VehicleHeader` keep ~270.
-- [ ] **P3.12** `VehicleFormScreen.kt` (424) → `DeleteVehicleDialog` → P2.4;
+- [x] **P3.12** `VehicleFormScreen.kt` (424) → `DeleteVehicleDialog` → P2.4;
   `VehicleFormFields.kt` (`FuelTypeDropdown` + extended-info block as
   `VehicleExtendedFields`); root keeps ~215.
 
@@ -261,7 +261,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
   `refuelFromForm(...)` in `RefuelNumbers.kt` (which already owns the inbound half);
   `VehicleFormScreen.save()` (`:103-122`, 11 trim/parse rules) → a builder beside
   `Vehicle`.
-- [ ] **P4.12** Duplicate permission/adapter reads: delete `hasBluetoothConnect`
+- [x] **P4.12** Duplicate permission/adapter reads: delete `hasBluetoothConnect`
   (`VehicleDetailScreen.kt:248-250`; `AppPermission.BLUETOOTH.isGranted` exists and
   onboarding already uses it); `BluetoothDevices.bonded(context)` read in two composables
   (`OnboardingFlow.kt:558`, `VehicleDetailScreen.kt:238`) → hoist into the P2.16 dialog.
