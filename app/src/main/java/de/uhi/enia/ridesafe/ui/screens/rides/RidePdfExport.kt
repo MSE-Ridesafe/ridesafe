@@ -26,6 +26,7 @@ import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.Vehicle
+import de.uhi.enia.ridesafe.backup.RideZipBackup
 import de.uhi.enia.ridesafe.data.displayTitle
 import de.uhi.enia.ridesafe.data.summarizeMerge
 import de.uhi.enia.ridesafe.permissions.AppPermission

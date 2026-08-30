@@ -1,4 +1,4 @@
-package de.uhi.enia.ridesafe.ui.screens.rides
+package de.uhi.enia.ridesafe.backup
 
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.rides.RideDataCoordinator

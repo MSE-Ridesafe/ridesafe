@@ -3,6 +3,12 @@ package de.uhi.enia.ridesafe.ui.screens.settings
 import android.app.Application
 import android.net.Uri
 import androidx.room.withTransaction
+import de.uhi.enia.ridesafe.backup.BackupFile
+import de.uhi.enia.ridesafe.backup.BackupRide
+import de.uhi.enia.ridesafe.backup.BackupSavedAddress
+import de.uhi.enia.ridesafe.backup.BackupVehicle
+import de.uhi.enia.ridesafe.backup.RideBackupArchiveValidator
+import de.uhi.enia.ridesafe.backup.RideBackupManifest
 import de.uhi.enia.ridesafe.data.BtDevice
 import de.uhi.enia.ridesafe.data.FuelType
 import de.uhi.enia.ridesafe.data.Refuel
@@ -18,12 +24,6 @@ import de.uhi.enia.ridesafe.data.normalizeForMatching
 import de.uhi.enia.ridesafe.rides.processing.ROUTE_VERSION
 import de.uhi.enia.ridesafe.rides.processing.processedRouteFile
 import de.uhi.enia.ridesafe.rides.recording.ridesDir
-import de.uhi.enia.ridesafe.ui.screens.rides.BackupFile
-import de.uhi.enia.ridesafe.ui.screens.rides.BackupRide
-import de.uhi.enia.ridesafe.ui.screens.rides.BackupSavedAddress
-import de.uhi.enia.ridesafe.ui.screens.rides.BackupVehicle
-import de.uhi.enia.ridesafe.ui.screens.rides.RideBackupArchiveValidator
-import de.uhi.enia.ridesafe.ui.screens.rides.RideBackupManifest
 import de.uhi.enia.ridesafe.util.copyCancellable
 import de.uhi.enia.ridesafe.util.haversineMeters
 import kotlinx.coroutines.Dispatchers

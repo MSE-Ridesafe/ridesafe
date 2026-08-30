@@ -53,19 +53,19 @@ Phase 5. Phase 2 first shrinks the big files so the Phase 3 splits get smaller.
 Both source files have zero Compose imports. Everything is `internal`, so no visibility
 breaks. Do before P1.13 (export depends on backup, not vice versa).
 
-- [ ] **P1.7** `backup/BackupManifest.kt` ← the 14 `@Serializable` models, format
+- [x] **P1.7** `backup/BackupManifest.kt` ← the 14 `@Serializable` models, format
   constants, `backupJson`, codec functions from `RideZipBackup.kt`.
-- [ ] **P1.8** `backup/BackupArchiveWriter.kt` ← `RideZipBackup` class,
+- [x] **P1.8** `backup/BackupArchiveWriter.kt` ← `RideZipBackup` class,
   `writeRideBackupZip`, snapshot/manifest builders, archive-path helpers, the six
   `toBackup()` entity mappers.
-- [ ] **P1.9** `backup/BackupArchiveValidator.kt` ← `RideBackupArchiveValidator`,
+- [x] **P1.9** `backup/BackupArchiveValidator.kt` ← `RideBackupArchiveValidator`,
   `RideBackupValidationException`, the `validate*` helpers, `unique`, `requireRef`.
-- [ ] **P1.10** `backup/BackupIntegrity.kt` ← `FileIntegrity`, `fileIntegrity`,
+- [x] **P1.10** `backup/BackupIntegrity.kt` ← `FileIntegrity`, `fileIntegrity`,
   `streamIntegrity`, the file-to-file `copyCancellable` wrapper.
 - [ ] **P1.11** `backup/RideBackupImporter.kt` ← all of
   `ui/screens/settings/RideBackupImport.kt` (importer, DTOs, match/conflict rules,
   `publishImportFile`). Deletes the settings→rides feature dependency outright.
-- [ ] **P1.12** Move `RideZipBackupTest.kt` to `app/src/test/.../backup/` (package line
+- [x] **P1.12** Move `RideZipBackupTest.kt` to `app/src/test/.../backup/` (package line
   only). `RideBackupImportScreen.kt` (state + VM + composable) stays in settings.
 
 ### New `export/` package (from `ui/screens/rides/RidePdfExport.kt`)
