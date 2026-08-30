@@ -16,7 +16,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -44,9 +43,11 @@ import de.uhi.enia.ridesafe.data.canUnmergeSelection
 import de.uhi.enia.ridesafe.data.summarizeMerge
 import de.uhi.enia.ridesafe.domain.safetyScoreForRides
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
+import de.uhi.enia.ridesafe.ui.components.CardDivider
 import de.uhi.enia.ridesafe.ui.components.DetailScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
+import de.uhi.enia.ridesafe.ui.components.SectionTitle
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDurationMs
@@ -177,10 +178,8 @@ private fun MergedJourneyCard(
                 modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
                 verticalAlignment = Alignment.Top,
             ) {
-                Text(
+                SectionTitle(
                     text = stringResource(R.string.ride_journey_section),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f).padding(start = 20.dp, top = 8.dp, bottom = 8.dp),
                 )
                 if (managing) {
@@ -211,7 +210,7 @@ private fun MergedJourneyCard(
             }
             combinedJourneyChildren(stops, refuels).forEachIndexed { childIndex, child ->
                 if (childIndex > 0) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
+                    CardDivider()
                 }
                 when (child) {
                     is CombinedJourneyChild.RideChild -> {

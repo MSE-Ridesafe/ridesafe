@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -93,11 +92,7 @@ fun SafetyScoreCard(
                     }
                 }
             } else {
-                Text(
-                    text = stringResource(R.string.safety_score_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = scheme.primary,
-                )
+                SectionTitle(stringResource(R.string.safety_score_title))
             }
 
             controls?.invoke(this)
@@ -139,7 +134,7 @@ fun SafetyScoreCard(
             }
 
             if (chart != null) {
-                HorizontalDivider(color = scheme.surfaceContainerHighest)
+                CardDivider()
                 chart()
             }
         }

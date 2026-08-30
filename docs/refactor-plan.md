@@ -111,12 +111,13 @@ Similarity was verified per site — "identical" below means byte-identical modu
   `action_delete/action_cancel`. Net ~-36.
 - [x] **P2.5** `DestructiveOutlinedButton` — `VehicleFormScreen.kt:332-344`,
   `VehicleDetailScreen.kt:207-217`, `SavedAddressFormScreen.kt:642-651` (identical). ~-16.
-- [ ] **P2.6** `SectionTitle(text, modifier)` — the `titleSmall` + `primary` header token
+- [x] **P2.6** `SectionTitle(text, modifier)` — the `titleSmall` + `primary` header token
   written longhand at 11 sites; padding stays at call sites. Do NOT fold in
   `RideFilterUi.SectionLabel` (different tokens, deliberate). Net ~-36.
-- [ ] **P2.7** `SectionCard(title, headerAction?, content)` — the card + header +
-  divider-between-children shell shared by `DetailCard`, `TrackingCard`, the
-  attached-refuels card, and `MergedJourneyCard`. `DetailCard` becomes a thin wrapper.
+- [x] **P2.7** `SectionCard(title, headerAction?, content)` — the card + header +
+  divider-between-children shell shared by `DetailCard`, `TrackingCard` and the
+  attached-refuels card (`MergedJourneyCard` keeps its shell — its Top-aligned header is a
+  documented deliberate divergence — and takes SectionTitle/CardDivider only). `DetailCard` is a thin wrapper.
   Include `CardDivider()` (the `surfaceContainerHighest` divider written at 6 sites). ~-28.
 - [ ] **P2.8** `BackNavIcon(showBack, symbolName = "arrow_back", onBack)` — mop-up for
   the ~4 sites P2.1/P2.2 don't absorb (8 identical sites today). ~-54 before absorption.

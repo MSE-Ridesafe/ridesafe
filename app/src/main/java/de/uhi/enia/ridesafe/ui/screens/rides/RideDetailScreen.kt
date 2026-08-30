@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,9 +37,11 @@ import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.rides.processing.addressLines
 import de.uhi.enia.ridesafe.rides.processing.latLngDistanceMeters
+import de.uhi.enia.ridesafe.ui.components.CardDivider
 import de.uhi.enia.ridesafe.ui.components.DetailScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
+import de.uhi.enia.ridesafe.ui.components.SectionCard
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDuration
@@ -163,31 +164,17 @@ fun RideDetailScreen(
         ride.eco?.let { EcoCard(eco = it) }
 
         if (refuels.isNotEmpty()) {
-            Card(
-                shape = MaterialTheme.shapes.extraLarge,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    Text(
-                        text = stringResource(R.string.refuel_associated_section),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            SectionCard(title = stringResource(R.string.refuel_associated_section)) {
+                refuels.sortedBy { it.refuel.timestampEpochMs }.forEachIndexed { index, row ->
+                    if (index > 0) CardDivider()
+                    RefuelTimelineRow(
+                        row = row,
+                        selectionMode = false,
+                        selected = false,
+                        onClick = { onOpenRefuel(row.refuel.id) },
+                        onLongClick = {},
+                        showVehicle = false,
                     )
-                    refuels.sortedBy { it.refuel.timestampEpochMs }.forEachIndexed { index, row ->
-                        if (index > 0) {
-                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-                        }
-                        RefuelTimelineRow(
-                            row = row,
-                            selectionMode = false,
-                            selected = false,
-                            onClick = { onOpenRefuel(row.refuel.id) },
-                            onLongClick = {},
-                            showVehicle = false,
-                        )
-                    }
                 }
             }
         }

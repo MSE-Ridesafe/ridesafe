@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,8 +31,10 @@ import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.RideEco
 import de.uhi.enia.ridesafe.rides.processing.score.ecoLevel
+import de.uhi.enia.ridesafe.ui.components.CardDivider
 import de.uhi.enia.ridesafe.ui.components.EcoLevelDisplay
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.SectionTitle
 import kotlin.math.roundToInt
 
 /** One regime's slice of the ride's time: its label, its colour, and the seconds spent in it. */
@@ -86,10 +87,8 @@ fun EcoCard(
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
+                SectionTitle(
                     text = stringResource(R.string.ride_detail_section_eco),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = scheme.primary,
                     modifier = Modifier.weight(1f),
                 )
                 MaterialSymbol(
@@ -105,7 +104,7 @@ fun EcoCard(
             }
 
             if (buckets.isNotEmpty() && totalSeconds > 0) {
-                HorizontalDivider(color = scheme.surfaceContainerHighest)
+                CardDivider()
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
                         text = stringResource(R.string.ride_eco_breakdown_title),

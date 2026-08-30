@@ -59,6 +59,7 @@ import de.uhi.enia.ridesafe.ui.components.ListGroupItem
 import de.uhi.enia.ridesafe.ui.components.ListGroupItemGap
 import de.uhi.enia.ridesafe.ui.components.ListItemGroup
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.SectionTitle
 import de.uhi.enia.ridesafe.ui.onboarding.OnboardingPrefs
 import de.uhi.enia.ridesafe.ui.theme.ThemePrefs
 import de.uhi.enia.ridesafe.ui.theme.ThemeSetting
@@ -663,12 +664,7 @@ private fun SelectableSettingRow(
 
 @Composable
 private fun SettingsCategoryHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 8.dp, top = 24.dp, end = 8.dp, bottom = 8.dp),
-    )
+    SectionTitle(text = text, modifier = Modifier.padding(start = 8.dp, top = 24.dp, end = 8.dp, bottom = 8.dp))
 }
 
 @Composable

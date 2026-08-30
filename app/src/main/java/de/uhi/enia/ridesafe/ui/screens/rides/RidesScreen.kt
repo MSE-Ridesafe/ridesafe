@@ -73,12 +73,14 @@ import de.uhi.enia.ridesafe.export.buildOpenExportIntent
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.rides.recording.RecordingStatus
+import de.uhi.enia.ridesafe.ui.components.CardDivider
 import de.uhi.enia.ridesafe.ui.components.ConfirmDestructiveDialog
 import de.uhi.enia.ridesafe.ui.components.EmptyState
 import de.uhi.enia.ridesafe.ui.components.ListGroupItem
 import de.uhi.enia.ridesafe.ui.components.ListGroupItemGap
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.RECORDING_BAR_INSET
+import de.uhi.enia.ridesafe.ui.components.SectionTitle
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDayHeader
 import de.uhi.enia.ridesafe.util.formatDistance
@@ -453,10 +455,7 @@ fun RidesScreen(
                                                     // in the combined-ride detail timeline.
                                                     if (entry is LogbookEntry.Single) {
                                                         timelineEntry.refuels.forEach { nested ->
-                                                            HorizontalDivider(
-                                                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                                                modifier = Modifier.padding(start = 40.dp),
-                                                            )
+                                                            CardDivider(modifier = Modifier.padding(start = 40.dp))
                                                             val key = "f${nested.refuel.id}"
                                                             RefuelTimelineRow(
                                                                 row = nested,
@@ -855,12 +854,7 @@ private fun associationDisabledReason(check: RefuelAssociationCheck): Int? =
 
 @Composable
 private fun DayHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp),
-    )
+    SectionTitle(text = text, modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp))
 }
 
 @Composable

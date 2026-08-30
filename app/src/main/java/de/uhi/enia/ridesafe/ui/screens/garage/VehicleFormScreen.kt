@@ -12,7 +12,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -36,6 +35,7 @@ import de.uhi.enia.ridesafe.ui.components.ConfirmDestructiveDialog
 import de.uhi.enia.ridesafe.ui.components.DestructiveOutlinedButton
 import de.uhi.enia.ridesafe.ui.components.FormScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.SectionTitle
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.usesMetric
 import kotlin.math.roundToInt
@@ -184,12 +184,7 @@ fun VehicleFormScreen(
         }
 
         if (showExtendedInformation) {
-            Text(
-                text = stringResource(R.string.vehicle_section_fuel),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 4.dp),
-            )
+            SectionTitle(text = stringResource(R.string.vehicle_section_fuel), modifier = Modifier.padding(top = 4.dp))
             FuelTypeDropdown(selected = fuelType, onSelected = { fuelType = it })
             OutlinedTextField(
                 value = fuelEconomy,
@@ -214,12 +209,7 @@ fun VehicleFormScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Text(
-                text = stringResource(R.string.vehicle_section_information),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 4.dp),
-            )
+            SectionTitle(text = stringResource(R.string.vehicle_section_information), modifier = Modifier.padding(top = 4.dp))
             OutlinedTextField(
                 value = vehicleType,
                 onValueChange = { vehicleType = it },
