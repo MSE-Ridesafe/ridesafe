@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -30,6 +30,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -43,13 +45,15 @@ import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
+import java.time.format.TextStyle
 import kotlin.math.absoluteValue
 
 data class HomeMetricCardModel(
     val icon: String,
     val title: String,
     val value: String,
-    val supportingText: String,
+    // Empty is a real state (highlight cards): the line still renders so every card measures alike.
+    val supportingText: String = "",
     val contentDescription: String,
 )
 
@@ -61,6 +65,7 @@ fun SummaryMetricCarousel(
     monthDistanceMeters: Double,
     monthDurationMillis: Long,
     monthRideCount: Int,
+    highlights: HomeHighlights,
 ) {
     val unitSystem = currentUnitSystem()
     val totalDistance = formatDistance(distanceMeters, unitSystem)
@@ -69,6 +74,13 @@ fun SummaryMetricCarousel(
     val monthDistance = formatDistance(monthDistanceMeters, unitSystem)
     val monthDuration = formatCompactDuration(monthDurationMillis)
     val monthRides = formatRecordedRideCount(monthRideCount)
+    val notSet = stringResource(R.string.value_not_set)
+    val longestRide = highlights.longestRideMeters?.let { formatDistance(it, unitSystem) } ?: notSet
+    val averageRide = highlights.averageRideMeters?.let { formatDistance(it, unitSystem) } ?: notSet
+    // Day names are words, not figures — they follow the in-app language like every other label.
+    val mostActiveDay =
+        highlights.mostActiveDay
+            ?.getDisplayName(TextStyle.FULL, LocalLocale.current.platformLocale) ?: notSet
     val metrics =
         listOf(
             HomeMetricCardModel(
@@ -120,6 +132,39 @@ fun SummaryMetricCarousel(
                         R.string.home_metric_card_content_description,
                         stringResource(R.string.home_total_recorded_rides),
                         totalRides,
+                    ),
+            ),
+            HomeMetricCardModel(
+                icon = "emoji_events",
+                title = stringResource(R.string.home_highlight_longest_ride),
+                value = longestRide,
+                contentDescription =
+                    stringResource(
+                        R.string.home_metric_card_content_description,
+                        stringResource(R.string.home_highlight_longest_ride),
+                        longestRide,
+                    ),
+            ),
+            HomeMetricCardModel(
+                icon = "straighten",
+                title = stringResource(R.string.home_highlight_average_ride),
+                value = averageRide,
+                contentDescription =
+                    stringResource(
+                        R.string.home_metric_card_content_description,
+                        stringResource(R.string.home_highlight_average_ride),
+                        averageRide,
+                    ),
+            ),
+            HomeMetricCardModel(
+                icon = "calendar_month",
+                title = stringResource(R.string.home_highlight_most_active_day),
+                value = mostActiveDay,
+                contentDescription =
+                    stringResource(
+                        R.string.home_metric_card_content_description,
+                        stringResource(R.string.home_highlight_most_active_day),
+                        mostActiveDay,
                     ),
             ),
         )
@@ -174,10 +219,7 @@ private fun MetricCard(
     Card(
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-        modifier =
-            modifier
-                .heightIn(min = 120.dp)
-                .semantics { contentDescription = metric.contentDescription },
+        modifier = modifier.semantics { contentDescription = metric.contentDescription },
     ) {
         Column(
             modifier =
@@ -189,6 +231,10 @@ private fun MetricCard(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                // The row, not the text, reserves both title lines (and the supporting line below
+                // always renders, even empty) so every page of the carousel measures the same
+                // height — while a one-line title still centers against its icon.
+                modifier = Modifier.height(with(LocalDensity.current) { 36.sp.toDp() }),
             ) {
                 MaterialSymbol(
                     symbolName = metric.icon,
@@ -240,7 +286,8 @@ private fun AnimatedPrimaryValue(value: String) {
             style =
                 MaterialTheme.typography.displaySmall.copy(
                     fontSize = fontSize,
-                    lineHeight = fontSize * 1.12f,
+                    // Fixed at the largest size's height: a shrunken value must not shrink the card.
+                    lineHeight = 30.sp * 1.12f,
                     fontWeight = FontWeight.SemiBold,
                 ),
             color = MaterialTheme.colorScheme.onSurface,

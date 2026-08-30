@@ -310,8 +310,12 @@
     <!-- Accessibility: gauge label, then its value. -->
     <string name="safety_score_gauge">%1$s: %2$d of 100</string>
     <string name="ride_score_unscoreable">Not enough measurable driving to score this ride.</string>
+    <string name="ride_eco_unscoreable">Not enough measurable driving to rate this ride’s efficiency.</string>
     <string name="home_score_period_all">All time</string>
     <string name="home_score_empty">No scored rides in this period.</string>
+    <!-- Dashboard placeholder shown while neither safety nor eco has anything to score. -->
+    <string name="home_scores_empty_title">No scores yet</string>
+    <string name="home_scores_empty_message">Not enough ride data yet to compute your safety and eco scores.</string>
     <!-- Chart subtitle per period, and the calendar-week label under a weekly bar. -->
     <string name="home_score_dev_week">Score development over the past weeks</string>
     <string name="home_score_dev_month">Score development over the past months</string>

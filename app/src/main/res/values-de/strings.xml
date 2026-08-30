@@ -307,8 +307,12 @@
     <!-- Barrierefreiheit: Beschriftung der Anzeige, dann ihr Wert. -->
     <string name="safety_score_gauge">%1$s: %2$d von 100</string>
     <string name="ride_score_unscoreable">Zu wenig auswertbare Fahrzeit, um diese Fahrt zu bewerten.</string>
+    <string name="ride_eco_unscoreable">Zu wenig auswertbare Fahrzeit, um die Effizienz dieser Fahrt zu bewerten.</string>
     <string name="home_score_period_all">Insgesamt</string>
     <string name="home_score_empty">Keine bewerteten Fahrten in diesem Zeitraum.</string>
+    <!-- Dashboard-Platzhalter, solange weder Sicherheit noch Öko etwas zu bewerten haben. -->
+    <string name="home_scores_empty_title">Noch keine Bewertungen</string>
+    <string name="home_scores_empty_message">Noch nicht genug Fahrtdaten für Sicherheits- und Öko-Bewertung.</string>
     <!-- Diagramm-Untertitel je Zeitraum und die Kalenderwochen-Beschriftung eines Wochenbalkens. -->
     <string name="home_score_dev_week">Score-Entwicklung der letzten Wochen</string>
     <string name="home_score_dev_month">Score-Entwicklung der letzten Monate</string>
