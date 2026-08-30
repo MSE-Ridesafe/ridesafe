@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -17,10 +19,15 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
@@ -41,6 +48,8 @@ fun RideSearchBar(
     onOpenFilters: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var focused by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -49,11 +58,27 @@ fun RideSearchBar(
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChange,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).onFocusChanged { focused = it.isFocused },
             singleLine = true,
             shape = MaterialTheme.shapes.extraLarge,
             placeholder = { Text(stringResource(R.string.rides_search_hint)) },
-            leadingIcon = { MaterialSymbol(symbolName = "search", contentDescription = null) },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+            leadingIcon =
+                if (focused) {
+                    // The M3 search convention: the magnifier turns into the way back out of the
+                    // focused search. The query (and the filtered list) stays; only focus leaves.
+                    {
+                        IconButton(onClick = { focusManager.clearFocus() }) {
+                            MaterialSymbol(
+                                symbolName = "arrow_back",
+                                contentDescription = stringResource(R.string.action_back),
+                            )
+                        }
+                    }
+                } else {
+                    { MaterialSymbol(symbolName = "search", contentDescription = null) }
+                },
             trailingIcon =
                 if (query.isEmpty()) {
                     null

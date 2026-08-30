@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -37,11 +38,32 @@ import de.uhi.enia.ridesafe.util.haversineMeters
 @Composable
 internal fun AddressSearchField(state: AddressSearchState) {
     val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
+    fun exitSearch() {
+        state.setActive(false)
+        focusManager.clearFocus()
+        keyboard?.hide()
+    }
     OutlinedTextField(
         value = state.query,
         onValueChange = state.onQueryChange,
         label = { Text(stringResource(R.string.saved_address_search)) },
-        leadingIcon = { MaterialSymbol(symbolName = "search", contentDescription = null) },
+        leadingIcon =
+            if (state.active) {
+                // The M3 search convention: the magnifier turns into the way back out while the
+                // suggestion surface is up — the same exit the system back gesture takes.
+                {
+                    IconButton(onClick = ::exitSearch) {
+                        MaterialSymbol(
+                            symbolName = "arrow_back",
+                            contentDescription = stringResource(R.string.action_back),
+                        )
+                    }
+                }
+            } else {
+                { MaterialSymbol(symbolName = "search", contentDescription = null) }
+            },
         trailingIcon = {
             when {
                 state.loading -> {
