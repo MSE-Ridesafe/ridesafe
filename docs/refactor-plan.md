@@ -62,7 +62,7 @@ breaks. Do before P1.13 (export depends on backup, not vice versa).
   `RideBackupValidationException`, the `validate*` helpers, `unique`, `requireRef`.
 - [x] **P1.10** `backup/BackupIntegrity.kt` ← `FileIntegrity`, `fileIntegrity`,
   `streamIntegrity`, the file-to-file `copyCancellable` wrapper.
-- [ ] **P1.11** `backup/RideBackupImporter.kt` ← all of
+- [x] **P1.11** `backup/RideBackupImporter.kt` ← all of
   `ui/screens/settings/RideBackupImport.kt` (importer, DTOs, match/conflict rules,
   `publishImportFile`). Deletes the settings→rides feature dependency outright.
 - [x] **P1.12** Move `RideZipBackupTest.kt` to `app/src/test/.../backup/` (package line
