@@ -92,7 +92,7 @@ The filename is a lie — it holds CSV, ZIP dispatch, MediaStore, and notificati
 Each item: create the component, convert the listed call sites, delete the duplicates.
 Similarity was verified per site — "identical" below means byte-identical modulo strings.
 
-- [ ] **P2.1** `FormScaffold` — top bar + save button + embedded/chromeless mode + IME
+- [x] **P2.1** `FormScaffold` — top bar + save button + embedded/chromeless mode + IME
   handling. Sites: `VehicleFormScreen.kt:124-180`, `SavedAddressFormScreen.kt:351-401`
   (these two share a near-verbatim 3-line comment — copy-paste smoking gun),
   `RefuelFormScreen.kt:246-275` (gains embedded support for free). Net ~-58.

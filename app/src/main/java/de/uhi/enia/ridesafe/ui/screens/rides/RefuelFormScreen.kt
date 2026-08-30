@@ -5,17 +5,12 @@ package de.uhi.enia.ridesafe.ui.screens.rides
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -55,6 +50,7 @@ import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Refuel
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.displayTitle
+import de.uhi.enia.ridesafe.ui.components.FormScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.currentCurrencySetting
 import de.uhi.enia.ridesafe.util.currentUnitSystem
@@ -243,98 +239,75 @@ fun RefuelFormScreen(
         }
     }
 
-    Scaffold(
+    FormScaffold(
+        title = stringResource(if (existing == null) R.string.refuel_add else R.string.refuel_edit),
+        canSave = saveEnabled,
+        onSave = ::save,
+        onBack = onBack,
         modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(if (existing == null) R.string.refuel_add else R.string.refuel_edit)) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !saving) {
-                        MaterialSymbol(symbolName = "close", contentDescription = stringResource(R.string.action_cancel))
-                    }
-                },
-                actions = {
-                    Button(onClick = ::save, enabled = saveEnabled, modifier = Modifier.padding(end = 8.dp)) {
-                        Text(stringResource(R.string.action_save))
-                    }
-                },
+        backEnabled = !saving,
+    ) {
+        if (saveFailed) {
+            Text(
+                stringResource(R.string.refuel_save_failed),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
             )
-        },
-    ) { innerPadding ->
-        Column(
-            modifier =
-                Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-                    .imePadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            if (saveFailed) {
-                Text(
-                    stringResource(R.string.refuel_save_failed),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
+        }
 
-            VehicleDropdown(
-                vehicles = vehicles,
-                selected = selectedVehicle,
-                onSelected = { selectedVehicleId = it.id },
-                isError = showErrors && selectedVehicle == null,
-                unavailableVehicle = existing != null && selectedVehicle == null,
-                vehicleLocked = existing?.journeyAnchorRideId != null,
-            )
+        VehicleDropdown(
+            vehicles = vehicles,
+            selected = selectedVehicle,
+            onSelected = { selectedVehicleId = it.id },
+            isError = showErrors && selectedVehicle == null,
+            unavailableVehicle = existing != null && selectedVehicle == null,
+            vehicleLocked = existing?.journeyAnchorRideId != null,
+        )
 
-            DateTimeFields(
-                date = LocalDate.ofEpochDay(dateEpochDay),
-                time = LocalTime.of(hour, minute),
-                locale = locale,
-                onDateClick = { showDatePicker = true },
-                onTimeClick = { showTimePicker = true },
-            )
+        DateTimeFields(
+            date = LocalDate.ofEpochDay(dateEpochDay),
+            time = LocalTime.of(hour, minute),
+            locale = locale,
+            onDateClick = { showDatePicker = true },
+            onTimeClick = { showTimePicker = true },
+        )
 
-            DecimalField(
-                value = fuelText,
-                onValueChange = { fuelText = it },
-                label = stringResource(R.string.refuel_fuel_amount),
-                suffix = stringResource(R.string.unit_liter),
-                isError = showErrors && !fuelValid,
-                error = stringResource(R.string.refuel_error_fuel),
-            )
-            DecimalField(
-                value = totalText,
-                onValueChange = { totalText = it },
-                label = stringResource(R.string.refuel_total_price),
-                suffix = currency.getSymbol(locale),
-                isError = showErrors && !totalValid,
-                error = stringResource(R.string.refuel_error_total),
-            )
-            OutlinedTextField(
-                value = unitPriceText,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text(stringResource(R.string.refuel_price_per_liter)) },
-                suffix = { Text(stringResource(R.string.refuel_per_liter_suffix)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            DecimalField(
-                value = odometerText,
-                onValueChange = { odometerText = it },
-                label = stringResource(R.string.refuel_odometer),
-                suffix = stringResource(if (metric) R.string.unit_km else R.string.unit_mi),
-                isError = showErrors && !odometerValid,
-                error = stringResource(R.string.refuel_error_odometer),
-            )
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.refuel_full_tank), modifier = Modifier.weight(1f))
-                Switch(checked = fullTank, onCheckedChange = { fullTank = it })
-            }
+        DecimalField(
+            value = fuelText,
+            onValueChange = { fuelText = it },
+            label = stringResource(R.string.refuel_fuel_amount),
+            suffix = stringResource(R.string.unit_liter),
+            isError = showErrors && !fuelValid,
+            error = stringResource(R.string.refuel_error_fuel),
+        )
+        DecimalField(
+            value = totalText,
+            onValueChange = { totalText = it },
+            label = stringResource(R.string.refuel_total_price),
+            suffix = currency.getSymbol(locale),
+            isError = showErrors && !totalValid,
+            error = stringResource(R.string.refuel_error_total),
+        )
+        OutlinedTextField(
+            value = unitPriceText,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.refuel_price_per_liter)) },
+            suffix = { Text(stringResource(R.string.refuel_per_liter_suffix)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        DecimalField(
+            value = odometerText,
+            onValueChange = { odometerText = it },
+            label = stringResource(R.string.refuel_odometer),
+            suffix = stringResource(if (metric) R.string.unit_km else R.string.unit_mi),
+            isError = showErrors && !odometerValid,
+            error = stringResource(R.string.refuel_error_odometer),
+        )
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.refuel_full_tank), modifier = Modifier.weight(1f))
+            Switch(checked = fullTank, onCheckedChange = { fullTank = it })
         }
     }
 

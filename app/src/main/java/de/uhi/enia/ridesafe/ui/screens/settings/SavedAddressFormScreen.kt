@@ -19,16 +19,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -42,7 +38,6 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -93,6 +88,7 @@ import de.uhi.enia.ridesafe.rides.processing.addressLines
 import de.uhi.enia.ridesafe.rides.processing.forwardGeocodeSuggestions
 import de.uhi.enia.ridesafe.rides.processing.reverseGeocode
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
+import de.uhi.enia.ridesafe.ui.components.FormScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.map.MapLoadingIndicator
 import de.uhi.enia.ridesafe.ui.components.map.rememberIsOnline
@@ -348,306 +344,262 @@ fun SavedAddressFormScreen(
         )
     }
 
-    Scaffold(
-        // Embedded, the whole form lifts over the keyboard: the pinned save stays reachable and
-        // the field viewport shrinks exactly once — imePadding() consumes the inset, so the
-        // content's own imePadding (still needed without a bottom bar) measures zero inside.
-        modifier = if (embedded) modifier.imePadding() else modifier,
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        topBar = {
-            if (!embedded) {
-                TopAppBar(
-                    title = {
-                        Text(stringResource(if (existing != null) R.string.saved_address_edit_title else R.string.saved_address_new_title))
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            MaterialSymbol(symbolName = "close", contentDescription = stringResource(R.string.action_back))
-                        }
-                    },
-                    actions = {
-                        Button(modifier = Modifier.padding(end = 8.dp), onClick = ::save, enabled = canSave) {
-                            Text(stringResource(R.string.action_save))
-                        }
-                    },
+    FormScaffold(
+        title = stringResource(if (existing != null) R.string.saved_address_edit_title else R.string.saved_address_new_title),
+        canSave = canSave,
+        onSave = ::save,
+        onBack = onBack,
+        modifier = modifier,
+        embedded = embedded,
+    ) {
+        if (!searchActive) {
+            if (hasFixedLabel) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    MaterialSymbol(symbolName = icon, contentDescription = null)
+                    Text(shortcutLabel, style = MaterialTheme.typography.titleLarge)
+                }
+            } else {
+                OutlinedTextField(
+                    value = label,
+                    onValueChange = { label = it },
+                    label = { Text(stringResource(R.string.saved_address_label)) },
+                    leadingIcon =
+                        if (presetKind == SavedPlaceKind.GAS_STATION) {
+                            { MaterialSymbol(symbolName = "local_gas_station", contentDescription = null) }
+                        } else {
+                            null
+                        },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
-        },
-        bottomBar = {
-            if (embedded) {
-                Button(
-                    onClick = ::save,
-                    enabled = canSave,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 16.dp),
-                ) {
-                    Text(stringResource(R.string.action_save))
+        }
+
+        OutlinedTextField(
+            value = search,
+            onValueChange = { search = it },
+            label = { Text(stringResource(R.string.saved_address_search)) },
+            leadingIcon = { MaterialSymbol(symbolName = "search", contentDescription = null) },
+            trailingIcon = {
+                when {
+                    searchLoading -> {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    }
+
+                    search.isNotEmpty() -> {
+                        IconButton(onClick = { search = "" }) {
+                            MaterialSymbol(
+                                symbolName = "close",
+                                contentDescription = stringResource(R.string.saved_address_search_clear),
+                            )
+                        }
+                    }
                 }
-            }
-        },
-    ) { innerPadding ->
-        Column(
+            },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions =
+                KeyboardActions(
+                    onSearch = {
+                        if (search.trim().length >= SEARCH_MIN_LENGTH) {
+                            recentSearches = recordRecentAddressSearch(context, search)
+                        }
+                        keyboard?.hide()
+                    },
+                ),
+            singleLine = true,
             modifier =
                 Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-                    .imePadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            if (!searchActive) {
-                if (hasFixedLabel) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        MaterialSymbol(symbolName = icon, contentDescription = null)
-                        Text(shortcutLabel, style = MaterialTheme.typography.titleLarge)
-                    }
-                } else {
-                    OutlinedTextField(
-                        value = label,
-                        onValueChange = { label = it },
-                        label = { Text(stringResource(R.string.saved_address_label)) },
-                        leadingIcon =
-                            if (presetKind == SavedPlaceKind.GAS_STATION) {
-                                { MaterialSymbol(symbolName = "local_gas_station", contentDescription = null) }
-                            } else {
-                                null
-                            },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            }
+                    .fillMaxWidth()
+                    .onFocusChanged { if (it.isFocused) searchActive = true },
+        )
 
-            OutlinedTextField(
-                value = search,
-                onValueChange = { search = it },
-                label = { Text(stringResource(R.string.saved_address_search)) },
-                leadingIcon = { MaterialSymbol(symbolName = "search", contentDescription = null) },
-                trailingIcon = {
-                    when {
-                        searchLoading -> {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        }
-
-                        search.isNotEmpty() -> {
-                            IconButton(onClick = { search = "" }) {
-                                MaterialSymbol(
-                                    symbolName = "close",
-                                    contentDescription = stringResource(R.string.saved_address_search_clear),
+        if (searchActive) {
+            Surface(
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                tonalElevation = 2.dp,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column {
+                    if (search.isBlank()) {
+                        if (recentSearches.isNotEmpty()) {
+                            Text(
+                                text = stringResource(R.string.saved_address_search_recent),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
+                            )
+                            recentSearches.forEach { recent ->
+                                ListItem(
+                                    headlineContent = { Text(recent, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    leadingContent = { MaterialSymbol(symbolName = "history", contentDescription = null) },
+                                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                                    modifier = Modifier.clickable { search = recent },
                                 )
                             }
                         }
-                    }
-                },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions =
-                    KeyboardActions(
-                        onSearch = {
-                            if (search.trim().length >= SEARCH_MIN_LENGTH) {
-                                recentSearches = recordRecentAddressSearch(context, search)
-                            }
-                            keyboard?.hide()
-                        },
-                    ),
-                singleLine = true,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .onFocusChanged { if (it.isFocused) searchActive = true },
-            )
-
-            if (searchActive) {
-                Surface(
-                    shape = MaterialTheme.shapes.large,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    tonalElevation = 2.dp,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column {
-                        if (search.isBlank()) {
-                            if (recentSearches.isNotEmpty()) {
-                                Text(
-                                    text = stringResource(R.string.saved_address_search_recent),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
-                                )
-                                recentSearches.forEach { recent ->
-                                    ListItem(
-                                        headlineContent = { Text(recent, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                        leadingContent = { MaterialSymbol(symbolName = "history", contentDescription = null) },
-                                        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                                        modifier = Modifier.clickable { search = recent },
+                    } else if (search.trim().length < SEARCH_MIN_LENGTH) {
+                        Text(
+                            text = stringResource(R.string.saved_address_search_more_characters),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    } else if (!searchLoading && searchCompleted && searchResults.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.saved_address_search_no_results),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    } else {
+                        searchResults.forEach { result ->
+                            val lines = addressLines(result.address)
+                            val matched = findExistingSavedPlace(result, savedAddresses, existing?.id)
+                            val distance =
+                                point?.let {
+                                    formatShortDistance(
+                                        haversineMeters(it.latitude, it.longitude, result.latitude, result.longitude),
+                                        unitSystem,
                                     )
                                 }
-                            }
-                        } else if (search.trim().length < SEARCH_MIN_LENGTH) {
-                            Text(
-                                text = stringResource(R.string.saved_address_search_more_characters),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(16.dp),
-                            )
-                        } else if (!searchLoading && searchCompleted && searchResults.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.saved_address_search_no_results),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(16.dp),
-                            )
-                        } else {
-                            searchResults.forEach { result ->
-                                val lines = addressLines(result.address)
-                                val matched = findExistingSavedPlace(result, savedAddresses, existing?.id)
-                                val distance =
-                                    point?.let {
-                                        formatShortDistance(
-                                            haversineMeters(it.latitude, it.longitude, result.latitude, result.longitude),
-                                            unitSystem,
-                                        )
-                                    }
-                                ListItem(
-                                    headlineContent = { Text(lines.first, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                    supportingContent = {
-                                        Column {
-                                            listOfNotNull(lines.second, distance).takeIf { it.isNotEmpty() }?.let {
-                                                Text(it.joinToString(" · "), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                            }
-                                            matched?.let {
-                                                Text(
-                                                    text = stringResource(R.string.saved_address_search_already_saved, it.label),
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                )
-                                            }
+                            ListItem(
+                                headlineContent = { Text(lines.first, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                supportingContent = {
+                                    Column {
+                                        listOfNotNull(lines.second, distance).takeIf { it.isNotEmpty() }?.let {
+                                            Text(it.joinToString(" · "), maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         }
-                                    },
-                                    leadingContent = { MaterialSymbol(symbolName = "location_on", contentDescription = null) },
-                                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                                    modifier = Modifier.clickable { chooseSearchResult(result) },
-                                )
-                            }
+                                        matched?.let {
+                                            Text(
+                                                text = stringResource(R.string.saved_address_search_already_saved, it.label),
+                                                color = MaterialTheme.colorScheme.primary,
+                                            )
+                                        }
+                                    }
+                                },
+                                leadingContent = { MaterialSymbol(symbolName = "location_on", contentDescription = null) },
+                                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                                modifier = Modifier.clickable { chooseSearchResult(result) },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!searchActive) {
+            Card(
+                shape = MaterialTheme.shapes.extraLarge,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+                modifier = Modifier.fillMaxWidth().height(260.dp),
+            ) {
+                var mapLoaded by remember { mutableStateOf(false) }
+                Box(Modifier.fillMaxSize()) {
+                    GoogleMap(
+                        modifier = Modifier.fillMaxSize(),
+                        cameraPositionState = cameraPositionState,
+                        uiSettings =
+                            MapUiSettings(
+                                scrollGesturesEnabled = false,
+                                zoomGesturesEnabled = false,
+                                rotationGesturesEnabled = false,
+                                tiltGesturesEnabled = false,
+                                mapToolbarEnabled = false,
+                                zoomControlsEnabled = false,
+                            ),
+                        onMapLoaded = { mapLoaded = true },
+                    ) {
+                        point?.let { p ->
+                            Circle(
+                                center = p,
+                                radius = radius.toDouble(),
+                                strokeColor = MaterialTheme.colorScheme.primary,
+                                strokeWidth = 4f,
+                                fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            )
+                        }
+                    }
+                    if (point != null) {
+                        MaterialSymbol(
+                            symbolName = "location_on",
+                            contentDescription = null,
+                            fill = true,
+                            size = 48.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.align(Alignment.Center).offset(y = (-24).dp),
+                        )
+                    }
+                    Box(
+                        modifier =
+                            Modifier
+                                .matchParentSize()
+                                .clickable(onClickLabel = stringResource(R.string.saved_address_map_open), onClick = ::openMapPicker),
+                    )
+                    // The preview has no loading cover of its own, so online it looks exactly as
+                    // it always has; this only steps in while there is no network and no map yet.
+                    // It draws over the pin but under nothing clickable, so the tap-to-open
+                    // overlay beneath keeps working.
+                    if (!online && !mapLoaded) {
+                        Box(
+                            modifier = Modifier.matchParentSize().background(MaterialTheme.colorScheme.surfaceBright),
+                            contentAlignment = Alignment.Center,
+                        ) { MapLoadingIndicator() }
+                    }
+                }
+            }
+
+            val hint =
+                when {
+                    point == null -> stringResource(R.string.saved_address_pick_hint)
+                    locationFailed -> stringResource(R.string.saved_address_location_unavailable)
+                    resolvedAddress != null -> shortAddress(resolvedAddress!!)
+                    else -> null
+                }
+            if (hint != null) {
+                Text(
+                    text = hint,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            OutlinedButton(onClick = ::requestLocate, modifier = Modifier.fillMaxWidth()) {
+                MaterialSymbol(symbolName = "my_location", contentDescription = null, size = 18.dp)
+                Text(stringResource(R.string.saved_address_use_location), modifier = Modifier.padding(start = 8.dp))
+            }
+
+            Text(
+                text = "${stringResource(R.string.saved_address_radius)}: ${formatShortDistance(radius.toDouble(), unitSystem)}",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Slider(
+                value = radius,
+                onValueChange = { radius = it },
+                valueRange = RADIUS_MIN..RADIUS_MAX,
+                steps = RADIUS_STEPS,
+            )
+
+            if (presetKind.fixedIcon() == null) {
+                Text(stringResource(R.string.saved_address_icon), style = MaterialTheme.typography.bodyLarge)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CURATED_PLACE_ICONS.forEach { name ->
+                        FilledIconToggleButton(
+                            checked = icon == name,
+                            onCheckedChange = { icon = name },
+                        ) {
+                            MaterialSymbol(symbolName = name, contentDescription = name)
                         }
                     }
                 }
             }
 
-            if (!searchActive) {
-                Card(
-                    shape = MaterialTheme.shapes.extraLarge,
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-                    modifier = Modifier.fillMaxWidth().height(260.dp),
+            if (onDelete != null) {
+                OutlinedButton(
+                    onClick = { showDeleteDialog = true },
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    var mapLoaded by remember { mutableStateOf(false) }
-                    Box(Modifier.fillMaxSize()) {
-                        GoogleMap(
-                            modifier = Modifier.fillMaxSize(),
-                            cameraPositionState = cameraPositionState,
-                            uiSettings =
-                                MapUiSettings(
-                                    scrollGesturesEnabled = false,
-                                    zoomGesturesEnabled = false,
-                                    rotationGesturesEnabled = false,
-                                    tiltGesturesEnabled = false,
-                                    mapToolbarEnabled = false,
-                                    zoomControlsEnabled = false,
-                                ),
-                            onMapLoaded = { mapLoaded = true },
-                        ) {
-                            point?.let { p ->
-                                Circle(
-                                    center = p,
-                                    radius = radius.toDouble(),
-                                    strokeColor = MaterialTheme.colorScheme.primary,
-                                    strokeWidth = 4f,
-                                    fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                                )
-                            }
-                        }
-                        if (point != null) {
-                            MaterialSymbol(
-                                symbolName = "location_on",
-                                contentDescription = null,
-                                fill = true,
-                                size = 48.dp,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.align(Alignment.Center).offset(y = (-24).dp),
-                            )
-                        }
-                        Box(
-                            modifier =
-                                Modifier
-                                    .matchParentSize()
-                                    .clickable(onClickLabel = stringResource(R.string.saved_address_map_open), onClick = ::openMapPicker),
-                        )
-                        // The preview has no loading cover of its own, so online it looks exactly as
-                        // it always has; this only steps in while there is no network and no map yet.
-                        // It draws over the pin but under nothing clickable, so the tap-to-open
-                        // overlay beneath keeps working.
-                        if (!online && !mapLoaded) {
-                            Box(
-                                modifier = Modifier.matchParentSize().background(MaterialTheme.colorScheme.surfaceBright),
-                                contentAlignment = Alignment.Center,
-                            ) { MapLoadingIndicator() }
-                        }
-                    }
-                }
-
-                val hint =
-                    when {
-                        point == null -> stringResource(R.string.saved_address_pick_hint)
-                        locationFailed -> stringResource(R.string.saved_address_location_unavailable)
-                        resolvedAddress != null -> shortAddress(resolvedAddress!!)
-                        else -> null
-                    }
-                if (hint != null) {
-                    Text(
-                        text = hint,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                OutlinedButton(onClick = ::requestLocate, modifier = Modifier.fillMaxWidth()) {
-                    MaterialSymbol(symbolName = "my_location", contentDescription = null, size = 18.dp)
-                    Text(stringResource(R.string.saved_address_use_location), modifier = Modifier.padding(start = 8.dp))
-                }
-
-                Text(
-                    text = "${stringResource(R.string.saved_address_radius)}: ${formatShortDistance(radius.toDouble(), unitSystem)}",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Slider(
-                    value = radius,
-                    onValueChange = { radius = it },
-                    valueRange = RADIUS_MIN..RADIUS_MAX,
-                    steps = RADIUS_STEPS,
-                )
-
-                if (presetKind.fixedIcon() == null) {
-                    Text(stringResource(R.string.saved_address_icon), style = MaterialTheme.typography.bodyLarge)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CURATED_PLACE_ICONS.forEach { name ->
-                            FilledIconToggleButton(
-                                checked = icon == name,
-                                onCheckedChange = { icon = name },
-                            ) {
-                                MaterialSymbol(symbolName = name, contentDescription = name)
-                            }
-                        }
-                    }
-                }
-
-                if (onDelete != null) {
-                    OutlinedButton(
-                        onClick = { showDeleteDialog = true },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        MaterialSymbol(symbolName = "delete", contentDescription = null, size = 18.dp)
-                        Text(stringResource(R.string.saved_address_delete), modifier = Modifier.padding(start = 8.dp))
-                    }
+                    MaterialSymbol(symbolName = "delete", contentDescription = null, size = 18.dp)
+                    Text(stringResource(R.string.saved_address_delete), modifier = Modifier.padding(start = 8.dp))
                 }
             }
         }

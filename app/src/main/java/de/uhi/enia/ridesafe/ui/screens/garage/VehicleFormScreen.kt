@@ -2,35 +2,24 @@
 
 package de.uhi.enia.ridesafe.ui.screens.garage
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +35,7 @@ import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.FuelType
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.displayTitle
+import de.uhi.enia.ridesafe.ui.components.FormScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.usesMetric
@@ -122,226 +112,176 @@ fun VehicleFormScreen(
         onSave(edited, makePrimary)
     }
 
-    Scaffold(
-        // Embedded, the whole form lifts over the keyboard: the pinned save stays reachable and
-        // the field viewport shrinks exactly once — imePadding() consumes the inset, so the
-        // content's own imePadding (still needed without a bottom bar) measures zero inside.
-        modifier = if (embedded) modifier.imePadding() else modifier,
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        topBar = {
-            if (!embedded) {
-                TopAppBar(
-                    title = {
-                        Text(stringResource(if (editing) R.string.garage_edit_vehicle else R.string.garage_add_vehicle))
-                    },
-                    colors =
-                        TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        ),
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            MaterialSymbol(
-                                symbolName = "close",
-                                contentDescription = stringResource(R.string.action_back),
-                            )
-                        }
-                    },
-                    actions = {
-                        Button(modifier = Modifier.padding(end = 8.dp), onClick = ::save, enabled = canSave) {
-                            Text(stringResource(R.string.action_save))
-                        }
-                    },
-                )
-            }
-        },
-        bottomBar = {
-            if (embedded) {
-                Button(
-                    onClick = ::save,
-                    enabled = canSave,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 16.dp),
-                ) {
-                    Text(stringResource(R.string.action_save))
-                }
-            }
-        },
-    ) { innerPadding ->
-        Column(
-            modifier =
-                Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-                    .imePadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+    FormScaffold(
+        title = stringResource(if (editing) R.string.garage_edit_vehicle else R.string.garage_add_vehicle),
+        canSave = canSave,
+        onSave = ::save,
+        onBack = onBack,
+        modifier = modifier,
+        embedded = embedded,
+    ) {
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = {
+                Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_nickname)))
+            },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = make,
+            onValueChange = { make = it },
+            label = { Text(stringResource(R.string.vehicle_make)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = model,
+            onValueChange = { model = it },
+            label = { Text(stringResource(R.string.vehicle_model)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = licensePlate,
+            onValueChange = { licensePlate = it },
+            label = { Text(stringResource(R.string.vehicle_license_plate)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        OutlinedTextField(
+            value = mileage,
+            onValueChange = { mileage = it.filter(Char::isDigit) },
+            label = { Text(stringResource(R.string.vehicle_mileage)) },
+            suffix = { Text(stringResource(if (metric) R.string.unit_km else R.string.unit_mi)) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = year,
+            onValueChange = { year = it.filter(Char::isDigit) },
+            label = { Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_year))) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        OutlinedButton(
+            onClick = { showExtendedInformation = !showExtendedInformation },
+            modifier = Modifier.fillMaxWidth(),
         ) {
+            Text(
+                text = stringResource(R.string.vehicle_extended_information),
+                modifier = Modifier.weight(1f),
+            )
+            MaterialSymbol(
+                symbolName = if (showExtendedInformation) "expand_less" else "expand_more",
+                contentDescription = null,
+                size = 22.dp,
+            )
+        }
+
+        if (showExtendedInformation) {
+            Text(
+                text = stringResource(R.string.vehicle_section_fuel),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            FuelTypeDropdown(selected = fuelType, onSelected = { fuelType = it })
             OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
+                value = fuelEconomy,
+                onValueChange = { fuelEconomy = it },
                 label = {
-                    Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_nickname)))
+                    Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_fuel_economy)))
+                },
+                suffix = { Text(stringResource(R.string.unit_fuel_economy)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = tankSize,
+                onValueChange = { tankSize = it },
+                label = {
+                    Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_tank_size)))
+                },
+                suffix = { Text(stringResource(R.string.unit_liter)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Text(
+                text = stringResource(R.string.vehicle_section_information),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            OutlinedTextField(
+                value = vehicleType,
+                onValueChange = { vehicleType = it },
+                label = {
+                    Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_type)))
                 },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
-                value = make,
-                onValueChange = { make = it },
-                label = { Text(stringResource(R.string.vehicle_make)) },
+                value = engine,
+                onValueChange = { engine = it },
+                label = {
+                    Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_engine)))
+                },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
-                value = model,
-                onValueChange = { model = it },
-                label = { Text(stringResource(R.string.vehicle_model)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = licensePlate,
-                onValueChange = { licensePlate = it },
-                label = { Text(stringResource(R.string.vehicle_license_plate)) },
+                value = manufacturingCountry,
+                onValueChange = { manufacturingCountry = it },
+                label = {
+                    Text(
+                        stringResource(
+                            R.string.vehicle_label_optional,
+                            stringResource(R.string.vehicle_manufacturing_country),
+                        ),
+                    )
+                },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            OutlinedTextField(
-                value = mileage,
-                onValueChange = { mileage = it.filter(Char::isDigit) },
-                label = { Text(stringResource(R.string.vehicle_mileage)) },
-                suffix = { Text(stringResource(if (metric) R.string.unit_km else R.string.unit_mi)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = year,
-                onValueChange = { year = it.filter(Char::isDigit) },
-                label = { Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_year))) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            OutlinedButton(
-                onClick = { showExtendedInformation = !showExtendedInformation },
-                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = stringResource(R.string.vehicle_extended_information),
+                    text = stringResource(R.string.add_vehicle_set_primary),
                     modifier = Modifier.weight(1f),
                 )
-                MaterialSymbol(
-                    symbolName = if (showExtendedInformation) "expand_less" else "expand_more",
-                    contentDescription = null,
-                    size = 22.dp,
+                // Can't demote the current primary directly (GAR-07) — promote another instead.
+                Switch(
+                    checked = makePrimary,
+                    onCheckedChange = { makePrimary = it },
+                    enabled = existing?.isPrimary != true,
                 )
             }
+        }
 
-            if (showExtendedInformation) {
+        if (onDelete != null) {
+            OutlinedButton(
+                onClick = { showDeleteDialog = true },
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                MaterialSymbol(symbolName = "delete", contentDescription = null, size = 18.dp)
                 Text(
-                    text = stringResource(R.string.vehicle_section_fuel),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 4.dp),
+                    text = stringResource(R.string.garage_delete_vehicle),
+                    modifier = Modifier.padding(start = 8.dp),
                 )
-                FuelTypeDropdown(selected = fuelType, onSelected = { fuelType = it })
-                OutlinedTextField(
-                    value = fuelEconomy,
-                    onValueChange = { fuelEconomy = it },
-                    label = {
-                        Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_fuel_economy)))
-                    },
-                    suffix = { Text(stringResource(R.string.unit_fuel_economy)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = tankSize,
-                    onValueChange = { tankSize = it },
-                    label = {
-                        Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_tank_size)))
-                    },
-                    suffix = { Text(stringResource(R.string.unit_liter)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                Text(
-                    text = stringResource(R.string.vehicle_section_information),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-                OutlinedTextField(
-                    value = vehicleType,
-                    onValueChange = { vehicleType = it },
-                    label = {
-                        Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_type)))
-                    },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = engine,
-                    onValueChange = { engine = it },
-                    label = {
-                        Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_engine)))
-                    },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = manufacturingCountry,
-                    onValueChange = { manufacturingCountry = it },
-                    label = {
-                        Text(
-                            stringResource(
-                                R.string.vehicle_label_optional,
-                                stringResource(R.string.vehicle_manufacturing_country),
-                            ),
-                        )
-                    },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.add_vehicle_set_primary),
-                        modifier = Modifier.weight(1f),
-                    )
-                    // Can't demote the current primary directly (GAR-07) — promote another instead.
-                    Switch(
-                        checked = makePrimary,
-                        onCheckedChange = { makePrimary = it },
-                        enabled = existing?.isPrimary != true,
-                    )
-                }
-            }
-
-            if (onDelete != null) {
-                OutlinedButton(
-                    onClick = { showDeleteDialog = true },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    MaterialSymbol(symbolName = "delete", contentDescription = null, size = 18.dp)
-                    Text(
-                        text = stringResource(R.string.garage_delete_vehicle),
-                        modifier = Modifier.padding(start = 8.dp),
-                    )
-                }
             }
         }
     }
