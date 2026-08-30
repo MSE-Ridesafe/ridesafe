@@ -3,31 +3,23 @@
 package de.uhi.enia.ridesafe.ui.screens.rides
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +38,7 @@ import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.rides.processing.addressLines
 import de.uhi.enia.ridesafe.rides.processing.latLngDistanceMeters
+import de.uhi.enia.ridesafe.ui.components.DetailScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
 import de.uhi.enia.ridesafe.util.currentUnitSystem
@@ -85,28 +78,14 @@ fun RideDetailScreen(
 ) {
     val unitSystem = currentUnitSystem()
     val context = LocalContext.current
-    Scaffold(
+    DetailScaffold(
+        title = { Text(ride?.let { formatRideDateTime(context, it.startedAtEpochMs) } ?: "") },
+        onBack = onBack,
+        showBack = showBack,
         modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        topBar = {
-            TopAppBar(
-                title = { Text(ride?.let { formatRideDateTime(context, it.startedAtEpochMs) } ?: "") },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                navigationIcon = {
-                    if (showBack) {
-                        IconButton(onClick = onBack) {
-                            MaterialSymbol(
-                                symbolName = "arrow_back",
-                                contentDescription = stringResource(R.string.action_back),
-                            )
-                        }
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
+    ) {
         // ride is null only briefly while the Flow loads, or if it was removed.
-        if (ride == null) return@Scaffold
+        if (ride == null) return@DetailScaffold
 
         val durationSec = ride.endedAtEpochMs?.let { (it - ride.startedAtEpochMs) / 1000.0 }
         // Prefer the persisted metrics; fall back to computing from the (raw) route for a not-yet-processed ride.
@@ -115,109 +94,99 @@ fun RideDetailScreen(
             ride.avgSpeedMps
                 ?: if (distanceMeters != null && durationSec != null && durationSec > 0) distanceMeters / durationSec else null
 
-        Column(
-            modifier =
-                Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            if (analysisProgress != null) {
-                AnalysisNoticeCard(progress = analysisProgress)
-            }
-            RideStatsReadout(
-                distance =
-                    distanceMeters?.let { formatDistance(it, unitSystem) }
-                        ?: stringResource(R.string.value_not_set),
-                duration = formatDuration(ride.startedAtEpochMs, ride.endedAtEpochMs),
-                avgSpeed = avgMps?.let { formatSpeed(context, it, unitSystem) },
-                maxSpeed = formatSpeed(context, ride.maxSpeedMps, unitSystem),
-            )
-            RouteMapCard(segments = route?.let { listOf(it) }, rideEvents = rideEvents)
+        if (analysisProgress != null) {
+            AnalysisNoticeCard(progress = analysisProgress)
+        }
+        RideStatsReadout(
+            distance =
+                distanceMeters?.let { formatDistance(it, unitSystem) }
+                    ?: stringResource(R.string.value_not_set),
+            duration = formatDuration(ride.startedAtEpochMs, ride.endedAtEpochMs),
+            avgSpeed = avgMps?.let { formatSpeed(context, it, unitSystem) },
+            maxSpeed = formatSpeed(context, ride.maxSpeedMps, unitSystem),
+        )
+        RouteMapCard(segments = route?.let { listOf(it) }, rideEvents = rideEvents)
 
-            // Build each stop, folding in a matched saved place (ADR-09): show "<address>, <dist> from
-            // <label>", or just the label when the endpoint's address matches the place's exactly.
-            fun stopFor(
-                address: String?,
-                time: String?,
-                lat: Double?,
-                lon: Double?,
-                place: SavedAddress?,
-            ): JourneyStop {
-                val exact = place != null && address != null && address == place.address
-                val distanceLabel =
-                    if (place != null && !exact && lat != null && lon != null) {
-                        formatShortDistance(haversineMeters(lat, lon, place.latitude, place.longitude), unitSystem)
-                    } else {
-                        null
-                    }
-                return JourneyStop(address, time, place = place, distanceLabel = distanceLabel, exactMatch = exact)
-            }
-
-            JourneyCard(
-                stops =
-                    listOf(
-                        stopFor(
-                            ride.startAddress,
-                            formatTimeOfDay(context, ride.startedAtEpochMs),
-                            ride.startLat,
-                            ride.startLon,
-                            startPlace,
-                        ),
-                        stopFor(
-                            ride.endAddress,
-                            ride.endedAtEpochMs?.let { formatTimeOfDay(context, it) },
-                            ride.endLat,
-                            ride.endLon,
-                            endPlace,
-                        ),
-                    ),
-            )
-
-            // The ride in numbers, right under where it went: how far and how long, then how fast.
-            // Duration lives here rather than in the journey card's footer, so the trip's magnitude
-            // reads in one glance before the safety/eco judgments below.
-
-            // The score sits directly under the map that shows its events (ANL-01). Three states:
-            // scored; analysed but unscoreable (too little measurable driving — say so rather than
-            // hiding, or the absence reads as a bug); not analysed / no motion sensors (nothing).
-            ride.score?.let { SafetyScoreCard(score = it) }
-                ?: ride.dynamics?.let {
-                    SafetyScoreCard(score = null, emptyText = stringResource(R.string.ride_score_unscoreable))
+        // Build each stop, folding in a matched saved place (ADR-09): show "<address>, <dist> from
+        // <label>", or just the label when the endpoint's address matches the place's exactly.
+        fun stopFor(
+            address: String?,
+            time: String?,
+            lat: Double?,
+            lon: Double?,
+            place: SavedAddress?,
+        ): JourneyStop {
+            val exact = place != null && address != null && address == place.address
+            val distanceLabel =
+                if (place != null && !exact && lat != null && lon != null) {
+                    formatShortDistance(haversineMeters(lat, lon, place.latitude, place.longitude), unitSystem)
+                } else {
+                    null
                 }
+            return JourneyStop(address, time, place = place, distanceLabel = distanceLabel, exactMatch = exact)
+        }
 
-            // Absent for a ride still being analysed and for one with no usable track — "no
-            // profile", not "a perfectly efficient drive". Kinematic, so it needs no vehicle.
-            ride.eco?.let { EcoCard(eco = it) }
+        JourneyCard(
+            stops =
+                listOf(
+                    stopFor(
+                        ride.startAddress,
+                        formatTimeOfDay(context, ride.startedAtEpochMs),
+                        ride.startLat,
+                        ride.startLon,
+                        startPlace,
+                    ),
+                    stopFor(
+                        ride.endAddress,
+                        ride.endedAtEpochMs?.let { formatTimeOfDay(context, it) },
+                        ride.endLat,
+                        ride.endLon,
+                        endPlace,
+                    ),
+                ),
+        )
 
-            if (refuels.isNotEmpty()) {
-                Card(
-                    shape = MaterialTheme.shapes.extraLarge,
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                        Text(
-                            text = stringResource(R.string.refuel_associated_section),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                        )
-                        refuels.sortedBy { it.refuel.timestampEpochMs }.forEachIndexed { index, row ->
-                            if (index > 0) {
-                                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-                            }
-                            RefuelTimelineRow(
-                                row = row,
-                                selectionMode = false,
-                                selected = false,
-                                onClick = { onOpenRefuel(row.refuel.id) },
-                                onLongClick = {},
-                                showVehicle = false,
-                            )
+        // The ride in numbers, right under where it went: how far and how long, then how fast.
+        // Duration lives here rather than in the journey card's footer, so the trip's magnitude
+        // reads in one glance before the safety/eco judgments below.
+
+        // The score sits directly under the map that shows its events (ANL-01). Three states:
+        // scored; analysed but unscoreable (too little measurable driving — say so rather than
+        // hiding, or the absence reads as a bug); not analysed / no motion sensors (nothing).
+        ride.score?.let { SafetyScoreCard(score = it) }
+            ?: ride.dynamics?.let {
+                SafetyScoreCard(score = null, emptyText = stringResource(R.string.ride_score_unscoreable))
+            }
+
+        // Absent for a ride still being analysed and for one with no usable track — "no
+        // profile", not "a perfectly efficient drive". Kinematic, so it needs no vehicle.
+        ride.eco?.let { EcoCard(eco = it) }
+
+        if (refuels.isNotEmpty()) {
+            Card(
+                shape = MaterialTheme.shapes.extraLarge,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                    Text(
+                        text = stringResource(R.string.refuel_associated_section),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    )
+                    refuels.sortedBy { it.refuel.timestampEpochMs }.forEachIndexed { index, row ->
+                        if (index > 0) {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
                         }
+                        RefuelTimelineRow(
+                            row = row,
+                            selectionMode = false,
+                            selected = false,
+                            onClick = { onOpenRefuel(row.refuel.id) },
+                            onLongClick = {},
+                            showVehicle = false,
+                        )
                     }
                 }
             }

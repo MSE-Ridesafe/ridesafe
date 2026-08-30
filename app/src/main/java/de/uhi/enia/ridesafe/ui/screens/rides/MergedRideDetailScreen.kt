@@ -8,12 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -23,11 +20,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,7 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -51,6 +44,7 @@ import de.uhi.enia.ridesafe.data.canUnmergeSelection
 import de.uhi.enia.ridesafe.data.summarizeMerge
 import de.uhi.enia.ridesafe.domain.safetyScoreForRides
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
+import de.uhi.enia.ridesafe.ui.components.DetailScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
 import de.uhi.enia.ridesafe.util.currentUnitSystem
@@ -91,98 +85,56 @@ fun MergedRideDetailScreen(
     }
     if (stops == null || stops.size < 2) {
         // Loading (or transitioning out): just the top bar with a back affordance, empty body.
-        Scaffold(
-            modifier = modifier,
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            topBar = {
-                TopAppBar(
-                    title = {},
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                    navigationIcon = {
-                        if (showBack) {
-                            IconButton(onClick = onBack) {
-                                MaterialSymbol(symbolName = "arrow_back", contentDescription = stringResource(R.string.action_back))
-                            }
-                        }
-                    },
-                )
-            },
-        ) { innerPadding ->
-            Spacer(Modifier.padding(innerPadding))
-        }
+        DetailScaffold(title = {}, onBack = onBack, showBack = showBack, modifier = modifier) {}
         return
     }
 
     val summary = remember(stops) { summarizeMerge(stops) }
-    Scaffold(
-        modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(formatRideDateTime(context, summary.startEpochMs))
-                        Text(
-                            text =
-                                stringResource(R.string.ride_merged_label) + " · " +
-                                    pluralStringResource(R.plurals.ride_stops_count, summary.stopCount, summary.stopCount),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                navigationIcon = {
-                    if (showBack) {
-                        IconButton(onClick = onBack) {
-                            MaterialSymbol(
-                                symbolName = "arrow_back",
-                                contentDescription = stringResource(R.string.action_back),
-                            )
-                        }
-                    }
-                },
-            )
+    DetailScaffold(
+        title = {
+            Column {
+                Text(formatRideDateTime(context, summary.startEpochMs))
+                Text(
+                    text =
+                        stringResource(R.string.ride_merged_label) + " · " +
+                            pluralStringResource(R.plurals.ride_stops_count, summary.stopCount, summary.stopCount),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         },
-    ) { innerPadding ->
-        Column(
-            modifier =
-                Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            // The trip in numbers, same headline readout as a single ride's (duration = moving time).
-            RideStatsReadout(
-                distance =
-                    summary.distanceMeters?.let { formatDistance(it, unitSystem) }
-                        ?: stringResource(R.string.value_not_set),
-                duration = formatDurationMs(summary.movingDurationMs),
-                avgSpeed = summary.avgSpeedMps?.let { formatSpeed(context, it, unitSystem) },
-                maxSpeed = formatSpeed(context, summary.maxSpeedMps, unitSystem),
-            )
+        onBack = onBack,
+        showBack = showBack,
+        modifier = modifier,
+    ) {
+        // The trip in numbers, same headline readout as a single ride's (duration = moving time).
+        RideStatsReadout(
+            distance =
+                summary.distanceMeters?.let { formatDistance(it, unitSystem) }
+                    ?: stringResource(R.string.value_not_set),
+            duration = formatDurationMs(summary.movingDurationMs),
+            avgSpeed = summary.avgSpeedMps?.let { formatSpeed(context, it, unitSystem) },
+            maxSpeed = formatSpeed(context, summary.maxSpeedMps, unitSystem),
+        )
 
-            RouteMapCard(segments = segments, rideEvents = rideEvents)
+        RouteMapCard(segments = segments, rideEvents = rideEvents)
 
-            MergedJourneyCard(
-                stops = stops,
-                refuels = refuels,
-                onOpenRefuel = onOpenRefuel,
-                onDetachRefuel = onDetachRefuel,
-                onUnmergeAll = onUnmergeAll,
-                onUnmerge = onUnmerge,
-            )
+        MergedJourneyCard(
+            stops = stops,
+            refuels = refuels,
+            onOpenRefuel = onOpenRefuel,
+            onDetachRefuel = onDetachRefuel,
+            onUnmergeAll = onUnmergeAll,
+            onUnmerge = onUnmerge,
+        )
 
-            // The whole trip's score: the stops' penalties and exposure summed, mapped once — never
-            // an average of their scores (see SafetyScoreWindows). Hidden when no stop was scoreable.
-            safetyScoreForRides(stops)?.let { SafetyScoreCard(score = it) }
+        // The whole trip's score: the stops' penalties and exposure summed, mapped once — never
+        // an average of their scores (see SafetyScoreWindows). Hidden when no stop was scoreable.
+        safetyScoreForRides(stops)?.let { SafetyScoreCard(score = it) }
 
-            // The trip's efficiency, same card as a single ride's — the aggregates add up across
-            // stops and the level is derived once from the whole trip's driving (MRG-05 rule).
-            summary.eco?.let { EcoCard(eco = it) }
-        }
+        // The trip's efficiency, same card as a single ride's — the aggregates add up across
+        // stops and the level is derived once from the whole trip's driving (MRG-05 rule).
+        summary.eco?.let { EcoCard(eco = it) }
     }
 }
 

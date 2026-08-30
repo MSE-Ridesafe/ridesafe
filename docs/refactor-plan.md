@@ -96,7 +96,7 @@ Similarity was verified per site — "identical" below means byte-identical modu
   handling. Sites: `VehicleFormScreen.kt:124-180`, `SavedAddressFormScreen.kt:351-401`
   (these two share a near-verbatim 3-line comment — copy-paste smoking gun),
   `RefuelFormScreen.kt:246-275` (gains embedded support for free). Net ~-58.
-- [ ] **P2.2** `DetailScaffold` — transparent top bar + back arrow + 16.dp scrolling card
+- [x] **P2.2** `DetailScaffold` — transparent top bar + back arrow + 16.dp scrolling card
   column. Sites: `RideDetailScreen.kt:88-126`, `MergedRideDetailScreen.kt:117-156` (+ its
   degenerate loading copy at `:93-114`), `VehicleDetailScreen.kt:88-133`. Encodes the
   transparent-vs-opaque top bar rule (detail = transparent, form = opaque) so it stops

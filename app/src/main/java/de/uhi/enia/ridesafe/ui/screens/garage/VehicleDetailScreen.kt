@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -32,11 +31,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,7 +41,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,6 +52,7 @@ import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.displayTitle
 import de.uhi.enia.ridesafe.rides.trigger.BluetoothDevices
 import de.uhi.enia.ridesafe.ui.components.DetailCard
+import de.uhi.enia.ridesafe.ui.components.DetailScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatOdometer
@@ -86,136 +82,109 @@ fun VehicleDetailScreen(
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
             if (uri != null) onChooseImage(uri)
         }
-    Scaffold(
+    DetailScaffold(
+        title = { Text(vehicle?.nicknameTitle() ?: "") },
+        onBack = onBack,
+        showBack = showBack,
         modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        topBar = {
-            TopAppBar(
-                title = { Text(vehicle?.nicknameTitle() ?: "") },
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                    ),
-                navigationIcon = {
-                    if (showBack) {
-                        IconButton(onClick = onBack) {
-                            MaterialSymbol(
-                                symbolName = "arrow_back",
-                                contentDescription = stringResource(R.string.action_back),
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    if (vehicle != null) {
-                        IconButton(onClick = onEdit) {
-                            MaterialSymbol(
-                                symbolName = "edit",
-                                contentDescription = stringResource(R.string.action_edit),
-                            )
-                        }
-                    }
-                },
-            )
+        actions = {
+            if (vehicle != null) {
+                IconButton(onClick = onEdit) {
+                    MaterialSymbol(
+                        symbolName = "edit",
+                        contentDescription = stringResource(R.string.action_edit),
+                    )
+                }
+            }
         },
-    ) { innerPadding ->
+    ) {
         // vehicle is null only briefly while the Flow loads, or if it was removed.
-        if (vehicle == null) return@Scaffold
+        if (vehicle == null) return@DetailScaffold
 
         val notSet = stringResource(R.string.value_not_set)
-        Column(
-            modifier =
-                Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+        VehicleHeader(
+            vehicle = vehicle,
+            onChooseImage = {
+                imagePicker.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                )
+            },
+        )
+
+        DetailCard(
+            title = stringResource(R.string.vehicle_section_overview),
+            rows =
+                listOf(
+                    stringResource(R.string.vehicle_make) to vehicle.make,
+                    stringResource(R.string.vehicle_model) to vehicle.model,
+                    stringResource(R.string.vehicle_year) to (vehicle.year?.toString() ?: notSet),
+                    stringResource(R.string.vehicle_license_plate) to vehicle.licensePlate,
+                    stringResource(R.string.vehicle_mileage) to formatOdometer(vehicle.mileageKm, unitSystem),
+                ),
+        )
+
+        OutlinedButton(
+            onClick = { showExtendedInformation = !showExtendedInformation },
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            VehicleHeader(
-                vehicle = vehicle,
-                onChooseImage = {
-                    imagePicker.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                    )
-                },
+            Text(
+                text = stringResource(R.string.vehicle_extended_information),
+                modifier = Modifier.weight(1f),
+            )
+            MaterialSymbol(
+                symbolName = if (showExtendedInformation) "expand_less" else "expand_more",
+                contentDescription = null,
+                size = 22.dp,
+            )
+        }
+
+        if (showExtendedInformation) {
+            DetailCard(
+                title = stringResource(R.string.vehicle_section_fuel),
+                rows =
+                    listOf(
+                        stringResource(R.string.vehicle_fuel_type) to stringResource(vehicle.fuelType.labelRes()),
+                        stringResource(R.string.vehicle_fuel_economy) to
+                            (vehicle.fuelEconomy?.let { "$it ${stringResource(R.string.unit_fuel_economy)}" } ?: notSet),
+                        stringResource(R.string.vehicle_tank_size) to
+                            (vehicle.tankSize?.let { "$it ${stringResource(R.string.unit_liter)}" } ?: notSet),
+                    ),
             )
 
             DetailCard(
-                title = stringResource(R.string.vehicle_section_overview),
+                title = stringResource(R.string.vehicle_section_information),
                 rows =
                     listOf(
-                        stringResource(R.string.vehicle_make) to vehicle.make,
-                        stringResource(R.string.vehicle_model) to vehicle.model,
-                        stringResource(R.string.vehicle_year) to (vehicle.year?.toString() ?: notSet),
-                        stringResource(R.string.vehicle_license_plate) to vehicle.licensePlate,
-                        stringResource(R.string.vehicle_mileage) to formatOdometer(vehicle.mileageKm, unitSystem),
+                        stringResource(R.string.vehicle_type) to (vehicle.vehicleType ?: notSet),
+                        stringResource(R.string.vehicle_engine) to (vehicle.engine ?: notSet),
+                        stringResource(R.string.vehicle_manufacturing_country) to
+                            (vehicle.manufacturingCountry ?: notSet),
                     ),
             )
 
-            OutlinedButton(
-                onClick = { showExtendedInformation = !showExtendedInformation },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    text = stringResource(R.string.vehicle_extended_information),
-                    modifier = Modifier.weight(1f),
-                )
-                MaterialSymbol(
-                    symbolName = if (showExtendedInformation) "expand_less" else "expand_more",
-                    contentDescription = null,
-                    size = 22.dp,
-                )
-            }
+            TrackingCard(
+                devices = vehicle.bluetoothDevices,
+                onLink = {
+                    if (hasBluetoothConnect(context)) {
+                        showBluetoothPicker = true
+                    } else {
+                        bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                    }
+                },
+                onRemove = onUnlinkBluetooth,
+            )
+        }
 
-            if (showExtendedInformation) {
-                DetailCard(
-                    title = stringResource(R.string.vehicle_section_fuel),
-                    rows =
-                        listOf(
-                            stringResource(R.string.vehicle_fuel_type) to stringResource(vehicle.fuelType.labelRes()),
-                            stringResource(R.string.vehicle_fuel_economy) to
-                                (vehicle.fuelEconomy?.let { "$it ${stringResource(R.string.unit_fuel_economy)}" } ?: notSet),
-                            stringResource(R.string.vehicle_tank_size) to
-                                (vehicle.tankSize?.let { "$it ${stringResource(R.string.unit_liter)}" } ?: notSet),
-                        ),
-                )
-
-                DetailCard(
-                    title = stringResource(R.string.vehicle_section_information),
-                    rows =
-                        listOf(
-                            stringResource(R.string.vehicle_type) to (vehicle.vehicleType ?: notSet),
-                            stringResource(R.string.vehicle_engine) to (vehicle.engine ?: notSet),
-                            stringResource(R.string.vehicle_manufacturing_country) to
-                                (vehicle.manufacturingCountry ?: notSet),
-                        ),
-                )
-
-                TrackingCard(
-                    devices = vehicle.bluetoothDevices,
-                    onLink = {
-                        if (hasBluetoothConnect(context)) {
-                            showBluetoothPicker = true
-                        } else {
-                            bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
-                        }
-                    },
-                    onRemove = onUnlinkBluetooth,
-                )
-            }
-
-            OutlinedButton(
-                onClick = { showDeleteDialog = true },
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                MaterialSymbol(symbolName = "delete", contentDescription = null, size = 18.dp)
-                Text(
-                    text = stringResource(R.string.garage_delete_vehicle),
-                    modifier = Modifier.padding(start = 8.dp),
-                )
-            }
+        OutlinedButton(
+            onClick = { showDeleteDialog = true },
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            MaterialSymbol(symbolName = "delete", contentDescription = null, size = 18.dp)
+            Text(
+                text = stringResource(R.string.garage_delete_vehicle),
+                modifier = Modifier.padding(start = 8.dp),
+            )
         }
     }
 
