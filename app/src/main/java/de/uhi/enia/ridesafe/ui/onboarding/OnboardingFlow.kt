@@ -27,20 +27,17 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import de.uhi.enia.ridesafe.R
-import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.navigation.RidesafeApp
 import de.uhi.enia.ridesafe.ui.components.BackNavIcon
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
@@ -60,15 +57,11 @@ private const val SLIDE_MS = 250
  */
 @Composable
 fun OnboardingFlow(onFinished: () -> Unit) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val vehicleDao = remember { RidesafeDatabase.getInstance(context).vehicleDao() }
+    val viewModel: OnboardingViewModel = viewModel()
 
     var step by rememberSaveable { mutableStateOf(OnboardingStep.WELCOME) }
     // The car created by the car step, which the Bluetooth step maps devices onto.
     var vehicleId by rememberSaveable { mutableStateOf<Long?>(null) }
-    // Latch against a double-tapped save inserting the car twice while the first insert runs.
-    var savingCar by remember { mutableStateOf(false) }
 
     // Advances only while [from] is still the showing step: a double-tapped skip or a save
     // event outracing recomposition would otherwise advance twice and swallow a step — the
@@ -135,22 +128,13 @@ fun OnboardingFlow(onFinished: () -> Unit) {
 
                     OnboardingStep.CAR -> {
                         CarPage(
-                            vehicleDao = vehicleDao,
+                            viewModel = viewModel,
                             vehicleId = vehicleId,
                             onSave = { vehicle, makePrimary ->
-                                if (!savingCar) {
-                                    savingCar = true
-                                    scope.launch {
-                                        if (vehicle.id == 0L) {
-                                            vehicleId = vehicleDao.addVehicle(vehicle, makePrimary)
-                                        } else {
-                                            // A back-visit edits the created car (GAR-03 path).
-                                            vehicleDao.updateVehicle(vehicle, makePrimary)
-                                        }
-                                        // Advance only once the row exists — the next step reads it.
-                                        advanceFrom(OnboardingStep.CAR)
-                                        savingCar = false
-                                    }
+                                viewModel.saveCar(vehicle, makePrimary) { id ->
+                                    // Advance only once the row exists — the next step reads it.
+                                    vehicleId = id
+                                    advanceFrom(OnboardingStep.CAR)
                                 }
                             },
                             onBack = { retreatFrom(OnboardingStep.CAR) },
@@ -159,7 +143,7 @@ fun OnboardingFlow(onFinished: () -> Unit) {
 
                     OnboardingStep.BLUETOOTH -> {
                         BluetoothPage(
-                            vehicleDao = vehicleDao,
+                            viewModel = viewModel,
                             vehicleId = requireNotNull(vehicleId),
                             onContinue = { advanceFrom(OnboardingStep.BLUETOOTH) },
                         )

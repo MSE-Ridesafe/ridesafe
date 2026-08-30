@@ -19,7 +19,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -32,7 +31,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
 import de.uhi.enia.ridesafe.data.Vehicle
-import de.uhi.enia.ridesafe.data.VehicleDao
 import de.uhi.enia.ridesafe.permissions.AppPermission
 import de.uhi.enia.ridesafe.permissions.PermissionAlertCard
 import de.uhi.enia.ridesafe.permissions.PermissionState
@@ -60,13 +58,13 @@ import kotlinx.coroutines.launch
  */
 @Composable
 internal fun CarPage(
-    vehicleDao: VehicleDao,
+    viewModel: OnboardingViewModel,
     vehicleId: Long?,
     onSave: (vehicle: Vehicle, makePrimary: Boolean) -> Unit,
     onBack: () -> Unit,
 ) {
     val existing by remember(vehicleId) {
-        vehicleId?.let { vehicleDao.observe(it) } ?: flowOf(null)
+        vehicleId?.let { viewModel.observeVehicle(it) } ?: flowOf(null)
     }.collectAsState(initial = null)
     if (vehicleId != null && existing == null) return
     Column(Modifier.fillMaxSize()) {
@@ -94,13 +92,12 @@ internal fun CarPage(
  */
 @Composable
 internal fun BluetoothPage(
-    vehicleDao: VehicleDao,
+    viewModel: OnboardingViewModel,
     vehicleId: Long,
     onContinue: () -> Unit,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val vehicle by vehicleDao.observe(vehicleId).collectAsState(initial = null)
+    val vehicle by viewModel.observeVehicle(vehicleId).collectAsState(initial = null)
     var showPicker by rememberSaveable { mutableStateOf(false) }
     val bluetoothPermissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -123,11 +120,7 @@ internal fun BluetoothPage(
                 }
             },
             onRemove = { address ->
-                vehicle?.let { v ->
-                    scope.launch {
-                        vehicleDao.update(v.copy(bluetoothDevices = v.bluetoothDevices.filterNot { it.address == address }))
-                    }
-                }
+                vehicle?.let { v -> viewModel.unlinkDevice(v, address) }
             },
         )
     }
@@ -143,9 +136,7 @@ internal fun BluetoothPage(
             devices = BluetoothDevices.bonded(context).filterNot { it.address in linkedAddresses },
             onPick = { device ->
                 showPicker = false
-                vehicle?.let { v ->
-                    scope.launch { vehicleDao.update(v.copy(bluetoothDevices = v.bluetoothDevices + device)) }
-                }
+                vehicle?.let { v -> viewModel.linkDevice(v, device) }
             },
             onDismiss = { showPicker = false },
         )

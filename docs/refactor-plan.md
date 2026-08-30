@@ -244,7 +244,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
 - [x] **P4.5** `findExistingSavedPlace` (`SavedAddressFormScreen.kt:146-164`, pure ADR-09
   matching via `normalizeForMatching` + `haversineMeters`) → `data/SavedAddress.kt`
   beside `matchAddress`; add a unit test (currently untestable).
-- [ ] **P4.6** **[behavioral]** Onboarding Room writes (`OnboardingFlow.kt:258-273`:
+- [x] **P4.6** **[behavioral]** Onboarding Room writes (`OnboardingFlow.kt:258-273`:
   `vehicleDao.addVehicle/updateVehicle` from `rememberCoroutineScope` + double-insert
   latch) → small onboarding VM or reuse `GarageViewModel`.
 - [ ] **P4.7** **[behavioral]** `SavedAddressFormScreen` platform calls out of
