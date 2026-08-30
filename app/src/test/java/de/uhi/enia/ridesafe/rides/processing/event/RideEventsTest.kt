@@ -46,6 +46,9 @@ class RideEventsTest {
         gyroRadPerSec: Double = 0.0,
         travelBearingAt: (Double) -> Double = { 90.0 }, // due east unless a test says otherwise
         yawRateAt: (Double) -> Double = { 0.0 }, // rad/s about world up; device z for a level phone
+        // Overrides the constant quaternion per sample — how a test models a rotation vector whose
+        // reading moves (or errs) over time while the device accel stays in the true device axes.
+        quaternionAt: ((Double) -> FloatArray)? = null,
         deviceAccelAt: (Double) -> Triple<Double, Double, Double>,
     ): RideSamples {
         // Positions are integrated along the travel bearing rather than assumed straight, so a test
@@ -94,14 +97,15 @@ class RideEventsTest {
                     yawRateAt(step.toDouble() / MOTION_HZ).toFloat(),
                 ),
             )
+            val q = quaternionAt?.invoke(step.toDouble() / MOTION_HZ) ?: quaternion
             rotation.add(
                 MotionSample(
                     nanos,
                     MotionSensor.ROTATION,
-                    quaternion[0],
-                    quaternion[1],
-                    quaternion[2],
-                    quaternion[3],
+                    q[0],
+                    q[1],
+                    q[2],
+                    q[3],
                 ),
             )
         }
@@ -409,17 +413,18 @@ class RideEventsTest {
     }
 
     /**
-     * The reason heading is calibrated rather than read from GPS per sample. The car drives cleanly
+     * The reason detection rests on the calibrated axis and nothing else. The car drives cleanly
      * east for 40 s, then the GPS starts zig-zagging north/south — a fix wandering the way it does at
      * low speed or under poor sky view — while the car keeps going east and brakes hard.
      *
-     * Heading from GPS would call that brake a *corner*, because a deceleration pointing east is
-     * perpendicular to a heading pointing north. Heading from the calibrated forward axis still says
-     * east, so it reads as braking. The assertion on type is the whole point: get the axis wrong and
-     * the force doesn't vanish, it lands in the wrong bucket.
+     * The split happens in the device frame against the calibrated axis, so the wandering course
+     * can't touch it: the brake stays a brake. And when no axis could be calibrated there is no
+     * per-sample GPS fallback to fall into — that fallback used to project force onto a course that
+     * lags the car (a slalom's course reads straight while the car swings), manufacturing braking
+     * and acceleration out of steering. No axis means no events, never misfiled ones.
      */
     @Test
-    fun calibratedHeadingSurvivesGpsGoingWrong() {
+    fun calibratedAxisSurvivesGpsGoingWrongAndNoAxisMeansNoEvents() {
         val recorded =
             ride(
                 seconds = 55.0,
@@ -448,20 +453,80 @@ class RideEventsTest {
         )
 
         // The contrast that gives this test teeth: starve calibration of samples and the very same
-        // ride mis-files the brake as a corner. Without it the assertions above would still pass if
-        // alignment silently did nothing and the GPS heading happened to be good enough anyway.
-        // Asserted on type rather than count: with the heading swinging, the force lands in whichever
-        // bucket the bad axis points at, and can smear across more than one. What matters is that the
-        // brake stops being recognised as a brake at all.
-        val gpsOnly =
+        // ride must report nothing at all — not the brake in some other bucket, which is what a
+        // per-sample GPS-heading fallback produced.
+        val noAxis =
             detectRideEvents(recorded, 0L, RideEventConfig(alignmentMinSamples = Int.MAX_VALUE))
         Assert.assertTrue(
-            "GPS-only heading should mis-file the brake, got $gpsOnly",
-            gpsOnly.none { it.type == RideEventType.BRAKING },
+            "without a calibrated axis nothing may be reported, got $noAxis",
+            noAxis.isEmpty(),
+        )
+    }
+
+    /**
+     * The slalom regression, from a real ride whose slalom was stored as acceleration *and*
+     * cornering *and* braking at once. A slalom on a straight road swings the lateral force while
+     * the GPS course barely moves and the speed doesn't change at all. In the device frame the
+     * force lands cleanly on the lateral axis: harsh steering, and nothing longitudinal — the old
+     * GPS-heading fallback projected the same swings onto the lagging course and invented
+     * braking-plus-acceleration out of them.
+     */
+    @Test
+    fun slalomOnAStraightRoadIsCorneringOnly() {
+        val amplitude = 4.0 // ±0.41 g, swung at 0.5 Hz: wheel-flick abrupt, ~1.3 g/s folded
+        val events =
+            detectRideEvents(
+                ride(
+                    seconds = 30.0,
+                    yawRateAt = { t ->
+                        if (t in 12.0..18.0) amplitude * sin(Math.PI * (t - 12.0)) / 20.0 else 0.0
+                    },
+                ) { t ->
+                    val lateral = if (t in 12.0..18.0) amplitude * sin(Math.PI * (t - 12.0)) else 0.0
+                    Triple(0.0, lateral, GRAVITY) // heading east: lateral lies on the north axis
+                },
+                rideStartElapsedNanos = 0L,
+            )
+
+        Assert.assertTrue(
+            "a slalom must not read as braking or acceleration, got $events",
+            events.none { it.type == RideEventType.BRAKING || it.type == RideEventType.ACCELERATION },
         )
         Assert.assertTrue(
-            "and should still see the force somewhere, got $gpsOnly",
-            gpsOnly.isNotEmpty(),
+            "and the harsh steering itself must register, got $events",
+            events.any { it.type == RideEventType.CORNERING },
+        )
+    }
+
+    /**
+     * A rotation vector whose yaw wobbles against the true course — the magnetometer inside a car.
+     * ±35° of scatter fails the old 0.95 coherence bar (mean ≈ 0.91), which used to throw the ride
+     * to the GPS-heading fallback and smear this brake across the wrong buckets. The mean axis is
+     * still accurate, the split runs in the device frame where yaw cancels, so the brake must come
+     * out as exactly one braking event — full magnitude, no cornering invented from the wobble.
+     */
+    @Test
+    fun yawWobblingRotationVectorStillResolvesCleanBraking() {
+        val events =
+            detectRideEvents(
+                ride(
+                    seconds = 55.0,
+                    quaternionAt = { t ->
+                        val yaw = Math.toRadians(35.0) * sin(2 * Math.PI * 0.15 * t)
+                        floatArrayOf(0f, 0f, sin(yaw / 2).toFloat(), cos(yaw / 2).toFloat())
+                    },
+                ) { t ->
+                    val decel = if (t >= 45.0 && t < 47.0) 3.43 else 0.0 // 0.35 g eastward brake
+                    Triple(-decel, 0.0, GRAVITY)
+                },
+                rideStartElapsedNanos = 0L,
+            )
+
+        Assert.assertEquals("expected exactly one event, got $events", 1, events.size)
+        Assert.assertEquals(RideEventType.BRAKING, events[0].type)
+        Assert.assertTrue(
+            "the wobble must not eat the magnitude, was ${events[0].peakG}",
+            events[0].peakG > 0.33,
         )
     }
 

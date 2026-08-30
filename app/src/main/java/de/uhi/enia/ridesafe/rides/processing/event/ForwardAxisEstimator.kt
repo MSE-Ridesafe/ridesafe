@@ -14,13 +14,14 @@ import kotlin.math.sqrt
  * sums and a count.
  *
  * The phone doesn't move relative to the car, so the car's forward direction is a fixed vector in
- * the device frame, and the rotation vector already tracks the phone's absolute orientation at
- * 50 Hz. Recover that fixed vector once from GPS, and afterwards `R(t) · forward` gives the car's
- * heading at motion-sample rate whatever the GPS is doing — which is the point, since GPS heading is
- * meaningless at low speed and outright wrong when a fix jumps.
+ * the device frame. Recover that fixed vector once from GPS and the detector can split device-frame
+ * acceleration into longitudinal and lateral without ever entering the world frame — which is the
+ * point, since the world frame drags in the rotation vector's magnetometer-fused yaw.
  *
  * Only fast, straight, well-fixed stretches contribute, because that is the only place GPS heading
- * is worth believing. Each contributes `Rᵀ · heading`, and the average is the estimate.
+ * is worth believing. Each contributes `Rᵀ · heading`, and the average is the estimate. Individual
+ * contributions wobble with the rotation vector's yaw error against true course; only the mean
+ * matters downstream, and over hundreds of samples it settles to within a degree or two.
  *
  * [result] returns null rather than a bad answer in two cases: too few samples to be sure, or samples
  * that disagree with each other. Disagreement is measured by the summed vector's length — unit

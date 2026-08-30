@@ -16,8 +16,8 @@ import de.uhi.enia.ridesafe.rides.recording.MotionSensor
 import de.uhi.enia.ridesafe.rides.recording.trackDistanceMeters
 import de.uhi.enia.ridesafe.util.haversineMeters
 
-const val AXIS_VERSION = 1
-const val EVENTS_VERSION = 10
+const val AXIS_VERSION = 2
+const val EVENTS_VERSION = 11
 const val ENDPOINTS_VERSION = 1
 
 /**
@@ -162,6 +162,14 @@ class ForwardAxisStage : RideStage {
  * force bypasses 0.50/0.35 → 0.45/0.32 g), after real-logbook review found borderline-harsh
  * maneuvers going unrecorded. The peak floors stay put — what counts as *worth keeping* hasn't
  * changed, only how readily a maneuver opens an event.
+ * v11: the per-sample GPS-heading fallback is gone — projected onto an interpolated course that
+ * lags the car and carries the rotation vector's magnetometer yaw error, it misfiled a replayed
+ * slalom as braking-plus-acceleration and an emergency stop as cornering. Rides land in that
+ * situation far less to begin with: the axis coherence bar loosened from 0.95 to 0.80
+ * ([AXIS_VERSION] 2), since the calibrated split only ever depends on the *mean* axis and
+ * magnetometer wander merely scatters the samples around it. The split itself is now computed in
+ * the device frame — same math as the world-frame projection it replaces, minus the stale-matrix
+ * heading and with the yaw-immunity explicit. See docs/event-detection-rework.md.
  */
 class RideEventStage(
     private val db: RidesafeDatabase,

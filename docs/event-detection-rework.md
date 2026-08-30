@@ -19,7 +19,7 @@ g, so the findings below describe the shipped algorithm, not an approximation of
 
 ## Root causes, in evidence order
 
-### 1. The magnetometer corrupts the world-frame projection
+### 1. Magnetometer yaw wobble pushes rides into the GPS-heading fallback, and the fallback misfiles
 
 The recorder samples `TYPE_ROTATION_VECTOR`, whose yaw is fused from the magnetometer. Inside a
 car the magnetometer is unreliable — vehicle iron, electronics — and its error *varies with
@@ -27,18 +27,20 @@ heading and time*. Measured against GPS course on ride 127: the rotation-vector 
 4–47° from the true course, including a 14° step snap at 200.6s that itself fired the stored
 ACCEL event at 200.3s.
 
-The detector rotates acceleration into the world frame (`R·a`) and projects it onto a heading.
-The calibrated-axis path cancels a *constant* yaw error exactly, but not a varying one; the
-GPS-heading fallback path cancels nothing. Every degree of yaw error mixes lateral force into
-longitudinal and vice versa by `sin δ`.
+The calibrated-axis path is algebraically immune to this — `(R·a)·normalize(R·f)` cancels any
+common rotation about the vertical — but the *coherence check* is not: yaw wander scatters the
+calibration samples, and the 0.95 bar read that scatter as "no usable axis". The ride then fell
+back to projecting world-rotated acceleration onto the interpolated GPS course, which both
+carries the full yaw error and lags the car's real heading through every maneuver.
 
-Ride 129 is the worst case: its axis calibration was *rejected* (coherence 0.914 < 0.95 —
-scattered by exactly this yaw wobble), so the whole ride ran on the GPS-heading fallback.
-During the slalom the interpolated GPS course froze at 275° while the car's real heading swung —
-the swinging lateral force (±0.45 g true, confirmed by gyro `v·ω`) projected onto the frozen
-axis as alternating ±0.29 g of fake braking/acceleration *plus* cornering: all three stored
-events. During the emergency stop, the projection sent 0.56 g of the braking vector into
-"lateral": the fake cornering event.
+Ride 129 is the worst case: its axis calibration was *rejected* (coherence 0.914 < 0.95, pure
+yaw scatter — the mean axis itself was accurate), so the whole ride ran on the fallback. During
+the slalom the interpolated course froze at 275° while the car's real heading swung — the
+swinging lateral force (±0.45 g true, confirmed by gyro `v·ω`) projected onto the frozen course
+as alternating ±0.29 g of fake braking/acceleration *plus* cornering: all three stored events.
+During the emergency stop, the projection sent 0.56 g of the braking vector into "lateral": the
+fake cornering event. Replaying the same ride with its (rejected) axis and the calibrated-path
+math produces exactly the driver's account — one cornering event, one braking event.
 
 ### 2. The phone was not rigidly mounted
 
@@ -76,14 +78,16 @@ second, independent witness. Six coordinated changes:
 
 1. **Device-frame decomposition.** Gravity is removed with the rotation matrix's vertical row
    (`up = Rᵀ·ẑ`), which yaw error cannot touch, and the horizontal remainder is projected onto
-   the calibrated forward axis directly in device coordinates. No world frame, no heading, so
-   rotation-vector yaw error — constant or wandering — cancels out of detection completely.
-   Slope-proofing and gravity-exactness are unchanged (both live in the vertical row).
+   the calibrated forward axis directly in device coordinates. Algebraically this is what the
+   world-frame projection onto `R·forward` already computed — the rewrite states it in the frame
+   where the yaw-immunity is explicit, and drops the one implementation wart of the old path
+   (heading was computed from whatever rotation was latest at drain time, not the sample's own).
 
-2. **Axis acceptance bar 0.95 → 0.80.** The old bar rejected calibrations scattered by yaw
-   wobble because the world-frame method was per-sample sensitive to it. The device-frame method
-   only needs the *mean* axis (standard error ~1° over hundreds of samples); the bar's remaining
-   job is catching a re-mounted phone. Ride 129 (0.914) now calibrates instead of falling back.
+2. **Axis acceptance bar 0.95 → 0.80.** The old bar treated calibration scatter as "no usable
+   axis", but the scatter is mostly magnetometer yaw wobble around an accurate mean, and the
+   calibrated split depends only on the mean (standard error ~1° over hundreds of samples). The
+   bar's remaining job is catching a re-mounted phone. Ride 129 (0.914) now calibrates instead
+   of falling back.
 
 3. **The GPS-heading per-sample fallback is removed.** It manufactured three of ride 129's five
    events. A ride whose axis cannot be calibrated gets accelerometer-based detection switched

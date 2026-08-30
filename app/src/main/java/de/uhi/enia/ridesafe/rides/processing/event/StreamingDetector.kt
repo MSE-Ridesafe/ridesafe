@@ -8,14 +8,26 @@ import de.uhi.enia.ridesafe.rides.recording.LocationSample
 import de.uhi.enia.ridesafe.rides.recording.MotionSample
 import de.uhi.enia.ridesafe.rides.recording.MotionSensor
 import kotlin.math.abs
-import kotlin.math.cos
 import kotlin.math.hypot
-import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * The detector as a streaming stage: fed samples in time order, it holds O(1) state and never sees
- * the ride as a whole. The per-sample arithmetic is identical to the batch version; what changed is
- * where the supporting values come from.
+ * the ride as a whole.
+ *
+ * The split into longitudinal and lateral happens entirely in the *device* frame: gravity is
+ * removed along the rotation matrix's vertical row and the horizontal remainder is projected onto
+ * the calibrated forward axis where it lives, in device coordinates. This is algebraically what
+ * the old world-frame projection onto `R·forward` computed — `(R·a)·normalize(R·f)` collapses to
+ * `a·normalize(f)` about the vertical — but stated in the frame where that is obvious, and where
+ * the rotation vector's magnetometer-fused yaw visibly cannot enter: yaw error rotates about the
+ * very vertical row being used. What is genuinely gone is the per-sample GPS-heading fallback for
+ * uncalibrated rides. That path projected world-rotated acceleration onto the interpolated course,
+ * which both carries the full yaw error and lags the car's real heading — on a replayed slalom the
+ * course froze straight while the car swung, misfiling the steering force as braking *and*
+ * acceleration, and sending an emergency stop's force into cornering. No axis now means no events;
+ * the loosened coherence bar (see [RideEventConfig.alignmentMinCoherence]) is the other half of
+ * that trade, keeping magnetically noisy but perfectly usable rides on the calibrated path.
  *
  * Orientation and gyro become "most recent" rather than "nearest", which at the recorded 50 Hz means
  * at most 20 ms of staleness instead of 10 — immaterial next to the ~0.02 g that a stale orientation
@@ -49,7 +61,6 @@ internal class StreamingDetector(
 
     // Reused every sample rather than reallocated; this runs once per acceleration reading.
     private val matrix = DoubleArray(9)
-    private val heading = DoubleArray(2)
     private val state = TrackState()
 
     private var latestRotation: MotionSample? = null
@@ -64,8 +75,8 @@ internal class StreamingDetector(
     private var seeded = false
 
     private val pendingNanos = LongArray(CAPACITY)
-    private val pendingEast = DoubleArray(CAPACITY)
-    private val pendingNorth = DoubleArray(CAPACITY)
+    private val pendingLongitudinal = DoubleArray(CAPACITY)
+    private val pendingLateral = DoubleArray(CAPACITY)
     private val pendingYaw = DoubleArray(CAPACITY)
     private val pendingGyroMagnitude = DoubleArray(CAPACITY)
     private var pendingCount = 0
@@ -103,7 +114,11 @@ internal class StreamingDetector(
      */
     fun dynamics(): RideDynamics = profile.result()
 
-    /** Resolve what only the orientation and gyro can give, and queue the rest for the next fix. */
+    /**
+     * Resolve what only the orientation, gyro and forward axis can give, and queue the rest for the
+     * next fix. The longitudinal/lateral split happens here, at the sample's own orientation — not
+     * at drain time, where [matrix] would already hold a newer rotation.
+     */
     private fun hold(sample: MotionSample) {
         val rotation = latestRotation ?: return
         if (sample.t - rotation.t > config.maxSampleAgeNanos) return
@@ -113,12 +128,45 @@ internal class StreamingDetector(
         val ax = sample.x.toDouble()
         val ay = sample.y.toDouble()
         val az = sample.z.toDouble()
+        // World-vertical in device coordinates — row 2 of the rotation matrix, the one row a yaw
+        // error cannot touch. Subtracting the vertical share removes gravity exactly and keeps the
+        // method slope-proof; the horizontal remainder stays in device coordinates throughout.
+        val upX = matrix[6]
+        val upY = matrix[7]
+        val upZ = matrix[8]
+        val vertical = ax * upX + ay * upY + az * upZ
+        val hx = ax - vertical * upX
+        val hy = ay - vertical * upY
+        val hz = az - vertical * upZ
+
+        // Project onto the calibrated forward axis, levelled into the horizontal plane, and onto
+        // its rightward perpendicular (forward × up). Without an axis both stay zero — there is no
+        // per-sample fallback on purpose: the old GPS-heading one manufactured events whenever the
+        // interpolated course lagged the car's real heading, which is exactly what a slalom does.
+        var longitudinal = 0.0
+        var lateral = 0.0
+        val axis = forward
+        if (axis != null) {
+            val axisDotUp = axis[0] * upX + axis[1] * upY + axis[2] * upZ
+            var fx = axis[0] - axisDotUp * upX
+            var fy = axis[1] - axisDotUp * upY
+            var fz = axis[2] - axisDotUp * upZ
+            val length = sqrt(fx * fx + fy * fy + fz * fz)
+            if (length > 1e-6) {
+                fx /= length
+                fy /= length
+                fz /= length
+                longitudinal = hx * fx + hy * fy + hz * fz
+                lateral = hx * (fy * upZ - fz * upY) + hy * (fz * upX - fx * upZ) + hz * (fx * upY - fy * upX)
+            }
+        }
+
         val gyro = latestGyro
         val gyroFresh = gyro != null && sample.t - gyro.t <= config.maxSampleAgeNanos
 
         pendingNanos[pendingCount] = sample.t
-        pendingEast[pendingCount] = matrix[0] * ax + matrix[1] * ay + matrix[2] * az
-        pendingNorth[pendingCount] = matrix[3] * ax + matrix[4] * ay + matrix[5] * az
+        pendingLongitudinal[pendingCount] = longitudinal
+        pendingLateral[pendingCount] = lateral
         pendingYaw[pendingCount] =
             if (!gyroFresh) 0.0 else verticalComponent(matrix, gyro!!.x.toDouble(), gyro.y.toDouble(), gyro.z.toDouble())
         pendingGyroMagnitude[pendingCount] =
@@ -131,12 +179,12 @@ internal class StreamingDetector(
         var kept = 0
         for (i in 0 until pendingCount) {
             if (pendingNanos[i] <= limit) {
-                process(pendingNanos[i], pendingEast[i], pendingNorth[i], pendingYaw[i], pendingGyroMagnitude[i])
+                process(pendingNanos[i], pendingLongitudinal[i], pendingLateral[i], pendingYaw[i], pendingGyroMagnitude[i])
                 continue
             }
             pendingNanos[kept] = pendingNanos[i]
-            pendingEast[kept] = pendingEast[i]
-            pendingNorth[kept] = pendingNorth[i]
+            pendingLongitudinal[kept] = pendingLongitudinal[i]
+            pendingLateral[kept] = pendingLateral[i]
             pendingYaw[kept] = pendingYaw[i]
             pendingGyroMagnitude[kept] = pendingGyroMagnitude[i]
             kept++
@@ -158,20 +206,7 @@ internal class StreamingDetector(
         val span = (b.t - a.t).toDouble()
         val f = if (span > 0) ((nanos - a.t) / span).coerceIn(0.0, 1.0) else 0.0
 
-        // Heading is interpolated as a unit vector, never as degrees: lerping angles is wrong across
-        // the 359°→1° wrap and would invent a backwards heading every time a ride crosses it.
-        val aRad = Math.toRadians(a.bearing.toDouble())
-        val bRad = Math.toRadians(b.bearing.toDouble())
-        var east = sin(aRad) + (sin(bRad) - sin(aRad)) * f
-        var north = cos(aRad) + (cos(bRad) - cos(aRad)) * f
-        val length = hypot(east, north)
-        if (length < 1e-6) return false // opposing headings cancelled out; direction is undefined here
-        east /= length
-        north /= length
-
         state.speedMps = a.speed + (b.speed - a.speed) * f
-        state.headEast = east
-        state.headNorth = north
         state.lat = a.lat + (b.lat - a.lat) * f
         state.lon = a.lon + (b.lon - a.lon) * f
         return true
@@ -179,37 +214,12 @@ internal class StreamingDetector(
 
     private fun process(
         nanos: Long,
-        east: Double,
-        north: Double,
+        longitudinal: Double,
+        lateral: Double,
         yawRate: Double,
         gyroMagnitude: Double,
     ) {
         val hasState = trackStateAt(nanos)
-
-        // Heading comes from the phone's own orientation whenever the forward axis could be
-        // calibrated: it updates at motion rate rather than 1 Hz, and it doesn't care what the GPS
-        // is doing. The interpolated GPS heading is only the fallback for a ride that never gave
-        // enough clean straight-line driving to calibrate from.
-        val hasHeading =
-            when {
-                forward != null -> {
-                    headingInto(matrix, forward, heading)
-                }
-
-                hasState -> {
-                    heading[0] = state.headEast
-                    heading[1] = state.headNorth
-                    true
-                }
-
-                else -> {
-                    false
-                }
-            }
-
-        // Longitudinal is along the heading (negative = braking), lateral is perpendicular to it.
-        val longitudinal = if (!hasHeading) 0.0 else east * heading[0] + north * heading[1]
-        val lateral = if (!hasHeading) 0.0 else east * heading[1] - north * heading[0]
 
         // One-pole low-pass, dt from the real timestamps — sensor delivery is never truly uniform.
         // Filtering runs even on gated samples so the state stays warm and doesn't jump when the
@@ -237,8 +247,8 @@ internal class StreamingDetector(
         val handling = gyroMagnitude > config.maxGyroRadPerSec
 
         // Speed for the gate is the lower of GPS and an estimate the IMU derives on its own. In any
-        // turn, lateral acceleration is v·ω (since a = v²/r and ω = v/r), so dividing the two gives
-        // speed with no GPS involved at all — which is the point, because GPS speed is least
+        // turn, lateral force is v·ω (since a = v²/r and ω = v/r), so dividing the two gives speed
+        // with no GPS involved at all — which is the point, because GPS speed is least
         // trustworthy exactly where parking happens. Only valid while genuinely turning; below
         // minYawForImuSpeed the division is by ~nothing, so GPS stands alone there.
         //
@@ -249,9 +259,9 @@ internal class StreamingDetector(
             if (abs(smoothedYawRate) >= config.minYawForImuSpeedRadPerS) abs(smoothedLateral) / abs(smoothedYawRate) else null
         val speed = if (!hasState) 0.0 else minOf(state.speedMps, imuSpeed ?: Double.MAX_VALUE)
 
-        if (!hasState || !hasHeading || speed < config.minSpeedMps || handling) {
-            // Below the speed gate or the phone is being handled: feed zero so any open event
-            // closes on its own timing rather than spanning the excluded stretch.
+        if (!hasState || forward == null || speed < config.minSpeedMps || handling) {
+            // Below the speed gate, no calibrated axis, or the phone is being handled: feed zero so
+            // any open event closes on its own timing rather than spanning the excluded stretch.
             braking.feed(nanos, 0.0, 0.0, null)
             accelerating.feed(nanos, 0.0, 0.0, null)
             cornering.feed(nanos, 0.0, 0.0, null)

@@ -140,11 +140,15 @@ data class DirectionThresholds(
  * speed and wrong when a fix jumps; lower it and a handful of fixes can set the axis for a whole ride.
  *
  * @property alignmentMinCoherence How strongly the calibration samples must agree, from 0 to 1
- * (default ≈18° mean scatter). Measured as the summed vector's length over the sample count: unit
- * vectors that agree sum to nearly the count, ones that scatter fall short. This is what catches the
+ * (default ≈37° mean scatter). Measured as the summed vector's length over the sample count: unit
+ * vectors that agree sum to nearly the count, ones that scatter fall short. Its job is catching the
  * phone having been moved or re-mounted mid-ride, since the axis is then no longer a single
- * constant. Raise it toward 1 for a stricter check and more fallbacks to GPS heading; lower it and
- * a scattered, meaningless average gets used as the vehicle's forward direction.
+ * constant. The bar is deliberately forgiving: detection projects in the device frame, where only
+ * the *mean* axis matters and per-sample scatter — mostly the rotation vector's magnetometer yaw
+ * wobbling against GPS course — averages out to a degree or two over hundreds of samples. Raise it
+ * and magnetically noisy but perfectly usable rides lose their axis (and with it all
+ * accelerometer-based detection); lower it and a genuinely re-mounted phone's meaningless average
+ * gets used as the vehicle's forward direction.
  */
 data class RideEventConfig(
     val braking: DirectionThresholds = DirectionThresholds(0.9, 0.65, 0.25, 0.45),
@@ -162,5 +166,5 @@ data class RideEventConfig(
     val alignmentMinSpeedMps: Double = 8.0,
     val alignmentMaxTurnDeg: Double = 5.0,
     val alignmentMinSamples: Int = 20,
-    val alignmentMinCoherence: Double = 0.95,
+    val alignmentMinCoherence: Double = 0.80,
 )
