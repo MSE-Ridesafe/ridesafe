@@ -280,7 +280,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
   (`RideDetailScreen`, public, KDoc says "extracted so a merged ride can embed it") vs
   `MergedJourneyCard`/`StopRow` (`MergedRideDetailScreen`, built separately anyway). The
   real delta is manage-mode checkboxes. Single biggest duplication in the rides package.
-- [ ] **P5.2** **[behavioral]** Make `map/MapPreview` accept an external
+- [x] **P5.2** **[behavioral]** Make `map/MapPreview` accept an external
   `CameraPositionState` so `SavedAddressFormScreen`'s hand-rolled map card can reuse it
   (today only the loading cover is shareable).
 - [x] **P5.3** **[behavioral]** `RidesViewModel` repository work → `rides/RideFileStore.kt`:
@@ -343,4 +343,4 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
 | 2026-08-30 | P2.1–P2.10, P2.13–P2.16 | Component library built (FormScaffold, DetailScaffold, EmptyState, ConfirmDestructiveDialog, DestructiveOutlinedButton, SectionTitle/SectionCard/CardDivider, BackNavIcon, NumberField, TimelineListRow, MapLoadingCover, AppSnackbarHost, ProgressRing, animatePlacement, EcoSection). P2.11/P2.12 rejected with reasons. |
 | 2026-08-30 | P3.1–P3.6, P3.8, P3.10–P3.13 | All screen files split; largest remaining UI file is SavedAddressFormScreen (658). P3.7 skipped (optional, file defensible). P3.9's deep split deferred to the P4.7 design checkpoint (P4.4/P4.5 landed). |
 | 2026-08-30 | P4.1–P4.5, P4.9–P4.14 | Logic out of composables done except the [behavioral] trio P4.6/P4.7/P4.8 — held for the checkpoint with Phase 5. |
-| 2026-08-30 | P4.6, P4.7, P4.8, P3.9, P5.1, P5.3 | Behavioral round, user-approved: onboarding writes → OnboardingViewModel; saved-address effects → rememberAddressSearch/rememberLocationRequester + deep split; FAB callback; RideFileStore (guards verbatim); merged journey's default view now renders the documented places timeline through JourneyTimeline (verified on the Pixel_9a emulator with real data, both modes). P5.2 and P5.4 remain open/deferred. |
+| 2026-08-30 | P4.6, P4.7, P4.8, P3.9, P5.1, P5.2, P5.3 | Behavioral round, user-approved: onboarding writes → OnboardingViewModel; saved-address effects → rememberAddressSearch/rememberLocationRequester + deep split; FAB callback; RideFileStore (guards verbatim); merged journey's default view now renders the documented places timeline through JourneyTimeline (verified on the Pixel_9a emulator with real data, both modes). P5.2 and P5.4 remain open/deferred. |

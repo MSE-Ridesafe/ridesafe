@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.CameraPositionState
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -51,12 +52,19 @@ private const val TRANSITION_SETTLE_MS = 350L
  * them cheap. Lite maps open the Google Maps app when tapped, so when [onExpand] is given the tap is
  * swallowed by an overlay and handed over instead — pair it with [FullScreenMapRequest] to open the
  * same content full-screen.
+ *
+ * [cameraPositionState] hands the camera to the caller (see [MapSurface]) — [framing] is ignored
+ * then and the card always has content, but the settle deferral and the single cover still apply.
+ * [liteMode] can be turned off for a preview whose camera keeps moving with caller state; a static
+ * snapshot cannot animate.
  */
 @Composable
 fun MapPreview(
     framing: List<LatLng>?,
     modifier: Modifier = Modifier,
     height: Dp = MapPreviewHeight,
+    cameraPositionState: CameraPositionState? = null,
+    liteMode: Boolean = true,
     onExpand: (() -> Unit)? = null,
     expandLabel: String? = null,
     empty: @Composable () -> Unit = {},
@@ -75,17 +83,18 @@ fun MapPreview(
     ) {
         Box(Modifier.fillMaxSize()) {
             when {
-                // Still waiting on the route or the transition: the cover below is the whole content.
-                framing == null || !settled -> {}
+                // Still waiting on the data or the transition: the cover below is the whole content.
+                !settled || (cameraPositionState == null && framing == null) -> {}
 
-                framing.isEmpty() -> {
+                cameraPositionState == null && framing != null && framing.isEmpty() -> {
                     empty()
                 }
 
                 else -> {
                     MapSurface(
-                        framing = framing,
-                        liteMode = true,
+                        framing = framing.orEmpty(),
+                        liteMode = liteMode,
+                        cameraPositionState = cameraPositionState,
                         onLoaded = { mapLoaded = true },
                         content = content,
                     )
@@ -101,7 +110,7 @@ fun MapPreview(
             // The one cover, alive from the card's first frame until the map reports in, so its
             // spinner never restarts between the waits. A framing that turns out empty drops it on
             // the spot instead — there is no map coming to fade over.
-            if (framing?.isEmpty() != true) {
+            if (cameraPositionState != null || framing?.isEmpty() != true) {
                 val coverAlpha by animateFloatAsState(if (mapLoaded) 0f else 1f, tween(400), label = "previewCover")
                 if (coverAlpha > 0f) {
                     MapLoadingCover(Modifier.alpha(coverAlpha))

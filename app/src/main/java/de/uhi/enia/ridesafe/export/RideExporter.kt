@@ -16,10 +16,10 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.getSystemService
 import de.uhi.enia.ridesafe.R
+import de.uhi.enia.ridesafe.backup.RideZipBackup
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.SavedAddress
-import de.uhi.enia.ridesafe.backup.RideZipBackup
 import de.uhi.enia.ridesafe.permissions.AppPermission
 import de.uhi.enia.ridesafe.util.UnitPrefs
 import kotlinx.coroutines.CancellationException
@@ -30,7 +30,7 @@ import java.io.File
 import java.time.LocalDate
 
 private const val EXPORT_PREFIX = "ridesafe_export_"
-private const val DOWNLOAD_FOLDER = "RideSafe"
+private const val DOWNLOAD_FOLDER = "ridesafe"
 
 // New id intentionally establishes LOW importance on devices that already created the earlier
 // development channel at DEFAULT; Android channel importance is immutable after first creation.

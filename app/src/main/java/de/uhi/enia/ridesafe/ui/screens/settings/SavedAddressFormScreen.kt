@@ -40,7 +40,6 @@ import de.uhi.enia.ridesafe.ui.components.ConfirmDestructiveDialog
 import de.uhi.enia.ridesafe.ui.components.DestructiveOutlinedButton
 import de.uhi.enia.ridesafe.ui.components.FormScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.ui.components.map.rememberIsOnline
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatShortDistance
 import kotlinx.coroutines.delay
@@ -108,7 +107,6 @@ fun SavedAddressFormScreen(
         pickerCameraPositionState.position = CameraPosition.fromLatLngZoom(center, zoom)
         showMapPicker = true
     }
-    val online = rememberIsOnline()
     // Recenter the camera when the point jumps via search / my-location (not on drag or tap).
     var recenterTo by remember { mutableStateOf<LatLng?>(null) }
     LaunchedEffect(recenterTo) {
@@ -215,7 +213,6 @@ fun SavedAddressFormScreen(
                 point = point,
                 radiusMeters = radius.toDouble(),
                 cameraPositionState = cameraPositionState,
-                online = online,
                 onOpenPicker = ::openMapPicker,
             )
 
@@ -268,7 +265,6 @@ fun SavedAddressFormScreen(
         PlaceMapPickerDialog(
             cameraPositionState = pickerCameraPositionState,
             radiusMeters = radius.toDouble(),
-            online = online,
             onConfirm = { selected ->
                 point = selected
                 recenterTo = selected
