@@ -25,13 +25,12 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import java.io.BufferedOutputStream
 import java.io.File
-import java.nio.file.Files
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 internal data class RideBackupSourceFile(
     val metadata: BackupFile,
-    val snapshot: File,
+    val file: File,
     val crc32: Long,
 )
 
@@ -39,28 +38,27 @@ internal class RideZipBackup(
     private val app: Application,
     private val db: RidesafeDatabase,
 ) {
+    /**
+     * The ZIP streams each ride's own file rather than a private copy of it, so the per-ride locks
+     * are held across the archive write instead of only across a copy pass. That is strictly less
+     * time than before — copying every selected file took about as long as writing the archive
+     * does, and it needed a second copy of the whole selection in the cache while it did.
+     */
     suspend fun write(
         destination: File,
         requests: List<RideExportRequest>,
     ) {
         val rideIds = requests.flatMap(RideExportRequest::rideIds).distinct()
         require(rideIds.isNotEmpty())
-        val snapshotDirectory = Files.createTempDirectory(app.cacheDir.toPath(), "ridesafe_backup_snapshot_").toFile()
-        try {
-            val archive =
-                RideDataCoordinator.withRides(rideIds) {
-                    val databaseSnapshot = readDatabaseSnapshot(rideIds)
-                    val sources = snapshotFiles(databaseSnapshot.rides, snapshotDirectory)
-                    val manifest = databaseSnapshot.toManifest(app, requests, sources.map { it.metadata })
-                    RideBackupArchiveValidator.validateManifest(manifest)
-                    RideBackupArchive(manifest, sources)
-                }
-            writeRideBackupZip(destination, archive.manifest, archive.sources)
-            currentCoroutineContext().ensureActive()
-            RideBackupArchiveValidator.validate(destination)
-        } finally {
-            snapshotDirectory.deleteRecursively()
+        RideDataCoordinator.withRides(rideIds) {
+            val databaseSnapshot = readDatabaseSnapshot(rideIds)
+            val sources = describeFiles(databaseSnapshot.rides)
+            val manifest = databaseSnapshot.toManifest(app, requests, sources.map { it.metadata })
+            RideBackupArchiveValidator.validateManifest(manifest)
+            writeRideBackupZip(destination, manifest, sources)
         }
+        currentCoroutineContext().ensureActive()
+        RideBackupArchiveValidator.validate(destination)
     }
 
     private suspend fun readDatabaseSnapshot(rideIds: List<Long>): RideBackupSnapshot =
@@ -90,51 +88,43 @@ internal class RideZipBackup(
             )
         }
 
-    private suspend fun snapshotFiles(
-        rides: List<Ride>,
-        directory: File,
-    ): List<RideBackupSourceFile> {
+    private suspend fun describeFiles(rides: List<Ride>): List<RideBackupSourceFile> {
         val sources = mutableListOf<RideBackupSourceFile>()
         for (ride in rides) {
             currentCoroutineContext().ensureActive()
             val rawSource = File(ridesDir(app), ride.sampleFile)
             if (!rawSource.isFile) throw RideBackupValidationException("Required raw samples are missing for ride ${ride.id}")
-            sources += snapshotIncludedFile(ride.id, RAW_ROLE, rawSource, directory)
+            sources += describeIncludedFile(ride.id, RAW_ROLE, rawSource)
             val routeSource = processedRouteFile(app, ride)
             sources +=
                 if (routeSource.isFile) {
-                    snapshotIncludedFile(ride.id, ROUTE_ROLE, routeSource, directory)
+                    describeIncludedFile(ride.id, ROUTE_ROLE, routeSource)
                 } else {
-                    RideBackupSourceFile(
-                        routeFileMetadata(ride.id, ABSENT, null, null),
-                        File(directory, "absent-${ride.id}.route.v$ROUTE_VERSION"),
-                        0,
-                    )
+                    // Never opened: an absent descriptor is filtered out before any entry is written.
+                    RideBackupSourceFile(routeFileMetadata(ride.id, ABSENT, null, null), routeSource, 0)
                 }
         }
         return sources
     }
 
-    private suspend fun snapshotIncludedFile(
+    /** Checks the file's framing first so a corrupt ride fails before the archive is written. */
+    private fun describeIncludedFile(
         rideId: Long,
         role: String,
         source: File,
-        directory: File,
     ): RideBackupSourceFile {
-        val target = File(directory, "${rideId}_$role")
-        copyFileCancellable(source, target)
         when (role) {
-            RAW_ROLE -> validateRawSamples(target.inputStream())
-            ROUTE_ROLE -> validateEncodedRoute(target.inputStream())
+            RAW_ROLE -> source.inputStream().use { validateRawSamples(it) }
+            ROUTE_ROLE -> source.inputStream().use(::validateEncodedRoute)
         }
-        val integrity = fileIntegrity(target)
+        val integrity = fileIntegrity(source)
         val metadata =
             if (role == RAW_ROLE) {
                 rawFileMetadata(rideId, integrity.size, integrity.sha256)
             } else {
                 routeFileMetadata(rideId, INCLUDED, integrity.size, integrity.sha256)
             }
-        return RideBackupSourceFile(metadata, target, integrity.crc32)
+        return RideBackupSourceFile(metadata, source, integrity.crc32)
     }
 }
 
@@ -147,11 +137,6 @@ internal fun requireFinishedSelectedRides(
     }
     require(rides.all { it.endedAtEpochMs != null }) { "Active rides cannot be exported" }
 }
-
-private data class RideBackupArchive(
-    val manifest: RideBackupManifest,
-    val sources: List<RideBackupSourceFile>,
-)
 
 private data class RideBackupSnapshot(
     val rides: List<Ride>,
@@ -236,7 +221,7 @@ internal suspend fun writeRideBackupZip(
                 entry.crc = source.crc32
             }
             zip.putNextEntry(entry)
-            source.snapshot
+            source.file
                 .inputStream()
                 .buffered()
                 .use { input -> copyCancellable(input, zip) }

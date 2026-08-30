@@ -81,11 +81,11 @@ An active ride (`endedAtEpochMs == null`) cannot be exported. Recording closes a
 writer before it finalizes that field, so an accepted raw file is no longer being appended.
 
 Analysis and export share per-ride locks. Export acquires all selected locks in ascending ID order,
-reads related database rows in one Room transaction, and copies raw/derived files into a private
-temporary snapshot while the locks remain held. ZIP creation uses only those snapshots. Route
-sidecars are published through an fsynced same-directory temporary file and atomic replacement, so
-readers see either the old complete sidecar or the new complete sidecar. Unrelated rides remain free
-to record or analyze concurrently.
+reads related database rows in one Room transaction, and then hashes and archives the rides' own
+files, all while the locks remain held — the archive streams those files rather than private copies
+of them. Route sidecars are published through an fsynced same-directory temporary file and atomic
+replacement, so readers see either the old complete sidecar or the new complete sidecar. Unrelated
+rides remain free to record or analyze concurrently.
 
 After writing, the production reference reader reopens the finished ZIP, verifies paths, schema,
 relationships, sizes, hashes, gzip framing, route decoding, entry set, and STORED handling. Only an
