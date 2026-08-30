@@ -174,7 +174,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
   `JourneyStop` + `JourneyCard` + `JourneyTimeline` + `JourneyStopRow` + `Connector`,
   ~200 lines — a coherent public component family), `AssociatedRefuelsCard.kt`
   (named, replacing the inline card); root keeps ~140.
-- [ ] **P3.5** `MergedRideDetailScreen.kt` (395) → `MergedJourneyCard.kt` (+ `StopRow`,
+- [x] **P3.5** `MergedRideDetailScreen.kt` (395) → `MergedJourneyCard.kt` (+ `StopRow`,
   owns manage-mode state); root keeps ~125. See P5.1 before polishing this.
 - [ ] **P3.6** `RefuelFormScreen.kt` (533) → `RefuelStateScreens.kt` (loading +
   unavailable + shared frame — separate nav destinations), `RefuelFormPickers.kt`
