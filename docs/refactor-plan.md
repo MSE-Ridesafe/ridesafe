@@ -239,9 +239,9 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
   `toFieldText`/`toMeters` (`RideFilterUi.kt:93-94,734-741`), `KM_PER_MILE` odometer
   round-trip (`VehicleFormScreen.kt:53,76-77,104`) as `odometerToDisplay`/`displayToKm`.
   Same constant currently lives in two files.
-- [ ] **P4.4** Recent-address-search history (`SavedAddressFormScreen.kt:110-144`,
+- [x] **P4.4** Recent-address-search history (`SavedAddressFormScreen.kt:110-144`,
   SharedPreferences + JSONArray IO in a UI file) → `util/AddressSearchHistory.kt`.
-- [ ] **P4.5** `findExistingSavedPlace` (`SavedAddressFormScreen.kt:146-164`, pure ADR-09
+- [x] **P4.5** `findExistingSavedPlace` (`SavedAddressFormScreen.kt:146-164`, pure ADR-09
   matching via `normalizeForMatching` + `haversineMeters`) → `data/SavedAddress.kt`
   beside `matchAddress`; add a unit test (currently untestable).
 - [ ] **P4.6** **[behavioral]** Onboarding Room writes (`OnboardingFlow.kt:258-273`:

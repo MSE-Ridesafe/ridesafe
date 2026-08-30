@@ -76,9 +76,9 @@ import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.DEFAULT_PLACE_ICON
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
+import de.uhi.enia.ridesafe.data.findExistingSavedPlace
 import de.uhi.enia.ridesafe.data.fixedIcon
 import de.uhi.enia.ridesafe.data.hasFixedLabel
-import de.uhi.enia.ridesafe.data.normalizeForMatching
 import de.uhi.enia.ridesafe.rides.processing.AddressSearchResult
 import de.uhi.enia.ridesafe.rides.processing.addressLines
 import de.uhi.enia.ridesafe.rides.processing.forwardGeocodeSuggestions
@@ -90,11 +90,13 @@ import de.uhi.enia.ridesafe.ui.components.FormScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.map.MapLoadingCover
 import de.uhi.enia.ridesafe.ui.components.map.rememberIsOnline
+import de.uhi.enia.ridesafe.util.SEARCH_SUGGESTION_LIMIT
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatShortDistance
 import de.uhi.enia.ridesafe.util.haversineMeters
+import de.uhi.enia.ridesafe.util.loadRecentAddressSearches
+import de.uhi.enia.ridesafe.util.recordRecentAddressSearch
 import kotlinx.coroutines.delay
-import org.json.JSONArray
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val RADIUS_MIN = 25f
@@ -103,60 +105,9 @@ private const val RADIUS_DEFAULT = 100
 private const val RADIUS_STEPS = 18 // 25 m increments across 25..500
 private const val SEARCH_DEBOUNCE_MS = 400L
 private const val SEARCH_MIN_LENGTH = 3
-private const val SEARCH_SUGGESTION_LIMIT = 5
-private const val SEARCH_HISTORY_PREFS = "saved_address_search"
-private const val SEARCH_HISTORY_KEY = "recent_queries"
 
 // Camera fallback when adding a place with no point yet (roughly the center of Germany).
 private val FALLBACK_CENTER = LatLng(51.1657, 10.4515)
-
-private fun loadRecentAddressSearches(context: android.content.Context): List<String> =
-    runCatching {
-        val encoded =
-            context
-                .getSharedPreferences(SEARCH_HISTORY_PREFS, android.content.Context.MODE_PRIVATE)
-                .getString(SEARCH_HISTORY_KEY, null) ?: return@runCatching emptyList()
-        val array = JSONArray(encoded)
-        (0 until array.length()).mapNotNull { array.optString(it).trim().ifBlank { null } }.take(SEARCH_SUGGESTION_LIMIT)
-    }.getOrDefault(emptyList())
-
-private fun recordRecentAddressSearch(
-    context: android.content.Context,
-    query: String,
-): List<String> {
-    val trimmed = query.trim()
-    val updated =
-        (listOf(trimmed) + loadRecentAddressSearches(context).filterNot { it.equals(trimmed, ignoreCase = true) })
-            .filter(String::isNotBlank)
-            .take(SEARCH_SUGGESTION_LIMIT)
-    context
-        .getSharedPreferences(SEARCH_HISTORY_PREFS, android.content.Context.MODE_PRIVATE)
-        .edit {
-            putString(SEARCH_HISTORY_KEY, JSONArray(updated).toString())
-        }
-    return updated
-}
-
-private fun findExistingSavedPlace(
-    result: AddressSearchResult,
-    savedAddresses: List<SavedAddress>,
-    editedId: Long?,
-): SavedAddress? {
-    val normalizedResult = normalizeForMatching(result.address)
-    return savedAddresses
-        .asSequence()
-        .filterNot { it.id == editedId }
-        .map { saved -> saved to haversineMeters(saved.latitude, saved.longitude, result.latitude, result.longitude) }
-        .filter { (saved, distance) ->
-            val sameAddress =
-                saved.address
-                    ?.let(::normalizeForMatching)
-                    ?.takeIf(String::isNotEmpty) == normalizedResult
-            sameAddress || distance <= 15.0
-        }.minByOrNull { it.second }
-        ?.first
-}
-
 
 /** Curated Material Symbols offered for a custom place (ADR-06); the full font is thousands of glyphs. */
 private val CURATED_PLACE_ICONS =
@@ -451,7 +402,7 @@ fun SavedAddressFormScreen(
                     } else {
                         searchResults.forEach { result ->
                             val lines = addressLines(result.address)
-                            val matched = findExistingSavedPlace(result, savedAddresses, existing?.id)
+                            val matched = findExistingSavedPlace(result.address, result.latitude, result.longitude, savedAddresses, existing?.id)
                             val distance =
                                 point?.let {
                                     formatShortDistance(

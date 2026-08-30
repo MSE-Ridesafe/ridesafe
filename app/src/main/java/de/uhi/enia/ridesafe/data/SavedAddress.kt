@@ -78,3 +78,29 @@ fun matchAddress(
  * identity — place labels and addresses, license plates, geocoder search results.
  */
 fun normalizeForMatching(value: String): String = value.filter(Char::isLetterOrDigit).uppercase(Locale.ROOT)
+
+/**
+ * The already-saved place a picked search result duplicates (ADR-09): same normalized address, or
+ * within 15 m of an existing center. [editedId] excludes the place being edited from its own check.
+ */
+fun findExistingSavedPlace(
+    address: String,
+    latitude: Double,
+    longitude: Double,
+    savedAddresses: List<SavedAddress>,
+    editedId: Long?,
+): SavedAddress? {
+    val normalizedResult = normalizeForMatching(address)
+    return savedAddresses
+        .asSequence()
+        .filterNot { it.id == editedId }
+        .map { saved -> saved to haversineMeters(saved.latitude, saved.longitude, latitude, longitude) }
+        .filter { (saved, distance) ->
+            val sameAddress =
+                saved.address
+                    ?.let(::normalizeForMatching)
+                    ?.takeIf(String::isNotEmpty) == normalizedResult
+            sameAddress || distance <= 15.0
+        }.minByOrNull { it.second }
+        ?.first
+}
