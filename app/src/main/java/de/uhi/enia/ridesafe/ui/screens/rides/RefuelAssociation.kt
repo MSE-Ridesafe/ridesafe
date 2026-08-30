@@ -15,12 +15,14 @@ enum class RefuelAssociationCheck {
     NOT_ALL_ATTACHED,
 }
 
+/**
+ * The two-part merge verdict for a mixed selection: which side blocks it, so the selection bar can
+ * name the right reason (MRG-08). The combined gate lives on [LogbookAction.enabled].
+ */
 data class MixedMergeCheck(
     val rideCheck: MergeCheck,
     val refuelCheck: RefuelAssociationCheck = RefuelAssociationCheck.OK,
-) {
-    val allowed get() = rideCheck == MergeCheck.OK && refuelCheck == RefuelAssociationCheck.OK
-}
+)
 
 fun checkAddRefuelsToRide(
     selectedRides: List<LogbookEntry>,
