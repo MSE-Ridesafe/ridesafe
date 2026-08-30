@@ -192,7 +192,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
   `PreferenceSettingsScreens.kt` (Theme/Unit/Currency), `RecordingSettingsScreens.kt`
   (AutoTrack/ReconnectGrace/MinRideLength), `SettingsLabels.kt` (@Composable label
   mappers); menu keeps `SettingsListItem` + `SettingsCategoryHeader` + `SettingsIcon`.
-- [ ] **P3.9** `SavedAddressFormScreen.kt` (780; a 584-line composable, worst
+- [x] **P3.9** `SavedAddressFormScreen.kt` (780; a 584-line composable, worst
   per-function offender) → `SavedAddressFormState.kt`
   (`rememberSavedAddressFormState`: state + effects + `locate()`/`save()`),
   `AddressSearchSection.kt` (field + results surface), `PlaceMapPickerDialog.kt`
@@ -247,7 +247,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
 - [x] **P4.6** **[behavioral]** Onboarding Room writes (`OnboardingFlow.kt:258-273`:
   `vehicleDao.addVehicle/updateVehicle` from `rememberCoroutineScope` + double-insert
   latch) → small onboarding VM or reuse `GarageViewModel`.
-- [ ] **P4.7** **[behavioral]** `SavedAddressFormScreen` platform calls out of
+- [x] **P4.7** **[behavioral]** `SavedAddressFormScreen` platform calls out of
   composition: `locate()`/`requestLocate()` (FusedLocationProvider callbacks), geocode
   debounce + distance sort → the P3.9 state holder; sort key is domain logic.
 - [x] **P4.8** **[behavioral]** `RecordRideFab` calls `RideRecordingService.start` +
