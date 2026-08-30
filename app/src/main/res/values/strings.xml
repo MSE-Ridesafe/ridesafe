@@ -171,6 +171,10 @@
     <string name="garage_primary">Primary</string>
     <string name="garage_vehicle_image">Vehicle image</string>
     <string name="vehicle_choose_image">Choose vehicle photo</string>
+    <string name="vehicle_photo_edit">Edit vehicle photo</string>
+    <string name="vehicle_photo_sheet_title">Vehicle photo</string>
+    <string name="vehicle_photo_replace">Replace photo</string>
+    <string name="vehicle_photo_remove">Remove photo</string>
     <string name="garage_primary_marker">Primary vehicle</string>
 
     <string name="vehicle_nickname">Nickname</string>

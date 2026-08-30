@@ -169,6 +169,10 @@
     <string name="garage_primary">Primär</string>
     <string name="garage_vehicle_image">Fahrzeugbild</string>
     <string name="vehicle_choose_image">Fahrzeugfoto auswählen</string>
+    <string name="vehicle_photo_edit">Fahrzeugfoto bearbeiten</string>
+    <string name="vehicle_photo_sheet_title">Fahrzeugfoto</string>
+    <string name="vehicle_photo_replace">Foto ersetzen</string>
+    <string name="vehicle_photo_remove">Foto entfernen</string>
     <string name="garage_primary_marker">Primärfahrzeug</string>
 
     <string name="vehicle_nickname">Spitzname</string>
