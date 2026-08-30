@@ -283,7 +283,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
 - [ ] **P5.2** **[behavioral]** Make `map/MapPreview` accept an external
   `CameraPositionState` so `SavedAddressFormScreen`'s hand-rolled map card can reuse it
   (today only the loading cover is shareable).
-- [ ] **P5.3** **[behavioral]** `RidesViewModel` repository work → `rides/RideFileStore.kt`:
+- [x] **P5.3** **[behavioral]** `RidesViewModel` repository work → `rides/RideFileStore.kt`:
   file deletion with canonical-path traversal guards (`safeRideFile:457`,
   `safePrivateFile:466`), raw-track reading (`route:582`), geocode backfill
   (`fillAddresses:592`). Security-relevant path checks — refactor with care, own commit,

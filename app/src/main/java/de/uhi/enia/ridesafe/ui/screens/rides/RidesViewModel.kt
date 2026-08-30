@@ -23,13 +23,10 @@ import de.uhi.enia.ridesafe.export.RideExportFormat
 import de.uhi.enia.ridesafe.export.RideExportRequest
 import de.uhi.enia.ridesafe.export.RideExporter
 import de.uhi.enia.ridesafe.rides.RideDataCoordinator
+import de.uhi.enia.ridesafe.rides.RideFileStore
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisPipeline
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
-import de.uhi.enia.ridesafe.rides.processing.processedRouteFile
-import de.uhi.enia.ridesafe.rides.processing.readProcessedRoute
 import de.uhi.enia.ridesafe.rides.processing.reverseGeocode
-import de.uhi.enia.ridesafe.rides.recording.readRideLocations
-import de.uhi.enia.ridesafe.rides.recording.ridesDir
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,8 +39,6 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
 
 enum class LogbookOperation { MERGED, ATTACHED, DETACHED, DELETED }
 
@@ -75,6 +70,7 @@ class RidesViewModel(
     private val refuelDao = db.refuelDao()
 
     private val pipeline = RideAnalysisPipeline(app, db)
+    private val fileStore = RideFileStore(app)
     private val rideExporter = RideExporter(app)
 
     private val exportController =
@@ -395,37 +391,8 @@ class RidesViewModel(
 
             // Database rows are the source of truth. Clean up their private sample and derived
             // files while the same per-ride locks used by analysis/export are still held.
-            val directory = ridesDir(getApplication())
-            ridesToDelete.forEach { ride ->
-                runCatching {
-                    safeRideFile(directory, ride.sampleFile)?.delete()
-                    safePrivateFile(directory, processedRouteFile(getApplication(), ride))?.delete()
-                }.onFailure {
-                    // The database deletion has committed, so a stale private sidecar must not turn
-                    // a successful user action into a misleading failure. It is harmless and can be
-                    // removed by later maintenance.
-                    Log.w("LogbookDelete", "Could not clean private files for ride ${ride.id}", it)
-                }
-            }
+            ridesToDelete.forEach(fileStore::deletePrivateFiles)
         }
-    }
-
-    private fun safeRideFile(
-        directory: File,
-        relativeName: String,
-    ): File? {
-        val root = directory.canonicalFile
-        val candidate = File(root, relativeName).canonicalFile
-        return candidate.takeIf { it.parentFile == root }
-    }
-
-    private fun safePrivateFile(
-        directory: File,
-        file: File,
-    ): File? {
-        val root = directory.canonicalFile
-        val candidate = file.canonicalFile
-        return candidate.takeIf { it.parentFile == root }
     }
 
     fun consumeLogbookOperationResult() {
@@ -531,18 +498,8 @@ class RidesViewModel(
         return entries.sortedByDescending { it.sortEpochMs }
     }
 
-    /**
-     * The route to draw for a ride (off the main thread): the processed, RDP-simplified sidecar when
-     * it exists (fast path — no raw-file read), else the raw fixes for a ride not processed yet.
-     */
-    suspend fun route(ride: Ride): List<LatLng> =
-        withContext(Dispatchers.IO) {
-            readProcessedRoute(processedRouteFile(getApplication(), ride))
-                ?: run {
-                    val file = File(ridesDir(getApplication()), ride.sampleFile)
-                    if (file.exists()) readRideLocations(file).map { LatLng(it.lat, it.lon) } else emptyList()
-                }
-        }
+    /** See [RideFileStore.route] — the sidecar fast path, else the raw fixes. */
+    suspend fun route(ride: Ride): List<LatLng> = fileStore.route(ride)
 
     /** Reverse-geocode whichever endpoints lack an address and persist; a no-op if nothing resolves. */
     private suspend fun fillAddresses(ride: Ride) {
