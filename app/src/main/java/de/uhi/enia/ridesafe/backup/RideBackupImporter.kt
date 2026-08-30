@@ -91,6 +91,7 @@ internal class RideBackupImporter(
     private val app: Application,
     private val db: RidesafeDatabase = RidesafeDatabase.getInstance(app),
 ) {
+    /** Preview only, so the cheap record check: the deep one runs before anything is written. */
     suspend fun inspect(uri: Uri): RideBackupImportPreview =
         withLocalArchive(uri) { archive ->
             val manifest = RideBackupArchiveValidator.validate(archive)
@@ -101,7 +102,7 @@ internal class RideBackupImporter(
 
     internal suspend fun importArchive(archive: File): RideBackupImportResult =
         withContext(Dispatchers.IO) {
-            val manifest = RideBackupArchiveValidator.validate(archive)
+            val manifest = RideBackupArchiveValidator.validate(archive, decodeRecords = true)
             val staging = Files.createTempDirectory(app.cacheDir.toPath(), "ridesafe_import_").toFile()
             val published = mutableListOf<File>()
             try {

@@ -13,7 +13,15 @@ import java.util.zip.ZipFile
 
 /** Reference reader used after every export and by tests as the contract a future importer follows. */
 internal object RideBackupArchiveValidator {
-    fun validate(archive: File): RideBackupManifest {
+    /**
+     * @param decodeRecords deserialize every raw sample record rather than only checking the gzip
+     * stream and its record framing. See [validateRawSamples] for why that is off by default; only
+     * the restore path, whose archive came from another device, turns it on.
+     */
+    fun validate(
+        archive: File,
+        decodeRecords: Boolean = false,
+    ): RideBackupManifest {
         try {
             ZipFile(archive).use { zip ->
                 val entries = zip.entries().asSequence().toList()
@@ -38,7 +46,7 @@ internal object RideBackupArchiveValidator {
                     if (integrity.size != descriptor.sizeBytes) fail("Byte-size mismatch for ${descriptor.path}")
                     if (!integrity.sha256.equals(descriptor.sha256, ignoreCase = true)) fail("SHA-256 mismatch for ${descriptor.path}")
                     when (descriptor.role) {
-                        RAW_ROLE -> zip.getInputStream(entry).use(::validateRawSamples)
+                        RAW_ROLE -> zip.getInputStream(entry).use { validateRawSamples(it, decodeRecords) }
                         ROUTE_ROLE -> zip.getInputStream(entry).use(::validateEncodedRoute)
                     }
                 }
@@ -188,20 +196,71 @@ internal object RideBackupArchiveValidator {
     }
 }
 
-internal fun validateRawSamples(input: InputStream) {
+/**
+ * Checks that [input] is a complete gzip stream of non-blank NDJSON records. Draining the stream to
+ * its end is what verifies gzip's CRC32 and length trailer, so a file truncated by a crash
+ * mid-recording is still caught.
+ *
+ * The records are deliberately *not* deserialized unless [decodeRecords] asks for it. [RideSample]
+ * is a sealed interface, and kotlinx.serialization decodes a polymorphic value by first
+ * materializing it into a JsonElement tree to read the `ty` discriminator — about a kilobyte of
+ * garbage per 110-byte record. A 93-ride export is some 11 million records, so decoding them into
+ * values nothing reads cost tens of GB of allocation and minutes of GC. Scanning the bytes the
+ * drain has to read anyway costs nothing on top of it.
+ *
+ * Import passes `decodeRecords = true`: it is the one caller whose archive did not come from this
+ * device's own recorder, and it is a single pass over a file the user picked rather than over the
+ * whole logbook.
+ */
+internal fun validateRawSamples(
+    input: InputStream,
+    decodeRecords: Boolean = false,
+) {
     try {
-        GZIPInputStream(input).bufferedReader(Charsets.UTF_8).useLines { lines ->
-            lines.forEachIndexed { index, line ->
-                if (line.isBlank()) fail("Raw sample record ${index + 1} is blank")
-                runCatching { backupJson.decodeFromString<RideSample>(line) }.getOrElse {
-                    throw RideBackupValidationException("Raw sample record ${index + 1} is invalid", it)
-                }
-            }
+        GZIPInputStream(input).use { gzip ->
+            if (decodeRecords) decodeRawSampleRecords(gzip) else scanRawSampleRecords(gzip)
         }
     } catch (failure: RideBackupValidationException) {
         throw failure
     } catch (failure: Exception) {
         throw RideBackupValidationException("Raw sample gzip stream is corrupt", failure)
+    }
+}
+
+private const val SPACE = ' '.code.toByte()
+private const val NEWLINE = '\n'.code.toByte()
+
+/** Matches [String.isBlank] closely enough: any byte above space, and every non-ASCII byte, is content. */
+private fun isContent(byte: Byte) = byte < 0 || byte > SPACE
+
+private fun scanRawSampleRecords(input: InputStream) {
+    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+    var record = 1
+    var blank = true
+    while (true) {
+        val read = input.read(buffer)
+        if (read < 0) return
+        for (index in 0 until read) {
+            val byte = buffer[index]
+            if (byte == NEWLINE) {
+                if (blank) fail("Raw sample record $record is blank")
+                record++
+                blank = true
+            } else if (isContent(byte)) {
+                blank = false
+            }
+        }
+    }
+}
+
+private fun decodeRawSampleRecords(input: InputStream) {
+    input.bufferedReader(Charsets.UTF_8).useLines { lines ->
+        lines.forEachIndexed { index, line ->
+            if (line.isBlank()) fail("Raw sample record ${index + 1} is blank")
+            runCatching { backupJson.decodeFromString<RideSample>(line) }.getOrElse {
+                throw RideBackupValidationException("Raw sample record ${index + 1} is invalid", it)
+            }
+        }
     }
 }
 

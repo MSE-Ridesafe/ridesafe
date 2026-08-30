@@ -52,7 +52,11 @@ data/rides/{rideArchiveId}/route.v{routeProcessingVersion}
 Paths must be relative, slash-separated, normalized ASCII paths without empty, `.` or `..`
 components. Duplicate paths and unlisted ZIP entries are invalid.
 
-Raw samples are `required_source`; their absence or invalid gzip/NDJSON makes export fail. A route is
+Raw samples are `required_source`; their absence, an invalid gzip stream or a blank NDJSON record
+makes export fail. Export checks record *framing* only: the reader that writes an archive already
+knows the file came from this device's own recorder, so it drains the gzip stream — which verifies
+its CRC32 and length trailer, catching a file truncated by a crash — and rejects blank records,
+without deserializing each one. Restore deserializes every record; see below. A route is
 `optional_regenerable_derived`: its descriptor is always present, with `status: "absent"`, null size
 and null hash when no sidecar exists. Every included file carries its compressed/on-disk byte size
 and lowercase SHA-256. Already-compressed raw `.gz` files use ZIP method STORED. ZIP CRC is additional
@@ -84,13 +88,17 @@ readers see either the old complete sidecar or the new complete sidecar. Unrelat
 to record or analyze concurrently.
 
 After writing, the production reference reader reopens the finished ZIP, verifies paths, schema,
-relationships, sizes, hashes, gzip/NDJSON, route decoding, entry set, and STORED handling. Only an
+relationships, sizes, hashes, gzip framing, route decoding, entry set, and STORED handling. Only an
 archive accepted by that reader may be published to Downloads.
 
 ## Restore behavior
 
 Import is additive for rides and refuels: it never replaces existing rides or settings. The selected content URI is copied
-to private storage and the same reference reader validates it again immediately before restoration.
+to private storage and the same reference reader validates it again immediately before restoration,
+there with per-record deserialization enabled: an archive from another device is the one case where
+a malformed record has not already been vouched for by this device's recorder. The import *preview*
+uses the cheap framing check, so picking a large archive stays responsive; a record that fails to
+deserialize is caught before anything is written.
 Every archive-local vehicle, address, ride, event and refuel ID is mapped to a retained or newly
 allocated Room ID; merge-group membership and all nullable references are rebuilt from those maps.
 
