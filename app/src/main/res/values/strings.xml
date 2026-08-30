@@ -329,6 +329,7 @@
     <string name="action_done">Done</string>
     <string name="ride_stop_label">Stop %1$d</string>
     <string name="ride_merged_unmerge_hint">Only the first or last stops can be removed.</string>
+    <string name="ride_waypoint_departed">Left %1$s · parked %2$s</string>
     <string name="ride_action_unmerge_all">Unmerge all</string>
     <string name="ride_action_unmerge_selected">Unmerge (%1$d)</string>
 

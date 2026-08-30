@@ -2,6 +2,7 @@
 
 package de.uhi.enia.ridesafe.ui.screens.rides
 
+import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,6 +43,7 @@ import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.SectionTitle
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
+import de.uhi.enia.ridesafe.util.formatDurationMs
 import de.uhi.enia.ridesafe.util.formatTimeOfDay
 
 /**
@@ -103,9 +105,32 @@ internal fun MergedJourneyCard(
                 }
             }
 
-            // The journey reads the same in both modes, so it is one list either way; manage mode
-            // just adds the end-only peel checkboxes (MRG-11) and a per-refuel detach.
-            if (managing && selectable) {
+            if (!managing) {
+                // The documented places view (MRG-07: the boundary is one place, not a drawn
+                // connection): origin, each parked waypoint with its arrival time and a
+                // "left … · parked …" note, then the destination — the same timeline a single
+                // ride's journey card draws, so the two screens read alike.
+                JourneyTimeline(
+                    stops = mergedJourneyStops(stops, context),
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                )
+                refuels.sortedBy { it.refuel.timestampEpochMs }.forEach { row ->
+                    CardDivider()
+                    RefuelTimelineRow(
+                        row = row,
+                        selectionMode = false,
+                        selected = false,
+                        onClick = { onOpenRefuel(row.refuel.id) },
+                        onLongClick = {},
+                        showVehicle = false,
+                    )
+                }
+                return@Column
+            }
+
+            // Manage mode (MRG-04/MRG-11): the trip as its legs, each peelable from the ends only,
+            // and each refuel detachable on its own.
+            if (selectable) {
                 Text(
                     text = stringResource(R.string.ride_merged_unmerge_hint),
                     style = MaterialTheme.typography.bodySmall,
@@ -133,7 +158,7 @@ internal fun MergedJourneyCard(
                                     ride.endedAtEpochMs?.let { append(" – ").append(formatTimeOfDay(context, it)) }
                                     ride.distanceMeters?.let { append("  •  ").append(formatDistance(it, unitSystem)) }
                                 },
-                            showCheckbox = managing && selectable,
+                            showCheckbox = selectable,
                             checked = index in selected,
                             checkboxEnabled = canToggle,
                             onToggle = {
@@ -156,19 +181,16 @@ internal fun MergedJourneyCard(
                             }
                             // A refuel is anchored to a stop, not to the merge: detaching one leaves
                             // the trip merged instead of forcing an un-merge to get rid of it.
-                            if (managing) {
-                                IconButton(onClick = { onDetachRefuel(child.row.refuel.id) }) {
-                                    MaterialSymbol(
-                                        symbolName = "link_off",
-                                        contentDescription = stringResource(R.string.ride_action_detach_refuel),
-                                    )
-                                }
+                            IconButton(onClick = { onDetachRefuel(child.row.refuel.id) }) {
+                                MaterialSymbol(
+                                    symbolName = "link_off",
+                                    contentDescription = stringResource(R.string.ride_action_detach_refuel),
+                                )
                             }
                         }
                     }
                 }
             }
-            if (!managing) return@Column
 
             Row(
                 modifier =
@@ -249,3 +271,34 @@ private fun StopRow(
         }
     }
 }
+
+/**
+ * A merged trip as the places its driver was at (MRG-07): origin, each parked waypoint with its
+ * arrival time and a "left … · parked …" note, then the destination. Stops are chronological;
+ * a negative gap (clock weirdness across segments) parks for zero rather than going negative.
+ */
+private fun mergedJourneyStops(
+    stops: List<Ride>,
+    context: Context,
+): List<JourneyStop> =
+    buildList {
+        val first = stops.first()
+        add(JourneyStop(address = first.startAddress, time = formatTimeOfDay(context, first.startedAtEpochMs)))
+        stops.forEachIndexed { index, ride ->
+            val arrival = ride.endedAtEpochMs?.let { formatTimeOfDay(context, it) }
+            val note =
+                if (index < stops.lastIndex) {
+                    val next = stops[index + 1]
+                    ride.endedAtEpochMs?.let { end ->
+                        context.getString(
+                            R.string.ride_waypoint_departed,
+                            formatTimeOfDay(context, next.startedAtEpochMs),
+                            formatDurationMs((next.startedAtEpochMs - end).coerceAtLeast(0L)),
+                        )
+                    }
+                } else {
+                    null
+                }
+            add(JourneyStop(address = ride.endAddress, time = arrival, note = note))
+        }
+    }

@@ -276,7 +276,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
 
 ## Phase 5 — Deliberate consolidations (each is its own design decision)
 
-- [ ] **P5.1** **[behavioral]** Reconcile the two journey renderers: `JourneyTimeline`
+- [x] **P5.1** **[behavioral]** Reconcile the two journey renderers: `JourneyTimeline`
   (`RideDetailScreen`, public, KDoc says "extracted so a merged ride can embed it") vs
   `MergedJourneyCard`/`StopRow` (`MergedRideDetailScreen`, built separately anyway). The
   real delta is manage-mode checkboxes. Single biggest duplication in the rides package.
