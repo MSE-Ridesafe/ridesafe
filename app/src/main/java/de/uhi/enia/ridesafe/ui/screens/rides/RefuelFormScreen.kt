@@ -2,34 +2,13 @@
 
 package de.uhi.enia.ridesafe.ui.screens.rides
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,82 +22,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Refuel
 import de.uhi.enia.ridesafe.data.Vehicle
-import de.uhi.enia.ridesafe.data.displayTitle
 import de.uhi.enia.ridesafe.ui.components.FormScaffold
-import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.NumberField
 import de.uhi.enia.ridesafe.util.currentCurrencySetting
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formattingLocale
 import de.uhi.enia.ridesafe.util.usesMetric
-import java.text.DateFormat
 import java.text.NumberFormat
-import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.ZoneId
-import java.time.ZoneOffset
-import java.util.Date
-import java.util.Locale
-
-@Composable
-fun RefuelLoadingScreen(
-    modifier: Modifier = Modifier,
-    onBack: () -> Unit,
-    showBack: Boolean = true,
-) {
-    RefuelStateScreen(onBack = onBack, showBack = showBack, modifier = modifier) { CircularProgressIndicator() }
-}
-
-@Composable
-fun RefuelUnavailableScreen(
-    modifier: Modifier = Modifier,
-    onBack: () -> Unit,
-    showBack: Boolean = true,
-) {
-    RefuelStateScreen(onBack = onBack, showBack = showBack, modifier = modifier) {
-        Text(
-            stringResource(R.string.refuel_not_found),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun RefuelStateScreen(
-    onBack: () -> Unit,
-    showBack: Boolean,
-    modifier: Modifier,
-    content: @Composable () -> Unit,
-) {
-    Scaffold(
-        modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.refuel_edit)) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                navigationIcon = {
-                    if (showBack) {
-                        IconButton(onClick = onBack) {
-                            MaterialSymbol(symbolName = "close", contentDescription = stringResource(R.string.action_back))
-                        }
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier.padding(innerPadding).fillMaxSize().padding(32.dp),
-            contentAlignment = Alignment.Center,
-        ) { content() }
-    }
-}
 
 @Composable
 fun RefuelFormScreen(
@@ -201,37 +116,21 @@ fun RefuelFormScreen(
         saveFailed = false
         val vehicle = vehicles.firstOrNull { it.id == selectedVehicleId }
         if (vehicle == null || !fuelValid || !totalValid || !odometerValid) return
-        val timestamp =
-            runCatching {
-                LocalDate
-                    .ofEpochDay(dateEpochDay)
-                    .atTime(hour, minute)
-                    .atZone(ZoneId.systemDefault())
-                    .toInstant()
-                    .toEpochMilli()
-            }.getOrNull() ?: return
-        saving = true
         val edited =
-            existing?.copy(
+            refuelFromForm(
+                existing = existing,
                 vehicleId = vehicle.id,
-                timestampEpochMs = timestamp,
+                dateEpochDay = dateEpochDay,
+                hour = hour,
+                minute = minute,
                 fuelAmountMilliliters = fuelMilliliters,
                 totalPriceMinor = totalMinor,
                 currencyCode = currency.currencyCode,
                 odometerMeters = odometerMeters,
                 isFullTank = fullTank,
-            ) ?: Refuel(
-                vehicleId = vehicle.id,
-                timestampEpochMs = timestamp,
-                fuelAmountMilliliters = fuelMilliliters,
-                totalPriceMinor = totalMinor,
-                currencyCode = currency.currencyCode,
-                odometerMeters = odometerMeters,
-                isFullTank = fullTank,
-            )
-        onSave(
-            edited,
-        ) { result ->
+            ) ?: return
+        saving = true
+        onSave(edited) { result ->
             saving = false
             saveFailed = result.isFailure
             if (result.isSuccess) onBack()
@@ -311,173 +210,22 @@ fun RefuelFormScreen(
     }
 
     if (showDatePicker) {
-        val pickerState =
-            rememberDatePickerState(
-                initialSelectedDateMillis =
-                    LocalDate
-                        .ofEpochDay(dateEpochDay)
-                        .atStartOfDay(ZoneOffset.UTC)
-                        .toInstant()
-                        .toEpochMilli(),
-            )
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        pickerState.selectedDateMillis?.let {
-                            dateEpochDay =
-                                Instant
-                                    .ofEpochMilli(it)
-                                    .atZone(ZoneOffset.UTC)
-                                    .toLocalDate()
-                                    .toEpochDay()
-                        }
-                        showDatePicker = false
-                    },
-                ) { Text(stringResource(R.string.action_done)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.action_cancel)) }
-            },
-        ) { DatePicker(state = pickerState) }
+        RefuelDatePickerDialog(
+            initialEpochDay = dateEpochDay,
+            onPick = { dateEpochDay = it },
+            onDismiss = { showDatePicker = false },
+        )
     }
 
     if (showTimePicker) {
-        val pickerState =
-            rememberTimePickerState(
-                initialHour = hour,
-                initialMinute = minute,
-                is24Hour =
-                    android.text.format.DateFormat
-                        .is24HourFormat(context),
-            )
-        AlertDialog(
-            onDismissRequest = { showTimePicker = false },
-            text = { TimePicker(state = pickerState) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        hour = pickerState.hour
-                        minute = pickerState.minute
-                        showTimePicker = false
-                    },
-                ) { Text(stringResource(R.string.action_done)) }
+        RefuelTimePickerDialog(
+            hour = hour,
+            minute = minute,
+            onPick = { h, m ->
+                hour = h
+                minute = m
             },
-            dismissButton = {
-                TextButton(onClick = { showTimePicker = false }) { Text(stringResource(R.string.action_cancel)) }
-            },
-        )
-    }
-}
-
-@Composable
-private fun VehicleDropdown(
-    vehicles: List<Vehicle>,
-    selected: Vehicle?,
-    onSelected: (Vehicle) -> Unit,
-    isError: Boolean,
-    unavailableVehicle: Boolean,
-    vehicleLocked: Boolean,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { if (vehicles.isNotEmpty() && !vehicleLocked) expanded = it },
-    ) {
-        OutlinedTextField(
-            value = selected?.displayTitle().orEmpty(),
-            onValueChange = {},
-            readOnly = true,
-            enabled = vehicles.isNotEmpty() && !vehicleLocked,
-            label = { Text(stringResource(R.string.refuel_vehicle)) },
-            placeholder = {
-                Text(
-                    stringResource(
-                        if (unavailableVehicle) R.string.refuel_vehicle_unavailable else R.string.refuel_vehicle_required,
-                    ),
-                )
-            },
-            isError = isError,
-            supportingText =
-                if (vehicleLocked) {
-                    { Text(stringResource(R.string.refuel_vehicle_locked)) }
-                } else if (vehicles.isEmpty() || isError) {
-                    {
-                        Text(
-                            stringResource(
-                                if (unavailableVehicle) {
-                                    R.string.refuel_vehicle_unavailable_select
-                                } else {
-                                    R.string.refuel_vehicle_required
-                                },
-                            ),
-                        )
-                    }
-                } else {
-                    null
-                },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            vehicles.forEach { vehicle ->
-                DropdownMenuItem(
-                    text = { Text(vehicle.displayTitle()) },
-                    onClick = {
-                        onSelected(vehicle)
-                        expanded = false
-                    },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun DateTimeFields(
-    date: LocalDate,
-    time: LocalTime,
-    locale: Locale,
-    onDateClick: () -> Unit,
-    onTimeClick: () -> Unit,
-) {
-    val dateText =
-        DateFormat
-            .getDateInstance(
-                DateFormat.MEDIUM,
-                locale,
-            ).format(Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant()))
-    val timeText =
-        DateFormat
-            .getTimeInstance(
-                DateFormat.SHORT,
-                locale,
-            ).format(Date.from(date.atTime(time).atZone(ZoneId.systemDefault()).toInstant()))
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedTextField(
-            value = dateText,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(stringResource(R.string.refuel_date)) },
-            trailingIcon = {
-                IconButton(onClick = onDateClick) {
-                    MaterialSymbol(symbolName = "calendar_month", contentDescription = stringResource(R.string.refuel_date))
-                }
-            },
-            modifier = Modifier.weight(1f).clickable(onClick = onDateClick),
-        )
-        OutlinedTextField(
-            value = timeText,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(stringResource(R.string.refuel_time)) },
-            trailingIcon = {
-                IconButton(onClick = onTimeClick) {
-                    MaterialSymbol(symbolName = "schedule", contentDescription = stringResource(R.string.refuel_time))
-                }
-            },
-            modifier = Modifier.weight(1f).clickable(onClick = onTimeClick),
+            onDismiss = { showTimePicker = false },
         )
     }
 }

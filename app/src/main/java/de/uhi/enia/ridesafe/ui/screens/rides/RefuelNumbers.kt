@@ -7,6 +7,7 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.DecimalFormatSymbols
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Currency
 import java.util.Locale
@@ -130,3 +131,48 @@ private fun exactScaledLong(
     runCatching {
         value.multiply(factor).setScale(0, RoundingMode.UNNECESSARY).longValueExact()
     }.getOrNull()
+
+/**
+ * The outbound half of the form maths: a validated form's values as a [Refuel] row. Null when a
+ * required number is missing or the date/time cannot be composed in the device zone.
+ */
+fun refuelFromForm(
+    existing: Refuel?,
+    vehicleId: Long,
+    dateEpochDay: Long,
+    hour: Int,
+    minute: Int,
+    fuelAmountMilliliters: Long?,
+    totalPriceMinor: Long?,
+    currencyCode: String,
+    odometerMeters: Long?,
+    isFullTank: Boolean,
+): Refuel? {
+    if (fuelAmountMilliliters == null || totalPriceMinor == null || odometerMeters == null) return null
+    val timestamp =
+        runCatching {
+            LocalDate
+                .ofEpochDay(dateEpochDay)
+                .atTime(hour, minute)
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+        }.getOrNull() ?: return null
+    return existing?.copy(
+        vehicleId = vehicleId,
+        timestampEpochMs = timestamp,
+        fuelAmountMilliliters = fuelAmountMilliliters,
+        totalPriceMinor = totalPriceMinor,
+        currencyCode = currencyCode,
+        odometerMeters = odometerMeters,
+        isFullTank = isFullTank,
+    ) ?: Refuel(
+        vehicleId = vehicleId,
+        timestampEpochMs = timestamp,
+        fuelAmountMilliliters = fuelAmountMilliliters,
+        totalPriceMinor = totalPriceMinor,
+        currencyCode = currencyCode,
+        odometerMeters = odometerMeters,
+        isFullTank = isFullTank,
+    )
+}

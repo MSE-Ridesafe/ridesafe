@@ -176,7 +176,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
   (named, replacing the inline card); root keeps ~140.
 - [x] **P3.5** `MergedRideDetailScreen.kt` (395) → `MergedJourneyCard.kt` (+ `StopRow`,
   owns manage-mode state); root keeps ~125. See P5.1 before polishing this.
-- [ ] **P3.6** `RefuelFormScreen.kt` (533) → `RefuelStateScreens.kt` (loading +
+- [x] **P3.6** `RefuelFormScreen.kt` (533) → `RefuelStateScreens.kt` (loading +
   unavailable + shared frame — separate nav destinations), `RefuelFormPickers.kt`
   (date/time picker dialogs), `RefuelFormFields.kt` (`VehicleDropdown`, `DateTimeFields`);
   root keeps ~210.
@@ -257,7 +257,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
   derivation (`:111-116`) belongs beside the pipeline.
 - [x] **P4.10** `rideEndpointLabel` + `String.lineOne()` (`AnalysisQueue.kt:292-303`)
   collapse onto `rides/processing/Geocoding.kt`'s existing `addressLines()`/`shortAddress()`.
-- [ ] **P4.11** `RefuelFormScreen.save()` arithmetic (`:202-244`) → outbound
+- [x] **P4.11** `RefuelFormScreen.save()` arithmetic (`:202-244`) → outbound
   `refuelFromForm(...)` in `RefuelNumbers.kt` (which already owns the inbound half);
   `VehicleFormScreen.save()` (`:103-122`, 11 trim/parse rules) → a builder beside
   `Vehicle`.
