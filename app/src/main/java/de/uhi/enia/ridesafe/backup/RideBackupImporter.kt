@@ -87,18 +87,45 @@ private suspend fun publishImportFile(
     }
 }
 
+/**
+ * A backup already copied out of its content URI, held from the preview until the user decides.
+ * Confirming imports [archive] as it stands rather than reading the URI a second time; dismissing
+ * discards it. Whichever happens, the file is deleted — and [RideBackupImporter.inspect] sweeps any
+ * that an app death left behind.
+ */
+internal class RideBackupImportCandidate internal constructor(
+    val preview: RideBackupImportPreview,
+    internal val archive: File,
+)
+
 internal class RideBackupImporter(
     private val app: Application,
     private val db: RidesafeDatabase = RidesafeDatabase.getInstance(app),
 ) {
     /** Preview only, so the cheap record check: the deep one runs before anything is written. */
-    suspend fun inspect(uri: Uri): RideBackupImportPreview =
-        withLocalArchive(uri) { archive ->
-            val manifest = RideBackupArchiveValidator.validate(archive)
-            manifest.preview()
+    suspend fun inspect(uri: Uri): RideBackupImportCandidate =
+        withContext(Dispatchers.IO) {
+            sweepStaleArchives(app.cacheDir)
+            val archive = copyToCache(uri)
+            try {
+                RideBackupImportCandidate(RideBackupArchiveValidator.validate(archive).preview(), archive)
+            } catch (failure: Throwable) {
+                archive.delete()
+                throw failure
+            }
         }
 
-    suspend fun import(uri: Uri): RideBackupImportResult = withLocalArchive(uri) { archive -> importArchive(archive) }
+    suspend fun import(candidate: RideBackupImportCandidate): RideBackupImportResult =
+        try {
+            importArchive(candidate.archive)
+        } finally {
+            candidate.archive.delete()
+        }
+
+    /** The user backed out of the confirmation; the copy made for the preview is no longer wanted. */
+    fun discard(candidate: RideBackupImportCandidate) {
+        candidate.archive.delete()
+    }
 
     internal suspend fun importArchive(archive: File): RideBackupImportResult =
         withContext(Dispatchers.IO) {
@@ -432,20 +459,23 @@ internal class RideBackupImporter(
                 }.toMap()
         }
 
-    private suspend fun <T> withLocalArchive(
-        uri: Uri,
-        operation: suspend (File) -> T,
-    ): T =
-        withContext(Dispatchers.IO) {
-            val local = File.createTempFile("ridesafe_import_", ".zip", app.cacheDir)
-            try {
-                val input = app.contentResolver.openInputStream(uri) ?: error("The selected backup cannot be opened")
-                input.use { source -> local.outputStream().buffered().use { target -> copyCancellable(source, target) } }
-                operation(local)
-            } finally {
-                local.delete()
-            }
+    private suspend fun copyToCache(uri: Uri): File {
+        val local = File.createTempFile(ARCHIVE_PREFIX, ".zip", app.cacheDir)
+        try {
+            val input = app.contentResolver.openInputStream(uri) ?: error("The selected backup cannot be opened")
+            input.use { source -> local.outputStream().buffered().use { target -> copyCancellable(source, target) } }
+            return local
+        } catch (failure: Throwable) {
+            local.delete()
+            throw failure
         }
+    }
+}
+
+private const val ARCHIVE_PREFIX = "ridesafe_import_"
+
+private fun sweepStaleArchives(cacheDir: File) {
+    cacheDir.listFiles { file -> file.isFile && file.name.startsWith(ARCHIVE_PREFIX) }?.forEach { it.delete() }
 }
 
 /**

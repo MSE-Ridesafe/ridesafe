@@ -39,8 +39,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.uhi.enia.ridesafe.R
+import de.uhi.enia.ridesafe.backup.RideBackupImportCandidate
 import de.uhi.enia.ridesafe.backup.RideBackupImportCount
-import de.uhi.enia.ridesafe.backup.RideBackupImportPreview
 import de.uhi.enia.ridesafe.backup.RideBackupImportResult
 import de.uhi.enia.ridesafe.backup.RideBackupImporter
 import de.uhi.enia.ridesafe.ui.components.BackNavIcon
@@ -57,8 +57,7 @@ internal sealed interface RideBackupImportState {
     data object Inspecting : RideBackupImportState
 
     data class Ready(
-        val uri: Uri,
-        val preview: RideBackupImportPreview,
+        val candidate: RideBackupImportCandidate,
     ) : RideBackupImportState
 
     data object Importing : RideBackupImportState
@@ -81,10 +80,11 @@ internal class RideBackupImportViewModel(
 
     fun select(uri: Uri) {
         if (_state.value == RideBackupImportState.Importing) return
+        discardPending()
         viewModelScope.launch {
             _state.value = RideBackupImportState.Inspecting
             try {
-                _state.value = RideBackupImportState.Ready(uri, importer.inspect(uri))
+                _state.value = RideBackupImportState.Ready(importer.inspect(uri))
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
@@ -98,7 +98,7 @@ internal class RideBackupImportViewModel(
         viewModelScope.launch {
             _state.value = RideBackupImportState.Importing
             try {
-                _state.value = RideBackupImportState.Success(importer.import(ready.uri))
+                _state.value = RideBackupImportState.Success(importer.import(ready.candidate))
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
@@ -108,7 +108,18 @@ internal class RideBackupImportViewModel(
     }
 
     fun dismiss() {
-        if (_state.value != RideBackupImportState.Importing) _state.value = RideBackupImportState.Idle
+        if (_state.value == RideBackupImportState.Importing) return
+        discardPending()
+        _state.value = RideBackupImportState.Idle
+    }
+
+    override fun onCleared() {
+        discardPending()
+    }
+
+    /** The preview's copy of the archive outlives the dialog only while the dialog is up. */
+    private fun discardPending() {
+        (_state.value as? RideBackupImportState.Ready)?.let { importer.discard(it.candidate) }
     }
 }
 
@@ -189,7 +200,7 @@ internal fun RideBackupImportScreen(
                 onDismissRequest = importViewModel::dismiss,
                 title = { Text(stringResource(R.string.settings_backup_import_confirm_title)) },
                 text = {
-                    val preview = current.preview
+                    val preview = current.candidate.preview
                     val items =
                         listOf(
                             pluralStringResource(R.plurals.settings_backup_import_preview_rides, preview.rides, preview.rides),
