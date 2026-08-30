@@ -1,4 +1,4 @@
-package de.uhi.enia.ridesafe.ui.screens.home
+package de.uhi.enia.ridesafe.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,9 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
-import de.uhi.enia.ridesafe.ui.components.EcoLevelDisplay
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.ui.components.SectionTitle
 
 /**
  * The dashboard's aggregated eco level (ANL-03): every profiled ride in the current dashboard

@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
+import de.uhi.enia.ridesafe.ui.components.EcoSection
 
 @Composable
 fun HomeScreen(

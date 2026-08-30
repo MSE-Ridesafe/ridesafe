@@ -10,6 +10,7 @@ import android.icu.util.ULocale
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import de.uhi.enia.ridesafe.R
+import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
 /** Number format capping trip measurements (distance, speed) at one fraction digit for UI legibility. */
@@ -136,3 +137,17 @@ fun Double?.toFieldText(perUnit: Double): String {
 
 /** A typed number in the user's units back to canonical meters; blank or unparseable = no bound. */
 fun String.toMeters(perUnit: Double): Double? = replace(',', '.').toDoubleOrNull()?.times(perUnit)
+
+const val KM_PER_MILE = 1.609344
+
+/** Canonical odometer km as the whole number shown in the user's unit. */
+fun odometerToDisplayUnits(
+    kilometers: Int,
+    metric: Boolean,
+): Int = if (metric) kilometers else (kilometers / KM_PER_MILE).roundToInt()
+
+/** A typed whole-number odometer reading back to canonical km. */
+fun displayUnitsToOdometerKm(
+    value: Int,
+    metric: Boolean,
+): Int = if (metric) value else (value * KM_PER_MILE).roundToInt()

@@ -226,16 +226,16 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
 
 ## Phase 4 — Non-UI logic out of composables
 
-- [ ] **P4.1** Enum→resource label mappers move beside their enums (matching the
+- [x] **P4.1** Enum→resource label mappers move beside their enums (matching the
   `FuelType.labelRes()` precedent): the four mappers in `RidesScreen.kt:825-858` (enums in
   `RefuelAssociation.kt`/`data/`); `minRideLengthLabelRes` + `reconnectGraceLabelRes`
   (`SettingsScreen.kt:734-750`, pure `Int` mappers) → `rides/recording/RecordingPrefs.kt`;
   `TripType.icon()/labelRes()` (`RideFilterUi.kt:691-702`) → beside `TripType` in
   `RideFilter.kt`.
-- [ ] **P4.2** Date/time math → `util/`: `rideTimeRange` (`RidesScreen.kt:1047`),
+- [x] **P4.2** Date/time math → `util/`: `rideTimeRange` (`RidesScreen.kt:1047`),
   `formatFilterDate` + `startOfDayMs`/`utcMillis`/`toUtcDay` (`RideFilterUi.kt:704-732`),
   `DateTimeFields`' inline `DateFormat` conversions (`RefuelFormScreen.kt:473-484`).
-- [ ] **P4.3** Unit conversions → `util/UnitFormatter.kt`: `METERS_PER_KM/MILE` +
+- [x] **P4.3** Unit conversions → `util/UnitFormatter.kt`: `METERS_PER_KM/MILE` +
   `toFieldText`/`toMeters` (`RideFilterUi.kt:93-94,734-741`), `KM_PER_MILE` odometer
   round-trip (`VehicleFormScreen.kt:53,76-77,104`) as `odometerToDisplay`/`displayToKm`.
   Same constant currently lives in two files.

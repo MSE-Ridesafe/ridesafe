@@ -32,10 +32,9 @@ import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.NumberField
 import de.uhi.enia.ridesafe.ui.components.SectionTitle
 import de.uhi.enia.ridesafe.util.currentUnitSystem
+import de.uhi.enia.ridesafe.util.displayUnitsToOdometerKm
+import de.uhi.enia.ridesafe.util.odometerToDisplayUnits
 import de.uhi.enia.ridesafe.util.usesMetric
-import kotlin.math.roundToInt
-
-private const val KM_PER_MILE = 1.609344
 
 /**
  * Add/edit form for a vehicle. [existing] null = add mode (GAR-02); non-null = edit mode
@@ -59,7 +58,7 @@ fun VehicleFormScreen(
 
     // Odometer is stored in km; show/edit it in the user's display unit.
     val initialMileage =
-        existing?.let { if (metric) it.mileageKm else (it.mileageKm / KM_PER_MILE).roundToInt() }
+        existing?.let { odometerToDisplayUnits(it.mileageKm, metric) }
 
     var name by rememberSaveable { mutableStateOf(existing?.name ?: "") }
     var make by rememberSaveable { mutableStateOf(existing?.make ?: "") }
@@ -86,7 +85,7 @@ fun VehicleFormScreen(
             mileageValue >= 0
 
     fun save() {
-        val mileageKm = if (metric) mileageValue!! else (mileageValue!! * KM_PER_MILE).roundToInt()
+        val mileageKm = displayUnitsToOdometerKm(mileageValue!!, metric)
         val edited =
             (existing ?: Vehicle(name = "", make = "", model = "", licensePlate = "", fuelType = fuelType, mileageKm = 0))
                 .copy(

@@ -20,7 +20,7 @@ import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.SafetyScore
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.ui.components.SafetyScoreCard
-import de.uhi.enia.ridesafe.ui.screens.home.EcoSection
+import de.uhi.enia.ridesafe.ui.components.EcoSection
 import kotlinx.coroutines.flow.first
 
 /** ONB-01: the pitch — what Ridesafe does, and that all of it stays on the phone (NFR-01). */
