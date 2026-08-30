@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -61,7 +60,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -76,6 +74,7 @@ import de.uhi.enia.ridesafe.export.buildOpenExportIntent
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
 import de.uhi.enia.ridesafe.rides.recording.RecordingStatus
+import de.uhi.enia.ridesafe.ui.components.EmptyState
 import de.uhi.enia.ridesafe.ui.components.ListGroupItem
 import de.uhi.enia.ridesafe.ui.components.ListGroupItemGap
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
@@ -336,7 +335,10 @@ fun RidesScreen(
             ) {
                 if (timeline.isEmpty()) {
                     // An empty logbook has nothing to search, so the search bar stays away entirely.
-                    EmptyRides(
+                    EmptyState(
+                        symbolName = "route",
+                        title = stringResource(R.string.rides_empty_title),
+                        message = stringResource(R.string.rides_empty_message),
                         modifier =
                             Modifier
                                 .fillMaxSize()
@@ -365,13 +367,19 @@ fun RidesScreen(
                         onFilterChange = onFilterChange,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
-                    NoMatchingRides(
-                        onClear = { onFilterChange(RideFilter()) },
+                    EmptyState(
+                        symbolName = "search_off",
+                        title = stringResource(R.string.rides_no_matches_title),
+                        message = stringResource(R.string.rides_no_matches_message),
                         modifier =
                             Modifier
                                 .fillMaxSize()
                                 .padding(32.dp),
-                    )
+                    ) {
+                        TextButton(onClick = { onFilterChange(RideFilter()) }) {
+                            Text(stringResource(R.string.rides_filter_clear_all))
+                        }
+                    }
                     return@Column
                 }
 
@@ -1058,70 +1066,3 @@ private fun rideTimeRange(
         append(formatTimeOfDay(context, startMs))
         endMs?.let { append(" – ").append(formatTimeOfDay(context, it)) }
     }
-
-/**
- * The search/filter came up empty — deliberately distinct from an empty logbook (there *are* rides,
- * they just don't match), and it offers the way back out rather than leaving the user to hunt for it.
- */
-@Composable
-private fun NoMatchingRides(
-    onClear: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        MaterialSymbol(
-            symbolName = "search_off",
-            contentDescription = null,
-            size = 64.dp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.size(16.dp))
-        Text(
-            text = stringResource(R.string.rides_no_matches_title),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Spacer(Modifier.size(4.dp))
-        Text(
-            text = stringResource(R.string.rides_no_matches_message),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.size(16.dp))
-        TextButton(onClick = onClear) {
-            Text(stringResource(R.string.rides_filter_clear_all))
-        }
-    }
-}
-
-@Composable
-private fun EmptyRides(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        MaterialSymbol(
-            symbolName = "route",
-            contentDescription = null,
-            size = 64.dp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.size(16.dp))
-        Text(
-            text = stringResource(R.string.rides_empty_title),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Spacer(Modifier.size(4.dp))
-        Text(
-            text = stringResource(R.string.rides_empty_message),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-    }
-}

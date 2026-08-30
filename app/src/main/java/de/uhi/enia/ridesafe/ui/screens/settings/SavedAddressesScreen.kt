@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,11 +26,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
@@ -40,6 +37,7 @@ import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
 import de.uhi.enia.ridesafe.data.fixedIcon
 import de.uhi.enia.ridesafe.rides.processing.shortAddress
+import de.uhi.enia.ridesafe.ui.components.EmptyState
 import de.uhi.enia.ridesafe.ui.components.ListGroupItem
 import de.uhi.enia.ridesafe.ui.components.ListGroupItemGap
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
@@ -139,7 +137,14 @@ fun SavedAddressesScreen(
             }
 
             if (addresses.isEmpty()) {
-                item { EmptySavedAddresses() }
+                item {
+                    EmptyState(
+                        symbolName = "location_on",
+                        title = stringResource(R.string.saved_addresses_empty_title),
+                        message = stringResource(R.string.saved_addresses_empty_message),
+                        modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
+                    )
+                }
             } else {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(ListGroupItemGap)) {
@@ -177,33 +182,6 @@ private fun SavedAddressRow(
             )
         },
     )
-}
-
-@Composable
-private fun EmptySavedAddresses() {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        MaterialSymbol(
-            symbolName = "location_on",
-            contentDescription = null,
-            size = 64.dp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.size(16.dp))
-        Text(
-            text = stringResource(R.string.saved_addresses_empty_title),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Spacer(Modifier.size(4.dp))
-        Text(
-            text = stringResource(R.string.saved_addresses_empty_message),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-    }
 }
 
 /** The fixed shortcut icon, or the generic place icon (used only by shortcut chips, which are never custom). */

@@ -37,12 +37,12 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Vehicle
+import de.uhi.enia.ridesafe.ui.components.EmptyState
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -83,7 +83,10 @@ fun GarageScreen(
         },
     ) { innerPadding ->
         if (vehicles.isEmpty()) {
-            EmptyGarage(
+            EmptyState(
+                symbolName = "directions_car",
+                title = stringResource(R.string.garage_empty_title),
+                message = stringResource(R.string.garage_empty_message),
                 modifier =
                     Modifier
                         .padding(innerPadding)
@@ -208,33 +211,3 @@ internal fun VehicleImage(
         }
     }
 }
-
-@Composable
-private fun EmptyGarage(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        MaterialSymbol(
-            symbolName = "directions_car",
-            contentDescription = null,
-            size = 64.dp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.size(16.dp))
-        Text(
-            text = stringResource(R.string.garage_empty_title),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Spacer(Modifier.size(4.dp))
-        Text(
-            text = stringResource(R.string.garage_empty_message),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
-

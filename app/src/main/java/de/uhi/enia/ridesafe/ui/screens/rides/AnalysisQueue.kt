@@ -47,7 +47,6 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -55,6 +54,7 @@ import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Ride
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisJob
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
+import de.uhi.enia.ridesafe.ui.components.EmptyState
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
 import de.uhi.enia.ridesafe.util.formatRideDateTime
 import kotlinx.coroutines.delay
@@ -253,7 +253,11 @@ fun AnalysisQueueScreen(
         },
     ) { innerPadding ->
         if (rows.isEmpty()) {
-            EmptyQueue(
+            EmptyState(
+                symbolName = "check_circle",
+                title = stringResource(R.string.analysis_queue_empty_title),
+                message = stringResource(R.string.analysis_queue_empty_message),
+                iconColor = MaterialTheme.colorScheme.primary,
                 modifier =
                     Modifier
                         .padding(innerPadding)
@@ -400,34 +404,6 @@ fun ProgressRing(
         color = MaterialTheme.colorScheme.primary,
         trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
     )
-}
-
-@Composable
-private fun EmptyQueue(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        MaterialSymbol(
-            symbolName = "check_circle",
-            contentDescription = null,
-            size = 48.dp,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(Modifier.size(16.dp))
-        Text(
-            text = stringResource(R.string.analysis_queue_empty_title),
-            style = MaterialTheme.typography.titleMedium,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            text = stringResource(R.string.analysis_queue_empty_message),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-    }
 }
 
 /**

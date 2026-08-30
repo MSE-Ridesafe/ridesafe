@@ -101,7 +101,7 @@ Similarity was verified per site — "identical" below means byte-identical modu
   degenerate loading copy at `:93-114`), `VehicleDetailScreen.kt:88-133`. Encodes the
   transparent-vs-opaque top bar rule (detail = transparent, form = opaque) so it stops
   being re-decided per screen. Net ~-66.
-- [ ] **P2.3** `EmptyState(symbolName, title, message, action?)` — sites: `EmptyGarage`,
+- [x] **P2.3** `EmptyState(symbolName, title, message, action?)` — sites: `EmptyGarage`,
   `EmptyRides`, `NoMatchingRides`, `EmptySavedAddresses` (4 byte-identical),
   `EmptyQueue` (same shape; its 48.dp icon + missing spacer are drift — keep only the
   deliberate `primary` tint via param). Net ~-71.
