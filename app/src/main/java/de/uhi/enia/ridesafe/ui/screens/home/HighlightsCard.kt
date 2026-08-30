@@ -12,7 +12,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -28,7 +27,6 @@ import java.time.format.TextStyle
 @Composable
 fun HighlightsCard(highlights: HomeHighlights) {
     val unitSystem = currentUnitSystem()
-    val context = LocalContext.current
     val locale = LocalLocale.current.platformLocale
     Card(
         shape = MaterialTheme.shapes.extraLarge,

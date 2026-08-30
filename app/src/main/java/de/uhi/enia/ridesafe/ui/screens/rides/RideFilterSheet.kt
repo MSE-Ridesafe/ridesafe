@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
@@ -153,7 +152,7 @@ fun RideFilterSheet(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     DateBoundButton(
                         label = stringResource(R.string.rides_filter_date_from),
-                        day = filter.fromEpochMs?.let { it.toLocalDate() },
+                        day = filter.fromEpochMs?.toLocalDate(),
                         modifier = Modifier.weight(1f),
                         // Inclusive lower bound: the picked day from its first millisecond.
                         onPicked = { onFilterChange(filter.copy(fromEpochMs = it?.startOfDayMs())) },

@@ -12,6 +12,7 @@ import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.Vehicle
+import de.uhi.enia.ridesafe.export.RideExportRequest
 import de.uhi.enia.ridesafe.rides.RideDataCoordinator
 import de.uhi.enia.ridesafe.rides.processing.AXIS_VERSION
 import de.uhi.enia.ridesafe.rides.processing.ENDPOINTS_VERSION
@@ -19,7 +20,6 @@ import de.uhi.enia.ridesafe.rides.processing.EVENTS_VERSION
 import de.uhi.enia.ridesafe.rides.processing.ROUTE_VERSION
 import de.uhi.enia.ridesafe.rides.processing.processedRouteFile
 import de.uhi.enia.ridesafe.rides.recording.ridesDir
-import de.uhi.enia.ridesafe.export.RideExportRequest
 import de.uhi.enia.ridesafe.util.copyCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive

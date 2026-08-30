@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -18,7 +17,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -231,9 +229,18 @@ fun RidesScreen(
                             val rideIds = selection.selectedRideEntries.flatMap { it.rideIds }
                             val refuelIds = selection.selectedRefuelRecords.map { it.id }
                             when (selection.action.kind) {
-                                LogbookActionKind.MERGE -> onMerge(rideIds, refuelIds)
-                                LogbookActionKind.ATTACH -> onAttach(rideIds, refuelIds)
-                                LogbookActionKind.DETACH -> onDetach(refuelIds)
+                                LogbookActionKind.MERGE -> {
+                                    onMerge(rideIds, refuelIds)
+                                }
+
+                                LogbookActionKind.ATTACH -> {
+                                    onAttach(rideIds, refuelIds)
+                                }
+
+                                LogbookActionKind.DETACH -> {
+                                    onDetach(refuelIds)
+                                }
+
                                 // Un-merging is not a logbook operation, so it clears the selection itself.
                                 LogbookActionKind.UNMERGE -> {
                                     selection.action.unmergeGroupId?.let(onUnmerge)
@@ -404,7 +411,13 @@ fun RidesScreen(
                                                                 isOpen = key == selectedKey,
                                                                 nested = true,
                                                                 onClick = {
-                                                                    if (selection.selectionMode) selection.toggle(key) else onOpenRefuel(nested.refuel.id)
+                                                                    if (selection.selectionMode) {
+                                                                        selection.toggle(
+                                                                            key,
+                                                                        )
+                                                                    } else {
+                                                                        onOpenRefuel(nested.refuel.id)
+                                                                    }
                                                                 },
                                                                 onLongClick = {
                                                                     selection.enter()

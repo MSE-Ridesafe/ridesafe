@@ -8,6 +8,8 @@ import de.uhi.enia.ridesafe.rides.recording.LocationSample
 import de.uhi.enia.ridesafe.rides.recording.ridesDir
 import de.uhi.enia.ridesafe.util.EARTH_RADIUS_M
 import de.uhi.enia.ridesafe.util.haversineMeters
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.apache.commons.math3.filter.DefaultMeasurementModel
 import org.apache.commons.math3.filter.DefaultProcessModel
 import org.apache.commons.math3.filter.KalmanFilter
@@ -16,8 +18,6 @@ import org.apache.commons.math3.linear.ArrayRealVector
 import org.apache.commons.math3.linear.RealMatrix
 import org.apache.commons.math3.linear.RealVector
 import java.io.File
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption

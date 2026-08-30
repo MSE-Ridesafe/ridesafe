@@ -1,7 +1,6 @@
 package de.uhi.enia.ridesafe.export
 
 import android.net.Uri
-import android.provider.MediaStore
 
 /** Stable logical-entry snapshot. A merged request contains all of its physical stop ids. */
 data class RideExportRequest(

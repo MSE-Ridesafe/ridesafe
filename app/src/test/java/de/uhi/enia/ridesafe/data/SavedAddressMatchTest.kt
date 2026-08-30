@@ -59,29 +59,38 @@ class FindExistingSavedPlaceTest {
         lat: Double,
         lon: Double,
         address: String? = null,
-    ) = SavedAddress(id = id, label = "P$id", kind = SavedPlaceKind.CUSTOM, latitude = lat, longitude = lon, radiusMeters = 100, icon = "place", address = address)
+    ) = SavedAddress(
+        id = id,
+        label = "P$id",
+        kind = SavedPlaceKind.CUSTOM,
+        latitude = lat,
+        longitude = lon,
+        radiusMeters = 100,
+        icon = "place",
+        address = address,
+    )
 
     @Test
     fun matchesByNormalizedAddressRegardlessOfDistance() {
         val saved = place(1, 50.0, 8.0, address = "Hauptstraße 5, Hamburg")
         // Case- and punctuation-insensitive (ROOT uppercase also folds ß to SS), any distance.
         val found = findExistingSavedPlace("hauptstrasse 5 hamburg", 51.0, 9.0, listOf(saved), editedId = null)
-        org.junit.Assert.assertEquals(saved, found)
-        org.junit.Assert.assertNull(findExistingSavedPlace("another street 7", 51.0, 9.0, listOf(saved), editedId = null))
+        assertEquals(saved, found)
+        assertNull(findExistingSavedPlace("another street 7", 51.0, 9.0, listOf(saved), editedId = null))
     }
 
     @Test
     fun matchesByProximityWithinFifteenMeters() {
         val saved = place(2, 50.0, 8.0)
         val nearby = findExistingSavedPlace("somewhere else", 50.0001, 8.0, listOf(saved), editedId = null)
-        org.junit.Assert.assertEquals(saved, nearby)
+        assertEquals(saved, nearby)
         val far = findExistingSavedPlace("somewhere else", 50.001, 8.0, listOf(saved), editedId = null)
-        org.junit.Assert.assertNull(far)
+        assertNull(far)
     }
 
     @Test
     fun excludesThePlaceBeingEdited() {
         val saved = place(3, 50.0, 8.0)
-        org.junit.Assert.assertNull(findExistingSavedPlace("x", 50.0, 8.0, listOf(saved), editedId = 3))
+        assertNull(findExistingSavedPlace("x", 50.0, 8.0, listOf(saved), editedId = 3))
     }
 }

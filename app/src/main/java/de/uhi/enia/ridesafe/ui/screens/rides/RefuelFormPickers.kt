@@ -12,12 +12,9 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import de.uhi.enia.ridesafe.R
-import java.text.DateFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset

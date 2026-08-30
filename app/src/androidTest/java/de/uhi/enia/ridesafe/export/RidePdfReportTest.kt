@@ -29,7 +29,7 @@ class RidePdfReportTest {
                         distanceMeters = 1_000.0,
                     )
                 }
-            RidePdfReport(context).write(file, journeys, LocalDate.of(2026, 8, 22), UnitSystemSetting.METRIC)
+            RidePdfReport().write(file, journeys, LocalDate.of(2026, 8, 22), UnitSystemSetting.METRIC)
             ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { descriptor ->
                 PdfRenderer(descriptor).use { renderer -> assertTrue(renderer.pageCount > 1) }
             }
@@ -66,7 +66,7 @@ class RidePdfReportTest {
                     individualRides = children,
                 )
 
-            RidePdfReport(context).write(file, listOf(journey), LocalDate.of(2026, 8, 22), UnitSystemSetting.METRIC)
+            RidePdfReport().write(file, listOf(journey), LocalDate.of(2026, 8, 22), UnitSystemSetting.METRIC)
             ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { descriptor ->
                 PdfRenderer(descriptor).use { renderer -> assertTrue(renderer.pageCount > 1) }
             }
@@ -87,7 +87,7 @@ class RidePdfReportTest {
         try {
             val journey =
                 RideExportJourney("Test vehicle", 1_700_000_000_000L, 1_700_000_060_000L, 60_000, null, null, null)
-            RidePdfReport(context).write(file, listOf(journey), date, UnitSystemSetting.METRIC)
+            RidePdfReport().write(file, listOf(journey), date, UnitSystemSetting.METRIC)
             val firstSaved = saveToDownloads(context, file, date)
             val secondSaved = saveToDownloads(context, file, date)
             assertTrue(firstSaved.fileName == desired)

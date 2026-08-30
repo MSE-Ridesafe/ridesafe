@@ -4,7 +4,6 @@ package de.uhi.enia.ridesafe.ui.screens.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -23,7 +22,6 @@ import de.uhi.enia.ridesafe.rides.recording.reconnectGraceLabelRes
 import de.uhi.enia.ridesafe.rides.trigger.AutoTrackMode
 import de.uhi.enia.ridesafe.rides.trigger.AutoTrackPrefs
 import de.uhi.enia.ridesafe.rides.trigger.applyAutoTrackMode
-import kotlinx.coroutines.launch
 
 @Composable
 fun AutoTrackSettingsScreen(

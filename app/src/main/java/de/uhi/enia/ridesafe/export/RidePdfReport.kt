@@ -1,13 +1,10 @@
 package de.uhi.enia.ridesafe.export
 
-import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
-import de.uhi.enia.ridesafe.data.Ride
-import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.formattingLocale
 import java.io.File
@@ -17,9 +14,7 @@ import java.time.LocalDate
 import java.util.Date
 import java.util.Locale
 
-internal class RidePdfReport(
-    private val context: Context,
-) {
+internal class RidePdfReport {
     private val body =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.rgb(35, 39, 42)

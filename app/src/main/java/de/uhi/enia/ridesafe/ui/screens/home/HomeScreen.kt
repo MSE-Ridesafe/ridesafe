@@ -15,8 +15,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -84,7 +82,9 @@ fun HomeScreen(
                 val selectedVehicle = state.vehicles.firstOrNull { it.id == state.selectedVehicleId }
                 when {
                     selectedVehicle != null -> VehicleCard(vehicle = selectedVehicle)
+
                     state.vehicles.size >= 2 -> GarageSummaryCard(vehicles = state.vehicles)
+
                     // 0–1 cars: observeAll() sorts primary first, so this is the old primary-or-first rule.
                     else -> VehicleCard(vehicle = state.vehicles.firstOrNull())
                 }

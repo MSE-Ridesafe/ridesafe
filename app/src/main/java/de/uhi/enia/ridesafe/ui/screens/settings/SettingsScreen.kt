@@ -46,7 +46,6 @@ import de.uhi.enia.ridesafe.ui.theme.ThemePrefs
 import de.uhi.enia.ridesafe.util.currentCurrencySetting
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 
-
 @Composable
 fun SettingsScreen(
     // The sub-screen currently in the detail pane, so the menu can mark the row it belongs to.

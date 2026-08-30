@@ -103,26 +103,30 @@ fun logbookAction(
 ): LogbookAction {
     val merged = selectedRides.singleOrNull() as? LogbookEntry.Merged
     return when {
-        selectedRefuels.isEmpty() && merged != null ->
+        selectedRefuels.isEmpty() && merged != null -> {
             LogbookAction(LogbookActionKind.UNMERGE, unmergeGroupId = merged.groupId)
+        }
 
         // Rides only, or several journeys plus Refuels: merging, with the Refuels carried along.
-        selectedRefuels.isEmpty() || selectedRides.size > 1 ->
+        selectedRefuels.isEmpty() || selectedRides.size > 1 -> {
             checkMixedMerge(selectedRides, selectedRefuels, allRides).let {
                 LogbookAction(LogbookActionKind.MERGE, it.rideCheck, it.refuelCheck)
             }
+        }
 
-        selectedRides.isEmpty() ->
+        selectedRides.isEmpty() -> {
             LogbookAction(
                 LogbookActionKind.DETACH,
                 refuelCheck = checkRemoveRefuelsFromRide(selectedRides, selectedRefuels, allRides),
             )
+        }
 
-        else ->
+        else -> {
             LogbookAction(
                 LogbookActionKind.ATTACH,
                 refuelCheck = checkAddRefuelsToRide(selectedRides, selectedRefuels, allRides),
             )
+        }
     }
 }
 

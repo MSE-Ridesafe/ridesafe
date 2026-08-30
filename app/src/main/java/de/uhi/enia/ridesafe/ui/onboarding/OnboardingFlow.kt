@@ -38,11 +38,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.uhi.enia.ridesafe.R
-import de.uhi.enia.ridesafe.navigation.RidesafeApp
 import de.uhi.enia.ridesafe.ui.components.BackNavIcon
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 
 // Matches the app shell's sub-route slide (RidesafeApp.SLIDE_MS) so the wizard moves like the app.
 private const val SLIDE_MS = 250

@@ -3,7 +3,6 @@ package de.uhi.enia.ridesafe.ui.onboarding
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,9 +42,7 @@ import de.uhi.enia.ridesafe.ui.screens.garage.TrackingCard
 import de.uhi.enia.ridesafe.ui.screens.garage.VehicleFormScreen
 import de.uhi.enia.ridesafe.ui.screens.settings.SavedAddressFormScreen
 import de.uhi.enia.ridesafe.ui.screens.settings.SavedAddressViewModel
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.launch
 
 /**
  * ONB-02: create the first car (GAR-02) with the garage's real add form, so the fields, the

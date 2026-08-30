@@ -1,6 +1,5 @@
 package de.uhi.enia.ridesafe.export
 
-import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.formatDurationMs

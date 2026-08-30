@@ -54,7 +54,7 @@ class RideExporter(
             try {
                 val exportDate = LocalDate.now()
                 when (format) {
-                    RideExportFormat.PDF -> RidePdfReport(app).write(temp, loadJourneys(requests), exportDate, UnitPrefs.get(app))
+                    RideExportFormat.PDF -> RidePdfReport().write(temp, loadJourneys(requests), exportDate, UnitPrefs.get(app))
                     RideExportFormat.CSV -> writeRideCsv(temp, loadJourneys(requests), UnitPrefs.get(app))
                     RideExportFormat.ZIP -> RideZipBackup(app, db).write(temp, requests)
                 }

@@ -157,7 +157,8 @@ private class CountingInputStream(
 }
 
 /** Total path length in meters, summed great-circle over consecutive fixes (ANL-02 primitive). */
-fun trackDistanceMeters(locations: List<LocationSample>): Double = locations.zipWithNext().sumOf { (a, b) -> haversineMeters(a.lat, a.lon, b.lat, b.lon) }
+fun trackDistanceMeters(locations: List<LocationSample>): Double =
+    locations.zipWithNext().sumOf { (a, b) -> haversineMeters(a.lat, a.lon, b.lat, b.lon) }
 
 /**
  * Delete a logged ride and the sample file that belongs to it — what the car screen's "delete this

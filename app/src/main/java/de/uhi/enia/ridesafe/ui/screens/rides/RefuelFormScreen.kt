@@ -20,7 +20,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Refuel
@@ -43,7 +42,6 @@ fun RefuelFormScreen(
     onSave: (Refuel, (Result<Unit>) -> Unit) -> Unit,
     onBack: () -> Unit,
 ) {
-    val context = LocalContext.current
     // Regional conventions, not the in-app language's likely region (SET-07).
     val locale = formattingLocale()
     val currency = currentCurrencySetting().currency

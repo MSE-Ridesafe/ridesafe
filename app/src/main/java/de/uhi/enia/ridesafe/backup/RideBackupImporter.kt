@@ -492,7 +492,6 @@ internal fun findMatchingVehicle(
     }
 }
 
-
 private fun normalizeBluetoothAddress(value: String): String? = normalizeForMatching(value).takeIf { it.length == 12 }
 
 private val singletonSavedPlaceKinds =
@@ -513,7 +512,6 @@ private fun SavedAddress.matches(archived: BackupSavedAddress): Boolean {
     val sameCoordinates = haversineMeters(latitude, longitude, archived.latitude, archived.longitude) <= 15.0
     return sameKnownAddress || sameCoordinates
 }
-
 
 private fun BackupSavedAddress.toSavedAddress() =
     SavedAddress(

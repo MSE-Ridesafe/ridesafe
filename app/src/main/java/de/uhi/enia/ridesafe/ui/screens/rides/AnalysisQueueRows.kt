@@ -2,15 +2,14 @@ package de.uhi.enia.ridesafe.ui.screens.rides
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisJob
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
-import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 // ponytail: presentation timing, tune by feel.
 private const val DONE_HOLD_MS = 800L // how long a finished row shows its checkmark before leaving

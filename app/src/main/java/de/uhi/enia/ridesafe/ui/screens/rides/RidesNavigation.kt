@@ -145,7 +145,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
             progress = analysis,
             rides = rides,
             onBack = { onBack(AnalysisQueueRoute) },
-            showBack = showBack
+            showBack = showBack,
         )
     }
     entry<MergedRideDetailRoute>(metadata = ListDetailSceneStrategy.detailPane(sceneKey = RIDES_SCENE)) { key ->

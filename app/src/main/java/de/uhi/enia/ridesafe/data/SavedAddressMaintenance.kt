@@ -37,7 +37,6 @@ private fun SavedAddress.isEquivalentSavedPlace(other: SavedAddress): Boolean {
     return sameKnownAddress || sameCoordinates
 }
 
-
 /**
  * Re-match every ride's start/end point against the current saved addresses (ADR-07) and persist the
  * matched ids on the rides (the stored-match model). Run after any address add/edit/delete, and once

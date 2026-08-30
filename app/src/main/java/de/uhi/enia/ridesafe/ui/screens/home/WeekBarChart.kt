@@ -121,7 +121,11 @@ private fun ActivityBarColumn(
     modifier: Modifier = Modifier,
 ) {
     val locale = LocalLocale.current.platformLocale
-    val widthDp = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() }
+    val widthDp =
+        with(LocalDensity.current) {
+            LocalWindowInfo.current.containerSize.width
+                .toDp()
+        }
     val hideZeroLabel = !hasValue && widthDp < 360.dp
     val barHeight = max(if (hasValue) 18f else 8f, 100f * fraction).dp
 

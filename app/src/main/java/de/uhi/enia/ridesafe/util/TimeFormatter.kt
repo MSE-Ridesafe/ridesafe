@@ -3,7 +3,6 @@ package de.uhi.enia.ridesafe.util
 import android.content.Context
 import android.text.format.DateUtils
 import de.uhi.enia.ridesafe.R
-import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -76,6 +75,7 @@ fun formatDayHeader(
     }
 
 /** Abbreviated single date for compact chips and buttons, e.g. "Aug 30, 2026". */
+
 /** "24 Aug 2026" — short enough for a chip and a half-width button. */
 fun formatShortDate(
     context: Context,
