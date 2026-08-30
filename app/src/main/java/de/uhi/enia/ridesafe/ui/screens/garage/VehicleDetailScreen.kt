@@ -54,6 +54,7 @@ import androidx.core.content.ContextCompat
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.BtDevice
 import de.uhi.enia.ridesafe.data.Vehicle
+import de.uhi.enia.ridesafe.data.displayTitle
 import de.uhi.enia.ridesafe.rides.trigger.BluetoothDevices
 import de.uhi.enia.ridesafe.ui.components.DetailCard
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol

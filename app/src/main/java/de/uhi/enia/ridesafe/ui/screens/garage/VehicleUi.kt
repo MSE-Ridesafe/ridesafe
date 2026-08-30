@@ -18,13 +18,6 @@ fun FuelType.labelRes(): Int =
         FuelType.OTHER -> R.string.fuel_type_other
     }
 
-/**
- * Identity label: make + model, with the optional nickname appended in quotes —
- * e.g. `Volkswagen Golf "Daily"`, or just `Volkswagen Golf` when unnamed. Always shown
- * alongside the license plate wherever a vehicle is identified.
- */
-fun Vehicle.displayTitle(): String = if (name.isBlank()) "$make $model" else "$make $model \"${name.trim()}\""
-
 /** Sample vehicles for tests. */
 internal val previewVehicles =
     listOf(

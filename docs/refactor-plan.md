@@ -26,7 +26,7 @@ Phase 5. Phase 2 first shrinks the big files so the Phase 3 splits get smaller.
 
 ### Quick wins
 
-- [ ] **P1.1** Move `Vehicle.displayTitle()` from `ui/screens/garage/VehicleUi.kt:26` to
+- [x] **P1.1** Move `Vehicle.displayTitle()` from `ui/screens/garage/VehicleUi.kt:26` to
   `data/Vehicle.kt`. Kills the repo's only hard layering inversion: 9 importers, including
   `rides/recording/RideEventNotification.kt`, `car/RidesafeCarAppService.kt`,
   `car/CarScreens.kt` (non-UI code importing a screen package) and

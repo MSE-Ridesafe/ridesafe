@@ -51,12 +51,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Vehicle
+import de.uhi.enia.ridesafe.data.displayTitle
 import de.uhi.enia.ridesafe.permissions.AppPermission
 import de.uhi.enia.ridesafe.permissions.PermissionState
 import de.uhi.enia.ridesafe.rides.recording.RecordingStatus
 import de.uhi.enia.ridesafe.rides.recording.RideRecordingService
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
-import de.uhi.enia.ridesafe.ui.screens.garage.displayTitle
 
 @Composable
 fun HomeScreen(

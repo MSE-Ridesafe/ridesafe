@@ -13,7 +13,7 @@ import java.util.UUID
  * Odometer is stored canonically in kilometers ([mileageKm]); display converts via
  * [de.uhi.enia.ridesafe.util.formatDistance]. [name] (an optional nickname), [year],
  * [fuelEconomy] and [tankSize] are optional — blank/null means "not set". The nickname
- * is rendered via [de.uhi.enia.ridesafe.ui.screens.garage.displayTitle].
+ * is rendered via [displayTitle].
  */
 @Entity(
     tableName = "vehicles",
@@ -52,6 +52,13 @@ data class BtDevice(
     val address: String,
     val name: String,
 )
+
+/**
+ * Identity label: make + model, with the optional nickname appended in quotes —
+ * e.g. `Volkswagen Golf "Daily"`, or just `Volkswagen Golf` when unnamed. Always shown
+ * alongside the license plate wherever a vehicle is identified.
+ */
+fun Vehicle.displayTitle(): String = if (name.isBlank()) "$make $model" else "$make $model \"${name.trim()}\""
 
 /** Stored by [name]; user-facing labels are localized in the UI layer. */
 enum class FuelType {
