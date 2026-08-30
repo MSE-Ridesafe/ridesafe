@@ -124,15 +124,15 @@ Similarity was verified per site — "identical" below means byte-identical modu
 - [x] **P2.9** `NumberField` — promote `RefuelFormScreen.DecimalField:513-533` to
   `ui/components/`; converts `DistanceField` (`RideFilterUi.kt:674-689`) and the four
   numeric fields in `VehicleFormScreen`. ~9 call sites.
-- [ ] **P2.10** `TimelineListRow` — merge the render (not the derivation) of `LogbookRow`
+- [ ] **P2.10** (folded into P3.1) `TimelineListRow` — merge the render (not the derivation) of `LogbookRow`
   and `RefuelTimelineRow` (`RidesScreen.kt:870-1034`). `RefuelTimelineRow` is already
   cross-screen (`RideDetailScreen.kt:212`, `MergedRideDetailScreen.kt:292`). ~-30.
-- [ ] **P2.11** `LabelValueRow(label, value, symbolName?, valueStyle)` — `DetailRow` +
-  `HighlightRow`. Do NOT fold in `InfoChip` (vertical chip) or `StatLine` (a11y-only
-  label is its point). ~-20.
-- [ ] **P2.12** `EnumDropdown` — shared `ExposedDropdownMenuBox` shell for
-  `FuelTypeDropdown` (`VehicleFormScreen.kt:387-422`) and `VehicleDropdown`
-  (`RefuelFormScreen.kt:402-463`) only. See R6 for the two dropdowns that must NOT join.
+- [~] **P2.11** REJECTED on closer look: unifying `DetailRow` and `HighlightRow` needs
+  ~6 parameters (valueStyle, weight, icon, ellipsis, padding, arrangement) for two private
+  2-site rows — the parameterization outweighs the duplication.
+- [~] **P2.12** REJECTED on closer look: the two dropdowns share only ~10 lines of EDMB
+  boilerplate; VehicleDropdown's error/locked/supporting-text state dominates and would all
+  become pass-through parameters. Both stay as they are.
 - [x] **P2.13** `MapLoadingCover` next to `MapLoadingIndicator` — 3 identical sites
   (`SavedAddressFormScreen.kt:588,704`, `map/MapPreview.kt:108-117`). ~-4.
 - [x] **P2.14** Token drift fixes: replace `RoundedCornerShape(28.dp)` with
@@ -143,7 +143,7 @@ Similarity was verified per site — "identical" below means byte-identical modu
   (`RideBackupImportScreen.kt:131`); `checkIfSelected` leading-icon helper (3 chip sites).
 - [x] **P2.15** Onboarding reuses `EcoSection`: `OnboardingFlow.kt:720-733` hand-rolls it
   next to a line that already correctly reuses `SafetyScoreCard`. 14 lines → 1.
-- [ ] **P2.16** Promote already-shared-in-spirit components trapped in wrong files:
+- [ ] **P2.16** (folded into the Phase 3 splits per area) Promote already-shared-in-spirit components trapped in wrong files: EcoSection (now also used by onboarding) joins the list;
   `BluetoothPickerDialog` + `TrackingCard` (`VehicleDetailScreen.kt:334-451`, imported by
   onboarding) → own files (garage or `ui/components`); `VehicleImage` (imported by home's
   `VehicleOverviewCard`) → `ui/components/VehicleImage.kt`; `SelectionCircle`,
