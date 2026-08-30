@@ -2,7 +2,6 @@
 
 package de.uhi.enia.ridesafe.ui.screens.rides
 
-import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -51,7 +50,8 @@ import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.export.RideExportFormat
 import de.uhi.enia.ridesafe.export.RideExportRequest
 import de.uhi.enia.ridesafe.export.SavedRideExport
-import de.uhi.enia.ridesafe.export.buildOpenExportIntent
+import de.uhi.enia.ridesafe.export.canOpenExportedFile
+import de.uhi.enia.ridesafe.export.openExportedFile
 import de.uhi.enia.ridesafe.rides.processing.RideAnalysisProgress
 import de.uhi.enia.ridesafe.rides.recording.RecordingStatus
 import de.uhi.enia.ridesafe.ui.components.AppSnackbarHost
@@ -183,18 +183,14 @@ fun RidesScreen(
                         uri = exportState.export.contentUri.toUri(),
                         format = exportState.export.format,
                     )
-                val openIntent = buildOpenExportIntent(saved)
-                val canOpen = openIntent.resolveActivity(context.packageManager) != null
+                val canOpen = canOpenExportedFile(context, saved)
                 val result =
                     snackbarHostState.showSnackbar(
                         message = exportSuccessMessage,
                         actionLabel = openFileLabel.takeIf { canOpen },
                         duration = SnackbarDuration.Long,
                     )
-                if (result == SnackbarResult.ActionPerformed) {
-                    runCatching { context.startActivity(openIntent) }
-                        .onFailure { Log.w("RideExport", "Could not open exported file", it) }
-                }
+                if (result == SnackbarResult.ActionPerformed) openExportedFile(context, saved)
                 onExportResultConsumed()
             }
 

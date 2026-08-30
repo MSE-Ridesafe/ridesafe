@@ -1,4 +1,4 @@
-package de.uhi.enia.ridesafe.ui.screens.rides
+package de.uhi.enia.ridesafe.export
 
 import android.content.Intent
 import android.graphics.pdf.PdfRenderer

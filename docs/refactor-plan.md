@@ -268,7 +268,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
 - [ ] **P4.13** `currentLanguageLabel` (`SettingsScreen.kt:691-701`) — non-composable
   `currentAppLanguageTag(context)` in `util/AppLocale.kt`; only the `stringResource`
   switch stays in UI.
-- [ ] **P4.14** Export-open intent resolution (`RidesScreen.kt:198-229`, resolves against
+- [x] **P4.14** Export-open intent resolution (`RidesScreen.kt:198-229`, resolves against
   `packageManager` + `startActivity` inside an effect) → `openExportedFile(context, saved)`
   in `export/RideExporter.kt`.
 

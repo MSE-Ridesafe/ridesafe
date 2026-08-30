@@ -235,3 +235,18 @@ private fun notifyExportComplete(
     val notification = builder.build()
     NotificationManagerCompat.from(context).notify(saved.fileName.hashCode(), notification)
 }
+
+/** Whether any installed app can display [saved]; decides the snackbar's "Open" action. */
+fun canOpenExportedFile(
+    context: Context,
+    saved: SavedRideExport,
+): Boolean = buildOpenExportIntent(saved).resolveActivity(context.packageManager) != null
+
+/** Open a completed export in its viewer; failures are logged, never thrown at the UI. */
+fun openExportedFile(
+    context: Context,
+    saved: SavedRideExport,
+) {
+    runCatching { context.startActivity(buildOpenExportIntent(saved)) }
+        .onFailure { Log.w("RideExport", "Could not open exported file", it) }
+}
