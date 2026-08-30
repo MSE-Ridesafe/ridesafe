@@ -1,5 +1,7 @@
 package de.uhi.enia.ridesafe.rides.processing.event
 
+import de.uhi.enia.ridesafe.rides.processing.kalmanFilterLocations
+import de.uhi.enia.ridesafe.rides.processing.score.scoreRide
 import de.uhi.enia.ridesafe.rides.recording.LocationSample
 import de.uhi.enia.ridesafe.rides.recording.MotionSample
 import de.uhi.enia.ridesafe.rides.recording.MotionSensor
@@ -44,7 +46,20 @@ class RealRideReplayTest {
         for (file in files) {
             val startNanos = file.name.removePrefix("ride_").substringBefore('.').toLongOrNull() ?: continue
             val samples = read(file)
-            val events = detectRideEvents(samples, startNanos)
+            // Driven by hand rather than through detectRideEvents so the dynamics profile — the
+            // scoring input — comes out of the very same pass as the events.
+            val config = RideEventConfig()
+            val fixes = kalmanFilterLocations(samples.locations)
+            val detector =
+                StreamingDetector(estimateForwardAxis(fixes, samples.rotation, config), config, startNanos)
+            val merged = (fixes + samples.accel + samples.gyro + samples.rotation).sortedBy { it.t }
+            for (sample in merged) {
+                when (sample) {
+                    is LocationSample -> detector.onFix(sample)
+                    is MotionSample -> detector.onMotion(sample)
+                }
+            }
+            val events = detector.finish()
             println(
                 "${file.name}: ${samples.locations.size} fixes, ${samples.accel.size} accel -> ${events.size} events",
             )
@@ -54,6 +69,20 @@ class RealRideReplayTest {
                         .format(e.type, e.startOffsetMs / 1000.0, e.durationMs, e.peakG, e.peakJerkGPerS, e.speedMps * 3.6),
                 )
             }
+            val dynamics = detector.dynamics()
+            val score = scoreRide(dynamics, events)
+            println(
+                "  dynamics: %.0f s qualified of %.0f s (coverage %.0f%%); score %s"
+                    .format(
+                        dynamics.qualifiedSeconds,
+                        dynamics.totalSeconds,
+                        dynamics.coverage * 100,
+                        score?.let {
+                            "${it.total} (b ${it.braking}/a ${it.acceleration}/c ${it.cornering}, " +
+                                "penalties %.2f/%.2f/%.2f)".format(it.brakingPenalty, it.accelerationPenalty, it.corneringPenalty)
+                        } ?: "none — too little measurable driving",
+                    ),
+            )
         }
     }
 

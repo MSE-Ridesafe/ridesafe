@@ -5,6 +5,8 @@ import de.uhi.enia.ridesafe.data.DYNAMICS_G_PER_BIN
 import de.uhi.enia.ridesafe.data.DYNAMICS_JERK_PER_BIN
 import de.uhi.enia.ridesafe.data.DirectionHistogram
 import de.uhi.enia.ridesafe.data.RideDynamics
+import de.uhi.enia.ridesafe.data.RideEvent
+import de.uhi.enia.ridesafe.data.RideEventType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -179,5 +181,71 @@ class SafetyScoringTest {
     @Test
     fun anEmptyWindowHasNoScore() {
         assertNull(aggregateScore(emptyList()))
+    }
+
+    private fun event(
+        type: RideEventType,
+        durationMs: Long,
+        peakG: Double,
+        avgG: Double,
+    ) = RideEvent(
+        type = type,
+        startOffsetMs = 0,
+        durationMs = durationMs,
+        peakG = peakG,
+        peakJerkGPerS = 0.0,
+        avgG = avgG,
+        speedMps = 15.0,
+    )
+
+    /**
+     * The coupling between detection and scoring, on the case that exposed its absence: two hard
+     * launches confirmed from Doppler speed by a phone whose seating absorbed the force. The jerk
+     * bins are empty — the accelerometer never felt it — yet the events are real, with real
+     * measured magnitudes, and the acceleration score must fall well out of the 90s it used to
+     * idle in. Modeled on a real ride: 0.56 g held 3.3 s, 0.47 g for a third of a second.
+     */
+    @Test
+    fun dopplerConfirmedEventsLowerTheScoreDespiteEmptyJerkBins() {
+        val launches =
+            listOf(
+                event(RideEventType.ACCELERATION, durationMs = 3291, peakG = 0.558, avgG = 0.33),
+                event(RideEventType.ACCELERATION, durationMs = 323, peakG = 0.468, avgG = 0.40),
+            )
+        val without = scoreRide(dynamics(741.0))!!
+        val with = scoreRide(dynamics(741.0), launches)!!
+
+        assertTrue("control: no events scores high, got ${without.acceleration}", without.acceleration > 95)
+        assertTrue(
+            "two hard launches must cost real points, got ${with.acceleration}",
+            with.acceleration in 30..75,
+        )
+        assertTrue("and the other directions stay put", with.braking == without.braking)
+    }
+
+    /**
+     * The guard against the surcharge over-reaching: an event scraping the detection floor is the
+     * mildest thing the detector reports, and the cube must price it at pennies — a driver with a
+     * couple of borderline maneuvers still holds a high-90s score.
+     */
+    @Test
+    fun nearFloorEventsCostAlmostNothing() {
+        val borderline =
+            listOf(
+                event(RideEventType.ACCELERATION, durationMs = 500, peakG = 0.28, avgG = 0.21),
+                event(RideEventType.CORNERING, durationMs = 400, peakG = 0.32, avgG = 0.25),
+            )
+        val score = scoreRide(dynamics(1800.0), borderline)!!
+
+        assertTrue("borderline events must barely register, got ${score.total}", score.total >= 97)
+    }
+
+    /** An emergency stop is the harshest thing a car does, and one alone must dominate its ride. */
+    @Test
+    fun anEmergencyStopDominatesTheBrakingScore() {
+        val stop = listOf(event(RideEventType.BRAKING, durationMs = 2007, peakG = 1.114, avgG = 0.81))
+        val score = scoreRide(dynamics(741.0), stop)!!
+
+        assertTrue("a 1.1 g stop must gut the braking score, got ${score.braking}", score.braking < 20)
     }
 }

@@ -241,13 +241,17 @@ class ScoreStage(
     private val db: RidesafeDatabase,
 ) : RideStage {
     override val id = "score"
-    override val version = 2
+
+    // v3: detected events add their own severity to the penalties (ScoreWeights.eventWeight) —
+    // the histograms only carry what the accelerometer witnessed, and detection now confirms
+    // events from Doppler and gyro evidence the bins cannot hold.
+    override val version = 3
     override val dependsOn = listOf("events")
     override val needsSamples = false
 
     override suspend fun finish(ctx: RideAnalysisContext) {
         val dynamics = ctx.dynamics
-        val score = dynamics?.let { scoreRide(it, RideEventConfig(), ScoreWeights()) }
+        val score = dynamics?.let { scoreRide(it, ctx.events.orEmpty(), RideEventConfig(), ScoreWeights()) }
         db.rideDao().setScore(ctx.ride.id, score)
         // The calibration record: collect these across the logbook to judge the ScoreWeights
         // constants against real driving, and bump [version] after changing any — which re-derives
