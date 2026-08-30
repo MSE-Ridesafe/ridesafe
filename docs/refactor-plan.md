@@ -186,7 +186,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
 
 ### settings
 
-- [ ] **P3.8** `SettingsScreen.kt` (760) — eight screens in one file →
+- [x] **P3.8** `SettingsScreen.kt` (760) — eight screens in one file →
   `SettingsSelectionScreen.kt` (shared frame + `SelectableSettingRow`),
   `LanguageSettingsScreen.kt` (the only sub-screen with real logic),
   `PreferenceSettingsScreens.kt` (Theme/Unit/Currency), `RecordingSettingsScreens.kt`
