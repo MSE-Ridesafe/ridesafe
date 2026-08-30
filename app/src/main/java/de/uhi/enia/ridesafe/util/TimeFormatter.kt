@@ -74,3 +74,15 @@ fun formatDayHeader(
             )
         }
     }
+
+/** Abbreviated single date for compact chips and buttons, e.g. "Aug 30, 2026". */
+/** "24 Aug 2026" — short enough for a chip and a half-width button. */
+fun formatShortDate(
+    context: Context,
+    day: LocalDate,
+): String =
+    DateUtils.formatDateTime(
+        context,
+        day.startOfDayMs(),
+        DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_ABBREV_MONTH or DateUtils.FORMAT_SHOW_YEAR,
+    )

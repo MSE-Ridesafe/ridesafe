@@ -124,3 +124,15 @@ fun formatOdometer(
     val formatter = MeasureFormat.getInstance(formatLocale, MeasureFormat.FormatWidth.SHORT)
     return formatter.format(Measure(value, unit))
 }
+
+const val METERS_PER_KM = 1000.0
+const val METERS_PER_MILE = 1609.344
+
+/** Canonical meters as the number the user sees in their own units, without a trailing ".0". */
+fun Double?.toFieldText(perUnit: Double): String {
+    val value = this?.div(perUnit) ?: return ""
+    return if (value % 1.0 == 0.0) value.toLong().toString() else value.toString()
+}
+
+/** A typed number in the user's units back to canonical meters; blank or unparseable = no bound. */
+fun String.toMeters(perUnit: Double): Double? = replace(',', '.').toDoubleOrNull()?.times(perUnit)

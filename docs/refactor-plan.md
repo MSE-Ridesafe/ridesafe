@@ -167,7 +167,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
   `AnalysisQueueScreen.kt` (+ `QueueCard`, `EmptyQueue`), `AnalysisQueueRows.kt`
   (`rememberQueueRows` state holder), `AnalysisNoticeCard.kt` (sole consumer is
   RideDetailScreen), `ProgressRing` → P2.16.
-- [ ] **P3.3** `RideFilterUi.kt` (741) → `RideSearchBar.kt`, `ActiveFilterChips.kt`
+- [x] **P3.3** `RideFilterUi.kt` (741) → `RideSearchBar.kt`, `ActiveFilterChips.kt`
   (+ chips + `dateChipLabel`), `RideFilterSheet.kt` (+ `SectionLabel`, `DistanceField`
   until P2.9), `RideFilterControls.kt` (`FilterDropdown`, `DateBoundButton`).
 - [ ] **P3.4** `RideDetailScreen.kt` (430) → `JourneyTimeline.kt` (constants +
