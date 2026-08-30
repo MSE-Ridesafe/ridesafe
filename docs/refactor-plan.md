@@ -44,7 +44,7 @@ Phase 5. Phase 2 first shrinks the big files so the Phase 3 splits get smaller.
 - [x] **P1.5** Split `consolidateSavedAddressDuplicates` + `rematchRides` (top-level
   repository functions) out of `data/SavedAddressDao.kt` into
   `data/SavedAddressMaintenance.kt`. Zero imports touched.
-- [ ] **P1.6** Split `Long.toLocalDate()` out of `util/TimeFormatter.kt:11` into
+- [x] **P1.6** Split `Long.toLocalDate()` out of `util/TimeFormatter.kt:11` into
   `util/TimeConversions.kt`, so `domain/` stops transitively pointing at a file full of
   Android formatting. Zero imports touched.
 
