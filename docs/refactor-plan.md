@@ -201,7 +201,7 @@ Line numbers are pre-Phase-2 and will shift; the declaration names are the ancho
 
 ### onboarding
 
-- [ ] **P3.10** `OnboardingFlow.kt` (796) → `OnboardingSteps.kt` (enum + pure sequencing
+- [x] **P3.10** `OnboardingFlow.kt` (796) → `OnboardingSteps.kt` (enum + pure sequencing
   — zero Compose imports, unit-testable), `OnboardingGate.kt` (router, pairs with
   `firstRunDecision`), `OnboardingPageKit.kt` (`StepPage`, `StepFormHeader`, `StepIntro`,
   `FeatureRow`), `OnboardingSetupPages.kt` (Car/Bluetooth/AutoTrack/Place),
