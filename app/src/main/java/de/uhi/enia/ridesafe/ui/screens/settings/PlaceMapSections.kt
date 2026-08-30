@@ -81,8 +81,9 @@ internal fun PlaceIconPicker(
 /**
  * The place's point and radius as a [MapPreview] card — the same shared surface (dark style,
  * deferred load, one spinner cover) the ride maps use; the whole card opens the full-screen
- * picker. The pin is a Compose overlay rather than a marker: the camera is centered on the point,
- * so the overlay is exact, and it stays put if the caller animates the camera.
+ * picker. The pin rides MapPreview's overlay slot rather than being a marker: the camera is
+ * centered on the point, so the overlay is exact — and the slot keeps it under the loading
+ * cover, so no pin floats over the spinner while the map loads or the device is offline.
  */
 @Composable
 internal fun PlaceMapPreviewCard(
@@ -91,32 +92,32 @@ internal fun PlaceMapPreviewCard(
     cameraPositionState: CameraPositionState,
     onOpenPicker: () -> Unit,
 ) {
-    Box {
-        MapPreview(
-            framing = null,
-            cameraPositionState = cameraPositionState,
-            height = 260.dp,
-            onExpand = onOpenPicker,
-            expandLabel = stringResource(R.string.saved_address_map_open),
-        ) {
-            point?.let { p ->
-                Circle(
-                    center = p,
-                    radius = radiusMeters,
-                    strokeColor = MaterialTheme.colorScheme.primary,
-                    strokeWidth = 4f,
-                    fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+    MapPreview(
+        framing = null,
+        cameraPositionState = cameraPositionState,
+        height = 260.dp,
+        onExpand = onOpenPicker,
+        expandLabel = stringResource(R.string.saved_address_map_open),
+        overlay = {
+            if (point != null) {
+                MaterialSymbol(
+                    symbolName = "location_on",
+                    contentDescription = null,
+                    fill = true,
+                    size = 48.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.align(Alignment.Center).offset(y = (-24).dp),
                 )
             }
-        }
-        if (point != null) {
-            MaterialSymbol(
-                symbolName = "location_on",
-                contentDescription = null,
-                fill = true,
-                size = 48.dp,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.align(Alignment.Center).offset(y = (-24).dp),
+        },
+    ) {
+        point?.let { p ->
+            Circle(
+                center = p,
+                radius = radiusMeters,
+                strokeColor = MaterialTheme.colorScheme.primary,
+                strokeWidth = 4f,
+                fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
             )
         }
     }

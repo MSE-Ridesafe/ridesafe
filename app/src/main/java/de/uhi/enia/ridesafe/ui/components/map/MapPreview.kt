@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -57,6 +58,10 @@ private const val TRANSITION_SETTLE_MS = 350L
  * then and the card always has content, but the settle deferral and the single cover still apply.
  * [liteMode] can be turned off for a preview whose camera keeps moving with caller state; a static
  * snapshot cannot animate.
+ *
+ * [overlay] is Compose content drawn over the map but *under* the loading cover (and under the
+ * [onExpand] tap layer) — a centered pin, say. It appears only once the map does, so nothing
+ * floats over the spinner while the map loads or the device is offline.
  */
 @Composable
 fun MapPreview(
@@ -67,6 +72,7 @@ fun MapPreview(
     liteMode: Boolean = true,
     onExpand: (() -> Unit)? = null,
     expandLabel: String? = null,
+    overlay: (@Composable BoxScope.() -> Unit)? = null,
     empty: @Composable () -> Unit = {},
     content: MapContent,
 ) {
@@ -98,6 +104,7 @@ fun MapPreview(
                         onLoaded = { mapLoaded = true },
                         content = content,
                     )
+                    overlay?.invoke(this)
                     if (onExpand != null) {
                         Box(
                             Modifier
