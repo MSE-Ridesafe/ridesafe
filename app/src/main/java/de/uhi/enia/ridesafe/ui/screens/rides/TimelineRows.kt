@@ -86,45 +86,17 @@ internal fun LogbookRow(
         }
     }
 
-    ListItem(
-        modifier =
-            Modifier.combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick,
-            ),
-        colors =
-            ListItemDefaults.colors(
-                containerColor =
-                    if (isOpen) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
-            ),
-        leadingContent = {
-            if (selectionMode) {
-                SelectionCircle(selected = selected)
-            } else {
-                MaterialSymbol(symbolName = icon, contentDescription = null)
-            }
-        },
-        overlineContent = overline?.let { { Text(it) } },
-        headlineContent = {
-            Text(
-                headline,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleMedium,
-            )
-        },
-        supportingContent = { Text(supporting, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        trailingContent =
-            if (selectionMode) {
-                null
-            } else {
-                {
-                    MaterialSymbol(
-                        symbolName = "chevron_right",
-                        contentDescription = stringResource(R.string.ride_open),
-                    )
-                }
-            },
+    TimelineListRow(
+        symbolName = icon,
+        overline = overline,
+        headline = headline,
+        supporting = supporting,
+        selectionMode = selectionMode,
+        selected = selected,
+        isOpen = isOpen,
+        showChevron = true,
+        onClick = onClick,
+        onLongClick = onLongClick,
     )
 }
 
@@ -152,48 +124,74 @@ internal fun RefuelTimelineRow(
         pricePerLiter(refuel.totalPriceMinor, refuel.fuelAmountMilliliters, fractionDigits)
             ?.let(currencyFormat::format)
 
+    TimelineListRow(
+        symbolName = "local_gas_station",
+        overline = if (showVehicle) row.vehicleName ?: stringResource(R.string.refuel_unknown_vehicle) else null,
+        headline = stringResource(R.string.refuel_label),
+        supporting =
+            buildList {
+                add(formatTimeOfDay(context, refuel.timestampEpochMs))
+                add(currencyFormat.format(total))
+                unitPrice?.let { add(stringResource(R.string.refuel_price_per_liter_value, it)) }
+            }.joinToString("  •  "),
+        selectionMode = selectionMode,
+        selected = selected,
+        isOpen = isOpen,
+        onClick = onClick,
+        onLongClick = onLongClick,
+        modifier = if (nested) Modifier.padding(start = 24.dp) else Modifier,
+    )
+}
+
+/** The shared render of a Logbook timeline row; the per-type derivation stays with each caller. */
+@Composable
+private fun TimelineListRow(
+    symbolName: String,
+    overline: String?,
+    headline: String,
+    supporting: String,
+    selectionMode: Boolean,
+    selected: Boolean,
+    isOpen: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    showChevron: Boolean = false,
+) {
     ListItem(
-        modifier =
-            Modifier
-                .then(if (nested) Modifier.padding(start = 24.dp) else Modifier)
-                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        modifier = modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick),
         colors =
             ListItemDefaults.colors(
-                containerColor =
-                    if (isOpen) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+                containerColor = if (isOpen) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
             ),
         leadingContent = {
             if (selectionMode) {
-                SelectionCircle(selected)
+                SelectionCircle(selected = selected)
             } else {
-                MaterialSymbol(symbolName = "local_gas_station", contentDescription = null)
+                MaterialSymbol(symbolName = symbolName, contentDescription = null)
             }
         },
-        overlineContent =
-            if (showVehicle) {
-                { Text(row.vehicleName ?: stringResource(R.string.refuel_unknown_vehicle)) }
-            } else {
-                null
-            },
+        overlineContent = overline?.let { { Text(it) } },
         headlineContent = {
             Text(
-                stringResource(R.string.refuel_label),
+                headline,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.titleMedium,
             )
         },
-        supportingContent = {
-            Text(
-                buildList {
-                    add(formatTimeOfDay(context, refuel.timestampEpochMs))
-                    add(currencyFormat.format(total))
-                    unitPrice?.let { add(stringResource(R.string.refuel_price_per_liter_value, it)) }
-                }.joinToString("  •  "),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
+        supportingContent = { Text(supporting, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        trailingContent =
+            if (showChevron && !selectionMode) {
+                {
+                    MaterialSymbol(
+                        symbolName = "chevron_right",
+                        contentDescription = stringResource(R.string.ride_open),
+                    )
+                }
+            } else {
+                null
+            },
     )
 }
 

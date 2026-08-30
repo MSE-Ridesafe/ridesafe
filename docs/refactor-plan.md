@@ -124,7 +124,7 @@ Similarity was verified per site — "identical" below means byte-identical modu
 - [x] **P2.9** `NumberField` — promote `RefuelFormScreen.DecimalField:513-533` to
   `ui/components/`; converts `DistanceField` (`RideFilterUi.kt:674-689`) and the four
   numeric fields in `VehicleFormScreen`. ~9 call sites.
-- [ ] **P2.10** (folded into P3.1) `TimelineListRow` — merge the render (not the derivation) of `LogbookRow`
+- [x] **P2.10** (folded into P3.1) `TimelineListRow` — merge the render (not the derivation) of `LogbookRow`
   and `RefuelTimelineRow` (`RidesScreen.kt:870-1034`). `RefuelTimelineRow` is already
   cross-screen (`RideDetailScreen.kt:212`, `MergedRideDetailScreen.kt:292`). ~-30.
 - [~] **P2.11** REJECTED on closer look: unifying `DetailRow` and `HighlightRow` needs
