@@ -64,27 +64,31 @@ private data class EntityImportMapping(
     val insertedArchiveIds: Set<Long>,
 )
 
-/** Copy-then-atomic-rename, so a cancelled or crashed import never leaves a half-written file. */
-private suspend fun publishImportFile(
-    source: File,
+private const val STAGED_PREFIX = ".ridesafe_import_"
+private const val STAGED_SUFFIX = ".tmp"
+
+/**
+ * Entries are extracted straight into the rides directory under this name and renamed into place
+ * once the database agrees, rather than being written to a staging directory and copied in. One
+ * write instead of two, and because both names are now in the same directory the rename is always
+ * a true atomic move. The name deliberately contains no ".route", so stale-route pruning cannot
+ * mistake an in-flight import for an old sidecar.
+ */
+internal fun stagedImportFile(directory: File) = File(directory, "$STAGED_PREFIX${UUID.randomUUID()}$STAGED_SUFFIX")
+
+internal fun sweepStaleStagedFiles(directory: File) {
+    directory
+        .listFiles { file -> file.isFile && file.name.startsWith(STAGED_PREFIX) && file.name.endsWith(STAGED_SUFFIX) }
+        ?.forEach { it.delete() }
+}
+
+/** Atomic rename of an already-fsynced staged file; a crash leaves either nothing or the whole file. */
+internal fun publishImportFile(
+    staged: File,
     destination: File,
 ) {
-    destination.parentFile?.mkdirs()
     require(!destination.exists()) { "Import destination already exists: ${destination.name}" }
-    val temporary = File(destination.parentFile, ".ridesafe_import_${UUID.randomUUID()}.tmp")
-    try {
-        FileOutputStream(temporary).use { output ->
-            source.inputStream().buffered().use { input -> copyCancellable(input, output) }
-            output.fd.sync()
-        }
-        Files.move(
-            temporary.toPath(),
-            destination.toPath(),
-            StandardCopyOption.ATOMIC_MOVE,
-        )
-    } finally {
-        if (temporary.exists()) temporary.delete()
-    }
+    Files.move(staged.toPath(), destination.toPath(), StandardCopyOption.ATOMIC_MOVE)
 }
 
 /**
@@ -105,7 +109,10 @@ internal class RideBackupImporter(
     /** Preview only, so the cheap record check: the deep one runs before anything is written. */
     suspend fun inspect(uri: Uri): RideBackupImportCandidate =
         withContext(Dispatchers.IO) {
+            // Both sweeps belong here rather than in the import: nothing else is in flight while a
+            // backup is being previewed, so this cannot delete a running import's own staged files.
             sweepStaleArchives(app.cacheDir)
+            sweepStaleStagedFiles(ridesDir(app))
             val archive = copyToCache(uri)
             try {
                 RideBackupImportCandidate(RideBackupArchiveValidator.validate(archive).preview(), archive)
@@ -130,10 +137,13 @@ internal class RideBackupImporter(
     internal suspend fun importArchive(archive: File): RideBackupImportResult =
         withContext(Dispatchers.IO) {
             val manifest = RideBackupArchiveValidator.validate(archive, decodeRecords = true)
-            val staging = Files.createTempDirectory(app.cacheDir.toPath(), "ridesafe_import_").toFile()
+            val destinationDirectory = ridesDir(app).apply { mkdirs() }
+            // Extraction writes the bytes; the transaction below only renames them, so the database
+            // write lock is not held across a quarter of a gigabyte of copying and fsyncing.
+            val stagedFiles = mutableMapOf<String, File>()
             val published = mutableListOf<File>()
             try {
-                val stagedFiles = extractIncludedFiles(archive, manifest, staging)
+                extractIncludedFiles(archive, manifest, destinationDirectory, stagedFiles)
                 val token = UUID.randomUUID().toString().replace("-", "")
                 val sampleNames = manifest.rides.associate { it.archiveId to "ride_import_${token}_${it.archiveId}.ndjson.gz" }
                 val result =
@@ -165,7 +175,8 @@ internal class RideBackupImporter(
                 published.forEach { it.delete() }
                 throw failure
             } finally {
-                staging.deleteRecursively()
+                // Whatever the transaction did not rename into place is still under its staged name.
+                stagedFiles.values.forEach { it.delete() }
             }
         }
 
@@ -398,7 +409,7 @@ internal class RideBackupImporter(
         insertedRideArchiveIds: Set<Long>,
         published: MutableList<File>,
     ) {
-        val destinationDirectory = ridesDir(app).apply { mkdirs() }
+        val destinationDirectory = ridesDir(app)
         manifest.rides.filter { it.archiveId in insertedRideArchiveIds }.forEach { ride ->
             currentCoroutineContext().ensureActive()
             val raw = manifest.file(ride.archiveId, "raw_samples")
@@ -418,12 +429,12 @@ internal class RideBackupImporter(
         }
     }
 
-    private suspend fun publish(
-        source: File,
+    private fun publish(
+        staged: File,
         destination: File,
         published: MutableList<File>,
     ) {
-        publishImportFile(source, destination)
+        publishImportFile(staged, destination)
         published += destination
     }
 
@@ -441,23 +452,25 @@ internal class RideBackupImporter(
         return HexFormat.of().formatHex(digest.digest())
     }
 
+    /** Fills [staged] as it goes, so a failure part-way through still tells the caller what to clean up. */
     private suspend fun extractIncludedFiles(
         archive: File,
         manifest: RideBackupManifest,
-        staging: File,
-    ): Map<String, File> =
+        directory: File,
+        staged: MutableMap<String, File>,
+    ) {
         ZipFile(archive).use { zip ->
-            manifest.files
-                .filter { it.status == "included" }
-                .mapIndexed { index, descriptor ->
-                    currentCoroutineContext().ensureActive()
-                    val target = File(staging, "entry_$index")
-                    zip.getInputStream(zip.getEntry(descriptor.path)).use { input ->
-                        target.outputStream().buffered().use { output -> copyCancellable(input, output) }
-                    }
-                    descriptor.path to target
-                }.toMap()
+            manifest.files.filter { it.status == "included" }.forEach { descriptor ->
+                currentCoroutineContext().ensureActive()
+                val target = stagedImportFile(directory)
+                staged[descriptor.path] = target
+                FileOutputStream(target).use { output ->
+                    zip.getInputStream(zip.getEntry(descriptor.path)).use { input -> copyCancellable(input, output) }
+                    output.fd.sync()
+                }
+            }
         }
+    }
 
     private suspend fun copyToCache(uri: Uri): File {
         val local = File.createTempFile(ARCHIVE_PREFIX, ".zip", app.cacheDir)
