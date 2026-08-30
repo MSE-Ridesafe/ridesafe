@@ -1,5 +1,6 @@
 package de.uhi.enia.ridesafe.ui.screens.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -138,6 +139,14 @@ fun SavedAddressFormScreen(
             focusManager.clearFocus()
             keyboard?.hide()
         }
+
+    // System back collapses the suggestion surface before it leaves the screen — otherwise a
+    // back meant to close the search throws the user out to the places list.
+    BackHandler(enabled = search.active) {
+        search.setActive(false)
+        focusManager.clearFocus()
+        keyboard?.hide()
+    }
 
     val canSave = point != null && label.isNotBlank()
 
