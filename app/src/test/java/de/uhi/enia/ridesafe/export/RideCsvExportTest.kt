@@ -163,7 +163,7 @@ class RideCsvExportTest {
             val controller =
                 RideExportController(
                     scope = this,
-                    operation = { _, format ->
+                    operation = { _, format, _ ->
                         receivedFormat = format
                         completed
                     },

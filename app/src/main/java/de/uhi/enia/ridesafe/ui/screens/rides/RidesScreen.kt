@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -58,6 +57,7 @@ import de.uhi.enia.ridesafe.ui.components.EmptyState
 import de.uhi.enia.ridesafe.ui.components.ListGroupItem
 import de.uhi.enia.ridesafe.ui.components.ListGroupItemGap
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.ProgressRing
 import de.uhi.enia.ridesafe.ui.components.RECORDING_BAR_INSET
 import de.uhi.enia.ridesafe.ui.components.SectionTitle
 import de.uhi.enia.ridesafe.util.formatDayHeader
@@ -88,6 +88,7 @@ fun RidesScreen(
     onLogbookOperationResultConsumed: () -> Unit,
     onExport: (List<RideExportRequest>, RideExportFormat) -> Unit,
     onExportResultConsumed: () -> Unit,
+    onCancelExport: () -> Unit,
     onAddRefuel: () -> Unit,
     // The entry whose detail pane is showing (LogbookEntry.key). Null on a phone, where the detail
     // covers the list rather than sitting beside it.
@@ -167,7 +168,7 @@ fun RidesScreen(
                 onExportResultConsumed()
             }
 
-            RideExportState.Idle, RideExportState.Exporting -> {}
+            RideExportState.Idle, is RideExportState.Exporting -> {}
         }
     }
 
@@ -248,7 +249,7 @@ fun RidesScreen(
                                 }
                             }
                         },
-                        exportEnabled = selection.selectedRideEntries.isNotEmpty() && exportState != RideExportState.Exporting,
+                        exportEnabled = selection.selectedRideEntries.isNotEmpty() && exportState !is RideExportState.Exporting,
                         onExport = { pendingExportRequests = exportRequests(entries, selection.selected) },
                         deleteEnabled =
                             selection.selected.isNotEmpty() &&
@@ -466,7 +467,7 @@ fun RidesScreen(
                     .padding(16.dp)
                     .padding(bottom = recordingInset),
         )
-        if (exportState == RideExportState.Exporting) {
+        (exportState as? RideExportState.Exporting)?.let { exporting ->
             Box(
                 modifier =
                     Modifier
@@ -480,8 +481,22 @@ fun RidesScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        CircularProgressIndicator()
+                        // Spins for PDF/CSV, which report no rides because they finish immediately.
+                        ProgressRing(fraction = exporting.progress.fraction, size = 48.dp)
                         Text(stringResource(R.string.ride_exporting))
+                        if (exporting.progress.rides > 0) {
+                            Text(
+                                text =
+                                    stringResource(
+                                        R.string.ride_export_count,
+                                        exporting.progress.ridesDone,
+                                        exporting.progress.rides,
+                                    ),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        TextButton(onClick = onCancelExport) { Text(stringResource(R.string.action_cancel)) }
                     }
                 }
             }

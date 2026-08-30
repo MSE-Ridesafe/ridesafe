@@ -357,6 +357,7 @@
     <string name="ride_export_format_csv_description">Table data for Excel and other applications</string>
     <string name="ride_export_format_zip_description">Backup with ride data, routes, and linked records</string>
     <string name="ride_exporting">Exporting rides…</string>
+    <string name="ride_export_count">%1$d of %2$d</string>
     <string name="ride_export_success">Export saved to Downloads/RideSafe.</string>
     <string name="ride_export_error">Could not export rides. Please try again.</string>
     <string name="ride_export_channel_name">Ride exports</string>

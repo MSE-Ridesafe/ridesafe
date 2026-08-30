@@ -12,6 +12,7 @@ import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.Vehicle
+import de.uhi.enia.ridesafe.export.RideExportProgress
 import de.uhi.enia.ridesafe.export.RideExportRequest
 import de.uhi.enia.ridesafe.rides.RideDataCoordinator
 import de.uhi.enia.ridesafe.rides.processing.AXIS_VERSION
@@ -47,18 +48,28 @@ internal class RideZipBackup(
     suspend fun write(
         destination: File,
         requests: List<RideExportRequest>,
+        onProgress: (RideExportProgress) -> Unit = {},
     ) {
         val rideIds = requests.flatMap(RideExportRequest::rideIds).distinct()
         require(rideIds.isNotEmpty())
+        var passes = 0
+        val report = { rides: Int -> onProgress(RideExportProgress(++passes, rides)) }
         RideDataCoordinator.withRides(rideIds) {
             val databaseSnapshot = readDatabaseSnapshot(rideIds)
-            val sources = describeFiles(databaseSnapshot.rides)
+            val rides = databaseSnapshot.rides.size
+            onProgress(RideExportProgress(0, rides))
+            val sources = describeFiles(databaseSnapshot.rides) { report(rides) }
             val manifest = databaseSnapshot.toManifest(app, requests, sources.map { it.metadata })
             RideBackupArchiveValidator.validateManifest(manifest)
-            writeRideBackupZip(destination, manifest, sources)
+            writeRideBackupZip(destination, manifest, sources) { report(rides) }
+            // Cancellation is checked per archive entry from here on: the reader is not a suspend
+            // function, so it borrows this coroutine's context rather than the caller's.
+            val context = currentCoroutineContext()
+            RideBackupArchiveValidator.validate(destination) {
+                context.ensureActive()
+                report(rides)
+            }
         }
-        currentCoroutineContext().ensureActive()
-        RideBackupArchiveValidator.validate(destination)
     }
 
     private suspend fun readDatabaseSnapshot(rideIds: List<Long>): RideBackupSnapshot =
@@ -88,7 +99,10 @@ internal class RideZipBackup(
             )
         }
 
-    private suspend fun describeFiles(rides: List<Ride>): List<RideBackupSourceFile> {
+    private suspend fun describeFiles(
+        rides: List<Ride>,
+        onRide: () -> Unit,
+    ): List<RideBackupSourceFile> {
         val sources = mutableListOf<RideBackupSourceFile>()
         for (ride in rides) {
             currentCoroutineContext().ensureActive()
@@ -103,6 +117,7 @@ internal class RideZipBackup(
                     // Never opened: an absent descriptor is filtered out before any entry is written.
                     RideBackupSourceFile(routeFileMetadata(ride.id, ABSENT, null, null), routeSource, 0)
                 }
+            onRide()
         }
         return sources
     }
@@ -195,6 +210,7 @@ internal suspend fun writeRideBackupZip(
     destination: File,
     manifest: RideBackupManifest,
     sources: List<RideBackupSourceFile>,
+    onRide: () -> Unit = {},
 ) {
     currentCoroutineContext().ensureActive()
     RideBackupArchiveValidator.validateManifest(manifest)
@@ -226,6 +242,7 @@ internal suspend fun writeRideBackupZip(
                 .buffered()
                 .use { input -> copyCancellable(input, zip) }
             zip.closeEntry()
+            if (file.role == RAW_ROLE) onRide()
         }
     }
 }

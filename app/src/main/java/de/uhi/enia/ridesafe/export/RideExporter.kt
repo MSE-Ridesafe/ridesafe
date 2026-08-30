@@ -22,6 +22,7 @@ import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.permissions.AppPermission
 import de.uhi.enia.ridesafe.util.UnitPrefs
+import de.uhi.enia.ridesafe.util.copyCancellable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -43,9 +44,14 @@ class RideExporter(
 ) {
     private val db = RidesafeDatabase.getInstance(app)
 
+    /**
+     * @param onProgress ride-pass progress for the UI. Only the ZIP format reports it; PDF and CSV
+     * render database rows and are done before a progress dialog could usefully move.
+     */
     suspend fun export(
         requests: List<RideExportRequest>,
         format: RideExportFormat,
+        onProgress: (RideExportProgress) -> Unit = {},
     ): CompletedRideExport =
         withContext(Dispatchers.IO) {
             require(requests.isNotEmpty())
@@ -56,7 +62,7 @@ class RideExporter(
                 when (format) {
                     RideExportFormat.PDF -> RidePdfReport().write(temp, loadJourneys(requests), exportDate, UnitPrefs.get(app))
                     RideExportFormat.CSV -> writeRideCsv(temp, loadJourneys(requests), UnitPrefs.get(app))
-                    RideExportFormat.ZIP -> RideZipBackup(app, db).write(temp, requests)
+                    RideExportFormat.ZIP -> RideZipBackup(app, db).write(temp, requests, onProgress)
                 }
                 coroutineContext.ensureActive()
                 val saved = saveToDownloads(app, temp, exportDate, format)
@@ -118,7 +124,8 @@ private fun cleanupStaleTemps(cacheDir: File) {
         ?.forEach { it.delete() }
 }
 
-internal fun saveToDownloads(
+/** Suspending because the copy is: a cancelled ZIP export must not still land in Downloads. */
+internal suspend fun saveToDownloads(
     context: Context,
     source: File,
     date: LocalDate,
@@ -148,8 +155,8 @@ internal fun saveToDownloads(
         }
     val uri = resolver.insert(collection, values) ?: error("MediaStore insert failed")
     try {
-        resolver.openOutputStream(uri, "w")?.use { output -> source.inputStream().use { it.copyTo(output) } }
-            ?: error("MediaStore output stream unavailable")
+        val output = resolver.openOutputStream(uri, "w") ?: error("MediaStore output stream unavailable")
+        output.use { target -> source.inputStream().buffered().use { copyCancellable(it, target) } }
         val published = ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }
         check(resolver.update(uri, published, null, null) == 1) { "MediaStore publish failed" }
         return SavedRideExport(fileName, uri, format)

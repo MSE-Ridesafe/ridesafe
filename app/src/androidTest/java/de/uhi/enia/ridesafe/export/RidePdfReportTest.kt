@@ -6,6 +6,7 @@ import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import androidx.test.core.app.ApplicationProvider
 import de.uhi.enia.ridesafe.util.UnitSystemSetting
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -88,8 +89,8 @@ class RidePdfReportTest {
             val journey =
                 RideExportJourney("Test vehicle", 1_700_000_000_000L, 1_700_000_060_000L, 60_000, null, null, null)
             RidePdfReport().write(file, listOf(journey), date, UnitSystemSetting.METRIC)
-            val firstSaved = saveToDownloads(context, file, date)
-            val secondSaved = saveToDownloads(context, file, date)
+            val firstSaved = runBlocking { saveToDownloads(context, file, date) }
+            val secondSaved = runBlocking { saveToDownloads(context, file, date) }
             assertTrue(firstSaved.fileName == desired)
             assertTrue(secondSaved.fileName == desired.removeSuffix(".pdf") + "_2.pdf")
             val firstOpen = buildOpenExportIntent(firstSaved)
@@ -136,7 +137,7 @@ class RidePdfReportTest {
         var created: android.net.Uri? = null
         try {
             file.writeText("Type,Parent\r\nStandalone,\r\n", Charsets.UTF_8)
-            val saved = saveToDownloads(context, file, date, RideExportFormat.CSV)
+            val saved = runBlocking { saveToDownloads(context, file, date, RideExportFormat.CSV) }
             created = saved.uri
             assertTrue(saved.fileName == exportFileName(date, RideExportFormat.CSV))
             val open = buildOpenExportIntent(saved)

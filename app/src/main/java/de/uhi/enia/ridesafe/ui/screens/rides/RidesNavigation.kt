@@ -99,6 +99,7 @@ fun EntryProviderScope<NavKey>.ridesEntries(
                 onLogbookOperationResultConsumed = viewModel::consumeLogbookOperationResult,
                 onExport = viewModel::export,
                 onExportResultConsumed = viewModel::consumeExportResult,
+                onCancelExport = viewModel::cancelExport,
                 onAddRefuel = { onOpen(AddRefuelRoute) },
                 selectionDismissRequests = selectionDismissRequests,
                 selectedKey = selectedKey,

@@ -12,6 +12,7 @@ import de.uhi.enia.ridesafe.ui.screens.rides.RideExportState
 import de.uhi.enia.ridesafe.ui.screens.rides.RideRow
 import de.uhi.enia.ridesafe.ui.screens.rides.exportRequests
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
@@ -290,9 +291,9 @@ class RidePdfExportTest {
     fun exportControllerReportsSuccessAndConsumesResult() =
         runBlocking {
             val completed = CompletedRideExport("export.pdf", "content://downloads/1")
-            val controller = RideExportController(this, operation = { _, _ -> completed })
+            val controller = RideExportController(this, operation = { _, _, _ -> completed })
             assertTrue(controller.start(listOf(RideExportRequest("r1", listOf(1))), RideExportFormat.PDF))
-            assertEquals(RideExportState.Exporting, controller.state.value)
+            assertEquals(RideExportState.Exporting(), controller.state.value)
             yield()
             assertEquals(RideExportState.Success(completed), controller.state.value)
             controller.consumeResult()
@@ -300,13 +301,46 @@ class RidePdfExportTest {
         }
 
     @Test
+    fun exportProgressCountsRidePassesRatherThanRides() {
+        // Three rides, three passes each; a ride only counts as done once all three are.
+        assertEquals(0, RideExportProgress(0, 3).ridesDone)
+        assertEquals(0f, RideExportProgress(0, 3).fraction, 0f)
+        assertEquals(1, RideExportProgress(3, 3).ridesDone)
+        assertEquals(1f / 3, RideExportProgress(3, 3).fraction, 1e-6f)
+        assertEquals(3, RideExportProgress(9, 3).ridesDone)
+        assertEquals(1f, RideExportProgress(9, 3).fraction, 0f)
+        // PDF and CSV report no rides at all, which the dialog shows as an indeterminate ring.
+        assertEquals(0f, RideExportProgress().fraction, 0f)
+    }
+
+    @Test
+    fun exportControllerPublishesProgressAndReturnsToIdleOnCancel() =
+        runBlocking {
+            val controller =
+                RideExportController(
+                    this,
+                    operation = { _, _, onProgress ->
+                        onProgress(RideExportProgress(passes = 3, rides = 3))
+                        CompletableDeferred<Unit>().await() // never completes; only cancel ends this
+                        CompletedRideExport("export.zip", "content://downloads/1", RideExportFormat.ZIP)
+                    },
+                )
+            assertTrue(controller.start(listOf(RideExportRequest("r1", listOf(1))), RideExportFormat.ZIP))
+            yield()
+            assertEquals(RideExportState.Exporting(RideExportProgress(3, 3)), controller.state.value)
+
+            controller.cancel()
+            assertEquals(RideExportState.Idle, controller.state.first { it == RideExportState.Idle })
+        }
+
+    @Test
     fun exportControllerReportsFailureAndLeavesLoadingState() =
         runBlocking {
-            val controller = RideExportController(this, operation = { _, _ -> error("disk full") })
+            val controller = RideExportController(this, operation = { _, _, _ -> error("disk full") })
             assertTrue(controller.start(listOf(RideExportRequest("r1", listOf(1))), RideExportFormat.CSV))
             yield()
             assertEquals(RideExportState.Error, controller.state.value)
-            assertFalse(controller.state.value == RideExportState.Exporting)
+            assertFalse(controller.state.value is RideExportState.Exporting)
             controller.consumeResult()
             assertEquals(RideExportState.Idle, controller.state.value)
         }
@@ -319,7 +353,7 @@ class RidePdfExportTest {
             val controller =
                 RideExportController(
                     this,
-                    operation = { _, _ ->
+                    operation = { _, _, _ ->
                         calls++
                         release.await()
                         CompletedRideExport("export.pdf", "content://downloads/1")

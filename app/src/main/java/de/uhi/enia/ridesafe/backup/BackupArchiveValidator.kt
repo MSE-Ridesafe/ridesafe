@@ -5,6 +5,7 @@ import de.uhi.enia.ridesafe.data.FuelType
 import de.uhi.enia.ridesafe.data.RideEventType
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
 import de.uhi.enia.ridesafe.rides.recording.RideSample
+import kotlinx.coroutines.CancellationException
 import java.io.File
 import java.io.InputStream
 import java.util.zip.GZIPInputStream
@@ -17,10 +18,13 @@ internal object RideBackupArchiveValidator {
      * @param decodeRecords deserialize every raw sample record rather than only checking the gzip
      * stream and its record framing. See [validateRawSamples] for why that is off by default; only
      * the restore path, whose archive came from another device, turns it on.
+     * @param onRide called once per ride, after its raw entry has been read. This is not a suspend
+     * function, so a caller that needs the read to be cancellable checks its own context here.
      */
     fun validate(
         archive: File,
         decodeRecords: Boolean = false,
+        onRide: () -> Unit = {},
     ): RideBackupManifest {
         try {
             ZipFile(archive).use { zip ->
@@ -46,7 +50,11 @@ internal object RideBackupArchiveValidator {
                     if (integrity.size != descriptor.sizeBytes) fail("Byte-size mismatch for ${descriptor.path}")
                     if (!integrity.sha256.equals(descriptor.sha256, ignoreCase = true)) fail("SHA-256 mismatch for ${descriptor.path}")
                     when (descriptor.role) {
-                        RAW_ROLE -> zip.getInputStream(entry).use { validateRawSamples(it, decodeRecords) }
+                        RAW_ROLE -> {
+                            zip.getInputStream(entry).use { validateRawSamples(it, decodeRecords) }
+                            onRide()
+                        }
+
                         ROUTE_ROLE -> zip.getInputStream(entry).use(::validateEncodedRoute)
                     }
                 }
@@ -54,6 +62,8 @@ internal object RideBackupArchiveValidator {
             }
         } catch (failure: RideBackupValidationException) {
             throw failure
+        } catch (cancelled: CancellationException) {
+            throw cancelled // a cancelled export is not a corrupt archive; let it unwind
         } catch (failure: Exception) {
             throw RideBackupValidationException("Backup ZIP is corrupt or unreadable", failure)
         }
