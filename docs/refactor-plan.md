@@ -121,7 +121,7 @@ Similarity was verified per site — "identical" below means byte-identical modu
   Include `CardDivider()` (the `surfaceContainerHighest` divider written at 6 sites). ~-28.
 - [x] **P2.8** `BackNavIcon(showBack, symbolName = "arrow_back", onBack)` — mop-up for
   the ~4 sites P2.1/P2.2 don't absorb (8 identical sites today). ~-54 before absorption.
-- [ ] **P2.9** `NumberField` — promote `RefuelFormScreen.DecimalField:513-533` to
+- [x] **P2.9** `NumberField` — promote `RefuelFormScreen.DecimalField:513-533` to
   `ui/components/`; converts `DistanceField` (`RideFilterUi.kt:674-689`) and the four
   numeric fields in `VehicleFormScreen`. ~9 call sites.
 - [ ] **P2.10** `TimelineListRow` — merge the render (not the derivation) of `LogbookRow`

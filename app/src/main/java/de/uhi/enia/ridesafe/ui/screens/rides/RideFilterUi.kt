@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -62,7 +61,6 @@ import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -74,6 +72,7 @@ import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.displayTitle
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.NumberField
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formatDistance
 import de.uhi.enia.ridesafe.util.toLocalDate
@@ -460,20 +459,20 @@ fun RideFilterSheet(
             item { SectionLabel(stringResource(R.string.rides_filter_distance)) }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DistanceField(
+                    NumberField(
                         label = stringResource(R.string.rides_filter_distance_min, unitLabel),
-                        text = minText,
+                        value = minText,
                         modifier = Modifier.weight(1f),
-                        onChange = {
+                        onValueChange = {
                             minText = it
                             onFilterChange(filter.copy(minDistanceMeters = it.toMeters(perUnit)))
                         },
                     )
-                    DistanceField(
+                    NumberField(
                         label = stringResource(R.string.rides_filter_distance_max, unitLabel),
-                        text = maxText,
+                        value = maxText,
                         modifier = Modifier.weight(1f),
-                        onChange = {
+                        onValueChange = {
                             maxText = it
                             onFilterChange(filter.copy(maxDistanceMeters = it.toMeters(perUnit)))
                         },
@@ -669,23 +668,6 @@ private fun DateBoundButton(
             DatePicker(state = state, title = { SectionLabel(label) })
         }
     }
-}
-
-@Composable
-private fun DistanceField(
-    label: String,
-    text: String,
-    onChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    OutlinedTextField(
-        value = text,
-        onValueChange = onChange,
-        modifier = modifier,
-        label = { Text(label) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-    )
 }
 
 /** The symbol for a trip kind: the list's own route glyph for a single ride, the merge one for a trip. */

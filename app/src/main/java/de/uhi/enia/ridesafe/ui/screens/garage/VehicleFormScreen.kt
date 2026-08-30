@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -35,6 +34,7 @@ import de.uhi.enia.ridesafe.ui.components.ConfirmDestructiveDialog
 import de.uhi.enia.ridesafe.ui.components.DestructiveOutlinedButton
 import de.uhi.enia.ridesafe.ui.components.FormScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.NumberField
 import de.uhi.enia.ridesafe.ui.components.SectionTitle
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.usesMetric
@@ -150,22 +150,18 @@ fun VehicleFormScreen(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        OutlinedTextField(
+        NumberField(
             value = mileage,
             onValueChange = { mileage = it.filter(Char::isDigit) },
-            label = { Text(stringResource(R.string.vehicle_mileage)) },
-            suffix = { Text(stringResource(if (metric) R.string.unit_km else R.string.unit_mi)) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            label = stringResource(R.string.vehicle_mileage),
+            suffix = stringResource(if (metric) R.string.unit_km else R.string.unit_mi),
+            keyboardType = KeyboardType.Number,
         )
-        OutlinedTextField(
+        NumberField(
             value = year,
             onValueChange = { year = it.filter(Char::isDigit) },
-            label = { Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_year))) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            label = stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_year)),
+            keyboardType = KeyboardType.Number,
         )
 
         OutlinedButton(
@@ -186,27 +182,17 @@ fun VehicleFormScreen(
         if (showExtendedInformation) {
             SectionTitle(text = stringResource(R.string.vehicle_section_fuel), modifier = Modifier.padding(top = 4.dp))
             FuelTypeDropdown(selected = fuelType, onSelected = { fuelType = it })
-            OutlinedTextField(
+            NumberField(
                 value = fuelEconomy,
                 onValueChange = { fuelEconomy = it },
-                label = {
-                    Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_fuel_economy)))
-                },
-                suffix = { Text(stringResource(R.string.unit_fuel_economy)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                label = stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_fuel_economy)),
+                suffix = stringResource(R.string.unit_fuel_economy),
             )
-            OutlinedTextField(
+            NumberField(
                 value = tankSize,
                 onValueChange = { tankSize = it },
-                label = {
-                    Text(stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_tank_size)))
-                },
-                suffix = { Text(stringResource(R.string.unit_liter)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                label = stringResource(R.string.vehicle_label_optional, stringResource(R.string.vehicle_tank_size)),
+                suffix = stringResource(R.string.unit_liter),
             )
 
             SectionTitle(text = stringResource(R.string.vehicle_section_information), modifier = Modifier.padding(top = 4.dp))

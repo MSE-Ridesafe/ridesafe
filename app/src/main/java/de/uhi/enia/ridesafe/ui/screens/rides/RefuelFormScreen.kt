@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -44,7 +43,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.data.Refuel
@@ -52,6 +50,7 @@ import de.uhi.enia.ridesafe.data.Vehicle
 import de.uhi.enia.ridesafe.data.displayTitle
 import de.uhi.enia.ridesafe.ui.components.FormScaffold
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.NumberField
 import de.uhi.enia.ridesafe.util.currentCurrencySetting
 import de.uhi.enia.ridesafe.util.currentUnitSystem
 import de.uhi.enia.ridesafe.util.formattingLocale
@@ -272,7 +271,7 @@ fun RefuelFormScreen(
             onTimeClick = { showTimePicker = true },
         )
 
-        DecimalField(
+        NumberField(
             value = fuelText,
             onValueChange = { fuelText = it },
             label = stringResource(R.string.refuel_fuel_amount),
@@ -280,7 +279,7 @@ fun RefuelFormScreen(
             isError = showErrors && !fuelValid,
             error = stringResource(R.string.refuel_error_fuel),
         )
-        DecimalField(
+        NumberField(
             value = totalText,
             onValueChange = { totalText = it },
             label = stringResource(R.string.refuel_total_price),
@@ -297,7 +296,7 @@ fun RefuelFormScreen(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        DecimalField(
+        NumberField(
             value = odometerText,
             onValueChange = { odometerText = it },
             label = stringResource(R.string.refuel_odometer),
@@ -481,26 +480,4 @@ private fun DateTimeFields(
             modifier = Modifier.weight(1f).clickable(onClick = onTimeClick),
         )
     }
-}
-
-@Composable
-private fun DecimalField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    suffix: String,
-    isError: Boolean,
-    error: String,
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        suffix = { Text(suffix) },
-        isError = isError,
-        supportingText = if (isError) ({ Text(error) }) else null,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-    )
 }
