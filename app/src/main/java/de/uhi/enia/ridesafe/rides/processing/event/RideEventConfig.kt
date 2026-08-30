@@ -139,6 +139,29 @@ data class DirectionThresholds(
  * axis. Raise it to gather samples faster, at the cost of that lag skewing the result; lower it and
  * calibration may never collect enough samples on a winding route.
  *
+ * @property sustainedDvWindowMs The trailing window over which GPS Doppler speed change is watched
+ * for sustained harshness. The accelerometer path misses maneuvers a badly seated phone absorbs —
+ * a loosely lying phone slides instead of feeling the force, and on replayed rides a −0.5 g stop
+ * registered barely 0.13 g. Doppler measures the car regardless, but only at 1 Hz averages, so
+ * this path speaks in "how much speed changed within the window" rather than jerk. Three seconds
+ * separates a real sustained maneuver from a one-second launch blip; shorten it and blips start
+ * arming the path, lengthen it and the arm lags so far behind the maneuver that only its tail is
+ * ever measured.
+ *
+ * @property sustainedAccelDvMps Speed gained within the window that declares sustained harsh
+ * acceleration, in m/s (default ≈ +24 km/h in 3 s, a held 0.23 g). While the window shows more
+ * than this, the acceleration detector opens and sustains on the Doppler slope at the ordinary
+ * peak floor, however little the accelerometer felt. Calibrated on a real logbook: everyday
+ * standing-start surges gain ~+19 km/h per 3 s and stay under it, the two genuinely floored
+ * launches gained +27 and +42. Lower it and brisk-but-normal pulls become events; raise it and
+ * only outright full-throttle runs arm.
+ *
+ * @property sustainedBrakeDvMps Speed lost within the window that declares sustained harsh
+ * braking, in m/s (default ≈ −40 km/h in 3 s, a held 0.38 g). Higher than the acceleration arm
+ * because braking runs stronger in normal traffic: a spirited motorway-exit brake sheds ~30 km/h
+ * per 3 s and must stay silent, while the replayed hard stops shed 43 and 60. Lower it and firm
+ * everyday stops become events; raise it and only full emergency stops arm.
+ *
  * @property dvAgreementFraction How much of a braking/acceleration event's claimed speed change the
  * GPS Doppler speed must confirm before the event is kept, as a fraction of `avgG · duration`.
  * The accelerometer measures the phone; Doppler measures the car; an event the car's speed trace
@@ -181,6 +204,9 @@ data class RideEventConfig(
     val lowPassHz: Double = 2.0,
     val maxSampleAgeNanos: Long = 1_000_000_000,
     val maxFixAccuracyMeters: Double = 30.0,
+    val sustainedDvWindowMs: Long = 3000,
+    val sustainedAccelDvMps: Double = 6.7,
+    val sustainedBrakeDvMps: Double = 11.1,
     val dvAgreementFraction: Double = 0.3,
     val dvAgreementFloorMps: Double = 0.8,
     val alignmentMinSpeedMps: Double = 8.0,

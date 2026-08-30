@@ -8,7 +8,11 @@ import de.uhi.enia.ridesafe.data.RideEventType
  *
  * An event opens when the force builds fast enough ([DirectionThresholds.enterJerkGPerS]) *or* gets
  * high enough on its own ([DirectionThresholds.highPeakG], which is null for directions that have no
- * such bypass). It stays open while either the rate is still elevated
+ * such bypass) *or* — for a sample fed as `armed` — merely clears [DirectionThresholds.minPeakG].
+ * Armed means the sustained-Δv path has already established harshness from the car's own Doppler
+ * speed (see StreamingDetector); demanding the usual entry evidence on top would re-ask a question
+ * that is already answered, and would miss exactly the maneuvers that path exists for, where a
+ * badly seated phone kept the accelerometer signal small. It stays open while either the rate is still elevated
  * ([DirectionThresholds.exitJerkGPerS]) or the force is still above
  * [DirectionThresholds.minPeakG] — that second term is what carries it through the steady middle of
  * a maneuver, where jerk is near zero by definition. It only truly ends once both have stayed low
@@ -61,6 +65,7 @@ internal class EventAccumulator(
         magnitudeG: Double,
         jerkGPerS: Double,
         state: TrackState?,
+        armed: Boolean = false,
     ) {
         // Tracked outside the open/closed logic on purpose: the fix that corroborates an event's
         // tail often arrives while the event is already coasting through its merge gap.
@@ -75,7 +80,8 @@ internal class EventAccumulator(
                 if (nanos - since > config.mergeGapMs * 1_000_000) flush()
             }
         } else if (jerkGPerS >= thresholds.enterJerkGPerS ||
-            (thresholds.highPeakG != null && magnitudeG >= thresholds.highPeakG)
+            (thresholds.highPeakG != null && magnitudeG >= thresholds.highPeakG) ||
+            (armed && magnitudeG >= thresholds.minPeakG)
         ) {
             open = true
             startNanos = nanos

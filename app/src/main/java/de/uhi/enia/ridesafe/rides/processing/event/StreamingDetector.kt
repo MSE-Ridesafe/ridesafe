@@ -59,6 +59,15 @@ internal class StreamingDetector(
     private val corneringRate = RateTracker(baselineNanos)
     private val rc = 1.0 / (2 * Math.PI * config.lowPassHz)
 
+    // The sustained-Δv path: Doppler speed change over a trailing window arms a direction, and an
+    // armed direction may open and sustain on the Doppler slope at the ordinary peak floor. This is
+    // the one path that survives a badly seated phone — the accelerometer measures the phone, and a
+    // phone that slides in its mount absorbs the very force being measured; Doppler measures the
+    // car. Hysteresis on disarm so a window hovering at the threshold doesn't flutter the path.
+    private val speedWindow = SpeedChangeWindow(config.sustainedDvWindowMs)
+    private var armedAccelerating = false
+    private var armedBraking = false
+
     // Reused every sample rather than reallocated; this runs once per acceleration reading.
     private val matrix = DoubleArray(9)
     private val state = TrackState()
@@ -214,6 +223,7 @@ internal class StreamingDetector(
         state.lon = a.lon + (b.lon - a.lon) * f
         state.previousFixSpeedMps = a.speed.toDouble()
         state.currentFixSpeedMps = b.speed.toDouble()
+        state.slopeMps2 = if (span > 0) (b.speed - a.speed) / (span / 1e9) else 0.0
         return true
     }
 
@@ -240,8 +250,22 @@ internal class StreamingDetector(
 
         if (hasState) lastSpeedMps = state.speedMps
 
-        val brakingG = (-smoothedLongitudinal / G).coerceAtLeast(0.0)
-        val acceleratingG = (smoothedLongitudinal / G).coerceAtLeast(0.0)
+        // Arm or disarm the sustained-Δv path. Cleared across a GPS gap: its two sides must never
+        // be compared, or the jump over the gap reads as a violent maneuver.
+        if (hasState) {
+            val windowDv = speedWindow.update(nanos, state.speedMps)
+            armedAccelerating =
+                if (armedAccelerating) windowDv >= config.sustainedAccelDvMps * ARMED_EXIT_FRACTION else windowDv >= config.sustainedAccelDvMps
+            armedBraking =
+                if (armedBraking) windowDv <= -config.sustainedBrakeDvMps * ARMED_EXIT_FRACTION else windowDv <= -config.sustainedBrakeDvMps
+        } else {
+            speedWindow.clear()
+            armedAccelerating = false
+            armedBraking = false
+        }
+
+        var brakingG = (-smoothedLongitudinal / G).coerceAtLeast(0.0)
+        var acceleratingG = (smoothedLongitudinal / G).coerceAtLeast(0.0)
         // Cornering is the lower of two independent witnesses to the same physics: the felt lateral
         // force, and v·ω — what the lateral force *must* be if the car is really turning (a = v²/r,
         // ω = v/r). Lateral force without matching yaw is not cornering: it is braking bleeding
@@ -251,10 +275,18 @@ internal class StreamingDetector(
 
         // Rates track the real signal even while gated, so lifting a gate doesn't read as a step
         // change and fire a phantom event. Only the onset counts: easing off a brake is a negative
-        // rate and isn't harsh, so the accumulators see rises only.
+        // rate and isn't harsh, so the accumulators see rises only. Jerk stays accelerometer-only —
+        // the Doppler slope below is a 1 Hz staircase, and differentiating a staircase yields steps,
+        // not harshness.
         val brakingJerk = brakingRate.update(nanos, brakingG)
         val acceleratingJerk = acceleratingRate.update(nanos, acceleratingG)
         val corneringJerk = corneringRate.update(nanos, corneringG)
+
+        // While armed, the Doppler slope joins the magnitude path, so a maneuver the phone's
+        // mounting absorbed still opens (see EventAccumulator's armed path), sustains and reports
+        // its true car-measured peak.
+        if (armedBraking && hasState) brakingG = maxOf(brakingG, -state.slopeMps2 / G)
+        if (armedAccelerating && hasState) acceleratingG = maxOf(acceleratingG, state.slopeMps2 / G)
 
         val handling = gyroMagnitude > config.maxGyroRadPerSec
 
@@ -267,21 +299,34 @@ internal class StreamingDetector(
         // ponytail: taken per sample, so a turn-in transient where yaw leads lateral force can read
         // low for a moment and gate out the start of a genuinely hard corner. Low-passing both
         // inputs keeps that small; widen to a held estimate if real events start going missing.
+        // The IMU speed cross-check needs a lateral signal to exist, so without an axis the GPS
+        // speed stands alone — dividing an identically-zero lateral by yaw would gate out every turn.
         val imuSpeed =
-            if (abs(smoothedYawRate) >= config.minYawForImuSpeedRadPerS) abs(smoothedLateral) / abs(smoothedYawRate) else null
+            if (forward != null && abs(smoothedYawRate) >= config.minYawForImuSpeedRadPerS) {
+                abs(smoothedLateral) / abs(smoothedYawRate)
+            } else {
+                null
+            }
         val speed = if (!hasState) 0.0 else minOf(state.speedMps, imuSpeed ?: Double.MAX_VALUE)
 
-        if (!hasState || forward == null || speed < config.minSpeedMps || handling) {
-            // Below the speed gate, no calibrated axis, or the phone is being handled: feed zero so
-            // any open event closes on its own timing rather than spanning the excluded stretch.
+        if (!hasState || speed < config.minSpeedMps || handling) {
+            // Below the speed gate or the phone is being handled: feed zero so any open event
+            // closes on its own timing rather than spanning the excluded stretch.
             braking.feed(nanos, 0.0, 0.0, null)
             accelerating.feed(nanos, 0.0, 0.0, null)
             cornering.feed(nanos, 0.0, 0.0, null)
             return
         }
 
-        braking.feed(nanos, brakingG, brakingJerk, state)
-        accelerating.feed(nanos, acceleratingG, acceleratingJerk, state)
+        braking.feed(nanos, brakingG, brakingJerk, state, armedBraking)
+        accelerating.feed(nanos, acceleratingG, acceleratingJerk, state, armedAccelerating)
+        if (forward == null) {
+            // No calibrated axis: the Doppler-armed longitudinal path above is all there is.
+            // Cornering has no car-side instrument of its own here, and the profile must not count
+            // this time as measured — an axis-less ride stays unscoreable rather than flawless.
+            cornering.feed(nanos, 0.0, 0.0, null)
+            return
+        }
         cornering.feed(nanos, corneringG, corneringJerk, state)
         // Only what survived the gates reaches the profile, so the score divides by time it could
         // actually judge rather than by however long the phone happened to be recording.
@@ -300,5 +345,10 @@ internal class StreamingDetector(
     private companion object {
         // ~164 s of acceleration at 50 Hz — far past any normal gap between fixes, and 200 KB held.
         const val CAPACITY = 8192
+
+        // How far the window Δv may sag below its arm threshold before the sustained path disarms.
+        // The gap is hysteresis: a maneuver's tail hovers at the line, and flapping there would
+        // fragment one event into several.
+        const val ARMED_EXIT_FRACTION = 0.8
     }
 }

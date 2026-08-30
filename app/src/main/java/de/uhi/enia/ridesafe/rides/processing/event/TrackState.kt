@@ -13,4 +13,8 @@ internal class TrackState {
     // finished longitudinal event against what the car actually did (see EventAccumulator).
     var previousFixSpeedMps = 0.0
     var currentFixSpeedMps = 0.0
+
+    // Doppler speed slope across the bracketing pair, in m/s² — the magnitude the sustained-Δv
+    // path feeds the longitudinal detectors while armed.
+    var slopeMps2 = 0.0
 }

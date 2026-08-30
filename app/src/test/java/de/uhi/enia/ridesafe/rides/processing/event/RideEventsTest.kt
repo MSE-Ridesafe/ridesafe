@@ -623,6 +623,84 @@ class RideEventsTest {
         )
     }
 
+    /**
+     * The other face of the mount problem: the same loose phone that invents braking also *absorbs*
+     * real maneuvers — a replayed −0.5 g stop registered 0.13 g on the accelerometer. Doppler
+     * measures the car regardless: losing 58 km/h within the trailing window arms the sustained
+     * path, which opens on the Doppler slope alone. The accelerometer here reads dead flat the
+     * whole ride, so this event can only have come from that path.
+     */
+    @Test
+    fun sustainedSpeedLossRegistersThroughAFlatAccelerometer() {
+        val events =
+            detectRideEvents(
+                // 24 → 8 m/s over four seconds: −0.41 g held, the car's word for an emergency stop.
+                ride(seconds = 25.0, speedMps = 24.0, speedAt = speedDrop(24.0, 4.0, 10.0, 14.0)) {
+                    Triple(0.0, 0.0, GRAVITY)
+                },
+                rideStartElapsedNanos = 0L,
+            )
+
+        Assert.assertEquals("expected exactly one event, got $events", 1, events.size)
+        Assert.assertEquals(RideEventType.BRAKING, events[0].type)
+        Assert.assertTrue(
+            "the peak must be the car-measured slope, was ${events[0].peakG}",
+            events[0].peakG > 0.35,
+        )
+    }
+
+    /** The mirror case: a full-throttle pull the phone's seating hid must still register. */
+    @Test
+    fun sustainedSpeedGainRegistersThroughAFlatAccelerometer() {
+        val events =
+            detectRideEvents(
+                // 8 → 20 m/s over four seconds: +0.31 g held — a floored launch, not a brisk surge.
+                ride(
+                    seconds = 25.0,
+                    speedMps = 8.0,
+                    speedAt = { t ->
+                        when {
+                            t < 10.0 -> 8.0
+                            t < 14.0 -> 8.0 + 3.0 * (t - 10.0)
+                            else -> 20.0
+                        }
+                    },
+                ) { Triple(0.0, 0.0, GRAVITY) },
+                rideStartElapsedNanos = 0L,
+            )
+
+        Assert.assertEquals("expected exactly one event, got $events", 1, events.size)
+        Assert.assertEquals(RideEventType.ACCELERATION, events[0].type)
+    }
+
+    /**
+     * What keeps the sustained path honest: an ordinary standing-start surge — one brisk second,
+     * then done — moves plenty of speed *per second* but not much per window, and must stay silent.
+     * Everyday launches like this are the difference between recording harsh driving and recording
+     * every departure from a junction.
+     */
+    @Test
+    fun oneSecondLaunchSurgeDoesNotArmTheSustainedPath() {
+        val events =
+            detectRideEvents(
+                // +3.3 m/s in one second (a 0.34 g blip — over the old force bypass), flat around it.
+                ride(
+                    seconds = 25.0,
+                    speedMps = 8.0,
+                    speedAt = { t ->
+                        when {
+                            t < 10.0 -> 8.0
+                            t < 11.0 -> 8.0 + 3.3 * (t - 10.0)
+                            else -> 11.3
+                        }
+                    },
+                ) { Triple(0.0, 0.0, GRAVITY) },
+                rideStartElapsedNanos = 0L,
+            )
+
+        Assert.assertTrue("a launch blip must not become an event, got $events", events.isEmpty())
+    }
+
     /** A poorly-fixed stretch produces no events at all, rather than events built on a bad position. */
     @Test
     fun inaccurateFixesSuppressDetection() {
