@@ -53,10 +53,11 @@ Paths must be relative, slash-separated, normalized ASCII paths without empty, `
 components. Duplicate paths and unlisted ZIP entries are invalid.
 
 Raw samples are `required_source`; their absence, an invalid gzip stream or a blank NDJSON record
-makes export fail. Export checks record *framing* only: the reader that writes an archive already
-knows the file came from this device's own recorder, so it drains the gzip stream — which verifies
-its CRC32 and length trailer, catching a file truncated by a crash — and rejects blank records,
-without deserializing each one. Restore deserializes every record; see below. A route is
+makes export fail. Records are checked once, on the finished archive, and only for *framing*: the
+reader drains each gzip stream — which verifies its CRC32 and length trailer, catching a file
+truncated by a crash — and rejects blank records, without deserializing any of them. The source
+file is not checked separately; its SHA-256 is verified against the archive entry first, so the two
+would be checking the same bytes twice. Restore deserializes every record; see below. A route is
 `optional_regenerable_derived`: its descriptor is always present, with `status: "absent"`, null size
 and null hash when no sidecar exists. Every included file carries its compressed/on-disk byte size
 and lowercase SHA-256. Already-compressed raw `.gz` files use ZIP method STORED. ZIP CRC is additional

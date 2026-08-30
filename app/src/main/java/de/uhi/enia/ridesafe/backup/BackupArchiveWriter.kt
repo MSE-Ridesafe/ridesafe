@@ -122,16 +122,17 @@ internal class RideZipBackup(
         return sources
     }
 
-    /** Checks the file's framing first so a corrupt ride fails before the archive is written. */
+    /**
+     * Only hashes: the finished archive is what gets its records checked. The SHA-256 recorded here
+     * is verified against the archive entry before that check runs, so checking the source too
+     * would prove nothing the archive has not already proven — at the price of gunzipping the whole
+     * selection a second time.
+     */
     private fun describeIncludedFile(
         rideId: Long,
         role: String,
         source: File,
     ): RideBackupSourceFile {
-        when (role) {
-            RAW_ROLE -> source.inputStream().use { validateRawSamples(it) }
-            ROUTE_ROLE -> source.inputStream().use(::validateEncodedRoute)
-        }
         val integrity = fileIntegrity(source)
         val metadata =
             if (role == RAW_ROLE) {
