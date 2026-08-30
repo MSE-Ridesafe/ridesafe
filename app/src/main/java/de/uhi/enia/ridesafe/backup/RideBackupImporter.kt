@@ -42,6 +42,27 @@ data class RideBackupImportPreview(
     val refuels: Int,
 )
 
+/**
+ * How far a restore has got. Both halves need one: checking a backup reads the whole archive once,
+ * importing it reads the archive again and writes every ride file out.
+ *
+ * [passes] counts per-ride passes rather than rides, because the passes cannot be interleaved —
+ * every entry is verified before any is extracted — so a per-ride counter would run 1..n twice over.
+ * [rides] is 0 until the archive's manifest has been read, which the dialog shows as an
+ * indeterminate ring.
+ */
+data class RideBackupImportProgress(
+    val passes: Int = 0,
+    val rides: Int = 0,
+    val passesPerRide: Int = 1,
+) {
+    private val total get() = rides * passesPerRide
+
+    val fraction: Float get() = if (total == 0) 0f else (passes.toFloat() / total).coerceIn(0f, 1f)
+
+    val ridesDone: Int get() = if (passesPerRide == 0) 0 else (passes / passesPerRide).coerceAtMost(rides)
+}
+
 data class RideBackupImportCount(
     val imported: Int,
     val alreadyPresent: Int,
@@ -107,24 +128,37 @@ internal class RideBackupImporter(
     private val db: RidesafeDatabase = RidesafeDatabase.getInstance(app),
 ) {
     /** Preview only, so the cheap record check: the deep one runs before anything is written. */
-    suspend fun inspect(uri: Uri): RideBackupImportCandidate =
+    suspend fun inspect(
+        uri: Uri,
+        onProgress: (RideBackupImportProgress) -> Unit = {},
+    ): RideBackupImportCandidate =
         withContext(Dispatchers.IO) {
             // Both sweeps belong here rather than in the import: nothing else is in flight while a
             // backup is being previewed, so this cannot delete a running import's own staged files.
             sweepStaleArchives(app.cacheDir)
             sweepStaleStagedFiles(ridesDir(app))
             val archive = copyToCache(uri)
+            val context = currentCoroutineContext()
+            var passes = 0
             try {
-                RideBackupImportCandidate(RideBackupArchiveValidator.validate(archive).preview(), archive)
+                val manifest =
+                    RideBackupArchiveValidator.validate(archive) { rides ->
+                        context.ensureActive()
+                        onProgress(RideBackupImportProgress(++passes, rides))
+                    }
+                RideBackupImportCandidate(manifest.preview(), archive)
             } catch (failure: Throwable) {
                 archive.delete()
                 throw failure
             }
         }
 
-    suspend fun import(candidate: RideBackupImportCandidate): RideBackupImportResult =
+    suspend fun import(
+        candidate: RideBackupImportCandidate,
+        onProgress: (RideBackupImportProgress) -> Unit = {},
+    ): RideBackupImportResult =
         try {
-            importArchive(candidate.archive)
+            importArchive(candidate.archive, onProgress)
         } finally {
             candidate.archive.delete()
         }
@@ -134,16 +168,27 @@ internal class RideBackupImporter(
         candidate.archive.delete()
     }
 
-    internal suspend fun importArchive(archive: File): RideBackupImportResult =
+    internal suspend fun importArchive(
+        archive: File,
+        onProgress: (RideBackupImportProgress) -> Unit = {},
+    ): RideBackupImportResult =
         withContext(Dispatchers.IO) {
-            val manifest = RideBackupArchiveValidator.validate(archive, decodeRecords = true)
+            val context = currentCoroutineContext()
+            var passes = 0
+            // Verify every entry, then extract every entry: two passes over each ride.
+            val report = { rides: Int -> onProgress(RideBackupImportProgress(++passes, rides, PASSES_PER_RIDE)) }
+            val manifest =
+                RideBackupArchiveValidator.validate(archive, decodeRecords = true) { rides ->
+                    context.ensureActive()
+                    report(rides)
+                }
             val destinationDirectory = ridesDir(app).apply { mkdirs() }
             // Extraction writes the bytes; the transaction below only renames them, so the database
             // write lock is not held across a quarter of a gigabyte of copying and fsyncing.
             val stagedFiles = mutableMapOf<String, File>()
             val published = mutableListOf<File>()
             try {
-                extractIncludedFiles(archive, manifest, destinationDirectory, stagedFiles)
+                extractIncludedFiles(archive, manifest, destinationDirectory, stagedFiles) { report(manifest.rides.size) }
                 val token = UUID.randomUUID().toString().replace("-", "")
                 val sampleNames = manifest.rides.associate { it.archiveId to "ride_import_${token}_${it.archiveId}.ndjson.gz" }
                 val result =
@@ -458,6 +503,7 @@ internal class RideBackupImporter(
         manifest: RideBackupManifest,
         directory: File,
         staged: MutableMap<String, File>,
+        onRide: () -> Unit,
     ) {
         ZipFile(archive).use { zip ->
             manifest.files.filter { it.status == "included" }.forEach { descriptor ->
@@ -468,6 +514,7 @@ internal class RideBackupImporter(
                     zip.getInputStream(zip.getEntry(descriptor.path)).use { input -> copyCancellable(input, output) }
                     output.fd.sync()
                 }
+                if (descriptor.role == RAW_ROLE) onRide()
             }
         }
     }
@@ -484,6 +531,9 @@ internal class RideBackupImporter(
         }
     }
 }
+
+/** Verify, then extract: a restore reads every ride twice. */
+private const val PASSES_PER_RIDE = 2
 
 private const val ARCHIVE_PREFIX = "ridesafe_import_"
 

@@ -65,7 +65,7 @@ internal class RideZipBackup(
             // Cancellation is checked per archive entry from here on: the reader is not a suspend
             // function, so it borrows this coroutine's context rather than the caller's.
             val context = currentCoroutineContext()
-            RideBackupArchiveValidator.validate(destination) {
+            RideBackupArchiveValidator.validate(destination) { _ ->
                 context.ensureActive()
                 report(rides)
             }

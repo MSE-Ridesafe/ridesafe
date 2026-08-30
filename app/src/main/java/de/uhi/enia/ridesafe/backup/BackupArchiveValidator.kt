@@ -18,13 +18,14 @@ internal object RideBackupArchiveValidator {
      * @param decodeRecords deserialize every raw sample record rather than only checking the gzip
      * stream and its record framing. See [validateRawSamples] for why that is off by default; only
      * the restore path, whose archive came from another device, turns it on.
-     * @param onRide called once per ride, after its raw entry has been read. This is not a suspend
-     * function, so a caller that needs the read to be cancellable checks its own context here.
+     * @param onRide called once per ride, after its raw entry has been read, with how many rides the
+     * archive holds — which a caller cannot know before the manifest is decoded in here. This is not
+     * a suspend function, so a caller that needs the read to be cancellable checks its own context.
      */
     fun validate(
         archive: File,
         decodeRecords: Boolean = false,
-        onRide: () -> Unit = {},
+        onRide: (rides: Int) -> Unit = {},
     ): RideBackupManifest {
         try {
             ZipFile(archive).use { zip ->
@@ -52,7 +53,7 @@ internal object RideBackupArchiveValidator {
                     when (descriptor.role) {
                         RAW_ROLE -> {
                             zip.getInputStream(entry).use { validateRawSamples(it, decodeRecords) }
-                            onRide()
+                            onRide(manifest.rides.size)
                         }
 
                         ROUTE_ROLE -> zip.getInputStream(entry).use(::validateEncodedRoute)

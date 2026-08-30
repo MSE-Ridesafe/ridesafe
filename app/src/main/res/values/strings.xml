@@ -59,6 +59,7 @@
     <string name="settings_backup_import_choose">Choose backup</string>
     <string name="settings_backup_import_checking">Checking backup…</string>
     <string name="settings_backup_import_importing">Importing backup…</string>
+    <string name="settings_backup_import_count">%1$d of %2$d</string>
     <string name="settings_backup_import_confirm_title">Import this backup?</string>
     <!-- %1$s is the bullet list built from the settings_backup_import_preview_* plurals. -->
     <string name="settings_backup_import_confirm_message">This backup contains:\n\n%1$s\n\nYour existing data will be kept, and only missing items will be imported.</string>
