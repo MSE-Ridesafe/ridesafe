@@ -61,10 +61,42 @@
     <string name="settings_backup_import_checking">Sicherung wird geprüft…</string>
     <string name="settings_backup_import_importing">Sicherung wird importiert…</string>
     <string name="settings_backup_import_confirm_title">Diese Sicherung importieren?</string>
-    <string name="settings_backup_import_confirm_message">Diese Sicherung enthält:\n\n• %1$d Fahrten\n• %2$d Fahrzeuge\n• %3$d Orte\n• %4$d Tankvorgänge\n\nDeine vorhandenen Daten bleiben erhalten und nur fehlende Einträge werden importiert.</string>
+    <string name="settings_backup_import_confirm_message">Diese Sicherung enthält:\n\n%1$s\n\nDeine vorhandenen Daten bleiben erhalten und nur fehlende Einträge werden importiert.</string>
+    <plurals name="settings_backup_import_preview_rides">
+        <item quantity="one">%d Fahrt</item>
+        <item quantity="other">%d Fahrten</item>
+    </plurals>
+    <plurals name="settings_backup_import_preview_vehicles">
+        <item quantity="one">%d Fahrzeug</item>
+        <item quantity="other">%d Fahrzeuge</item>
+    </plurals>
+    <plurals name="settings_backup_import_preview_places">
+        <item quantity="one">%d Ort</item>
+        <item quantity="other">%d Orte</item>
+    </plurals>
+    <plurals name="settings_backup_import_preview_refuels">
+        <item quantity="one">%d Tankvorgang</item>
+        <item quantity="other">%d Tankvorgänge</item>
+    </plurals>
     <string name="settings_backup_import_confirm">Importieren</string>
     <string name="settings_backup_import_success_title">Sicherung importiert</string>
-    <string name="settings_backup_import_success_message">Aus dieser Sicherung importiert:\n\n• %1$d Fahrten (%5$d bereits vorhanden)\n• %2$d Fahrzeuge (%6$d bereits vorhanden)\n• %3$d Orte (%7$d bereits vorhanden)\n• %4$d Tankvorgänge (%8$d bereits vorhanden)</string>
+    <string name="settings_backup_import_success_message">Aus dieser Sicherung importiert:\n\n%1$s</string>
+    <plurals name="settings_backup_import_result_rides">
+        <item quantity="one">%1$d Fahrt (%2$d bereits vorhanden)</item>
+        <item quantity="other">%1$d Fahrten (%2$d bereits vorhanden)</item>
+    </plurals>
+    <plurals name="settings_backup_import_result_vehicles">
+        <item quantity="one">%1$d Fahrzeug (%2$d bereits vorhanden)</item>
+        <item quantity="other">%1$d Fahrzeuge (%2$d bereits vorhanden)</item>
+    </plurals>
+    <plurals name="settings_backup_import_result_places">
+        <item quantity="one">%1$d Ort (%2$d bereits vorhanden)</item>
+        <item quantity="other">%1$d Orte (%2$d bereits vorhanden)</item>
+    </plurals>
+    <plurals name="settings_backup_import_result_refuels">
+        <item quantity="one">%1$d Tankvorgang (%2$d bereits vorhanden)</item>
+        <item quantity="other">%1$d Tankvorgänge (%2$d bereits vorhanden)</item>
+    </plurals>
     <string name="settings_backup_import_error_title">Sicherung konnte nicht importiert werden</string>
     <string name="settings_backup_import_error_message">Das Archiv wurde nicht verändert oder konnte nicht sicher wiederhergestellt werden. %1$s</string>
     <string name="settings_units_title">Entfernungseinheit</string>
@@ -384,7 +416,10 @@
     <string name="analysis_status_count">%1$d von %2$d</string>
     <string name="analysis_status_open">Analyse-Warteschlange anzeigen</string>
     <string name="analysis_queue_title">Analyse-Warteschlange</string>
-    <string name="analysis_queue_subtitle">%1$d von %2$d Fahrten analysiert</string>
+    <plurals name="analysis_queue_subtitle">
+        <item quantity="one">%1$d von %2$d Fahrt analysiert</item>
+        <item quantity="other">%1$d von %2$d Fahrten analysiert</item>
+    </plurals>
     <string name="analysis_queue_done">Fertig</string>
     <string name="analysis_queue_waiting">Wartet…</string>
     <string name="analysis_queue_empty_title">Alle Fahrten analysiert</string>

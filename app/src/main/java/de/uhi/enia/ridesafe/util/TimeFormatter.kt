@@ -74,9 +74,10 @@ fun formatDayHeader(
         }
     }
 
-/** Abbreviated single date for compact chips and buttons, e.g. "Aug 30, 2026". */
-
-/** "24 Aug 2026" — short enough for a chip and a half-width button. */
+/**
+ * Abbreviated single date for compact chips and buttons, e.g. "Aug 30, 2026".
+ * "24 Aug 2026" — short enough for a chip and a half-width button.
+ * */
 fun formatShortDate(
     context: Context,
     day: LocalDate,

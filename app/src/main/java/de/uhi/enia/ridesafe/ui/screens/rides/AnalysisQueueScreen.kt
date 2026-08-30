@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -87,8 +88,9 @@ fun AnalysisQueueScreen(
                         if (progress.total > 0) {
                             Text(
                                 text =
-                                    stringResource(
-                                        R.string.analysis_queue_subtitle,
+                                    pluralStringResource(
+                                        R.plurals.analysis_queue_subtitle,
+                                        progress.total,
                                         progress.completed,
                                         progress.total,
                                     ),

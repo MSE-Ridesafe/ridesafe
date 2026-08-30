@@ -75,11 +75,17 @@ internal fun rememberAddressSearch(
         loading = true
         completed = false
         delay(SEARCH_DEBOUNCE_MS.milliseconds)
-        val anchor = near
         results =
             forwardGeocodeSuggestions(context, trimmed, limit = SEARCH_SUGGESTION_LIMIT)
                 .sortedBy { result ->
-                    anchor?.let { haversineMeters(it.latitude, it.longitude, result.latitude, result.longitude) }
+                    near?.let {
+                        haversineMeters(
+                            it.latitude,
+                            it.longitude,
+                            result.latitude,
+                            result.longitude,
+                        )
+                    }
                         ?: Double.MAX_VALUE
                 }
         loading = false

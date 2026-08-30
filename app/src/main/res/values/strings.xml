@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Ridesafe</string>
     <string name="nav_home">Home</string>
     <string name="nav_rides">Rides</string>
@@ -61,10 +61,44 @@
     <string name="settings_backup_import_checking">Checking backup…</string>
     <string name="settings_backup_import_importing">Importing backup…</string>
     <string name="settings_backup_import_confirm_title">Import this backup?</string>
-    <string name="settings_backup_import_confirm_message">This backup contains:\n\n• %1$d rides\n• %2$d vehicles\n• %3$d places\n• %4$d refuels\n\nYour existing data will be kept, and only missing items will be imported.</string>
+    <!-- %1$s is the bullet list built from the settings_backup_import_preview_* plurals. -->
+    <string name="settings_backup_import_confirm_message">This backup contains:\n\n%1$s\n\nYour existing data will be kept, and only missing items will be imported.</string>
+    <plurals name="settings_backup_import_preview_rides">
+        <item quantity="one">%d ride</item>
+        <item quantity="other">%d rides</item>
+    </plurals>
+    <plurals name="settings_backup_import_preview_vehicles">
+        <item quantity="one">%d vehicle</item>
+        <item quantity="other">%d vehicles</item>
+    </plurals>
+    <plurals name="settings_backup_import_preview_places">
+        <item quantity="one">%d place</item>
+        <item quantity="other">%d places</item>
+    </plurals>
+    <plurals name="settings_backup_import_preview_refuels">
+        <item quantity="one">%d refuel</item>
+        <item quantity="other">%d refuels</item>
+    </plurals>
     <string name="settings_backup_import_confirm">Import</string>
     <string name="settings_backup_import_success_title">Backup imported</string>
-    <string name="settings_backup_import_success_message">Imported from this backup:\n\n• %1$d rides (%5$d already existed)\n• %2$d vehicles (%6$d already existed)\n• %3$d places (%7$d already existed)\n• %4$d refuels (%8$d already existed)</string>
+    <!-- %1$s is the bullet list built from the settings_backup_import_result_* plurals. -->
+    <string name="settings_backup_import_success_message">Imported from this backup:\n\n%1$s</string>
+    <plurals name="settings_backup_import_result_rides">
+        <item quantity="one">%1$d ride (%2$d already existed)</item>
+        <item quantity="other">%1$d rides (%2$d already existed)</item>
+    </plurals>
+    <plurals name="settings_backup_import_result_vehicles">
+        <item quantity="one">%1$d vehicle (%2$d already existed)</item>
+        <item quantity="other">%1$d vehicles (%2$d already existed)</item>
+    </plurals>
+    <plurals name="settings_backup_import_result_places">
+        <item quantity="one">%1$d place (%2$d already existed)</item>
+        <item quantity="other">%1$d places (%2$d already existed)</item>
+    </plurals>
+    <plurals name="settings_backup_import_result_refuels">
+        <item quantity="one">%1$d refuel (%2$d already existed)</item>
+        <item quantity="other">%1$d refuels (%2$d already existed)</item>
+    </plurals>
     <string name="settings_backup_import_error_title">Could not import backup</string>
     <string name="settings_backup_import_error_message">The archive was not changed or could not be restored safely. %1$s</string>
     <string name="settings_units_title">Distance Units</string>
@@ -290,7 +324,8 @@
         <item quantity="one">%1$d stop</item>
         <item quantity="other">%1$d stops</item>
     </plurals>
-    <string name="ride_selection_count">%1$d selected</string>
+    <!-- "selected" needs no plural form; keep the compact top-bar label. -->
+    <string name="ride_selection_count" tools:ignore="PluralsCandidate">%1$d selected</string>
     <string name="action_select_all">Select all</string>
     <string name="action_deselect_all">Deselect all</string>
     <string name="action_more">More options</string>
@@ -384,7 +419,11 @@
     <string name="analysis_status_count">%1$d of %2$d</string>
     <string name="analysis_status_open">Show analysis queue</string>
     <string name="analysis_queue_title">Analysis queue</string>
-    <string name="analysis_queue_subtitle">%1$d of %2$d rides analyzed</string>
+    <!-- Quantity keys on the total (%2$d): "1 of 1 ride" / "0 of 2 rides". -->
+    <plurals name="analysis_queue_subtitle">
+        <item quantity="one">%1$d of %2$d ride analyzed</item>
+        <item quantity="other">%1$d of %2$d rides analyzed</item>
+    </plurals>
     <string name="analysis_queue_done">Done</string>
     <string name="analysis_queue_waiting">Waiting…</string>
     <string name="analysis_queue_empty_title">All rides analyzed</string>
