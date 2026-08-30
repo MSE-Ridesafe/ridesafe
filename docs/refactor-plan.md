@@ -36,7 +36,7 @@ Phase 5. Phase 2 first shrinks the big files so the Phase 3 splits get smaller.
   (`RidesViewModel.kt:607-690`, plus `LogbookEntry` at `:78-108`) into
   `ui/screens/rides/TimelineEntry.kt`. Zero imports touched (same package);
   `TimelineEntryTest.kt` already exists and finally gets a matching source file.
-- [ ] **P1.3** Split `effectiveVehicleSelection` / `ridesForVehicle` / `refuelsForVehicle`
+- [x] **P1.3** Split `effectiveVehicleSelection` / `ridesForVehicle` / `refuelsForVehicle`
   / `addRefuelCosts` (`HomeViewModel.kt:116-150`) into `ui/screens/home/HomeVehicleFilter.kt`.
   Same rationale: `HomeVehicleFilterTest.kt` exists, source file doesn't.
 - [ ] **P1.4** Split the 22 `Migration` objects out of `data/RidesafeDatabase.kt` (514
