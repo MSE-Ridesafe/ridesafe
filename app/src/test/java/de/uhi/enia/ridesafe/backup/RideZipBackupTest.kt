@@ -15,6 +15,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.MessageDigest
 import java.util.Locale
@@ -70,6 +71,27 @@ class RideZipBackupTest {
 
             assertThrows(RideBackupValidationException::class.java) { RideBackupArchiveValidator.validate(archive) }
         }
+
+    @Test
+    fun rawSampleScanRejectsBlankRecordsAndDefersDecodingToImport() {
+        val blank = gzipped("{\"ty\":\"loc\",\"t\":1}\n\n")
+        assertThrows(RideBackupValidationException::class.java) { validateRawSamples(blank.inputStream()) }
+
+        // Export only frames records; import is what rejects one that does not deserialize.
+        val unparseable = gzipped("{\"ty\":\"nope\",\"t\":1}\n")
+        validateRawSamples(unparseable.inputStream())
+        assertThrows(
+            RideBackupValidationException::class.java,
+        ) { validateRawSamples(unparseable.inputStream(), decodeRecords = true) }
+    }
+
+    @Test
+    fun rawSampleScanRejectsATruncatedGzipStream() {
+        val whole = gzipped("{\"ty\":\"loc\",\"t\":1}\n".repeat(500))
+        assertThrows(
+            RideBackupValidationException::class.java,
+        ) { validateRawSamples(whole.copyOf(whole.size - 8).inputStream()) }
+    }
 
     @Test
     fun missingRequiredRawDescriptorIsRejected() {
@@ -224,6 +246,9 @@ class RideZipBackupTest {
         )
 
     private fun backupEvent() = BackupRideEvent(5, 42, "BRAKING", 1, 2, 0.3, 1.2, 0.2, 10.0, null, null)
+
+    private fun gzipped(text: String): ByteArray =
+        ByteArrayOutputStream().also { out -> GZIPOutputStream(out).use { it.write(text.toByteArray(Charsets.UTF_8)) } }.toByteArray()
 
     private fun validRawFile(): File =
         temporary(".ndjson.gz").apply {

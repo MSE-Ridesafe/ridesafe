@@ -25,8 +25,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -40,6 +42,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import de.uhi.enia.ridesafe.R
 import de.uhi.enia.ridesafe.ui.components.BackNavIcon
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.map.FullScreenMapHost
+import de.uhi.enia.ridesafe.ui.components.map.FullScreenMapRequest
+import de.uhi.enia.ridesafe.ui.components.map.LocalFullScreenMap
 
 // Matches the app shell's sub-route slide (RidesafeApp.SLIDE_MS) so the wizard moves like the app.
 private const val SLIDE_MS = 250
@@ -82,90 +87,99 @@ fun OnboardingFlow(onFinished: () -> Unit) {
         stepBefore(step, hasVehicle = vehicleId != null)?.let { step = it }
     }
 
-    Scaffold(containerColor = MaterialTheme.colorScheme.surfaceContainer) { innerPadding ->
-        // Insets are consumed here so the embedded forms' own Scaffolds don't re-apply them.
-        Column(
-            Modifier
-                .padding(innerPadding)
-                .consumeWindowInsets(innerPadding)
-                .fillMaxSize(),
-        ) {
-            // The welcome page carries its own start/skip choice; the header would double it.
-            if (step != OnboardingStep.WELCOME) {
-                val shown = step
-                WizardHeader(
-                    steps = onboardingSteps(hasVehicle = vehicleId != null),
-                    current = shown,
-                    onBack = { retreatFrom(shown) },
-                    onSkip = { advanceFrom(shown) },
-                    onClose = onFinished,
-                )
-            }
-            AnimatedContent(
-                targetState = step,
-                transitionSpec = {
-                    // Same language as the app shell: forward slides the new step in over a fade,
-                    // back fades in what returns while the leaving step slides out right.
-                    if (targetState.ordinal >= initialState.ordinal) {
-                        slideInHorizontally(tween(SLIDE_MS)) { it } togetherWith fadeOut(tween(SLIDE_MS))
-                    } else {
-                        fadeIn(tween(SLIDE_MS)) togetherWith slideOutHorizontally(tween(SLIDE_MS)) { it }
-                    }
-                },
-                modifier = Modifier.fillMaxSize(),
-                label = "onboardingStep",
-            ) { target ->
-                when (target) {
-                    OnboardingStep.WELCOME -> {
-                        WelcomePage(
-                            onStart = { advanceFrom(OnboardingStep.WELCOME) },
-                            onSkipAll = onFinished,
+    // The place step embeds the saved-address form, whose map picker publishes into
+    // LocalFullScreenMap — the wizard renders outside RidesafeApp, so it mounts its own host
+    // (same reason as there: the map cannot live in a Dialog's translucent window).
+    val fullScreenMap = remember { mutableStateOf<FullScreenMapRequest?>(null) }
+    CompositionLocalProvider(LocalFullScreenMap provides fullScreenMap) {
+        Box(Modifier.fillMaxSize()) {
+            Scaffold(containerColor = MaterialTheme.colorScheme.surfaceContainer) { innerPadding ->
+                // Insets are consumed here so the embedded forms' own Scaffolds don't re-apply them.
+                Column(
+                    Modifier
+                        .padding(innerPadding)
+                        .consumeWindowInsets(innerPadding)
+                        .fillMaxSize(),
+                ) {
+                    // The welcome page carries its own start/skip choice; the header would double it.
+                    if (step != OnboardingStep.WELCOME) {
+                        val shown = step
+                        WizardHeader(
+                            steps = onboardingSteps(hasVehicle = vehicleId != null),
+                            current = shown,
+                            onBack = { retreatFrom(shown) },
+                            onSkip = { advanceFrom(shown) },
+                            onClose = onFinished,
                         )
                     }
+                    AnimatedContent(
+                        targetState = step,
+                        transitionSpec = {
+                            // Same language as the app shell: forward slides the new step in over a fade,
+                            // back fades in what returns while the leaving step slides out right.
+                            if (targetState.ordinal >= initialState.ordinal) {
+                                slideInHorizontally(tween(SLIDE_MS)) { it } togetherWith fadeOut(tween(SLIDE_MS))
+                            } else {
+                                fadeIn(tween(SLIDE_MS)) togetherWith slideOutHorizontally(tween(SLIDE_MS)) { it }
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                        label = "onboardingStep",
+                    ) { target ->
+                        when (target) {
+                            OnboardingStep.WELCOME -> {
+                                WelcomePage(
+                                    onStart = { advanceFrom(OnboardingStep.WELCOME) },
+                                    onSkipAll = onFinished,
+                                )
+                            }
 
-                    OnboardingStep.CAR -> {
-                        CarPage(
-                            viewModel = viewModel,
-                            vehicleId = vehicleId,
-                            onSave = { vehicle, makePrimary ->
-                                viewModel.saveCar(vehicle, makePrimary) { id ->
-                                    // Advance only once the row exists — the next step reads it.
-                                    vehicleId = id
-                                    advanceFrom(OnboardingStep.CAR)
-                                }
-                            },
-                            onBack = { retreatFrom(OnboardingStep.CAR) },
-                        )
-                    }
+                            OnboardingStep.CAR -> {
+                                CarPage(
+                                    viewModel = viewModel,
+                                    vehicleId = vehicleId,
+                                    onSave = { vehicle, makePrimary ->
+                                        viewModel.saveCar(vehicle, makePrimary) { id ->
+                                            // Advance only once the row exists — the next step reads it.
+                                            vehicleId = id
+                                            advanceFrom(OnboardingStep.CAR)
+                                        }
+                                    },
+                                    onBack = { retreatFrom(OnboardingStep.CAR) },
+                                )
+                            }
 
-                    OnboardingStep.BLUETOOTH -> {
-                        BluetoothPage(
-                            viewModel = viewModel,
-                            vehicleId = requireNotNull(vehicleId),
-                            onContinue = { advanceFrom(OnboardingStep.BLUETOOTH) },
-                        )
-                    }
+                            OnboardingStep.BLUETOOTH -> {
+                                BluetoothPage(
+                                    viewModel = viewModel,
+                                    vehicleId = requireNotNull(vehicleId),
+                                    onContinue = { advanceFrom(OnboardingStep.BLUETOOTH) },
+                                )
+                            }
 
-                    OnboardingStep.AUTO_TRACK -> {
-                        AutoTrackPage(onContinue = { advanceFrom(OnboardingStep.AUTO_TRACK) })
-                    }
+                            OnboardingStep.AUTO_TRACK -> {
+                                AutoTrackPage(onContinue = { advanceFrom(OnboardingStep.AUTO_TRACK) })
+                            }
 
-                    OnboardingStep.PLACE -> {
-                        PlacePage(
-                            onSaved = { advanceFrom(OnboardingStep.PLACE) },
-                            onBack = { retreatFrom(OnboardingStep.PLACE) },
-                        )
-                    }
+                            OnboardingStep.PLACE -> {
+                                PlacePage(
+                                    onSaved = { advanceFrom(OnboardingStep.PLACE) },
+                                    onBack = { retreatFrom(OnboardingStep.PLACE) },
+                                )
+                            }
 
-                    OnboardingStep.RECORDING -> {
-                        RecordingPage(onContinue = { advanceFrom(OnboardingStep.RECORDING) })
-                    }
+                            OnboardingStep.RECORDING -> {
+                                RecordingPage(onContinue = { advanceFrom(OnboardingStep.RECORDING) })
+                            }
 
-                    OnboardingStep.SCORES -> {
-                        ScoresPage(onFinish = { advanceFrom(OnboardingStep.SCORES) })
+                            OnboardingStep.SCORES -> {
+                                ScoresPage(onFinish = { advanceFrom(OnboardingStep.SCORES) })
+                            }
+                        }
                     }
                 }
             }
+            FullScreenMapHost(fullScreenMap)
         }
     }
 }

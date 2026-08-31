@@ -42,6 +42,27 @@ data class RideBackupImportPreview(
     val refuels: Int,
 )
 
+/**
+ * How far a restore has got. Both halves need one: checking a backup reads the whole archive once,
+ * importing it reads the archive again and writes every ride file out.
+ *
+ * [passes] counts per-ride passes rather than rides, because the passes cannot be interleaved —
+ * every entry is verified before any is extracted — so a per-ride counter would run 1..n twice over.
+ * [rides] is 0 until the archive's manifest has been read, which the dialog shows as an
+ * indeterminate ring.
+ */
+data class RideBackupImportProgress(
+    val passes: Int = 0,
+    val rides: Int = 0,
+    val passesPerRide: Int = 1,
+) {
+    private val total get() = rides * passesPerRide
+
+    val fraction: Float get() = if (total == 0) 0f else (passes.toFloat() / total).coerceIn(0f, 1f)
+
+    val ridesDone: Int get() = if (passesPerRide == 0) 0 else (passes / passesPerRide).coerceAtMost(rides)
+}
+
 data class RideBackupImportCount(
     val imported: Int,
     val alreadyPresent: Int,
@@ -64,48 +85,110 @@ private data class EntityImportMapping(
     val insertedArchiveIds: Set<Long>,
 )
 
-/** Copy-then-atomic-rename, so a cancelled or crashed import never leaves a half-written file. */
-private suspend fun publishImportFile(
-    source: File,
+private const val STAGED_PREFIX = ".ridesafe_import_"
+private const val STAGED_SUFFIX = ".tmp"
+
+/**
+ * Entries are extracted straight into the rides directory under this name and renamed into place
+ * once the database agrees, rather than being written to a staging directory and copied in. One
+ * write instead of two, and because both names are now in the same directory the rename is always
+ * a true atomic move. The name deliberately contains no ".route", so stale-route pruning cannot
+ * mistake an in-flight import for an old sidecar.
+ */
+internal fun stagedImportFile(directory: File) = File(directory, "$STAGED_PREFIX${UUID.randomUUID()}$STAGED_SUFFIX")
+
+internal fun sweepStaleStagedFiles(directory: File) {
+    directory
+        .listFiles { file -> file.isFile && file.name.startsWith(STAGED_PREFIX) && file.name.endsWith(STAGED_SUFFIX) }
+        ?.forEach { it.delete() }
+}
+
+/** Atomic rename of an already-fsynced staged file; a crash leaves either nothing or the whole file. */
+internal fun publishImportFile(
+    staged: File,
     destination: File,
 ) {
-    destination.parentFile?.mkdirs()
     require(!destination.exists()) { "Import destination already exists: ${destination.name}" }
-    val temporary = File(destination.parentFile, ".ridesafe_import_${UUID.randomUUID()}.tmp")
-    try {
-        FileOutputStream(temporary).use { output ->
-            source.inputStream().buffered().use { input -> copyCancellable(input, output) }
-            output.fd.sync()
-        }
-        Files.move(
-            temporary.toPath(),
-            destination.toPath(),
-            StandardCopyOption.ATOMIC_MOVE,
-        )
-    } finally {
-        if (temporary.exists()) temporary.delete()
-    }
+    Files.move(staged.toPath(), destination.toPath(), StandardCopyOption.ATOMIC_MOVE)
 }
+
+/**
+ * A backup already copied out of its content URI, held from the preview until the user decides.
+ * Confirming imports [archive] as it stands rather than reading the URI a second time; dismissing
+ * discards it. Whichever happens, the file is deleted — and [RideBackupImporter.inspect] sweeps any
+ * that an app death left behind.
+ */
+internal class RideBackupImportCandidate internal constructor(
+    val preview: RideBackupImportPreview,
+    internal val archive: File,
+)
 
 internal class RideBackupImporter(
     private val app: Application,
     private val db: RidesafeDatabase = RidesafeDatabase.getInstance(app),
 ) {
-    suspend fun inspect(uri: Uri): RideBackupImportPreview =
-        withLocalArchive(uri) { archive ->
-            val manifest = RideBackupArchiveValidator.validate(archive)
-            manifest.preview()
+    /** Preview only, so the cheap record check: the deep one runs before anything is written. */
+    suspend fun inspect(
+        uri: Uri,
+        onProgress: (RideBackupImportProgress) -> Unit = {},
+    ): RideBackupImportCandidate =
+        withContext(Dispatchers.IO) {
+            // Both sweeps belong here rather than in the import: nothing else is in flight while a
+            // backup is being previewed, so this cannot delete a running import's own staged files.
+            sweepStaleArchives(app.cacheDir)
+            sweepStaleStagedFiles(ridesDir(app))
+            val archive = copyToCache(uri)
+            val context = currentCoroutineContext()
+            var passes = 0
+            try {
+                val manifest =
+                    RideBackupArchiveValidator.validate(archive) { rides ->
+                        context.ensureActive()
+                        onProgress(RideBackupImportProgress(++passes, rides))
+                    }
+                RideBackupImportCandidate(manifest.preview(), archive)
+            } catch (failure: Throwable) {
+                archive.delete()
+                throw failure
+            }
         }
 
-    suspend fun import(uri: Uri): RideBackupImportResult = withLocalArchive(uri) { archive -> importArchive(archive) }
+    suspend fun import(
+        candidate: RideBackupImportCandidate,
+        onProgress: (RideBackupImportProgress) -> Unit = {},
+    ): RideBackupImportResult =
+        try {
+            importArchive(candidate.archive, onProgress)
+        } finally {
+            candidate.archive.delete()
+        }
 
-    internal suspend fun importArchive(archive: File): RideBackupImportResult =
+    /** The user backed out of the confirmation; the copy made for the preview is no longer wanted. */
+    fun discard(candidate: RideBackupImportCandidate) {
+        candidate.archive.delete()
+    }
+
+    internal suspend fun importArchive(
+        archive: File,
+        onProgress: (RideBackupImportProgress) -> Unit = {},
+    ): RideBackupImportResult =
         withContext(Dispatchers.IO) {
-            val manifest = RideBackupArchiveValidator.validate(archive)
-            val staging = Files.createTempDirectory(app.cacheDir.toPath(), "ridesafe_import_").toFile()
+            val context = currentCoroutineContext()
+            var passes = 0
+            // Verify every entry, then extract every entry: two passes over each ride.
+            val report = { rides: Int -> onProgress(RideBackupImportProgress(++passes, rides, PASSES_PER_RIDE)) }
+            val manifest =
+                RideBackupArchiveValidator.validate(archive, decodeRecords = true) { rides ->
+                    context.ensureActive()
+                    report(rides)
+                }
+            val destinationDirectory = ridesDir(app).apply { mkdirs() }
+            // Extraction writes the bytes; the transaction below only renames them, so the database
+            // write lock is not held across a quarter of a gigabyte of copying and fsyncing.
+            val stagedFiles = mutableMapOf<String, File>()
             val published = mutableListOf<File>()
             try {
-                val stagedFiles = extractIncludedFiles(archive, manifest, staging)
+                extractIncludedFiles(archive, manifest, destinationDirectory, stagedFiles) { report(manifest.rides.size) }
                 val token = UUID.randomUUID().toString().replace("-", "")
                 val sampleNames = manifest.rides.associate { it.archiveId to "ride_import_${token}_${it.archiveId}.ndjson.gz" }
                 val result =
@@ -137,7 +220,8 @@ internal class RideBackupImporter(
                 published.forEach { it.delete() }
                 throw failure
             } finally {
-                staging.deleteRecursively()
+                // Whatever the transaction did not rename into place is still under its staged name.
+                stagedFiles.values.forEach { it.delete() }
             }
         }
 
@@ -370,7 +454,7 @@ internal class RideBackupImporter(
         insertedRideArchiveIds: Set<Long>,
         published: MutableList<File>,
     ) {
-        val destinationDirectory = ridesDir(app).apply { mkdirs() }
+        val destinationDirectory = ridesDir(app)
         manifest.rides.filter { it.archiveId in insertedRideArchiveIds }.forEach { ride ->
             currentCoroutineContext().ensureActive()
             val raw = manifest.file(ride.archiveId, "raw_samples")
@@ -390,12 +474,12 @@ internal class RideBackupImporter(
         }
     }
 
-    private suspend fun publish(
-        source: File,
+    private fun publish(
+        staged: File,
         destination: File,
         published: MutableList<File>,
     ) {
-        publishImportFile(source, destination)
+        publishImportFile(staged, destination)
         published += destination
     }
 
@@ -413,38 +497,48 @@ internal class RideBackupImporter(
         return HexFormat.of().formatHex(digest.digest())
     }
 
+    /** Fills [staged] as it goes, so a failure part-way through still tells the caller what to clean up. */
     private suspend fun extractIncludedFiles(
         archive: File,
         manifest: RideBackupManifest,
-        staging: File,
-    ): Map<String, File> =
+        directory: File,
+        staged: MutableMap<String, File>,
+        onRide: () -> Unit,
+    ) {
         ZipFile(archive).use { zip ->
-            manifest.files
-                .filter { it.status == "included" }
-                .mapIndexed { index, descriptor ->
-                    currentCoroutineContext().ensureActive()
-                    val target = File(staging, "entry_$index")
-                    zip.getInputStream(zip.getEntry(descriptor.path)).use { input ->
-                        target.outputStream().buffered().use { output -> copyCancellable(input, output) }
-                    }
-                    descriptor.path to target
-                }.toMap()
-        }
-
-    private suspend fun <T> withLocalArchive(
-        uri: Uri,
-        operation: suspend (File) -> T,
-    ): T =
-        withContext(Dispatchers.IO) {
-            val local = File.createTempFile("ridesafe_import_", ".zip", app.cacheDir)
-            try {
-                val input = app.contentResolver.openInputStream(uri) ?: error("The selected backup cannot be opened")
-                input.use { source -> local.outputStream().buffered().use { target -> copyCancellable(source, target) } }
-                operation(local)
-            } finally {
-                local.delete()
+            manifest.files.filter { it.status == "included" }.forEach { descriptor ->
+                currentCoroutineContext().ensureActive()
+                val target = stagedImportFile(directory)
+                staged[descriptor.path] = target
+                FileOutputStream(target).use { output ->
+                    zip.getInputStream(zip.getEntry(descriptor.path)).use { input -> copyCancellable(input, output) }
+                    output.fd.sync()
+                }
+                if (descriptor.role == RAW_ROLE) onRide()
             }
         }
+    }
+
+    private suspend fun copyToCache(uri: Uri): File {
+        val local = File.createTempFile(ARCHIVE_PREFIX, ".zip", app.cacheDir)
+        try {
+            val input = app.contentResolver.openInputStream(uri) ?: error("The selected backup cannot be opened")
+            input.use { source -> local.outputStream().buffered().use { target -> copyCancellable(source, target) } }
+            return local
+        } catch (failure: Throwable) {
+            local.delete()
+            throw failure
+        }
+    }
+}
+
+/** Verify, then extract: a restore reads every ride twice. */
+private const val PASSES_PER_RIDE = 2
+
+private const val ARCHIVE_PREFIX = "ridesafe_import_"
+
+private fun sweepStaleArchives(cacheDir: File) {
+    cacheDir.listFiles { file -> file.isFile && file.name.startsWith(ARCHIVE_PREFIX) }?.forEach { it.delete() }
 }
 
 /**

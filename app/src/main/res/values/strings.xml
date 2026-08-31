@@ -59,6 +59,7 @@
     <string name="settings_backup_import_choose">Choose backup</string>
     <string name="settings_backup_import_checking">Checking backup…</string>
     <string name="settings_backup_import_importing">Importing backup…</string>
+    <string name="settings_backup_import_count">%1$d of %2$d</string>
     <string name="settings_backup_import_confirm_title">Import this backup?</string>
     <!-- %1$s is the bullet list built from the settings_backup_import_preview_* plurals. -->
     <string name="settings_backup_import_confirm_message">This backup contains:\n\n%1$s\n\nYour existing data will be kept, and only missing items will be imported.</string>
@@ -357,6 +358,7 @@
     <string name="ride_export_format_csv_description">Table data for Excel and other applications</string>
     <string name="ride_export_format_zip_description">Backup with ride data, routes, and linked records</string>
     <string name="ride_exporting">Exporting rides…</string>
+    <string name="ride_export_count">%1$d of %2$d</string>
     <string name="ride_export_success">Export saved to Downloads/RideSafe.</string>
     <string name="ride_export_error">Could not export rides. Please try again.</string>
     <string name="ride_export_channel_name">Ride exports</string>

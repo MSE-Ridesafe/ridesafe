@@ -46,6 +46,12 @@ class RideEventsTest {
         gyroRadPerSec: Double = 0.0,
         travelBearingAt: (Double) -> Double = { 90.0 }, // due east unless a test says otherwise
         yawRateAt: (Double) -> Double = { 0.0 }, // rad/s about world up; device z for a level phone
+        // Overrides the constant quaternion per sample — how a test models a rotation vector whose
+        // reading moves (or errs) over time while the device accel stays in the true device axes.
+        quaternionAt: ((Double) -> FloatArray)? = null,
+        // Doppler speed over time. Longitudinal maneuvers must move this consistently with their
+        // force — the detector discards a braking or acceleration event the car's speed belies.
+        speedAt: ((Double) -> Double)? = null,
         deviceAccelAt: (Double) -> Triple<Double, Double, Double>,
     ): RideSamples {
         // Positions are integrated along the travel bearing rather than assumed straight, so a test
@@ -54,20 +60,21 @@ class RideEventsTest {
         var lat = 50.0
         var lon = 8.0
         for (second in 0..seconds.toInt()) {
+            val v = speedAt?.invoke(second.toDouble()) ?: speedMps
             locations.add(
                 LocationSample(
                     t = second * 1_000_000_000L,
                     lat = lat,
                     lon = lon,
                     alt = 0.0,
-                    speed = speedMps.toFloat(),
+                    speed = v.toFloat(),
                     bearing = 90f, // overwritten by the Kalman pass inside the detector
                     accuracy = 5f,
                 ),
             )
             val heading = Math.toRadians(travelBearingAt(second.toDouble()))
-            lat += (speedMps * cos(heading)) / METERS_PER_DEGREE_LAT
-            lon += (speedMps * sin(heading)) / METERS_PER_DEGREE_LON
+            lat += (v * cos(heading)) / METERS_PER_DEGREE_LAT
+            lon += (v * sin(heading)) / METERS_PER_DEGREE_LON
         }
         val accel = ArrayList<MotionSample>()
         val gyro = ArrayList<MotionSample>()
@@ -94,19 +101,38 @@ class RideEventsTest {
                     yawRateAt(step.toDouble() / MOTION_HZ).toFloat(),
                 ),
             )
+            val q = quaternionAt?.invoke(step.toDouble() / MOTION_HZ) ?: quaternion
             rotation.add(
                 MotionSample(
                     nanos,
                     MotionSensor.ROTATION,
-                    quaternion[0],
-                    quaternion[1],
-                    quaternion[2],
-                    quaternion[3],
+                    q[0],
+                    q[1],
+                    q[2],
+                    q[3],
                 ),
             )
         }
         return RideSamples(locations, accel, gyro, rotation)
     }
+
+    /**
+     * Doppler speed dropping [decelMps2] × the braking window, flat on either side — the speed
+     * trace every braking synthetic needs so its event survives the Doppler agreement check.
+     */
+    private fun speedDrop(
+        initial: Double,
+        decelMps2: Double,
+        from: Double,
+        to: Double,
+    ): (Double) -> Double =
+        { t ->
+            when {
+                t < from -> initial
+                t < to -> initial - decelMps2 * (t - from)
+                else -> initial - decelMps2 * (to - from)
+            }
+        }
 
     /**
      * A phone yawed 90° in the mount, in a car braking eastward at 0.35 g. Hand-computed: with the
@@ -118,7 +144,7 @@ class RideEventsTest {
     fun resolvesBrakingThroughAnArbitraryPhoneOrientation() {
         val events =
             detectRideEvents(
-                ride(seconds = 20.0, quaternion = YAWED_90) { t ->
+                ride(seconds = 20.0, quaternion = YAWED_90, speedAt = speedDrop(20.0, 3.43, 10.0, 12.0)) { t ->
                     if (t >= 10.0 && t <= 12.0) {
                         Triple(0.0, 3.43, GRAVITY)
                     } else {
@@ -190,7 +216,7 @@ class RideEventsTest {
     fun oneSustainedBrakeWithADipStaysOneEvent() {
         val events =
             detectRideEvents(
-                ride(seconds = 20.0) { t ->
+                ride(seconds = 20.0, speedAt = speedDrop(20.0, 3.43, 10.0, 13.0)) { t ->
                     // 0.35 g held for three seconds, with the driver lifting off entirely for 200 ms
                     // in the middle — long enough to fall under the sustain level, short enough that
                     // the merge gap should fold it back into the same event.
@@ -228,20 +254,22 @@ class RideEventsTest {
      */
     @Test
     fun smoothTightCornerIsNotHarsh() {
+        // Lateral force ramped in linearly over 1.5 s, held, then eased off just as gently. The
+        // yaw rate follows the same profile (a = v·ω), so the gyro corroborates a real corner and
+        // the jerk gate alone is what must reject it.
+        fun profile(t: Double) =
+            when {
+                t < 10.0 -> 0.0
+                t < 11.5 -> (t - 10.0) / 1.5
+                t < 13.0 -> 1.0
+                t < 14.5 -> (14.5 - t) / 1.5
+                else -> 0.0
+            }
         val events =
             detectRideEvents(
-                ride(seconds = 20.0, speedMps = 5.0) { t ->
-                    // Lateral force ramped in linearly over 1.5 s, held, then eased off just as gently.
-                    val lateral =
-                        when {
-                            t < 10.0 -> 0.0
-                            t < 11.5 -> 4.2 * (t - 10.0) / 1.5
-                            t < 13.0 -> 4.2
-                            t < 14.5 -> 4.2 * (14.5 - t) / 1.5
-                            else -> 0.0
-                        }
+                ride(seconds = 20.0, speedMps = 5.0, yawRateAt = { t -> (4.2 / 5.0) * profile(t) }) { t ->
                     // Heading is east, so a lateral force lies on the device's north axis.
-                    Triple(0.0, lateral, GRAVITY)
+                    Triple(0.0, 4.2 * profile(t), GRAVITY)
                 },
                 rideStartElapsedNanos = 0L,
             )
@@ -261,7 +289,7 @@ class RideEventsTest {
     fun abruptBrakeToModestForceIsHarsh() {
         val events =
             detectRideEvents(
-                ride(seconds = 20.0) { t ->
+                ride(seconds = 20.0, speedAt = speedDrop(20.0, 3.14, 10.0, 11.0)) { t ->
                     val decel =
                         if (t >= 10.0 && t < 11.0) 3.14 else 0.0 // 0.32 g, applied as a step
                     Triple(-decel, 0.0, GRAVITY)
@@ -290,7 +318,7 @@ class RideEventsTest {
     fun smoothButHardBrakingIsStillHarsh() {
         val events =
             detectRideEvents(
-                ride(seconds = 20.0) { t ->
+                ride(seconds = 20.0, speedAt = speedDrop(20.0, 2.95, 10.0, 13.0)) { t ->
                     val decel =
                         if (t >= 10.0 && t < 13.0) 5.9 * (t - 10.0) / 3.0 else 0.0 // ramp to 0.6 g
                     Triple(-decel, 0.0, GRAVITY)
@@ -325,7 +353,7 @@ class RideEventsTest {
     fun abruptButTrivialTwitchIsRejected() {
         val events =
             detectRideEvents(
-                ride(seconds = 20.0) { t ->
+                ride(seconds = 20.0, speedAt = speedDrop(20.0, 1.77, 10.0, 11.0)) { t ->
                     val decel =
                         if (t >= 10.0 && t < 11.0) 1.77 else 0.0 // 0.18 g, applied instantly
                     Triple(-decel, 0.0, GRAVITY)
@@ -409,17 +437,18 @@ class RideEventsTest {
     }
 
     /**
-     * The reason heading is calibrated rather than read from GPS per sample. The car drives cleanly
+     * The reason detection rests on the calibrated axis and nothing else. The car drives cleanly
      * east for 40 s, then the GPS starts zig-zagging north/south — a fix wandering the way it does at
      * low speed or under poor sky view — while the car keeps going east and brakes hard.
      *
-     * Heading from GPS would call that brake a *corner*, because a deceleration pointing east is
-     * perpendicular to a heading pointing north. Heading from the calibrated forward axis still says
-     * east, so it reads as braking. The assertion on type is the whole point: get the axis wrong and
-     * the force doesn't vanish, it lands in the wrong bucket.
+     * The split happens in the device frame against the calibrated axis, so the wandering course
+     * can't touch it: the brake stays a brake. And when no axis could be calibrated there is no
+     * per-sample GPS fallback to fall into — that fallback used to project force onto a course that
+     * lags the car (a slalom's course reads straight while the car swings), manufacturing braking
+     * and acceleration out of steering. No axis means no events, never misfiled ones.
      */
     @Test
-    fun calibratedHeadingSurvivesGpsGoingWrong() {
+    fun calibratedAxisSurvivesGpsGoingWrongAndNoAxisMeansNoEvents() {
         val recorded =
             ride(
                 seconds = 55.0,
@@ -433,6 +462,7 @@ class RideEventsTest {
                         180.0
                     }
                 },
+                speedAt = speedDrop(20.0, 3.43, 45.0, 47.0),
             ) { t ->
                 // The car is still travelling east throughout, and brakes at 45 s.
                 val decel = if (t >= 45.0 && t < 47.0) 3.43 else 0.0 // 0.35 g
@@ -448,27 +478,284 @@ class RideEventsTest {
         )
 
         // The contrast that gives this test teeth: starve calibration of samples and the very same
-        // ride mis-files the brake as a corner. Without it the assertions above would still pass if
-        // alignment silently did nothing and the GPS heading happened to be good enough anyway.
-        // Asserted on type rather than count: with the heading swinging, the force lands in whichever
-        // bucket the bad axis points at, and can smear across more than one. What matters is that the
-        // brake stops being recognised as a brake at all.
-        val gpsOnly =
+        // ride must report nothing at all — not the brake in some other bucket, which is what a
+        // per-sample GPS-heading fallback produced.
+        val noAxis =
             detectRideEvents(recorded, 0L, RideEventConfig(alignmentMinSamples = Int.MAX_VALUE))
         Assert.assertTrue(
-            "GPS-only heading should mis-file the brake, got $gpsOnly",
-            gpsOnly.none { it.type == RideEventType.BRAKING },
+            "without a calibrated axis nothing may be reported, got $noAxis",
+            noAxis.isEmpty(),
+        )
+    }
+
+    /**
+     * The slalom regression, from a real ride whose slalom was stored as acceleration *and*
+     * cornering *and* braking at once. A slalom on a straight road swings the lateral force while
+     * the GPS course barely moves and the speed doesn't change at all. In the device frame the
+     * force lands cleanly on the lateral axis: harsh steering, and nothing longitudinal — the old
+     * GPS-heading fallback projected the same swings onto the lagging course and invented
+     * braking-plus-acceleration out of them.
+     */
+    @Test
+    fun slalomOnAStraightRoadIsCorneringOnly() {
+        val amplitude = 4.0 // ±0.41 g, swung at 0.5 Hz: wheel-flick abrupt, ~1.3 g/s folded
+        val events =
+            detectRideEvents(
+                ride(
+                    seconds = 30.0,
+                    yawRateAt = { t ->
+                        if (t in 12.0..18.0) amplitude * sin(Math.PI * (t - 12.0)) / 20.0 else 0.0
+                    },
+                ) { t ->
+                    val lateral = if (t in 12.0..18.0) amplitude * sin(Math.PI * (t - 12.0)) else 0.0
+                    Triple(0.0, lateral, GRAVITY) // heading east: lateral lies on the north axis
+                },
+                rideStartElapsedNanos = 0L,
+            )
+
+        Assert.assertTrue(
+            "a slalom must not read as braking or acceleration, got $events",
+            events.none { it.type == RideEventType.BRAKING || it.type == RideEventType.ACCELERATION },
         )
         Assert.assertTrue(
-            "and should still see the force somewhere, got $gpsOnly",
-            gpsOnly.isNotEmpty(),
+            "and the harsh steering itself must register, got $events",
+            events.any { it.type == RideEventType.CORNERING },
+        )
+    }
+
+    /**
+     * A rotation vector whose yaw wobbles against the true course — the magnetometer inside a car.
+     * ±35° of scatter fails the old 0.95 coherence bar (mean ≈ 0.91), which used to throw the ride
+     * to the GPS-heading fallback and smear this brake across the wrong buckets. The mean axis is
+     * still accurate, the split runs in the device frame where yaw cancels, so the brake must come
+     * out as exactly one braking event — full magnitude, no cornering invented from the wobble.
+     */
+    @Test
+    fun yawWobblingRotationVectorStillResolvesCleanBraking() {
+        val events =
+            detectRideEvents(
+                ride(
+                    seconds = 55.0,
+                    quaternionAt = { t ->
+                        val yaw = Math.toRadians(35.0) * sin(2 * Math.PI * 0.15 * t)
+                        floatArrayOf(0f, 0f, sin(yaw / 2).toFloat(), cos(yaw / 2).toFloat())
+                    },
+                    speedAt = speedDrop(20.0, 3.43, 45.0, 47.0),
+                ) { t ->
+                    val decel = if (t >= 45.0 && t < 47.0) 3.43 else 0.0 // 0.35 g eastward brake
+                    Triple(-decel, 0.0, GRAVITY)
+                },
+                rideStartElapsedNanos = 0L,
+            )
+
+        Assert.assertEquals("expected exactly one event, got $events", 1, events.size)
+        Assert.assertEquals(RideEventType.BRAKING, events[0].type)
+        Assert.assertTrue(
+            "the wobble must not eat the magnitude, was ${events[0].peakG}",
+            events[0].peakG > 0.33,
+        )
+    }
+
+    /**
+     * The fake-corner regression, from a real emergency stop that was stored as braking *plus*
+     * cornering. A calibration bias — here a rotation vector with a constant 30° yaw error, the
+     * magnetometer's doing in a real car — leaks sin 30° of a hard brake onto the lateral axis:
+     * 0.45 g of "cornering" from a dead-straight stop, over both the peak floor and the entry gate.
+     * The gyro shows no yaw, so the cornering signal (the lower of felt lateral and v·ω) stays at
+     * zero and only the brake may be reported.
+     */
+    @Test
+    fun brakeLeakThroughABiasedAxisCannotBecomeCornering() {
+        val yaw = Math.toRadians(30.0)
+        val biased = floatArrayOf(0f, 0f, sin(yaw / 2).toFloat(), cos(yaw / 2).toFloat())
+        val events =
+            detectRideEvents(
+                ride(
+                    seconds = 20.0,
+                    quaternion = biased,
+                    speedMps = 24.0,
+                    speedAt = speedDrop(24.0, 8.83, 10.4, 12.0),
+                ) { t ->
+                    // 0.9 g reached in 0.4 s and held — an emergency stop, abrupt on purpose so the
+                    // leaked lateral share clears the cornering entry gate if nothing stops it.
+                    val decel =
+                        when {
+                            t < 10.0 -> 0.0
+                            t < 10.4 -> 8.83 * (t - 10.0) / 0.4
+                            t < 12.0 -> 8.83
+                            else -> 0.0
+                        }
+                    Triple(-decel, 0.0, GRAVITY)
+                },
+                rideStartElapsedNanos = 0L,
+            )
+
+        Assert.assertTrue(
+            "a straight-line stop must not produce cornering, got $events",
+            events.none { it.type == RideEventType.CORNERING },
+        )
+        Assert.assertEquals("the brake itself must survive, got $events", 1, events.size)
+        Assert.assertEquals(RideEventType.BRAKING, events[0].type)
+    }
+
+    /**
+     * The mount-lurch regression, from a real ride where flooring the throttle made the loosely
+     * lying phone slide backwards — a textbook 0.3 g braking spike on the accelerometer while the
+     * car's Doppler speed was rising. The accelerometer measures the phone; only the car earns
+     * events. With no speed drop to corroborate it, the "brake" must be discarded.
+     */
+    @Test
+    fun phantomBrakingWithoutASpeedDropIsVetoed() {
+        val events =
+            detectRideEvents(
+                ride(seconds = 20.0) { t ->
+                    // An abrupt half-second backwards jolt — clears the jerk gate, the peak floor
+                    // and the minimum duration, so only the Doppler check stands in its way.
+                    val jolt = if (t >= 10.0 && t < 10.5) 3.2 else 0.0
+                    Triple(-jolt, 0.0, GRAVITY)
+                },
+                rideStartElapsedNanos = 0L,
+            )
+
+        Assert.assertTrue(
+            "a brake the car's speed contradicts must be discarded, got $events",
+            events.isEmpty(),
+        )
+    }
+
+    /**
+     * The other face of the mount problem: the same loose phone that invents braking also *absorbs*
+     * real maneuvers — a replayed −0.5 g stop registered 0.13 g on the accelerometer. Doppler
+     * measures the car regardless: losing 58 km/h within the trailing window arms the sustained
+     * path, which opens on the Doppler slope alone. The accelerometer here reads dead flat the
+     * whole ride, so this event can only have come from that path.
+     */
+    @Test
+    fun sustainedSpeedLossRegistersThroughAFlatAccelerometer() {
+        val events =
+            detectRideEvents(
+                // 24 → 8 m/s over four seconds: −0.41 g held, the car's word for an emergency stop.
+                ride(seconds = 25.0, speedMps = 24.0, speedAt = speedDrop(24.0, 4.0, 10.0, 14.0)) {
+                    Triple(0.0, 0.0, GRAVITY)
+                },
+                rideStartElapsedNanos = 0L,
+            )
+
+        Assert.assertEquals("expected exactly one event, got $events", 1, events.size)
+        Assert.assertEquals(RideEventType.BRAKING, events[0].type)
+        Assert.assertTrue(
+            "the peak must be the car-measured slope, was ${events[0].peakG}",
+            events[0].peakG > 0.35,
+        )
+    }
+
+    /** The mirror case: a full-throttle pull the phone's seating hid must still register. */
+    @Test
+    fun sustainedSpeedGainRegistersThroughAFlatAccelerometer() {
+        val events =
+            detectRideEvents(
+                // 8 → 20 m/s over four seconds: +0.31 g held — a floored launch, not a brisk surge.
+                ride(
+                    seconds = 25.0,
+                    speedMps = 8.0,
+                    speedAt = { t ->
+                        when {
+                            t < 10.0 -> 8.0
+                            t < 14.0 -> 8.0 + 3.0 * (t - 10.0)
+                            else -> 20.0
+                        }
+                    },
+                ) { Triple(0.0, 0.0, GRAVITY) },
+                rideStartElapsedNanos = 0L,
+            )
+
+        Assert.assertEquals("expected exactly one event, got $events", 1, events.size)
+        Assert.assertEquals(RideEventType.ACCELERATION, events[0].type)
+    }
+
+    /**
+     * What keeps the sustained path honest: an ordinary standing-start surge — one brisk second,
+     * then done — moves plenty of speed *per second* but not much per window, and must stay silent.
+     * Everyday launches like this are the difference between recording harsh driving and recording
+     * every departure from a junction.
+     */
+    @Test
+    fun oneSecondLaunchSurgeDoesNotArmTheSustainedPath() {
+        val events =
+            detectRideEvents(
+                // +3.3 m/s in one second (a 0.34 g blip — over the old force bypass), flat around it.
+                ride(
+                    seconds = 25.0,
+                    speedMps = 8.0,
+                    speedAt = { t ->
+                        when {
+                            t < 10.0 -> 8.0
+                            t < 11.0 -> 8.0 + 3.3 * (t - 10.0)
+                            else -> 11.3
+                        }
+                    },
+                ) { Triple(0.0, 0.0, GRAVITY) },
+                rideStartElapsedNanos = 0L,
+            )
+
+        Assert.assertTrue("a launch blip must not become an event, got $events", events.isEmpty())
+    }
+
+    /**
+     * The re-seated phone, from a real 12-minute ride that read as "too little measurable driving":
+     * the driver picked the phone up three minutes in and put it back differently, and the single
+     * whole-ride axis average scattered past any acceptance bar. Calibration now segments per
+     * mounting epoch, so a hard brake in each half must be recognised — from two different device
+     * orientations in one ride — while the frame switch itself invents nothing.
+     */
+    @Test
+    fun reseatedPhoneMidRideStillResolvesBothHalves() {
+        val events =
+            detectRideEvents(
+                ride(
+                    seconds = 120.0,
+                    // Level for the first minute, then re-seated yawed 90° in the mount.
+                    quaternionAt = { t -> if (t < 60.0) LEVEL else YAWED_90 },
+                    speedAt = { t ->
+                        when {
+                            t < 30.0 -> 20.0
+
+                            t < 32.0 -> 20.0 - 3.43 * (t - 30.0)
+
+                            // first brake
+                            t < 90.0 -> 13.14
+
+                            t < 92.0 -> 13.14 - 3.43 * (t - 90.0)
+
+                            // second brake
+                            else -> 6.28
+                        }
+                    },
+                ) { t ->
+                    val decel = if ((t >= 30.0 && t < 32.0) || (t >= 90.0 && t < 92.0)) 3.43 else 0.0
+                    if (t < 60.0) {
+                        Triple(-decel, 0.0, GRAVITY) // level: braking eastward reads on -x
+                    } else {
+                        Triple(0.0, decel, GRAVITY) // yawed 90°: the same braking reads on +y
+                    }
+                },
+                rideStartElapsedNanos = 0L,
+            )
+
+        Assert.assertEquals("both halves' brakes must be found, got $events", 2, events.size)
+        Assert.assertTrue(
+            "and both must stay braking, got $events",
+            events.all { it.type == RideEventType.BRAKING },
         )
     }
 
     /** A poorly-fixed stretch produces no events at all, rather than events built on a bad position. */
     @Test
     fun inaccurateFixesSuppressDetection() {
-        val clean = ride(seconds = 20.0) { t -> if (t >= 10.0 && t < 12.0) Triple(-3.43, 0.0, GRAVITY) else Triple(0.0, 0.0, GRAVITY) }
+        val clean =
+            ride(seconds = 20.0, speedAt = speedDrop(20.0, 3.43, 10.0, 12.0)) { t ->
+                if (t >= 10.0 && t < 12.0) Triple(-3.43, 0.0, GRAVITY) else Triple(0.0, 0.0, GRAVITY)
+            }
         Assert.assertEquals(
             "control: the same ride with good fixes registers",
             1,
@@ -499,22 +786,29 @@ class RideEventsTest {
      */
     @Test
     fun smoothLowSpeedTurnsAreNotHarshEvenAboveHalfAG() {
-        // Lateral force ramped in over turnInSec, held, then unwound just as gently.
+        // Lateral force ramped in over turnInSec, held, then unwound just as gently — with the yaw
+        // rate the geometry implies (ω = v/r), so the gyro agrees this is genuine cornering.
         fun corner(
             speedMps: Double,
             radiusM: Double,
             turnInSec: Double,
-        ) = ride(seconds = 25.0, speedMps = speedMps) { t ->
-            val lateral = speedMps * speedMps / radiusM
-            val held =
+        ): RideSamples {
+            fun held(t: Double) =
                 when {
                     t < 10.0 -> 0.0
-                    t < 10.0 + turnInSec -> lateral * (t - 10.0) / turnInSec
-                    t < 12.5 -> lateral
-                    t < 12.5 + turnInSec -> lateral * (12.5 + turnInSec - t) / turnInSec
+                    t < 10.0 + turnInSec -> (t - 10.0) / turnInSec
+                    t < 12.5 -> 1.0
+                    t < 12.5 + turnInSec -> (12.5 + turnInSec - t) / turnInSec
                     else -> 0.0
                 }
-            Triple(0.0, held, GRAVITY) // heading is east, so lateral force lies on the north axis
+            return ride(
+                seconds = 25.0,
+                speedMps = speedMps,
+                yawRateAt = { t -> (speedMps / radiusM) * held(t) },
+            ) { t ->
+                // heading is east, so lateral force lies on the north axis
+                Triple(0.0, (speedMps * speedMps / radiusM) * held(t), GRAVITY)
+            }
         }
 
         // 30 km/h into a side street: 0.59 g, but built over 0.8 s = 0.73 g/s, under the jerk gate.
@@ -534,7 +828,7 @@ class RideEventsTest {
         // But the bypass must survive for braking, where 0.5 g is a hard stop at any speed.
         val smoothStop =
             detectRideEvents(
-                ride(seconds = 20.0) { t ->
+                ride(seconds = 20.0, speedAt = speedDrop(20.0, 2.95, 10.0, 13.0)) { t ->
                     val decel =
                         if (t >= 10.0 && t < 13.0) 5.9 * (t - 10.0) / 3.0 else 0.0 // ramp to 0.6 g
                     Triple(-decel, 0.0, GRAVITY)

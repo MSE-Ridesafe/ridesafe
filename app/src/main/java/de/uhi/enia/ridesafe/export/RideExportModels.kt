@@ -45,6 +45,28 @@ data class SavedRideExport(
     val format: RideExportFormat = RideExportFormat.PDF,
 )
 
+/** A ZIP export reads every selected ride three times: to hash it, to archive it, to verify it. */
+private const val PASSES_PER_RIDE = 3
+
+/**
+ * How far an export has got, for the Logbook's progress dialog.
+ *
+ * [passes] counts ride-passes rather than rides because the three passes cannot be interleaved —
+ * the archive has to exist before it can be read back — so a per-ride counter would run 1..n three
+ * times over. Counting passes keeps [ridesDone] monotonic and [fraction] close to linear in wall
+ * time. PDF and CSV exports never set [rides]; they read no sample files and finish immediately, so
+ * their fraction stays 0 and the dialog shows an indeterminate ring.
+ */
+data class RideExportProgress(
+    val passes: Int = 0,
+    val rides: Int = 0,
+) {
+    val fraction: Float
+        get() = if (rides == 0) 0f else (passes.toFloat() / (rides * PASSES_PER_RIDE)).coerceIn(0f, 1f)
+
+    val ridesDone: Int get() = (passes / PASSES_PER_RIDE).coerceAtMost(rides)
+}
+
 /** Android-free completion value retained by the ViewModel/UI after MediaStore publishing. */
 data class CompletedRideExport(
     val fileName: String,

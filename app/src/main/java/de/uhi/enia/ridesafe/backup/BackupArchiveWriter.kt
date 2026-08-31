@@ -12,6 +12,7 @@ import de.uhi.enia.ridesafe.data.RideEvent
 import de.uhi.enia.ridesafe.data.RidesafeDatabase
 import de.uhi.enia.ridesafe.data.SavedAddress
 import de.uhi.enia.ridesafe.data.Vehicle
+import de.uhi.enia.ridesafe.export.RideExportProgress
 import de.uhi.enia.ridesafe.export.RideExportRequest
 import de.uhi.enia.ridesafe.rides.RideDataCoordinator
 import de.uhi.enia.ridesafe.rides.processing.AXIS_VERSION
@@ -25,13 +26,12 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import java.io.BufferedOutputStream
 import java.io.File
-import java.nio.file.Files
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 internal data class RideBackupSourceFile(
     val metadata: BackupFile,
-    val snapshot: File,
+    val file: File,
     val crc32: Long,
 )
 
@@ -39,27 +39,36 @@ internal class RideZipBackup(
     private val app: Application,
     private val db: RidesafeDatabase,
 ) {
+    /**
+     * The ZIP streams each ride's own file rather than a private copy of it, so the per-ride locks
+     * are held across the archive write instead of only across a copy pass. That is strictly less
+     * time than before — copying every selected file took about as long as writing the archive
+     * does, and it needed a second copy of the whole selection in the cache while it did.
+     */
     suspend fun write(
         destination: File,
         requests: List<RideExportRequest>,
+        onProgress: (RideExportProgress) -> Unit = {},
     ) {
         val rideIds = requests.flatMap(RideExportRequest::rideIds).distinct()
         require(rideIds.isNotEmpty())
-        val snapshotDirectory = Files.createTempDirectory(app.cacheDir.toPath(), "ridesafe_backup_snapshot_").toFile()
-        try {
-            val archive =
-                RideDataCoordinator.withRides(rideIds) {
-                    val databaseSnapshot = readDatabaseSnapshot(rideIds)
-                    val sources = snapshotFiles(databaseSnapshot.rides, snapshotDirectory)
-                    val manifest = databaseSnapshot.toManifest(app, requests, sources.map { it.metadata })
-                    RideBackupArchiveValidator.validateManifest(manifest)
-                    RideBackupArchive(manifest, sources)
-                }
-            writeRideBackupZip(destination, archive.manifest, archive.sources)
-            currentCoroutineContext().ensureActive()
-            RideBackupArchiveValidator.validate(destination)
-        } finally {
-            snapshotDirectory.deleteRecursively()
+        var passes = 0
+        val report = { rides: Int -> onProgress(RideExportProgress(++passes, rides)) }
+        RideDataCoordinator.withRides(rideIds) {
+            val databaseSnapshot = readDatabaseSnapshot(rideIds)
+            val rides = databaseSnapshot.rides.size
+            onProgress(RideExportProgress(0, rides))
+            val sources = describeFiles(databaseSnapshot.rides) { report(rides) }
+            val manifest = databaseSnapshot.toManifest(app, requests, sources.map { it.metadata })
+            RideBackupArchiveValidator.validateManifest(manifest)
+            writeRideBackupZip(destination, manifest, sources) { report(rides) }
+            // Cancellation is checked per archive entry from here on: the reader is not a suspend
+            // function, so it borrows this coroutine's context rather than the caller's.
+            val context = currentCoroutineContext()
+            RideBackupArchiveValidator.validate(destination) { _ ->
+                context.ensureActive()
+                report(rides)
+            }
         }
     }
 
@@ -90,51 +99,48 @@ internal class RideZipBackup(
             )
         }
 
-    private suspend fun snapshotFiles(
+    private suspend fun describeFiles(
         rides: List<Ride>,
-        directory: File,
+        onRide: () -> Unit,
     ): List<RideBackupSourceFile> {
         val sources = mutableListOf<RideBackupSourceFile>()
         for (ride in rides) {
             currentCoroutineContext().ensureActive()
             val rawSource = File(ridesDir(app), ride.sampleFile)
             if (!rawSource.isFile) throw RideBackupValidationException("Required raw samples are missing for ride ${ride.id}")
-            sources += snapshotIncludedFile(ride.id, RAW_ROLE, rawSource, directory)
+            sources += describeIncludedFile(ride.id, RAW_ROLE, rawSource)
             val routeSource = processedRouteFile(app, ride)
             sources +=
                 if (routeSource.isFile) {
-                    snapshotIncludedFile(ride.id, ROUTE_ROLE, routeSource, directory)
+                    describeIncludedFile(ride.id, ROUTE_ROLE, routeSource)
                 } else {
-                    RideBackupSourceFile(
-                        routeFileMetadata(ride.id, ABSENT, null, null),
-                        File(directory, "absent-${ride.id}.route.v$ROUTE_VERSION"),
-                        0,
-                    )
+                    // Never opened: an absent descriptor is filtered out before any entry is written.
+                    RideBackupSourceFile(routeFileMetadata(ride.id, ABSENT, null, null), routeSource, 0)
                 }
+            onRide()
         }
         return sources
     }
 
-    private suspend fun snapshotIncludedFile(
+    /**
+     * Only hashes: the finished archive is what gets its records checked. The SHA-256 recorded here
+     * is verified against the archive entry before that check runs, so checking the source too
+     * would prove nothing the archive has not already proven — at the price of gunzipping the whole
+     * selection a second time.
+     */
+    private fun describeIncludedFile(
         rideId: Long,
         role: String,
         source: File,
-        directory: File,
     ): RideBackupSourceFile {
-        val target = File(directory, "${rideId}_$role")
-        copyFileCancellable(source, target)
-        when (role) {
-            RAW_ROLE -> validateRawSamples(target.inputStream())
-            ROUTE_ROLE -> validateEncodedRoute(target.inputStream())
-        }
-        val integrity = fileIntegrity(target)
+        val integrity = fileIntegrity(source)
         val metadata =
             if (role == RAW_ROLE) {
                 rawFileMetadata(rideId, integrity.size, integrity.sha256)
             } else {
                 routeFileMetadata(rideId, INCLUDED, integrity.size, integrity.sha256)
             }
-        return RideBackupSourceFile(metadata, target, integrity.crc32)
+        return RideBackupSourceFile(metadata, source, integrity.crc32)
     }
 }
 
@@ -147,11 +153,6 @@ internal fun requireFinishedSelectedRides(
     }
     require(rides.all { it.endedAtEpochMs != null }) { "Active rides cannot be exported" }
 }
-
-private data class RideBackupArchive(
-    val manifest: RideBackupManifest,
-    val sources: List<RideBackupSourceFile>,
-)
 
 private data class RideBackupSnapshot(
     val rides: List<Ride>,
@@ -210,6 +211,7 @@ internal suspend fun writeRideBackupZip(
     destination: File,
     manifest: RideBackupManifest,
     sources: List<RideBackupSourceFile>,
+    onRide: () -> Unit = {},
 ) {
     currentCoroutineContext().ensureActive()
     RideBackupArchiveValidator.validateManifest(manifest)
@@ -236,11 +238,12 @@ internal suspend fun writeRideBackupZip(
                 entry.crc = source.crc32
             }
             zip.putNextEntry(entry)
-            source.snapshot
+            source.file
                 .inputStream()
                 .buffered()
                 .use { input -> copyCancellable(input, zip) }
             zip.closeEntry()
+            if (file.role == RAW_ROLE) onRide()
         }
     }
 }

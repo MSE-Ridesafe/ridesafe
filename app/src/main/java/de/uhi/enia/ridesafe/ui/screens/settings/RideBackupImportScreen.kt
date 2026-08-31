@@ -19,7 +19,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -39,29 +38,36 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.uhi.enia.ridesafe.R
+import de.uhi.enia.ridesafe.backup.RideBackupImportCandidate
 import de.uhi.enia.ridesafe.backup.RideBackupImportCount
-import de.uhi.enia.ridesafe.backup.RideBackupImportPreview
+import de.uhi.enia.ridesafe.backup.RideBackupImportProgress
 import de.uhi.enia.ridesafe.backup.RideBackupImportResult
 import de.uhi.enia.ridesafe.backup.RideBackupImporter
 import de.uhi.enia.ridesafe.ui.components.BackNavIcon
 import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.ui.components.ProgressRing
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 internal sealed interface RideBackupImportState {
     data object Idle : RideBackupImportState
 
-    data object Inspecting : RideBackupImportState
-
-    data class Ready(
-        val uri: Uri,
-        val preview: RideBackupImportPreview,
+    data class Inspecting(
+        val progress: RideBackupImportProgress = RideBackupImportProgress(),
     ) : RideBackupImportState
 
-    data object Importing : RideBackupImportState
+    data class Ready(
+        val candidate: RideBackupImportCandidate,
+    ) : RideBackupImportState
+
+    data class Importing(
+        val progress: RideBackupImportProgress = RideBackupImportProgress(),
+    ) : RideBackupImportState
 
     data class Success(
         val result: RideBackupImportResult,
@@ -79,36 +85,71 @@ internal class RideBackupImportViewModel(
     private val _state = MutableStateFlow<RideBackupImportState>(RideBackupImportState.Idle)
     val state: StateFlow<RideBackupImportState> = _state.asStateFlow()
 
+    private var job: Job? = null
+
     fun select(uri: Uri) {
-        if (_state.value == RideBackupImportState.Importing) return
-        viewModelScope.launch {
-            _state.value = RideBackupImportState.Inspecting
-            try {
-                _state.value = RideBackupImportState.Ready(uri, importer.inspect(uri))
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (failure: Exception) {
-                _state.value = RideBackupImportState.Error(failure.message.orEmpty())
+        if (_state.value is RideBackupImportState.Importing) return
+        discardPending()
+        job =
+            viewModelScope.launch {
+                _state.value = RideBackupImportState.Inspecting()
+                runPhase(RideBackupImportState::Inspecting) { onProgress ->
+                    RideBackupImportState.Ready(importer.inspect(uri, onProgress))
+                }
             }
-        }
     }
 
     fun confirm() {
         val ready = _state.value as? RideBackupImportState.Ready ?: return
-        viewModelScope.launch {
-            _state.value = RideBackupImportState.Importing
-            try {
-                _state.value = RideBackupImportState.Success(importer.import(ready.uri))
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (failure: Exception) {
-                _state.value = RideBackupImportState.Error(failure.message.orEmpty())
+        job =
+            viewModelScope.launch {
+                _state.value = RideBackupImportState.Importing()
+                runPhase(RideBackupImportState::Importing) { onProgress ->
+                    RideBackupImportState.Success(importer.import(ready.candidate, onProgress))
+                }
             }
-        }
+    }
+
+    /** Stops whichever half is running; a cancelled restore leaves nothing behind to clean up later. */
+    fun cancel() {
+        job?.cancel()
     }
 
     fun dismiss() {
-        if (_state.value != RideBackupImportState.Importing) _state.value = RideBackupImportState.Idle
+        if (_state.value is RideBackupImportState.Importing) return
+        discardPending()
+        _state.value = RideBackupImportState.Idle
+    }
+
+    /**
+     * Runs one half of the restore, publishing its progress through [busyState] while it goes.
+     * Late reports must not resurrect a finished dialog, so each one re-checks the current state.
+     */
+    private suspend fun runPhase(
+        busyState: (RideBackupImportProgress) -> RideBackupImportState,
+        operation: suspend ((RideBackupImportProgress) -> Unit) -> RideBackupImportState,
+    ) {
+        val expected = _state.value::class
+        try {
+            _state.value =
+                operation { progress ->
+                    _state.update { if (it::class == expected) busyState(progress) else it }
+                }
+        } catch (cancelled: CancellationException) {
+            _state.value = RideBackupImportState.Idle
+            throw cancelled
+        } catch (failure: Exception) {
+            _state.value = RideBackupImportState.Error(failure.message.orEmpty())
+        }
+    }
+
+    override fun onCleared() {
+        discardPending()
+    }
+
+    /** The preview's copy of the archive outlives the dialog only while the dialog is up. */
+    private fun discardPending() {
+        (_state.value as? RideBackupImportState.Ready)?.let { importer.discard(it.candidate) }
     }
 }
 
@@ -120,7 +161,7 @@ internal fun RideBackupImportScreen(
     importViewModel: RideBackupImportViewModel = viewModel(),
 ) {
     val state by importViewModel.state.collectAsState()
-    val busy = state == RideBackupImportState.Inspecting || state == RideBackupImportState.Importing
+    val busy = state is RideBackupImportState.Inspecting || state is RideBackupImportState.Importing
     val picker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             uri?.let(importViewModel::select)
@@ -167,14 +208,7 @@ internal fun RideBackupImportScreen(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                if (busy) CircularProgressIndicator(modifier = Modifier.padding(2.dp), strokeWidth = 2.dp)
-                                Text(
-                                    when (state) {
-                                        RideBackupImportState.Inspecting -> stringResource(R.string.settings_backup_import_checking)
-                                        RideBackupImportState.Importing -> stringResource(R.string.settings_backup_import_importing)
-                                        else -> stringResource(R.string.settings_backup_import_choose)
-                                    },
-                                )
+                                Text(busyLabel(state) ?: stringResource(R.string.settings_backup_import_choose))
                             }
                         }
                     }
@@ -184,12 +218,20 @@ internal fun RideBackupImportScreen(
     }
 
     when (val current = state) {
+        is RideBackupImportState.Inspecting -> {
+            ImportProgressDialog(current.progress, stringResource(R.string.settings_backup_import_checking), importViewModel::cancel)
+        }
+
+        is RideBackupImportState.Importing -> {
+            ImportProgressDialog(current.progress, stringResource(R.string.settings_backup_import_importing), importViewModel::cancel)
+        }
+
         is RideBackupImportState.Ready -> {
             AlertDialog(
                 onDismissRequest = importViewModel::dismiss,
                 title = { Text(stringResource(R.string.settings_backup_import_confirm_title)) },
                 text = {
-                    val preview = current.preview
+                    val preview = current.candidate.preview
                     val items =
                         listOf(
                             pluralStringResource(R.plurals.settings_backup_import_preview_rides, preview.rides, preview.rides),
@@ -242,6 +284,37 @@ internal fun RideBackupImportScreen(
 
         else -> {}
     }
+}
+
+/** The label the choose-a-backup button wears while a restore half is running, or null when idle. */
+@Composable
+private fun busyLabel(state: RideBackupImportState): String? =
+    when (state) {
+        is RideBackupImportState.Inspecting -> stringResource(R.string.settings_backup_import_checking)
+        is RideBackupImportState.Importing -> stringResource(R.string.settings_backup_import_importing)
+        else -> null
+    }
+
+/** Spins until the archive's manifest has been read, then counts rides. Not dismissable by accident. */
+@Composable
+private fun ImportProgressDialog(
+    progress: RideBackupImportProgress,
+    title: String,
+    onCancel: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text(title) },
+        text = {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                ProgressRing(fraction = progress.fraction, size = 36.dp)
+                if (progress.rides > 0) {
+                    Text(stringResource(R.string.settings_backup_import_count, progress.ridesDone, progress.rides))
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) } },
+    )
 }
 
 /** One "%d things (%d already existed)" bullet line, pluralized on the imported count. */

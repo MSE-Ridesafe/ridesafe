@@ -59,6 +59,7 @@
     <string name="settings_backup_import_choose">Sicherung auswählen</string>
     <string name="settings_backup_import_checking">Sicherung wird geprüft…</string>
     <string name="settings_backup_import_importing">Sicherung wird importiert…</string>
+    <string name="settings_backup_import_count">%1$d von %2$d</string>
     <string name="settings_backup_import_confirm_title">Diese Sicherung importieren?</string>
     <string name="settings_backup_import_confirm_message">Diese Sicherung enthält:\n\n%1$s\n\nDeine vorhandenen Daten bleiben erhalten und nur fehlende Einträge werden importiert.</string>
     <plurals name="settings_backup_import_preview_rides">
@@ -353,6 +354,7 @@
     <string name="ride_export_format_csv_description">Tabellendaten für Excel und andere Programme</string>
     <string name="ride_export_format_zip_description">Sicherung mit Fahrtdaten, Routen und verknüpften Einträgen</string>
     <string name="ride_exporting">Fahrten werden exportiert…</string>
+    <string name="ride_export_count">%1$d von %2$d</string>
     <string name="ride_export_success">Export unter Downloads/RideSafe gespeichert.</string>
     <string name="ride_export_error">Fahrten konnten nicht exportiert werden. Bitte erneut versuchen.</string>
     <string name="ride_export_channel_name">Fahrtenexporte</string>

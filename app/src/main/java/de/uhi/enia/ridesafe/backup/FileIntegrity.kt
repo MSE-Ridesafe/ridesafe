@@ -1,6 +1,5 @@
 package de.uhi.enia.ridesafe.backup
 
-import de.uhi.enia.ridesafe.util.copyCancellable
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
@@ -23,11 +22,4 @@ internal fun streamIntegrity(input: InputStream): FileIntegrity {
     val crc = CRC32()
     val size = DigestInputStream(CheckedInputStream(input, crc), digest).copyTo(OutputStream.nullOutputStream())
     return FileIntegrity(size, HexFormat.of().formatHex(digest.digest()), crc.value)
-}
-
-internal suspend fun copyFileCancellable(
-    source: File,
-    destination: File,
-) {
-    source.inputStream().buffered().use { input -> destination.outputStream().buffered().use { output -> copyCancellable(input, output) } }
 }

@@ -433,6 +433,10 @@ class RidesViewModel(
         exportController.start(requests, format)
     }
 
+    fun cancelExport() {
+        exportController.cancel()
+    }
+
     fun consumeExportResult() {
         exportController.consumeResult()
     }

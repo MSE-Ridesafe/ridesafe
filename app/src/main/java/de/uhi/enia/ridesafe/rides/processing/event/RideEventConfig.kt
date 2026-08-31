@@ -71,7 +71,11 @@ data class DirectionThresholds(
  * a standing start.
  *
  * @property cornering Cornering thresholds. No force bypass, and a slightly higher floor since
- * 0.25 g is an unremarkable corner.
+ * 0.25 g is an unremarkable corner. The entry gate sits a notch under the braking one: the
+ * cornering signal is the *lower* of accelerometer lateral and gyro-derived v·ω, so the false
+ * positives a stricter gate once guarded against — longitudinal bleed, mount wobble — are already
+ * dead, and the razor-edge misses (a real evasive steer measured at 0.88 g/s against a 0.9 gate)
+ * were what the strictness actually bought.
  *
  * @property jerkBaselineMs The time baseline over which rate of change is measured. Differencing
  * adjacent 50 Hz samples divides by 0.02 s, turning even 0.003 g of residual ripple into 0.15 g/s —
@@ -135,21 +139,62 @@ data class DirectionThresholds(
  * axis. Raise it to gather samples faster, at the cost of that lag skewing the result; lower it and
  * calibration may never collect enough samples on a winding route.
  *
+ * @property sustainedDvWindowMs The trailing window over which GPS Doppler speed change is watched
+ * for sustained harshness. The accelerometer path misses maneuvers a badly seated phone absorbs —
+ * a loosely lying phone slides instead of feeling the force, and on replayed rides a −0.5 g stop
+ * registered barely 0.13 g. Doppler measures the car regardless, but only at 1 Hz averages, so
+ * this path speaks in "how much speed changed within the window" rather than jerk. Three seconds
+ * separates a real sustained maneuver from a one-second launch blip; shorten it and blips start
+ * arming the path, lengthen it and the arm lags so far behind the maneuver that only its tail is
+ * ever measured.
+ *
+ * @property sustainedAccelDvMps Speed gained within the window that declares sustained harsh
+ * acceleration, in m/s (default ≈ +24 km/h in 3 s, a held 0.23 g). While the window shows more
+ * than this, the acceleration detector opens and sustains on the Doppler slope at the ordinary
+ * peak floor, however little the accelerometer felt. Calibrated on a real logbook: everyday
+ * standing-start surges gain ~+19 km/h per 3 s and stay under it, the two genuinely floored
+ * launches gained +27 and +42. Lower it and brisk-but-normal pulls become events; raise it and
+ * only outright full-throttle runs arm.
+ *
+ * @property sustainedBrakeDvMps Speed lost within the window that declares sustained harsh
+ * braking, in m/s (default ≈ −40 km/h in 3 s, a held 0.38 g). Higher than the acceleration arm
+ * because braking runs stronger in normal traffic: a spirited motorway-exit brake sheds ~30 km/h
+ * per 3 s and must stay silent, while the replayed hard stops shed 43 and 60. Lower it and firm
+ * everyday stops become events; raise it and only full emergency stops arm.
+ *
+ * @property dvAgreementFraction How much of a braking/acceleration event's claimed speed change the
+ * GPS Doppler speed must confirm before the event is kept, as a fraction of `avgG · duration`.
+ * The accelerometer measures the phone; Doppler measures the car; an event the car's speed trace
+ * contradicts is the phone moving in its mount — a loose phone lurching backwards under launch
+ * reads as a textbook harsh brake, and did, on a replayed ride whose speed rose 6 km/h through its
+ * own "braking" event. Kept well under 1 because Doppler is a 1 Hz average that legitimately
+ * undercounts a sub-second stab; raise it and short real events start dying with the fakes, lower
+ * it and only sign-flipped artifacts are caught. Cornering is never checked — it moves no speed.
+ *
+ * @property dvAgreementFloorMps The least speed change ever demanded by that check, in m/s. The
+ * fraction of a brief event's Δv can fall under GPS noise; this floor keeps the demand meaningful.
+ * Raise it and short-but-real events are vetoed for lack of evidence; lower it toward zero and a
+ * flat speed trace stops counting against anything.
+ *
  * @property alignmentMinSamples How many qualifying fixes are needed before the estimated axis is
  * trusted at all. Raise it and more rides fall back to GPS heading, which is meaningless at low
  * speed and wrong when a fix jumps; lower it and a handful of fixes can set the axis for a whole ride.
  *
  * @property alignmentMinCoherence How strongly the calibration samples must agree, from 0 to 1
- * (default ≈18° mean scatter). Measured as the summed vector's length over the sample count: unit
- * vectors that agree sum to nearly the count, ones that scatter fall short. This is what catches the
+ * (default ≈37° mean scatter). Measured as the summed vector's length over the sample count: unit
+ * vectors that agree sum to nearly the count, ones that scatter fall short. Its job is catching the
  * phone having been moved or re-mounted mid-ride, since the axis is then no longer a single
- * constant. Raise it toward 1 for a stricter check and more fallbacks to GPS heading; lower it and
- * a scattered, meaningless average gets used as the vehicle's forward direction.
+ * constant. The bar is deliberately forgiving: detection projects in the device frame, where only
+ * the *mean* axis matters and per-sample scatter — mostly the rotation vector's magnetometer yaw
+ * wobbling against GPS course — averages out to a degree or two over hundreds of samples. Raise it
+ * and magnetically noisy but perfectly usable rides lose their axis (and with it all
+ * accelerometer-based detection); lower it and a genuinely re-mounted phone's meaningless average
+ * gets used as the vehicle's forward direction.
  */
 data class RideEventConfig(
     val braking: DirectionThresholds = DirectionThresholds(0.9, 0.65, 0.25, 0.45),
     val acceleration: DirectionThresholds = DirectionThresholds(0.7, 0.5, 0.25, 0.32),
-    val cornering: DirectionThresholds = DirectionThresholds(0.9, 0.65, 0.30, null),
+    val cornering: DirectionThresholds = DirectionThresholds(0.8, 0.65, 0.30, null),
     val jerkBaselineMs: Long = 100,
     val minDurationMs: Long = 250,
     val mergeGapMs: Long = 500,
@@ -159,8 +204,13 @@ data class RideEventConfig(
     val lowPassHz: Double = 2.0,
     val maxSampleAgeNanos: Long = 1_000_000_000,
     val maxFixAccuracyMeters: Double = 30.0,
+    val sustainedDvWindowMs: Long = 3000,
+    val sustainedAccelDvMps: Double = 6.7,
+    val sustainedBrakeDvMps: Double = 11.1,
+    val dvAgreementFraction: Double = 0.3,
+    val dvAgreementFloorMps: Double = 0.8,
     val alignmentMinSpeedMps: Double = 8.0,
     val alignmentMaxTurnDeg: Double = 5.0,
     val alignmentMinSamples: Int = 20,
-    val alignmentMinCoherence: Double = 0.95,
+    val alignmentMinCoherence: Double = 0.80,
 )

@@ -4,12 +4,15 @@ import de.uhi.enia.ridesafe.data.DYNAMICS_G_PER_BIN
 import de.uhi.enia.ridesafe.data.DYNAMICS_JERK_PER_BIN
 import de.uhi.enia.ridesafe.data.DirectionHistogram
 import de.uhi.enia.ridesafe.data.RideDynamics
+import de.uhi.enia.ridesafe.data.RideEvent
+import de.uhi.enia.ridesafe.data.RideEventType
 import de.uhi.enia.ridesafe.data.SafetyScore
 import de.uhi.enia.ridesafe.rides.processing.event.DirectionThresholds
 import de.uhi.enia.ridesafe.rides.processing.event.RideEventConfig
 import kotlin.math.exp
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 /**
  * Scoring knobs (ANL-01). Every constant that decides what a number means lives here, and none of
@@ -86,6 +89,16 @@ import kotlin.math.roundToInt
  * reading as flawless driving: it produces no events and an empty histogram, which is indistinguishable
  * from perfection unless coverage is checked. Raise it and rides through tunnels and car parks lose
  * their scores; lower it and a score can rest on a couple of measured minutes out of an hour.
+ *
+ * @property eventWeight How much a detected event's own severity adds on top of the histograms,
+ * as a multiplier on its event-equivalent seconds. This is the coupling between detection and
+ * scoring: the histograms describe only what the accelerometer witnessed, and the detector now
+ * confirms events from evidence the histograms cannot carry — a full-throttle launch the loosely
+ * seated phone absorbed is a real event with a Doppler-measured 0.5 g peak but near-empty jerk
+ * bins, and before this term existed such a ride's acceleration score sat in the 90s. Events near
+ * the detection floor cost fractions of a second (the same cube as everything else), so a clean
+ * ride and a mildly-eventful one barely move; raise it and flagged maneuvers dominate the score
+ * outright, lower it toward zero and the score returns to judging distributions alone.
  */
 data class ScoreWeights(
     val comfortFloor: Double = 0.5,
@@ -100,6 +113,7 @@ data class ScoreWeights(
     val priorSeconds: Double = 600.0,
     val minQualifiedSeconds: Double = 120.0,
     val minCoverage: Double = 0.25,
+    val eventWeight: Double = 1.0,
 ) {
     init {
         // Not defensive programming so much as a tuning guard: these are edited by hand while
@@ -114,12 +128,19 @@ data class ScoreWeights(
  * Score one ride from its dynamics profile (ANL-01), or null when there was too little measurable
  * driving to say anything.
  *
- * The whole method is one idea: instead of counting events, measure how much of the ride was spent
- * how far past comfortable, and divide by how long the ride was. Because the penalty grows as a
- * cube, a genuine event dominates the sum on its own while a near-miss still registers faintly and
- * smooth driving registers not at all — so penalising events, penalising near-misses and rewarding
- * smoothness are not three mechanisms but one, and the result stays monotone: nothing a driver does
- * can raise the score except driving more gently.
+ * The body of the method measures how much of the ride was spent how far past comfortable, and
+ * divides by how long the ride was. Because the penalty grows as a cube, a rough patch dominates
+ * the sum on its own while a near-miss still registers faintly and smooth driving registers not at
+ * all — so penalising near-misses and rewarding smoothness are one mechanism, and the result stays
+ * monotone: nothing a driver does can raise the score except driving more gently.
+ *
+ * [events] add their own severity on top. The histograms carry only what the accelerometer
+ * witnessed, but the detector confirms events from more than the accelerometer — Doppler speed for
+ * maneuvers a badly seated phone absorbed, the gyro for cornering — so an event's stored magnitude
+ * can exceed anything in the bins. Pricing the events directly (same density curve, their own
+ * duration and measured g) is what couples detection to scoring: whatever detection learns to see,
+ * the score charges for, with no separate tuning pass. Near-floor events cost fractions of a
+ * second, so this term leaves clean and mildly-driven rides where they were.
  *
  * [config] supplies the same thresholds the detector triggered on, so the score and the events shown
  * on the map are two readings of one yardstick rather than two opinions — offset only by
@@ -128,18 +149,59 @@ data class ScoreWeights(
  */
 fun scoreRide(
     dynamics: RideDynamics,
+    events: List<RideEvent> = emptyList(),
     config: RideEventConfig = RideEventConfig(),
     weights: ScoreWeights = ScoreWeights(),
 ): SafetyScore? {
     if (dynamics.qualifiedSeconds < weights.minQualifiedSeconds) return null
     if (dynamics.coverage < weights.minCoverage) return null
     return safetyScore(
-        brakingPenalty = directionPenalty(dynamics.braking, config.braking, weights),
-        accelerationPenalty = directionPenalty(dynamics.acceleration, config.acceleration, weights),
-        corneringPenalty = directionPenalty(dynamics.cornering, config.cornering, weights),
+        brakingPenalty =
+            directionPenalty(dynamics.braking, config.braking, weights) +
+                eventPenalty(events, RideEventType.BRAKING, config, weights),
+        accelerationPenalty =
+            directionPenalty(dynamics.acceleration, config.acceleration, weights) +
+                eventPenalty(events, RideEventType.ACCELERATION, config, weights),
+        corneringPenalty =
+            directionPenalty(dynamics.cornering, config.cornering, weights) +
+                eventPenalty(events, RideEventType.CORNERING, config, weights),
         qualifiedSeconds = dynamics.qualifiedSeconds,
         weights = weights,
     )
+}
+
+/**
+ * What one direction's detected events add, in the same event-equivalent seconds as the histograms:
+ * each event's duration weighted by the density of its measured severity.
+ *
+ * Severity is the geometric mean of the event's average and peak g against the direction's force
+ * reference — the average alone understates a peaky maneuver (the cube is convex), the peak alone
+ * bills the whole duration at its single worst instant. Braking and acceleration measure against
+ * [DirectionThresholds.highPeakG], the same "harsh however it arrived" line the histograms use.
+ * Cornering has no such line, so its events measure against [DirectionThresholds.minPeakG]: the
+ * usual objection to judging cornering by force — v²/r makes tight low-speed turns cheap — does not
+ * apply to a *confirmed* event, which already cleared the jerk gate and the gyro's agreement.
+ */
+private fun eventPenalty(
+    events: List<RideEvent>,
+    type: RideEventType,
+    config: RideEventConfig,
+    weights: ScoreWeights,
+): Double {
+    val thresholds =
+        when (type) {
+            RideEventType.BRAKING -> config.braking
+            RideEventType.ACCELERATION -> config.acceleration
+            RideEventType.CORNERING -> config.cornering
+        }
+    val reference = (thresholds.highPeakG ?: thresholds.minPeakG) * weights.referenceScale
+    var total = 0.0
+    for (event in events) {
+        if (event.type != type) continue
+        val severity = sqrt(event.avgG * event.peakG) / reference
+        total += (event.durationMs / 1000.0) * density(severity, weights)
+    }
+    return weights.eventWeight * total
 }
 
 /**

@@ -10,24 +10,23 @@ import de.uhi.enia.ridesafe.rides.recording.RideSamples
 /**
  * Detect harsh braking, acceleration and cornering in one ride's samples (ANL-01).
  *
- * The whole method rests on getting out of the device's frame, which is arbitrary and can shift
- * mid-ride. Each acceleration sample is rotated into the world ENU frame using the recorded
- * rotation vector, and the vertical component is then discarded. That single step does three jobs:
- * it removes gravity *exactly* (gravity is world-vertical by definition, so it never touches the
- * horizontal components), it makes the result slope-proof with no road-plane estimation, and it
- * leaves the true horizontal acceleration. Projecting that onto the direction of travel splits it
- * into longitudinal (braking/acceleration) and lateral (cornering).
- *
- * Direction of travel comes from the Kalman-filtered track, not raw GPS bearing, which is noise
- * below walking pace.
+ * The whole method rests on removing gravity without ever trusting the magnetometer. The rotation
+ * vector's vertical row gives world-up in device coordinates — exact for gravity (so the result is
+ * slope-proof with no road-plane estimation) and immune to yaw error, which is the one component
+ * fused from the magnetometer and inside a car is wrong by tens of degrees and varying. The
+ * horizontal remainder is projected onto the vehicle's calibrated forward axis *in the device
+ * frame*, splitting it into longitudinal (braking/acceleration) and lateral (cornering) with the
+ * world frame never entered. GPS course is used only to calibrate that axis once per ride, where
+ * yaw wobble merely averages out of the mean instead of misfiling force per sample.
  *
  * What counts as harsh is then judged on how fast the force builds rather than how large it gets —
  * see [RideEventConfig] — with a magnitude path for maneuvers that are hard however smoothly they
  * were started. Differentiating is only viable because the low-pass runs first: the derivative of a
  * raw 50 Hz signal is noise.
  *
- * Returns empty when the ride lacks the accelerometer, rotation vector or GPS the method needs — a
- * missing sensor means no score, never a guessed one.
+ * Returns empty when the ride lacks the accelerometer, rotation vector or GPS the method needs, and
+ * likewise when no forward axis could be calibrated — a missing sensor or an unknowable axis means
+ * no score, never a guessed one.
  */
 fun detectRideEvents(
     samples: RideSamples,

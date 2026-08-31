@@ -16,8 +16,8 @@ import de.uhi.enia.ridesafe.rides.recording.MotionSensor
 import de.uhi.enia.ridesafe.rides.recording.trackDistanceMeters
 import de.uhi.enia.ridesafe.util.haversineMeters
 
-const val AXIS_VERSION = 1
-const val EVENTS_VERSION = 10
+const val AXIS_VERSION = 3
+const val EVENTS_VERSION = 12
 const val ENDPOINTS_VERSION = 1
 
 /**
@@ -71,9 +71,10 @@ class RouteStage(
 }
 
 /**
- * The vehicle's forward axis in the device frame, plus enough of a census to tell an unanalysable
- * ride from a clean one. Whole-ride statistic, and nothing can be split into longitudinal and
- * lateral without it — which is the sole reason detection needs a second pass over the file.
+ * The vehicle's forward axis in the device frame — one per mounting epoch, segmented where the
+ * phone was re-seated mid-ride — plus enough of a census to tell an unanalysable ride from a clean
+ * one. A whole-ride statistic either way, and nothing can be split into longitudinal and lateral
+ * without it — which is the sole reason detection needs a second pass over the file.
  *
  * ponytail: the axis is recomputed every time because it is never stored. Persisting it in a
  * sidecar next to the route would make a pure detector re-tune single-pass; worth doing if
@@ -162,6 +163,19 @@ class ForwardAxisStage : RideStage {
  * force bypasses 0.50/0.35 → 0.45/0.32 g), after real-logbook review found borderline-harsh
  * maneuvers going unrecorded. The peak floors stay put — what counts as *worth keeping* hasn't
  * changed, only how readily a maneuver opens an event.
+ * v11: the per-sample GPS-heading fallback is gone — projected onto an interpolated course that
+ * lags the car and carries the rotation vector's magnetometer yaw error, it misfiled a replayed
+ * slalom as braking-plus-acceleration and an emergency stop as cornering. Rides land in that
+ * situation far less to begin with: the axis coherence bar loosened from 0.95 to 0.80
+ * ([AXIS_VERSION] 2), since the calibrated split only ever depends on the *mean* axis and
+ * magnetometer wander merely scatters the samples around it. The split itself is now computed in
+ * the device frame — same math as the world-frame projection it replaces, minus the stale-matrix
+ * heading and with the yaw-immunity explicit. See docs/event-detection-rework.md.
+ * v12: the forward axis is segmented per mounting epoch ([AXIS_VERSION] 3), so a phone re-seated
+ * mid-ride no longer voids the whole ride's calibration — a real 12-minute ride was reading as
+ * "too little measurable driving" because one re-seat at minute 3 scattered the single-axis
+ * average past any acceptance bar. Detection re-seeds its projection filters at each epoch
+ * boundary and treats the unproven gap between epochs as unmeasurable.
  */
 class RideEventStage(
     private val db: RidesafeDatabase,
@@ -233,13 +247,17 @@ class ScoreStage(
     private val db: RidesafeDatabase,
 ) : RideStage {
     override val id = "score"
-    override val version = 2
+
+    // v3: detected events add their own severity to the penalties (ScoreWeights.eventWeight) —
+    // the histograms only carry what the accelerometer witnessed, and detection now confirms
+    // events from Doppler and gyro evidence the bins cannot hold.
+    override val version = 3
     override val dependsOn = listOf("events")
     override val needsSamples = false
 
     override suspend fun finish(ctx: RideAnalysisContext) {
         val dynamics = ctx.dynamics
-        val score = dynamics?.let { scoreRide(it, RideEventConfig(), ScoreWeights()) }
+        val score = dynamics?.let { scoreRide(it, ctx.events.orEmpty(), RideEventConfig(), ScoreWeights()) }
         db.rideDao().setScore(ctx.ride.id, score)
         // The calibration record: collect these across the logbook to judge the ScoreWeights
         // constants against real driving, and bump [version] after changing any — which re-derives
