@@ -23,8 +23,8 @@ import de.uhi.enia.ridesafe.R
 
 /**
  * Scaffold shared by the detail screens: a transparent top bar (the NavigationSuiteScaffold's
- * surfaceContainer shows through — detail screens are transparent, forms opaque; see the
- * restructure plan, R9) over a 16.dp scrolling card column. [showBack] hides the arrow when the
+ * surfaceContainer shows through — detail screens are transparent, forms opaque; see
+ * [FormScaffold]) over a 16.dp scrolling card column. [showBack] hides the arrow when the
  * screen is pinned beside its list in the two-pane layout.
  */
 @OptIn(ExperimentalMaterial3Api::class)

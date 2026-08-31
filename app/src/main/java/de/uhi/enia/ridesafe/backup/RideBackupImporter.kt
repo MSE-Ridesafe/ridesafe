@@ -28,6 +28,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.util.HexFormat
 import java.util.Locale
@@ -46,10 +47,11 @@ data class RideBackupImportPreview(
  * How far a restore has got. Both halves need one: checking a backup reads the whole archive once,
  * importing it reads the archive again and writes every ride file out.
  *
- * [passes] counts per-ride passes rather than rides, because the passes cannot be interleaved —
- * every entry is verified before any is extracted — so a per-ride counter would run 1..n twice over.
- * [rides] is 0 until the archive's manifest has been read, which the dialog shows as an
- * indeterminate ring.
+ * [passes] counts per-ride passes rather than rides, scaled by [passesPerRide], so a half that reads
+ * each ride more than once still fills the bar linearly. Both currently report one pass per ride:
+ * extraction verifies each entry against the manifest as it streams it out, rather than in a
+ * verification pass of its own. [rides] is 0 until the archive's manifest has been read, which the
+ * dialog shows as an indeterminate ring.
  */
 data class RideBackupImportProgress(
     val passes: Int = 0,
@@ -103,6 +105,33 @@ internal fun sweepStaleStagedFiles(directory: File) {
         ?.forEach { it.delete() }
 }
 
+/**
+ * Whether an archived analysis stamp may be adopted as this device's own.
+ *
+ * A stamp asserts that a stage's output already exists, and the pipeline believes it: a ride whose
+ * stages are all current is dropped before a file is ever opened. So a stamp may only be adopted
+ * when the output it vouches for actually travelled with the archive.
+ *
+ * Detection, scoring and efficiency all write to columns on the ride row — the dynamics profile,
+ * the safety score, the eco profile — and the archive carries none of them. Adopting those stamps
+ * left every imported ride permanently unscored: marked analysed, with nothing to show for it.
+ * Dropping them costs two passes over the raw samples, which are always in the archive, on the
+ * next backfill. The route sidecar is a file and does travel, so its stamp survives when the file
+ * came along and was written by this version of the filter. Endpoint correction writes lat/lon
+ * onto the ride row, which is exported, so it survives too; the axis stage persists nothing and is
+ * re-derived whenever detection runs, whatever its stamp says.
+ */
+internal fun adoptableAnalysisState(
+    stage: String,
+    routeCurrent: Boolean,
+    routeFileIncluded: Boolean,
+): Boolean =
+    when (stage) {
+        "events", "score", "eco" -> false
+        "route" -> routeCurrent && routeFileIncluded
+        else -> true
+    }
+
 /** Atomic rename of an already-fsynced staged file; a crash leaves either nothing or the whole file. */
 internal fun publishImportFile(
     staged: File,
@@ -119,10 +148,13 @@ internal fun publishImportFile(
  * that an app death left behind.
  */
 internal class RideBackupImportCandidate internal constructor(
-    val preview: RideBackupImportPreview,
+    internal val manifest: RideBackupManifest,
     internal val archive: File,
-)
+) {
+    val preview: RideBackupImportPreview get() = manifest.preview()
+}
 
+@Suppress("BlockingMethodInNonBlockingContext")
 internal class RideBackupImporter(
     private val app: Application,
     private val db: RidesafeDatabase = RidesafeDatabase.getInstance(app),
@@ -146,7 +178,7 @@ internal class RideBackupImporter(
                         context.ensureActive()
                         onProgress(RideBackupImportProgress(++passes, rides))
                     }
-                RideBackupImportCandidate(manifest.preview(), archive)
+                RideBackupImportCandidate(manifest, archive)
             } catch (failure: Throwable) {
                 archive.delete()
                 throw failure
@@ -158,7 +190,7 @@ internal class RideBackupImporter(
         onProgress: (RideBackupImportProgress) -> Unit = {},
     ): RideBackupImportResult =
         try {
-            importArchive(candidate.archive, onProgress)
+            importArchive(candidate.archive, candidate.manifest, onProgress)
         } finally {
             candidate.archive.delete()
         }
@@ -168,27 +200,27 @@ internal class RideBackupImporter(
         candidate.archive.delete()
     }
 
+    /**
+     * [manifest] is the one the preview already validated out of this same private copy of
+     * [archive], so the archive is not read a second time to re-derive it. Its per-file hashes are
+     * still checked before anything is written — extraction verifies each entry against them as it
+     * streams it out, which costs nothing on top of the read it has to do anyway.
+     */
     internal suspend fun importArchive(
         archive: File,
+        manifest: RideBackupManifest,
         onProgress: (RideBackupImportProgress) -> Unit = {},
     ): RideBackupImportResult =
         withContext(Dispatchers.IO) {
-            val context = currentCoroutineContext()
             var passes = 0
-            // Verify every entry, then extract every entry: two passes over each ride.
-            val report = { rides: Int -> onProgress(RideBackupImportProgress(++passes, rides, PASSES_PER_RIDE)) }
-            val manifest =
-                RideBackupArchiveValidator.validate(archive, decodeRecords = true) { rides ->
-                    context.ensureActive()
-                    report(rides)
-                }
+            val report = { onProgress(RideBackupImportProgress(++passes, manifest.rides.size, PASSES_PER_RIDE)) }
             val destinationDirectory = ridesDir(app).apply { mkdirs() }
             // Extraction writes the bytes; the transaction below only renames them, so the database
             // write lock is not held across a quarter of a gigabyte of copying and fsyncing.
             val stagedFiles = mutableMapOf<String, File>()
             val published = mutableListOf<File>()
             try {
-                extractIncludedFiles(archive, manifest, destinationDirectory, stagedFiles) { report(manifest.rides.size) }
+                extractIncludedFiles(archive, manifest, destinationDirectory, stagedFiles, report)
                 val token = UUID.randomUUID().toString().replace("-", "")
                 val sampleNames = manifest.rides.associate { it.archiveId to "ride_import_${token}_${it.archiveId}.ndjson.gz" }
                 val result =
@@ -409,9 +441,12 @@ internal class RideBackupImporter(
                 .toSet()
         manifest.analysisStates
             .filter { it.rideArchiveId in insertedRideArchiveIds }
-            .filterNot {
-                it.stage == "route" &&
-                    (manifest.processingVersions.route != ROUTE_VERSION || it.rideArchiveId !in routesAvailable)
+            .filter {
+                adoptableAnalysisState(
+                    stage = it.stage,
+                    routeCurrent = manifest.processingVersions.route == ROUTE_VERSION,
+                    routeFileIncluded = it.rideArchiveId in routesAvailable,
+                )
             }.forEach { state ->
                 db.rideAnalysisDao().stamp(RideAnalysisState(rideIds.getValue(state.rideArchiveId), state.stage, state.version))
             }
@@ -497,7 +532,11 @@ internal class RideBackupImporter(
         return HexFormat.of().formatHex(digest.digest())
     }
 
-    /** Fills [staged] as it goes, so a failure part-way through still tells the caller what to clean up. */
+    /**
+     * Fills [staged] as it goes, so a failure part-way through still tells the caller what to clean
+     * up, and checks each entry against the manifest's size and SHA-256 while it writes it — the
+     * bytes are passing through a digest on a read that has to happen regardless.
+     */
     private suspend fun extractIncludedFiles(
         archive: File,
         manifest: RideBackupManifest,
@@ -510,10 +549,14 @@ internal class RideBackupImporter(
                 currentCoroutineContext().ensureActive()
                 val target = stagedImportFile(directory)
                 staged[descriptor.path] = target
+                val digest = MessageDigest.getInstance("SHA-256")
                 FileOutputStream(target).use { output ->
-                    zip.getInputStream(zip.getEntry(descriptor.path)).use { input -> copyCancellable(input, output) }
+                    DigestInputStream(zip.getInputStream(zip.getEntry(descriptor.path)), digest).use { input ->
+                        copyCancellable(input, output)
+                    }
                     output.fd.sync()
                 }
+                requireExtractedFileMatches(descriptor, target, HexFormat.of().formatHex(digest.digest()))
                 if (descriptor.role == RAW_ROLE) onRide()
             }
         }
@@ -532,8 +575,21 @@ internal class RideBackupImporter(
     }
 }
 
-/** Verify, then extract: a restore reads every ride twice. */
-private const val PASSES_PER_RIDE = 2
+/** Extraction is the only pass a restore makes over each ride now that the preview validated it. */
+private const val PASSES_PER_RIDE = 1
+
+internal fun requireExtractedFileMatches(
+    descriptor: BackupFile,
+    extracted: File,
+    sha256: String,
+) {
+    if (extracted.length() != descriptor.sizeBytes) {
+        throw RideBackupValidationException("Byte-size mismatch for ${descriptor.path}")
+    }
+    if (!sha256.equals(descriptor.sha256, ignoreCase = true)) {
+        throw RideBackupValidationException("SHA-256 mismatch for ${descriptor.path}")
+    }
+}
 
 private const val ARCHIVE_PREFIX = "ridesafe_import_"
 

@@ -27,7 +27,7 @@ import de.uhi.enia.ridesafe.R
  * Scaffold shared by the add/edit forms: an opaque top bar with a close (X) navigation icon and a
  * pinned save action — or, [embedded] inside another flow like onboarding, no chrome at all and a
  * full-width save button pinned below the fields. Forms keep the opaque top bar deliberately;
- * detail screens use the transparent one (see the restructure plan, R9).
+ * detail screens use the transparent one (see [DetailScaffold]).
  *
  * Embedded, the whole form lifts over the keyboard: the pinned save stays reachable and the
  * field viewport shrinks exactly once — imePadding() consumes the inset, so the content's own

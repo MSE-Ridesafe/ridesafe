@@ -11,6 +11,7 @@ import java.io.OutputStream
  * A stream copy is blocking work with no suspension point in it, so a cancelled export or import
  * would otherwise run to completion regardless. One check per buffer bounds that to a single read.
  */
+@Suppress("BlockingMethodInNonBlockingContext")
 internal suspend fun copyCancellable(
     input: InputStream,
     output: OutputStream,

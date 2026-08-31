@@ -13,8 +13,9 @@ import kotlinx.serialization.Serializable
  *
  * Deliberately aggregates, not a verdict: what counts as an efficient ride is a read-time decision
  * (see ecoLevel and EcoKnobs), exactly as the safety score derives from the stored [RideDynamics]
- * rather than storing a finished number of its own. Re-tuning the level costs a version bump on a
- * stage that reads no samples — the same trick that makes score calibration cheap.
+ * rather than storing a finished number of its own. Re-tuning the level therefore costs nothing at
+ * all: it is never stored, so no ride is re-derived and no stage version moves. Even the score, which
+ * is stored, is cheap to recalibrate — its stage reads no samples.
  *
  * The time buckets split the ride by driving regime for the breakdown bar: [brakeSeconds] is only
  * *friction* braking (deceleration beyond what drag and engine braking produce); gentle

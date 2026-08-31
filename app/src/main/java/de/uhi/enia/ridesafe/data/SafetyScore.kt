@@ -21,10 +21,10 @@ import kotlinx.serialization.Serializable
  * threshold where that direction's driving becomes an event. See scoreRide for how the
  * histogram becomes this number.
  *
- * The 0–100 figures are stored rather than derived on read — unlike [RideFuel], which is calibrated
- * per vehicle at read time because the user can reassign a car underneath a stored estimate. Nothing
- * comparable applies here: the scoring constants are fixed by the build, and changing them bumps
- * the score stage's version, which re-derives every ride from stored histograms with no file pass.
+ * The 0–100 figures are stored rather than derived on read — unlike the eco level, which [RideEco]
+ * leaves to read time. Storing them costs no more: the scoring constants are fixed by the build, and
+ * changing them bumps the score stage's version, which re-derives every ride from stored histograms
+ * with no file pass.
  */
 @Serializable
 data class SafetyScore(

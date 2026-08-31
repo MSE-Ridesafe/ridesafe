@@ -81,7 +81,7 @@ class RidesViewModel(
         )
     val exportState: StateFlow<RideExportState> = exportController.state
 
-    /** The analysis queue (ANL-03), for the Rides status bar, the queue screen and the detail notice. */
+    /** The analysis queue (ANL-01/ANL-02/ANL-03), for the Rides status bar, the queue screen and the detail notice. */
     val analysisProgress: StateFlow<RideAnalysisProgress> = pipeline.progress
 
     init {

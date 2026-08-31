@@ -73,16 +73,13 @@ class RideZipBackupTest {
         }
 
     @Test
-    fun rawSampleScanRejectsBlankRecordsAndDefersDecodingToImport() {
+    fun rawSampleScanFramesRecordsWithoutDeserializingThem() {
         val blank = gzipped("{\"ty\":\"loc\",\"t\":1}\n\n")
         assertThrows(RideBackupValidationException::class.java) { validateRawSamples(blank.inputStream()) }
 
-        // Export only frames records; import is what rejects one that does not deserialize.
-        val unparseable = gzipped("{\"ty\":\"nope\",\"t\":1}\n")
-        validateRawSamples(unparseable.inputStream())
-        assertThrows(
-            RideBackupValidationException::class.java,
-        ) { validateRawSamples(unparseable.inputStream(), decodeRecords = true) }
+        // Neither direction deserializes: the archived bytes are the recorded bytes either way, and
+        // a record the schema does not recognize is skipped by the readers, not fatal to a restore.
+        validateRawSamples(gzipped("{\"ty\":\"nope\",\"t\":1}\n").inputStream())
     }
 
     @Test

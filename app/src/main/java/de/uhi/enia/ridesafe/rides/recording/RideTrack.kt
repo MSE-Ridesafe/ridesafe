@@ -110,8 +110,8 @@ fun forEachSampleInTimeOrder(
                 if (sample != null) {
                     pending.add(sample)
                     if (sample.t > newest) newest = sample.t
-                    while (pending.isNotEmpty() && newest - pending.peek().t > reorderWindowNanos) {
-                        onSample(pending.poll())
+                    while (pending.isNotEmpty() && newest - pending.peek()!!.t > reorderWindowNanos) {
+                        onSample(pending.poll()!!)
                     }
                 }
                 if (onProgress != null && totalBytes > 0) {
@@ -129,7 +129,7 @@ fun forEachSampleInTimeOrder(
     } catch (e: Exception) {
         Log.w("RideRecording", "truncated sample file ${file.name}; delivering what parsed", e)
     }
-    while (pending.isNotEmpty()) onSample(pending.poll())
+    while (pending.isNotEmpty()) onSample(pending.poll()!!)
     onProgress?.invoke(1f)
 }
 

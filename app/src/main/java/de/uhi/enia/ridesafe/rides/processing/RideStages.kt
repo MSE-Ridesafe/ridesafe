@@ -170,7 +170,7 @@ class ForwardAxisStage : RideStage {
  * ([AXIS_VERSION] 2), since the calibrated split only ever depends on the *mean* axis and
  * magnetometer wander merely scatters the samples around it. The split itself is now computed in
  * the device frame — same math as the world-frame projection it replaces, minus the stale-matrix
- * heading and with the yaw-immunity explicit. See docs/event-detection-rework.md.
+ * heading and with the yaw-immunity explicit.
  * v12: the forward axis is segmented per mounting epoch ([AXIS_VERSION] 3), so a phone re-seated
  * mid-ride no longer voids the whole ride's calibration — a real 12-minute ride was reading as
  * "too little measurable driving" because one re-seat at minute 3 scattered the single-axis
