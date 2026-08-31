@@ -153,6 +153,7 @@ internal class RideBackupImportCandidate internal constructor(
     val preview: RideBackupImportPreview get() = manifest.preview()
 }
 
+@Suppress("BlockingMethodInNonBlockingContext")
 internal class RideBackupImporter(
     private val app: Application,
     private val db: RidesafeDatabase = RidesafeDatabase.getInstance(app),
