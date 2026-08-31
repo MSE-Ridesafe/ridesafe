@@ -178,7 +178,7 @@ internal class RideBackupImporter(
             // Verify every entry, then extract every entry: two passes over each ride.
             val report = { rides: Int -> onProgress(RideBackupImportProgress(++passes, rides, PASSES_PER_RIDE)) }
             val manifest =
-                RideBackupArchiveValidator.validate(archive, decodeRecords = true) { rides ->
+                RideBackupArchiveValidator.validate(archive) { rides ->
                     context.ensureActive()
                     report(rides)
                 }

@@ -4,7 +4,6 @@ import com.google.maps.android.PolyUtil
 import de.uhi.enia.ridesafe.data.FuelType
 import de.uhi.enia.ridesafe.data.RideEventType
 import de.uhi.enia.ridesafe.data.SavedPlaceKind
-import de.uhi.enia.ridesafe.rides.recording.RideSample
 import kotlinx.coroutines.CancellationException
 import java.io.File
 import java.io.InputStream
@@ -15,16 +14,12 @@ import java.util.zip.ZipFile
 /** Reference reader used after every export and by tests as the contract a future importer follows. */
 internal object RideBackupArchiveValidator {
     /**
-     * @param decodeRecords deserialize every raw sample record rather than only checking the gzip
-     * stream and its record framing. See [validateRawSamples] for why that is off by default; only
-     * the restore path, whose archive came from another device, turns it on.
      * @param onRide called once per ride, after its raw entry has been read, with how many rides the
      * archive holds — which a caller cannot know before the manifest is decoded in here. This is not
      * a suspend function, so a caller that needs the read to be cancellable checks its own context.
      */
     fun validate(
         archive: File,
-        decodeRecords: Boolean = false,
         onRide: (rides: Int) -> Unit = {},
     ): RideBackupManifest {
         try {
@@ -52,7 +47,7 @@ internal object RideBackupArchiveValidator {
                     if (!integrity.sha256.equals(descriptor.sha256, ignoreCase = true)) fail("SHA-256 mismatch for ${descriptor.path}")
                     when (descriptor.role) {
                         RAW_ROLE -> {
-                            zip.getInputStream(entry).use { validateRawSamples(it, decodeRecords) }
+                            zip.getInputStream(entry).use(::validateRawSamples)
                             onRide(manifest.rides.size)
                         }
 
@@ -212,27 +207,21 @@ internal object RideBackupArchiveValidator {
 /**
  * Checks that [input] is a complete gzip stream of non-blank NDJSON records. Draining the stream to
  * its end is what verifies gzip's CRC32 and length trailer, so a file truncated by a crash
- * mid-recording is still caught.
+ * mid-recording is caught — the one corruption a hash cannot catch, because the short file hashes
+ * correctly.
  *
- * The records are deliberately *not* deserialized unless [decodeRecords] asks for it. [RideSample]
- * is a sealed interface, and kotlinx.serialization decodes a polymorphic value by first
- * materializing it into a JsonElement tree to read the `ty` discriminator — about a kilobyte of
- * garbage per 110-byte record. A 93-ride export is some 11 million records, so decoding them into
- * values nothing reads cost tens of GB of allocation and minutes of GC. Scanning the bytes the
- * drain has to read anyway costs nothing on top of it.
- *
- * Import passes `decodeRecords = true`: it is the one caller whose archive did not come from this
- * device's own recorder, and it is a single pass over a file the user picked rather than over the
- * whole logbook.
+ * The records themselves are not deserialized, in either direction. A backup's fidelity rests on
+ * the manifest's per-file SHA-256 and on this gzip framing: the `.gz` is archived and restored
+ * byte-for-byte, so a file that passes both is the file that was recorded. Deserializing each
+ * record would only add "and every reading matches the current schema", at roughly twenty times
+ * the cost of the framing scan over some fourteen million records — and a reading that failed it
+ * would be skipped by [de.uhi.enia.ridesafe.rides.recording.readRideLocations] and
+ * [de.uhi.enia.ridesafe.rides.recording.forEachSampleInTimeOrder] anyway, exactly as a corrupt
+ * record in a locally recorded file already is.
  */
-internal fun validateRawSamples(
-    input: InputStream,
-    decodeRecords: Boolean = false,
-) {
+internal fun validateRawSamples(input: InputStream) {
     try {
-        GZIPInputStream(input).use { gzip ->
-            if (decodeRecords) decodeRawSampleRecords(gzip) else scanRawSampleRecords(gzip)
-        }
+        GZIPInputStream(input).use(::scanRawSampleRecords)
     } catch (failure: RideBackupValidationException) {
         throw failure
     } catch (failure: Exception) {
@@ -261,17 +250,6 @@ private fun scanRawSampleRecords(input: InputStream) {
                 blank = true
             } else if (isContent(byte)) {
                 blank = false
-            }
-        }
-    }
-}
-
-private fun decodeRawSampleRecords(input: InputStream) {
-    input.bufferedReader(Charsets.UTF_8).useLines { lines ->
-        lines.forEachIndexed { index, line ->
-            if (line.isBlank()) fail("Raw sample record ${index + 1} is blank")
-            runCatching { backupJson.decodeFromString<RideSample>(line) }.getOrElse {
-                throw RideBackupValidationException("Raw sample record ${index + 1} is invalid", it)
             }
         }
     }
