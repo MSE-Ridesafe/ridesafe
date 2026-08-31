@@ -1,14 +1,11 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Ridesafe</string>
     <string name="nav_home">Home</string>
     <string name="nav_rides">Rides</string>
     <string name="nav_garage">Garage</string>
     <string name="nav_settings">Settings</string>
-    
-    <string name="greeting_hello">Hello %1$s!</string>
-    
+
     <string name="settings_language_title">App Language</string>
-    <string name="settings_language_summary">Choose your preferred language</string>
     
     <string name="language_system">System Default</string>
     <string name="language_english">English</string>
@@ -18,11 +15,535 @@
     <string name="screen_rides_title">Rides</string>
     <string name="screen_garage_title">Garage</string>
     <string name="screen_settings_title">Settings</string>
+    <string name="home_no_primary_vehicle">No primary vehicle</string>
+    <string name="home_unknown_vehicle">Vehicle</string>
+    <string name="home_add_vehicle_hint">Add a vehicle in Garage</string>
+    <!-- Top-bar vehicle selector: what a tap on the title does (TalkBack action label). -->
+    <string name="home_vehicle_filter_cd">Filter by vehicle</string>
+    <!-- "All vehicles" header card: vehicle count and the fleet's combined odometer chip. -->
+    <plurals name="home_garage_vehicle_count">
+        <item quantity="one">%d vehicle</item>
+        <item quantity="other">%d vehicles</item>
+    </plurals>
+    <string name="home_garage_total_mileage">Total mileage</string>
+    <string name="recording_active_ride">Active ride</string>
+    <string name="home_total_distance">Total Distance</string>
+    <string name="home_total_travel_time">Total Travel Time</string>
+    <string name="home_total_recorded_rides">Total Recorded Rides</string>
+    <string name="home_metric_card_content_description">%1$s: %2$s</string>
+    <string name="home_metric_distance_this_month">+%1$s this month</string>
+    <string name="home_metric_duration_this_month">+%1$s this month</string>
+    <string name="home_metric_rides_this_month">+%1$s this month</string>
+    <string name="home_metric_no_distance_this_month">No distance this month</string>
+    <string name="home_metric_no_duration_this_month">No travel time this month</string>
+    <string name="home_metric_no_rides_this_month">No rides this month</string>
+    <string name="home_highlight_longest_ride">Longest ride</string>
+    <string name="home_highlight_average_ride">Average ride</string>
+    <string name="home_highlight_most_active_day">Most active day</string>
+    <string name="home_activity_title">Activity</string>
+    <string name="home_activity_distance_week">Weekly Distance</string>
+    <string name="home_activity_time_week">Weekly Travel Time</string>
+    <string name="home_activity_cost_week">Weekly Cost</string>
+    <string name="home_activity_metric_distance">Distance</string>
+    <string name="home_activity_metric_time">Travel time</string>
+    <string name="home_activity_metric_cost">Cost</string>
+    <string name="home_activity_period_week">Week</string>
+    <string name="home_activity_period_month">Month</string>
 
+    <string name="settings_category_preferences">Preferences</string>
+    <string name="settings_category_ride_recording">Ride recording</string>
+    <string name="settings_category_backup_restore">Backup and restore</string>
+    <string name="settings_backup_import_title">Import ride backup</string>
+    <string name="settings_backup_import_summary">Import rides from a ZIP backup</string>
+    <string name="settings_backup_import_description">Choose a Ridesafe ZIP backup. It will be fully verified before import. Existing data is kept; only missing items are added.</string>
+    <string name="settings_backup_import_choose">Choose backup</string>
+    <string name="settings_backup_import_checking">Checking backup…</string>
+    <string name="settings_backup_import_importing">Importing backup…</string>
+    <string name="settings_backup_import_count">%1$d of %2$d</string>
+    <string name="settings_backup_import_confirm_title">Import this backup?</string>
+    <!-- %1$s is the bullet list built from the settings_backup_import_preview_* plurals. -->
+    <string name="settings_backup_import_confirm_message">This backup contains:\n\n%1$s\n\nYour existing data will be kept, and only missing items will be imported.</string>
+    <plurals name="settings_backup_import_preview_rides">
+        <item quantity="one">%d ride</item>
+        <item quantity="other">%d rides</item>
+    </plurals>
+    <plurals name="settings_backup_import_preview_vehicles">
+        <item quantity="one">%d vehicle</item>
+        <item quantity="other">%d vehicles</item>
+    </plurals>
+    <plurals name="settings_backup_import_preview_places">
+        <item quantity="one">%d place</item>
+        <item quantity="other">%d places</item>
+    </plurals>
+    <plurals name="settings_backup_import_preview_refuels">
+        <item quantity="one">%d refuel</item>
+        <item quantity="other">%d refuels</item>
+    </plurals>
+    <string name="settings_backup_import_confirm">Import</string>
+    <string name="settings_backup_import_success_title">Backup imported</string>
+    <!-- %1$s is the bullet list built from the settings_backup_import_result_* plurals. -->
+    <string name="settings_backup_import_success_message">Imported from this backup:\n\n%1$s</string>
+    <plurals name="settings_backup_import_result_rides">
+        <item quantity="one">%1$d ride (%2$d already existed)</item>
+        <item quantity="other">%1$d rides (%2$d already existed)</item>
+    </plurals>
+    <plurals name="settings_backup_import_result_vehicles">
+        <item quantity="one">%1$d vehicle (%2$d already existed)</item>
+        <item quantity="other">%1$d vehicles (%2$d already existed)</item>
+    </plurals>
+    <plurals name="settings_backup_import_result_places">
+        <item quantity="one">%1$d place (%2$d already existed)</item>
+        <item quantity="other">%1$d places (%2$d already existed)</item>
+    </plurals>
+    <plurals name="settings_backup_import_result_refuels">
+        <item quantity="one">%1$d refuel (%2$d already existed)</item>
+        <item quantity="other">%1$d refuels (%2$d already existed)</item>
+    </plurals>
+    <string name="settings_backup_import_error_title">Could not import backup</string>
+    <string name="settings_backup_import_error_message">The archive was not changed or could not be restored safely. %1$s</string>
     <string name="settings_units_title">Distance Units</string>
-    <string name="settings_units_summary">Choose your preferred unit system</string>
+    <string name="settings_units_detail_description">Choose how distances and ride measurements are shown throughout Ridesafe.</string>
+    <string name="settings_currency_title">Currency</string>
+    <string name="settings_currency_detail_description">Choose the currency used to enter and display refuel prices.</string>
+    <string name="currency_us_dollar">US Dollar ($)</string>
+    <string name="currency_british_pound">British Pound (£)</string>
+    <string name="currency_swiss_franc">Swiss Franc (CHF)</string>
+    <string name="currency_euro">Euro (€)</string>
     <string name="unit_system_automatic">Automatic (Based on language)</string>
     <string name="unit_system_metric">Metric (Kilometers)</string>
     <string name="unit_system_imperial">Imperial (Miles)</string>
-    <string name="sample_distance_label">Sample Distance: %1$s</string>
+
+    <string name="settings_theme_title">App Theme</string>
+    <string name="settings_theme_detail_description">Choose whether Ridesafe appears light or dark, or follows the system setting.</string>
+    <string name="theme_system">System Default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+
+    <string name="settings_auto_track_title">Automatic ride recording</string>
+    <string name="settings_auto_track_detail_description">Choose when Ridesafe may start recording rides in the background.</string>
+    <string name="settings_language_detail_description">Choose the language used for app labels, settings, and messages.</string>
+    <string name="auto_track_off">Off</string>
+    <string name="auto_track_paired">Paired vehicles only</string>
+    <string name="auto_track_any">Any vehicle</string>
+    <string name="settings_reconnect_grace_title">Reconnect grace</string>
+    <string name="settings_reconnect_grace_detail_description">Many cars switch Bluetooth off and straight back on while you get out. Keep recording for a while after the connection drops, and reconnecting to the same vehicle continues the same ride instead of starting a new one. Whatever was recorded in between is discarded if the car does not come back.</string>
+    <string name="reconnect_grace_off">Off (end the ride immediately)</string>
+    <string name="reconnect_grace_30s">30 seconds</string>
+    <string name="reconnect_grace_1m">1 minute</string>
+    <string name="reconnect_grace_2m">2 minutes</string>
+    <string name="reconnect_grace_5m">5 minutes</string>
+    <string name="settings_min_ride_length_title">Minimum ride length</string>
+    <string name="settings_min_ride_length_detail_description">Recordings shorter than this are discarded instead of added to the logbook, so a brief Bluetooth connection or a move within the driveway leaves no ride behind. The length is measured up to the moment the vehicle disconnected, so the reconnect grace never counts towards it.</string>
+    <string name="min_ride_length_off">Off (keep every ride)</string>
+    <string name="min_ride_length_15s">15 seconds</string>
+    <string name="min_ride_length_30s">30 seconds</string>
+    <string name="min_ride_length_60s">1 minute</string>
+    <string name="min_ride_length_2m">2 minutes</string>
+
+    <!-- Runtime permissions (NFR-05) -->
+    <string name="permissions_card_title">Permissions needed</string>
+    <string name="permissions_card_message">Some features can\'t work until these are granted. Tap one to allow it.</string>
+    <string name="permissions_missing_badge">Permissions missing</string>
+    <string name="permission_location_title">Location</string>
+    <string name="permission_location_rationale">Records the GPS route of your rides.</string>
+    <string name="permission_background_location_title">Location in the background</string>
+    <string name="permission_background_location_rationale">Keeps recording while the app is closed or the screen is off. Choose \u201cAllow all the time\u201d.</string>
+    <string name="permission_bluetooth_title">Nearby Bluetooth devices</string>
+    <string name="permission_bluetooth_rationale">Detects your car\'s Bluetooth to start and end rides automatically.</string>
+    <string name="permission_activity_title">Physical activity</string>
+    <string name="permission_activity_rationale">Recognizes car trips in vehicles without a Bluetooth pairing.</string>
+    <string name="permission_notifications_title">Notifications</string>
+    <string name="permission_notifications_rationale">Shows recording status and completed ride exports.</string>
+
+    <!-- Garage -->
+    <string name="action_back">Back</string>
+    <string name="action_save">Save</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_clear">Clear</string>
+    <string name="garage_add_vehicle">Add vehicle</string>
+    <string name="garage_edit_vehicle">Edit vehicle</string>
+    <string name="garage_delete_vehicle">Delete vehicle</string>
+    <string name="garage_delete_confirm_title">Delete vehicle?</string>
+    <string name="garage_delete_confirm_message">%1$s will be permanently removed. This can\'t be undone.</string>
+    <string name="garage_empty_title">No vehicles yet</string>
+    <string name="garage_empty_message">Tap + to add your first vehicle.</string>
+    <string name="garage_primary">Primary</string>
+    <string name="garage_vehicle_image">Vehicle image</string>
+    <string name="vehicle_choose_image">Choose vehicle photo</string>
+    <string name="vehicle_photo_edit">Edit vehicle photo</string>
+    <string name="vehicle_photo_sheet_title">Vehicle photo</string>
+    <string name="vehicle_photo_replace">Replace photo</string>
+    <string name="vehicle_photo_remove">Remove photo</string>
+    <string name="garage_primary_marker">Primary vehicle</string>
+
+    <string name="vehicle_nickname">Nickname</string>
+    <string name="vehicle_make">Make</string>
+    <string name="vehicle_model">Model</string>
+    <string name="vehicle_year">Year</string>
+    <string name="vehicle_license_plate">License plate</string>
+    <string name="vehicle_fuel_type">Fuel type</string>
+    <string name="vehicle_mileage">Mileage</string>
+    <string name="vehicle_fuel_economy">Fuel economy</string>
+    <string name="vehicle_tank_size">Tank size</string>
+    <string name="vehicle_label_optional">%1$s (optional)</string>
+    <string name="vehicle_section_overview">Overview</string>
+    <string name="vehicle_section_fuel">Fuel type</string>
+    <string name="vehicle_section_information">Vehicle information</string>
+    <string name="vehicle_section_tracking">Automatic tracking</string>
+    <string name="vehicle_extended_information">Extended information</string>
+    <string name="vehicle_type">Vehicle type</string>
+    <string name="vehicle_engine">Engine</string>
+    <string name="vehicle_manufacturing_country">Manufacturing country</string>
+    <string name="vehicle_bluetooth_link">Link Bluetooth device</string>
+    <string name="vehicle_bluetooth_none">No device linked yet</string>
+    <string name="vehicle_bluetooth_remove">Remove device</string>
+    <string name="vehicle_bluetooth_pick_title">Choose a device</string>
+    <string name="vehicle_bluetooth_pick_empty">No paired Bluetooth devices found</string>
+    <string name="add_vehicle_set_primary">Set as primary vehicle</string>
+
+    <string name="fuel_type_petrol">Petrol</string>
+    <string name="fuel_type_not_set">Not set</string>
+    <string name="fuel_type_diesel">Diesel</string>
+    <string name="fuel_type_electric">Electric</string>
+    <string name="fuel_type_hybrid">Hybrid</string>
+    <string name="fuel_type_lpg">LPG</string>
+    <string name="fuel_type_other">Other</string>
+
+    <string name="unit_km">km</string>
+    <string name="unit_mi">mi</string>
+    <string name="unit_kmh">km/h</string>
+    <string name="unit_mph">mph</string>
+    <string name="unit_fuel_economy">L/100 km</string>
+    <string name="unit_liter">L</string>
+    <string name="value_not_set">&#8212;</string>
+
+    <!-- Refueling -->
+    <string name="refuel_add">Add refuel</string>
+    <string name="refuel_edit">Edit refuel</string>
+    <string name="refuel_not_found">This refuel is no longer available.</string>
+    <string name="refuel_vehicle">Vehicle</string>
+    <string name="refuel_vehicle_required">Add a vehicle in Garage before recording a refuel.</string>
+    <string name="refuel_vehicle_unavailable">Previous vehicle unavailable</string>
+    <string name="refuel_vehicle_unavailable_select">The previous vehicle was deleted. Select an available vehicle to save.</string>
+    <string name="refuel_date">Date</string>
+    <string name="refuel_time">Time</string>
+    <string name="refuel_fuel_amount">Fuel amount</string>
+    <string name="refuel_total_price">Total price</string>
+    <string name="refuel_price_per_liter">Price per liter</string>
+    <string name="refuel_per_liter_suffix">/L</string>
+    <string name="refuel_odometer">Odometer</string>
+    <string name="refuel_label">Refuel</string>
+    <string name="refuel_full_tank">Full tank</string>
+    <string name="refuel_unknown_vehicle">Unknown vehicle</string>
+    <string name="refuel_error_fuel">Enter a fuel amount greater than zero using up to three decimal places.</string>
+    <string name="refuel_error_total">Enter a non-negative price using the currency\'s minor units.</string>
+    <string name="refuel_error_odometer">Enter a non-negative odometer reading.</string>
+    <string name="refuel_save_failed">Could not save the refuel. Your entries have been kept; please try again.</string>
+    <string name="refuel_price_per_liter_value">%1$s/L</string>
+    <string name="refuel_attached_success">Refuel added to ride.</string>
+    <string name="refuel_detached_success">Refuel removed from ride.</string>
+    <string name="ride_merge_success">Rides merged.</string>
+    <string name="refuel_association_error">Could not update the ride association. Your data was not changed.</string>
+    <string name="refuel_reason_vehicle_mismatch">Refuel vehicle does not match the ride</string>
+    <string name="refuel_reason_other_ride">Refuel already belongs to another ride</string>
+    <string name="refuel_reason_already_attached">All selected refuels already belong to this ride</string>
+    <string name="refuel_reason_not_all_attached">Select only refuels that belong to a ride</string>
+    <string name="refuel_vehicle_locked">Remove from ride before changing vehicle.</string>
+    <string name="refuel_associated_section">Refuels</string>
+
+    <!-- Rides -->
+    <string name="rides_empty_title">No logbook entries yet</string>
+    <string name="rides_empty_message">Recorded rides and refuels will show up here.</string>
+    <string name="ride_day_today">Today</string>
+    <string name="ride_day_yesterday">Yesterday</string>
+    <string name="ride_open">Open ride</string>
+    <string name="ride_start_marker">Start</string>
+    <string name="ride_end_marker">End</string>
+    <string name="ride_map_expand">Open full-screen map</string>
+    <string name="ride_map_close">Close map</string>
+    <!-- Shown in place of any map that cannot load because the device has no connection. -->
+    <string name="map_offline">Not connected to the internet</string>
+    <string name="ride_event_braking">Harsh braking</string>
+    <string name="ride_event_acceleration">Harsh acceleration</string>
+    <string name="ride_event_cornering">Harsh cornering</string>
+    <!-- Marker subtitle: peak force in g, then how long it lasted in seconds. -->
+    <string name="ride_event_detail">%1$s g peak · %2$s s</string>
+    <!-- Bottom-sheet header on the full-screen map: how many events the ride has. -->
+    <plurals name="ride_events_count">
+        <item quantity="one">%d event</item>
+        <item quantity="other">%d events</item>
+    </plurals>
+    <string name="ride_detail_section_distance">Distance</string>
+    <string name="ride_detail_duration">Duration</string>
+    <string name="ride_stat_avg_speed">Avg speed</string>
+    <string name="ride_stat_max_speed">Max speed</string>
+    <string name="ride_detail_no_gps">No GPS recorded for this ride</string>
+
+    <!-- Efficiency (ANL-03): the 0-3 eco level and the time-by-regime breakdown. No numbers by design. -->
+    <string name="ride_detail_section_eco">Efficiency</string>
+    <string name="ride_eco_level_3">Very efficient</string>
+    <string name="ride_eco_level_2">Efficient</string>
+    <string name="ride_eco_level_1">Moderately efficient</string>
+    <string name="ride_eco_level_0">Inefficient</string>
+    <!-- Coaching one-liners under the level label. Encouraging at every level, never scolding. -->
+    <string name="ride_eco_sub_3">As efficient as it gets!</string>
+    <string name="ride_eco_sub_2">Just shy of perfect.</string>
+    <string name="ride_eco_sub_1">A little more gliding goes a long way.</string>
+    <string name="ride_eco_sub_0">Small changes, big difference.</string>
+    <!-- Screen-reader reading of the segmented bar, e.g. "Efficiency level 2 of 3". -->
+    <string name="ride_eco_level_a11y">Efficiency level %1$d of %2$d</string>
+    <string name="ride_eco_idle">Idling</string>
+    <string name="ride_eco_accelerating">Accelerating</string>
+    <string name="ride_eco_cruising">Cruising</string>
+    <string name="ride_eco_braking">Braking</string>
+    <!-- Screen-reader reading of one breakdown slice, e.g. "Braking: 12% of the ride". -->
+    <string name="ride_eco_bucket_a11y">%1$s: %2$d%% of the ride</string>
+    <!-- Sub-header over the per-regime breakdown rows. -->
+    <string name="ride_eco_breakdown_title">Where the time went</string>
+    <string name="ride_eco_note">Based on braking, idling and acceleration patterns. Gliding to a stop counts as cruising.</string>
+    <string name="ride_address_unknown">Unknown location</string>
+
+    <!-- Safety score (ANL-01): 0–100 gauges from the ride's driving-dynamics profile. -->
+    <string name="safety_score_title">Safety score</string>
+    <string name="safety_score_total">Overall</string>
+    <string name="safety_score_braking">Braking</string>
+    <string name="safety_score_acceleration">Acceleration</string>
+    <string name="safety_score_cornering">Cornering</string>
+    <!-- Accessibility: gauge label, then its value. -->
+    <string name="safety_score_gauge">%1$s: %2$d of 100</string>
+    <string name="ride_score_unscoreable">Not enough measurable driving to score this ride.</string>
+    <string name="ride_eco_unscoreable">Not enough measurable driving to rate this ride’s efficiency.</string>
+    <string name="home_score_period_all">All time</string>
+    <string name="home_score_empty">No scored rides in this period.</string>
+    <!-- Dashboard placeholder shown while neither safety nor eco has anything to score. -->
+    <string name="home_scores_empty_title">No scores yet</string>
+    <string name="home_scores_empty_message">Not enough ride data yet to compute your safety and eco scores.</string>
+    <!-- Chart subtitle per period, and the calendar-week label under a weekly bar. -->
+    <string name="home_score_dev_week">Score development over the past weeks</string>
+    <string name="home_score_dev_month">Score development over the past months</string>
+    <string name="home_score_dev_all">Score development overall</string>
+    <string name="score_week_label">W%1$d</string>
+
+    <!-- Ride merging (§3.8) -->
+    <string name="ride_merged_label">Merged</string>
+    <plurals name="ride_stops_count">
+        <item quantity="one">%1$d stop</item>
+        <item quantity="other">%1$d stops</item>
+    </plurals>
+    <!-- "selected" needs no plural form; keep the compact top-bar label. -->
+    <string name="ride_selection_count" tools:ignore="PluralsCandidate">%1$d selected</string>
+    <string name="action_select_all">Select all</string>
+    <string name="action_deselect_all">Deselect all</string>
+    <string name="action_more">More options</string>
+    <string name="action_exit_selection">Exit selection</string>
+    <string name="ride_selected">Selected</string>
+    <string name="ride_not_selected">Not selected</string>
+    <string name="ride_action_merge">Merge</string>
+    <string name="ride_action_unmerge">Unmerge</string>
+    <string name="ride_action_attach_refuel">Add to ride</string>
+    <string name="ride_action_detach_refuel">Remove from ride</string>
+    <string name="ride_action_export">Export</string>
+    <string name="ride_action_delete">Delete</string>
+    <string name="ride_delete_title">Delete selected entries?</string>
+    <string name="ride_delete_message">The selected rides and their attached refuels will be permanently deleted. For grouped rides, this includes every stop and cannot be undone.</string>
+    <string name="ride_delete_success">Selected entries deleted.</string>
+    <string name="ride_delete_error">Could not delete the selected entries. Your data was not changed.</string>
+    <string name="ride_export_format_title">Choose export format</string>
+    <string name="ride_export_format_pdf">PDF</string>
+    <string name="ride_export_format_csv">CSV</string>
+    <string name="ride_export_format_zip">ZIP</string>
+    <string name="ride_export_format_pdf_description">Formatted report for reading and sharing</string>
+    <string name="ride_export_format_csv_description">Table data for Excel and other applications</string>
+    <string name="ride_export_format_zip_description">Backup with ride data, routes, and linked records</string>
+    <string name="ride_exporting">Exporting rides…</string>
+    <string name="ride_export_count">%1$d of %2$d</string>
+    <string name="ride_export_success">Export saved to Downloads/RideSafe.</string>
+    <string name="ride_export_error">Could not export rides. Please try again.</string>
+    <string name="ride_export_channel_name">Ride exports</string>
+    <string name="ride_export_notification_title">Ride export complete</string>
+    <string name="ride_export_notification_body">%1$s was saved to Downloads/RideSafe.</string>
+    <string name="ride_export_notification_open">Open file</string>
+    <string name="merge_reason_not_enough">Select at least two rides</string>
+    <string name="merge_reason_mixed_vehicle">Rides must be from the same vehicle</string>
+    <string name="merge_reason_not_contiguous">Don\'t skip any ride in between</string>
+    <string name="ride_journey_section">Journey</string>
+    <string name="ride_action_manage_stops">Manage stops</string>
+    <string name="action_done">Done</string>
+    <string name="ride_stop_label">Stop %1$d</string>
+    <string name="ride_merged_unmerge_hint">Only the first or last stops can be removed.</string>
+    <string name="ride_waypoint_departed">Left %1$s · parked %2$s</string>
+    <string name="ride_action_unmerge_all">Unmerge all</string>
+    <string name="ride_action_unmerge_selected">Unmerge (%1$d)</string>
+
+    <!-- Saved addresses -->
+    <string name="settings_category_places">Places</string>
+    <string name="settings_saved_addresses_title">Saved addresses</string>
+    <string name="settings_saved_addresses_summary">Label frequent places like Home or Work</string>
+    <string name="saved_addresses_title">Saved addresses</string>
+    <string name="saved_addresses_add">Add saved address</string>
+    <string name="saved_addresses_empty_title">No saved addresses yet</string>
+    <string name="saved_addresses_empty_message">Add places like Home or Work to label them on your rides.</string>
+    <string name="saved_address_add_shortcut">Add %1$s</string>
+    <string name="saved_address_new_title">New place</string>
+    <string name="saved_address_edit_title">Edit place</string>
+    <string name="saved_address_label">Label</string>
+    <string name="saved_address_search">Search address</string>
+    <string name="saved_address_search_clear">Clear search</string>
+    <string name="saved_address_search_recent">Recent searches</string>
+    <string name="saved_address_search_more_characters">Enter at least three characters.</string>
+    <string name="saved_address_search_no_results">No matching addresses found. Try including the city or postal code.</string>
+    <string name="saved_address_search_already_saved">Already saved as %1$s</string>
+    <string name="saved_address_use_location">Use my location</string>
+    <string name="saved_address_location_unavailable">Couldn\'t get your location</string>
+    <string name="saved_address_radius">Recognition radius</string>
+    <string name="saved_address_icon">Icon</string>
+    <string name="saved_address_pick_hint">Tap the map, search, or use your location to set the point.</string>
+    <string name="saved_address_marker">Saved place location</string>
+    <string name="saved_address_map_open">Open full-screen map</string>
+    <string name="saved_address_map_picker_title">Choose location</string>
+    <string name="saved_address_map_picker_hint">Move and zoom the map to position the pin.</string>
+    <string name="saved_address_delete">Delete place</string>
+    <string name="saved_address_delete_confirm_title">Delete place?</string>
+    <string name="saved_address_delete_confirm_message">%1$s will be removed. This can\'t be undone.</string>
+    <!-- e.g. "120 m from \"Home\"" -->
+    <string name="saved_address_distance_from">%1$s from \"%2$s\"</string>
+    <string name="place_kind_home">Home</string>
+    <string name="place_kind_work">Work</string>
+    <string name="place_kind_school">School</string>
+    <string name="place_kind_gas_station">Gas station</string>
+    <string name="place_kind_custom">Custom place</string>
+
+    <!-- Manual ride recording (TRK-07) -->
+    <string name="home_record_start">Start ride</string>
+    <string name="home_record_stop">Stop ride</string>
+    <string name="home_record_failed">Couldn\'t start recording</string>
+
+    <string name="recording_channel_name">Ride recording</string>
+    <string name="recording_notification_title">Recording ride</string>
+    <string name="recording_notification_text">Tracking your trip in the background.</string>
+    <!-- Ride analysis queue (ANL-03) -->
+    <string name="analysis_status_title">Analyzing rides…</string>
+    <string name="analysis_status_count">%1$d of %2$d</string>
+    <string name="analysis_status_open">Show analysis queue</string>
+    <string name="analysis_queue_title">Analysis queue</string>
+    <!-- Quantity keys on the total (%2$d): "1 of 1 ride" / "0 of 2 rides". -->
+    <plurals name="analysis_queue_subtitle">
+        <item quantity="one">%1$d of %2$d ride analyzed</item>
+        <item quantity="other">%1$d of %2$d rides analyzed</item>
+    </plurals>
+    <string name="analysis_queue_done">Done</string>
+    <string name="analysis_queue_waiting">Waiting…</string>
+    <string name="analysis_queue_empty_title">All rides analyzed</string>
+    <string name="analysis_queue_empty_message">Nothing is being processed right now.</string>
+    <string name="analysis_detail_notice_title">Analysis in progress</string>
+    <string name="analysis_detail_notice_message">Distance, route, driving events and scores aren\'t available for this ride yet or may be incomplete.</string>
+
+    <!-- Logbook search & filters (LOG-06, LOG-07, LOG-11 … LOG-15) -->
+    <string name="rides_search_hint">Search rides</string>
+    <string name="rides_search_clear">Clear search</string>
+    <string name="rides_filter_open">Filters</string>
+    <string name="rides_filter_title">Filter rides</string>
+    <string name="rides_filter_reset">Reset</string>
+    <plurals name="rides_filter_apply">
+        <item quantity="one">Show %1$d ride</item>
+        <item quantity="other">Show %1$d rides</item>
+    </plurals>
+    <string name="rides_filter_vehicle">Vehicle</string>
+    <string name="rides_filter_vehicle_any">All vehicles</string>
+    <string name="rides_filter_start_place">Start place</string>
+    <string name="rides_filter_end_place">End place</string>
+    <string name="rides_filter_place_any">Any place</string>
+    <string name="rides_filter_date">Date range</string>
+    <string name="rides_filter_date_from">From</string>
+    <string name="rides_filter_date_to">To</string>
+    <string name="rides_filter_labeled_value">%1$s: %2$s</string>
+    <string name="rides_filter_date_any">Any</string>
+    <string name="rides_filter_distance">Distance</string>
+    <string name="rides_filter_distance_min">Min. (%1$s)</string>
+    <string name="rides_filter_distance_max">Max. (%1$s)</string>
+    <string name="rides_filter_trip_type">Trip type</string>
+    <string name="rides_filter_trip_any">All</string>
+    <string name="rides_filter_trip_single">Single rides</string>
+    <string name="rides_filter_trip_merged">Merged trips</string>
+    <string name="rides_filter_events">Only rides with driving events</string>
+    <string name="rides_filter_clear_all">Clear filters</string>
+    <string name="rides_filter_chip_remove">Remove filter</string>
+    <string name="rides_filter_chip_start">Start: %1$s</string>
+    <string name="rides_filter_chip_end">End: %1$s</string>
+    <string name="rides_filter_chip_date_range">%1$s – %2$s</string>
+    <string name="rides_filter_chip_date_from">From %1$s</string>
+    <string name="rides_filter_chip_date_until">Until %1$s</string>
+    <string name="rides_filter_chip_distance_range">%1$s – %2$s</string>
+    <string name="rides_filter_chip_distance_min">From %1$s</string>
+    <string name="rides_filter_chip_distance_max">Up to %1$s</string>
+    <string name="rides_filter_chip_events">Driving events</string>
+    <string name="rides_no_matches_title">No rides match</string>
+    <string name="rides_no_matches_message">Try another search term, or loosen the filters.</string>
+
+    <!-- Android Auto car screen (TRK-07) -->
+    <string name="car_vehicle">Vehicle</string>
+    <string name="car_no_vehicle">No vehicle</string>
+    <string name="car_no_ride_vehicle">—</string>
+    <string name="car_not_recording">Not recording</string>
+    <string name="car_start">Start ride</string>
+    <string name="car_stop">Stop ride</string>
+    <string name="car_discard">Discard</string>
+    <string name="car_start_failed">Can\'t start — check Ridesafe on your phone</string>
+    <string name="car_pick_vehicle">Which vehicle?</string>
+    <string name="car_ride_finished">Ride finished</string>
+    <string name="car_result_saved">Ride saved · %1$s</string>
+    <string name="car_result_too_short">Too short — not saved (%1$s)</string>
+    <string name="car_done">Done</string>
+    <string name="car_delete">Delete ride</string>
+    <string name="car_delete_confirm">Delete this ride?</string>
+    <string name="car_keep">Keep</string>
+    <string name="car_deleted">Ride deleted</string>
+    <string name="car_discard_confirm">Discard this ride? It won\'t be saved.</string>
+    <string name="car_discarded">Ride discarded</string>
+    <string name="car_events_channel_name">Ride events</string>
+    <string name="car_notify_started">Recording started</string>
+    <!-- Two-pane (tablet) empty detail pane. -->
+    <string name="placeholder_select_ride">Select a ride to see its details</string>
+    <string name="placeholder_select_vehicle">Select a vehicle to see its details</string>
+    <string name="placeholder_select_setting">Select a setting</string>
+
+    <!-- First-launch onboarding (ONB). -->
+    <string name="onboarding_step_progress">Step %1$d of %2$d</string>
+    <string name="onboarding_skip_step">Skip</string>
+    <string name="onboarding_leave">Leave the introduction</string>
+    <string name="onboarding_welcome_title">Welcome to Ridesafe</string>
+    <string name="onboarding_welcome_message">Your driving logbook with safety and eco insights. Set up the essentials in a couple of minutes — every step can be skipped.</string>
+    <string name="onboarding_feature_rides_title">Record your rides</string>
+    <string name="onboarding_feature_rides_body">Automatically via your car\'s Bluetooth, or with one tap.</string>
+    <string name="onboarding_feature_scores_title">Safety and eco scores</string>
+    <string name="onboarding_feature_scores_body">See how safely and efficiently you drive.</string>
+    <string name="onboarding_feature_privacy_title">Everything stays on your phone</string>
+    <string name="onboarding_feature_privacy_body">Rides, places and vehicles are stored only on this device — there is no server.</string>
+    <string name="onboarding_welcome_start">Set up Ridesafe</string>
+    <string name="onboarding_welcome_skip">Skip for now</string>
+    <string name="onboarding_continue">Continue</string>
+    <string name="onboarding_car_intro">Every ride belongs to a vehicle. Add your car to the garage — you can edit it there anytime.</string>
+    <string name="onboarding_bluetooth_title">Recognize your car</string>
+    <string name="onboarding_bluetooth_body">Link your car\'s Bluetooth so Ridesafe can tell when you\'re driving it and assign rides automatically. Pick from the devices already paired with this phone — you don\'t need to be in the car.</string>
+    <string name="onboarding_autotrack_title">Record rides automatically</string>
+    <string name="onboarding_autotrack_body">With automatic recording on, a ride starts when your linked device connects and ends when you park — no taps needed. It requires a few permissions, which appear below once enabled. You can change all of this in Settings later.</string>
+    <string name="onboarding_autotrack_toggle">Enable automatic recording</string>
+    <string name="onboarding_place_intro">Name the places you park — rides then show \"Home\" or \"Work\" instead of a street address. Start with your home.</string>
+    <string name="onboarding_recording_title">How rides get recorded</string>
+    <string name="onboarding_recording_body">Rides are recorded with GPS and motion sensors, then analyzed right on your phone when they end.</string>
+    <string name="onboarding_recording_auto_title">Automatically</string>
+    <string name="onboarding_recording_auto_body">With automatic recording on, rides start and stop with your car\'s Bluetooth.</string>
+    <string name="onboarding_recording_manual_title">Manually</string>
+    <string name="onboarding_recording_manual_body">Tap \"%1$s\" on the Home tab — for cars without a linked device, or whenever you want.</string>
+    <string name="onboarding_recording_stop_title">While recording</string>
+    <string name="onboarding_recording_stop_body">A floating bar shows the running ride on every screen; stop it there when you arrive.</string>
+    <string name="onboarding_scores_title">Your driving scores</string>
+    <string name="onboarding_scores_body">Every analyzed ride earns a safety score — braking, acceleration and cornering, each 0–100 — and an efficiency level for smooth, economical driving. Both build up on your dashboard over time.</string>
+    <string name="onboarding_scores_sample_note">Sample preview — your own scores appear after your first recorded rides.</string>
+    <string name="onboarding_done_cta">Get started</string>
+    <string name="settings_category_help">Help</string>
+    <string name="settings_onboarding_replay_title">Show the introduction again</string>
+    <string name="settings_onboarding_replay_summary">Replay the first-launch setup</string>
 </resources>

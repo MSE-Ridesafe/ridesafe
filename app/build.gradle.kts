@@ -1,9 +1,22 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
 }
+
+// Google Maps key: put MAPS_API_KEY in secrets.properties (gitignored, Android Studio never
+// touches it). local.properties is read first as a fallback. Injected as a manifest placeholder.
+val mapsApiKey: String =
+    Properties()
+        .apply {
+            listOf("local.properties", "secrets.properties")
+                .map { rootProject.file(it) }
+                .filter { it.exists() }
+                .forEach { f -> f.inputStream().use { load(it) } }
+        }.getProperty("MAPS_API_KEY", "")
 
 android {
     namespace = "de.uhi.enia.ridesafe"
@@ -17,12 +30,14 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildTypes {
         release {
             optimization {
-                enable = false
+                enable = true
             }
         }
     }
@@ -30,8 +45,24 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    // The pipeline and the sample reader log; without this, android.util.Log throws in JVM tests.
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+        // Forwarded into the test JVM for RealRideReplayTest, which is skipped when unset —
+        // Gradle test workers don't inherit the command line's -D properties on their own.
+        unitTests.all { it.systemProperty("ridesafe.replay.dir", System.getProperty("ridesafe.replay.dir") ?: "") }
+    }
+
     buildFeatures {
         compose = true
+    }
+
+    // In-app language switching (see Context.inAppLanguage) needs every language in the base
+    // module; splitting by language would require Play Core to download them on demand.
+    bundle {
+        language {
+            enableSplit = false
+        }
     }
 }
 
@@ -40,16 +71,25 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
-    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.compose.material3.adaptive.navigation3)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+    implementation(libs.play.services.location)
+    implementation(libs.maps.compose)
+    implementation(libs.maps.utils)
+    implementation(libs.commons.math3)
+    implementation(libs.androidx.car.app)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

@@ -2,16 +2,61 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Auto-tracking: read paired devices + detect connect/disconnect (TRK-08); IN_VEHICLE for "any vehicle". -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Ride recording: GPS track (TRK-01), kept alive in the background via a location
+         foreground service (TRK-05) started from the Bluetooth trigger. Background location
+         is core functionality: recording starts from that trigger while the app is
+         backgrounded, and an FGS started from the background gets no location without it.
+         The Play policy insights are declaration reminders; this app is not Play-published. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission
+        android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
+        tools:ignore="BackgroundLocationPolicy" />
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE"
+        tools:ignore="ForegroundServicesPolicy" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Google Maps tiles for the ride route view; NETWORK_STATE so maps can say "offline" instead of spinning. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Lets RideSafe detect viewers before offering Open file in export feedback. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <data android:mimeType="application/pdf" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <data android:mimeType="text/csv" />
+        </intent>
+    </queries>
+
     <application
+        android:name=".RidesafeApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Ridesafe"
         android:localeConfig="@xml/locales_config">
+
+        <!-- Maps SDK key, injected from local.properties via a manifest placeholder. -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -24,6 +69,60 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Android Auto (TRK-07): a phone app that projects a car screen; nothing here targets
+             Android Automotive OS. 5 is the car API level Action.setEnabled needs, and every
+             current Android Auto host is well above it. -->
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="5" />
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
+        <!-- Must be exported so the Android Auto host can bind; access is gated in code by
+             createHostValidator (Google-signed hosts only in release builds). -->
+        <service
+            android:name=".car.RidesafeCarAppService"
+            android:exported="true"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <!-- POI is the closest of the categories a car app may declare; a ride logger has
+                     none of its own, which is also why this is not Play-publishable. -->
+                <category android:name="androidx.car.app.category.POI" />
+            </intent-filter>
+        </service>
+
+        <!-- Hosts ride recording in the foreground so it survives backgrounding / a cold trigger (TRK-05). -->
+        <service
+            android:name=".recording.RideRecordingService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
+        <!-- Wakes the app when a mapped Bluetooth device connects/disconnects (TRK-08). -->
+        <receiver
+            android:name=".recording.trigger.BluetoothConnectionReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
+                <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Receives Activity Recognition IN_VEHICLE transitions for "any vehicle" mode (TRK-02/03). -->
+        <receiver
+            android:name=".recording.trigger.ActivityTransitionReceiver"
+            android:exported="false" />
+
+        <!-- Re-arms auto-tracking after a reboot, before the user reopens the app. -->
+        <receiver
+            android:name=".recording.trigger.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Themed-icon layer. The system uses only this drawable's alpha, so it has to be a silhouette:
+    the artwork's white fills would read as solid rather than as holes, and the grey road under the
+    blue route would flatten into one stripe with it. So this keeps the route, the car and the two
+    endpoints, all at the foreground's scale, and cuts the car windows out with evenOdd.
+
+    The endpoints are solid here rather than rings: their hole and the route's stroke are both
+    radius 16, so a ring would be plugged by the route and never show. Solid leaves a visible bulb.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <group
+        android:pivotX="256"
+        android:pivotY="256"
+        android:scaleX="0.667"
+        android:scaleY="0.667">
+        <path
+            android:pathData="M93,418.5C148.604,395.84 179.118,413.218 181.5,330C183.882,246.782 220.649,268.763 260.5,251C302.344,232.349 318.957,217.492 331.5,180C343.59,143.861 373.554,137.946 400.5,111"
+            android:strokeColor="#000000"
+            android:strokeWidth="32"
+            android:strokeLineCap="round" />
+        <path
+            android:fillColor="#000000"
+            android:pathData="M425,111C425,124.255 414.255,135 401,135C387.745,135 377,124.255 377,111C377,97.7452 387.745,87 401,87C414.255,87 425,97.7452 425,111Z" />
+        <path
+            android:fillColor="#000000"
+            android:pathData="M123,415C123,428.255 112.255,439 99,439C85.7452,439 75,428.255 75,415C75,401.745 85.7452,391 99,391C112.255,391 123,401.745 123,415Z" />
+        <path
+            android:fillColor="#000000"
+            android:fillType="evenOdd"
+            android:pathData="M305.809,218.055C306.116,218.513 306.407,218.981 306.688,219.456C316.065,235.631 314.524,254.024 295.715,261.974C291.156,263.905 286.083,266.729 281.772,269.229C282.63,272.74 284.609,281.235 278.394,281.01C275.945,279.754 275.547,278.428 274.433,275.767C273.986,274.693 275.094,273.333 275.736,272.177C274.571,272.438 267.455,276.371 265.985,277.133C255.628,282.461 245.315,287.877 235.049,293.385C231.393,295.343 227.357,297.512 223.782,299.54C205.639,309.813 195.596,300.35 186.779,284.867C182.987,277.827 178.966,268.395 180.223,260.206C181.131,254.024 186.581,247.857 192.102,245.083C208.944,236.623 226.024,228.503 243.025,220.348C245.611,219.108 248.556,217.724 250.909,216.113C249.042,216.935 247.107,217.751 245.097,217.384C243.667,215.807 242.585,213.058 241.646,211.05C248.695,206.863 249.35,208.011 253.748,214.967C264.958,209.546 275.053,200.493 288.286,203.326C296.502,205.084 301.463,211.472 305.809,218.055ZM273.51,232.123C276.496,236.601 278.341,241.587 280.188,246.547C286.551,263.622 278.824,262.624 265.378,267.18C264.858,261.116 264.011,257.877 262.001,252.157C259.217,243.77 253.054,234.962 246.493,229.02L251.58,225.328C254.433,223.265 258.769,219.45 262.342,220.233C266.57,221.161 271.238,228.651 273.51,232.123ZM212.47,245.212C215.285,259.859 220.515,271.537 230.535,282.655C233.635,286.096 225.505,289.593 223.21,290.752C220.313,292.221 218.869,292.417 215.868,291.343C208.707,285.405 202.482,274.524 199.437,265.83C197.542,260.407 195.358,252.342 201.208,248.58C203.962,246.808 209.168,245.313 212.47,245.212Z" />
+    </group>
+</vector>
