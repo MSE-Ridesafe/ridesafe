@@ -14,10 +14,10 @@ import androidx.car.app.model.Row
 import androidx.car.app.model.Template
 import androidx.lifecycle.lifecycleScope
 import de.uhi.enia.ridesafe.R
-import de.uhi.enia.ridesafe.data.Vehicle
-import de.uhi.enia.ridesafe.data.displayTitle
-import de.uhi.enia.ridesafe.rides.recording.RideOutcome
-import de.uhi.enia.ridesafe.rides.recording.deleteRide
+import de.uhi.enia.ridesafe.data.entity.Vehicle
+import de.uhi.enia.ridesafe.data.entity.displayTitle
+import de.uhi.enia.ridesafe.data.file.deleteRide
+import de.uhi.enia.ridesafe.recording.RideOutcome
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

@@ -16,7 +16,7 @@ import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.IconCompat
 import de.uhi.enia.ridesafe.R
-import de.uhi.enia.ridesafe.util.inAppLanguage
+import de.uhi.enia.ridesafe.core.format.inAppLanguage
 
 /** What an action does, in the two flavours the car screen needs to tell apart at a glance. */
 internal enum class CarAccent(
@@ -51,7 +51,7 @@ private const val SYMBOL_PX = 192
  * theme resources; a wallpaper-derived Material You colour cannot reach the host that way.
  *
  * Icons come from the same Material Symbols font as
- * [de.uhi.enia.ridesafe.ui.components.MaterialSymbol] and are named the same way — one icon source
+ * [de.uhi.enia.ridesafe.core.components.MaterialSymbol] and are named the same way — one icon source
  * for the whole app. The library takes an [IconCompat] rather than a composable, so the glyph is
  * drawn white into a bitmap and coloured by the host through [CarIcon.Builder.setTint], which
  * blends SRC_IN over exactly that mask.

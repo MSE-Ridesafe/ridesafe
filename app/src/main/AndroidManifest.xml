@@ -96,13 +96,13 @@
 
         <!-- Hosts ride recording in the foreground so it survives backgrounding / a cold trigger (TRK-05). -->
         <service
-            android:name=".rides.recording.RideRecordingService"
+            android:name=".recording.RideRecordingService"
             android:exported="false"
             android:foregroundServiceType="location" />
 
         <!-- Wakes the app when a mapped Bluetooth device connects/disconnects (TRK-08). -->
         <receiver
-            android:name=".rides.trigger.BluetoothConnectionReceiver"
+            android:name=".recording.trigger.BluetoothConnectionReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
@@ -112,12 +112,12 @@
 
         <!-- Receives Activity Recognition IN_VEHICLE transitions for "any vehicle" mode (TRK-02/03). -->
         <receiver
-            android:name=".rides.trigger.ActivityTransitionReceiver"
+            android:name=".recording.trigger.ActivityTransitionReceiver"
             android:exported="false" />
 
         <!-- Re-arms auto-tracking after a reboot, before the user reopens the app. -->
         <receiver
-            android:name=".rides.trigger.BootReceiver"
+            android:name=".recording.trigger.BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
