@@ -34,6 +34,24 @@ class RideBackupImportFilesTest {
     }
 
     @Test
+    fun extractedEntriesAreCheckedAgainstTheManifestsSizeAndHash() {
+        val extracted = stagedImportFile(directory).apply { writeText("samples") }
+        val sha = "a".repeat(64)
+        val descriptor =
+            BackupFile(1, "raw_samples", "required_source", "included", "data/rides/1/samples.ndjson.gz", "application/x-ndjson")
+                .copy(sizeBytes = extracted.length(), sha256 = sha)
+
+        requireExtractedFileMatches(descriptor, extracted, sha.uppercase()) // hex case must not matter
+
+        assertThrows(RideBackupValidationException::class.java) {
+            requireExtractedFileMatches(descriptor.copy(sizeBytes = extracted.length() + 1), extracted, sha)
+        }
+        assertThrows(RideBackupValidationException::class.java) {
+            requireExtractedFileMatches(descriptor, extracted, "b".repeat(64))
+        }
+    }
+
+    @Test
     fun publishRenamesInPlaceAndRefusesToOverwrite() {
         val staged = stagedImportFile(directory).apply { writeText("samples") }
         val destination = File(directory, "ride_import_abc_1.ndjson.gz")
