@@ -192,9 +192,9 @@ internal class StreamingDetector(
         pendingReseed[pendingCount] = axis != null && axis !== queuedAxis
         queuedAxis = axis
         pendingYaw[pendingCount] =
-            if (!gyroFresh) 0.0 else verticalComponent(matrix, gyro!!.x.toDouble(), gyro.y.toDouble(), gyro.z.toDouble())
+            if (!gyroFresh) 0.0 else verticalComponent(matrix, gyro.x.toDouble(), gyro.y.toDouble(), gyro.z.toDouble())
         pendingGyroMagnitude[pendingCount] =
-            if (!gyroFresh) 0.0 else hypot(hypot(gyro!!.x, gyro.y), gyro.z).toDouble()
+            if (!gyroFresh) 0.0 else hypot(hypot(gyro.x, gyro.y), gyro.z).toDouble()
         pendingCount++
     }
 

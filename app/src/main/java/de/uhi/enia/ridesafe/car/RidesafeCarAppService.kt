@@ -12,7 +12,6 @@ import androidx.car.app.CarToast
 import androidx.car.app.Screen
 import androidx.car.app.Session
 import androidx.car.app.model.Action
-import androidx.car.app.model.ActionStrip
 import androidx.car.app.model.DurationSpan
 import androidx.car.app.model.Header
 import androidx.car.app.model.Pane
@@ -147,22 +146,6 @@ private class RideControlScreen(
                     .setTitle(ui.string(R.string.app_name))
                     .setStartHeaderAction(Action.APP_ICON)
                     .build(),
-            ).setActionStrip(
-                // Destructive, so it keeps its distance from the two buttons the driver reaches for
-                // while moving — and it still asks first (UX-01).
-                ActionStrip
-                    .Builder()
-                    .addAction(
-                        // An action strip validates its titles as plain text, so the error colour
-                        // rides on the icon here rather than on the word.
-                        action(
-                            R.string.car_discard,
-                            "delete",
-                            CarAccent.DESTRUCTIVE,
-                            enabled = running != null,
-                            emphasiseTitle = false,
-                        ) { onDiscard() },
-                    ).build(),
             ).build()
     }
 
@@ -218,16 +201,6 @@ private class RideControlScreen(
         if (!RideRecordingService.start(carContext, vehicleId, manual = true)) {
             CarToast.makeText(carContext, R.string.car_start_failed, CarToast.LENGTH_LONG).show()
         }
-    }
-
-    private fun onDiscard() {
-        screenManager.push(
-            ConfirmScreen(carContext, R.string.car_discard_confirm, R.string.car_discard) {
-                RideRecordingService.discard(carContext)
-                screenManager.pop()
-                CarToast.makeText(carContext, R.string.car_discarded, CarToast.LENGTH_LONG).show()
-            },
-        )
     }
 
     private suspend fun vehicleName(id: Long): String? =

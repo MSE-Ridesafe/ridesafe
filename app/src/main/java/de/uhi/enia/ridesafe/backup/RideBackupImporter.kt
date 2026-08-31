@@ -104,6 +104,33 @@ internal fun sweepStaleStagedFiles(directory: File) {
         ?.forEach { it.delete() }
 }
 
+/**
+ * Whether an archived analysis stamp may be adopted as this device's own.
+ *
+ * A stamp asserts that a stage's output already exists, and the pipeline believes it: a ride whose
+ * stages are all current is dropped before a file is ever opened. So a stamp may only be adopted
+ * when the output it vouches for actually travelled with the archive.
+ *
+ * Detection, scoring and efficiency all write to columns on the ride row — the dynamics profile,
+ * the safety score, the eco profile — and the archive carries none of them. Adopting those stamps
+ * left every imported ride permanently unscored: marked analysed, with nothing to show for it.
+ * Dropping them costs two passes over the raw samples, which are always in the archive, on the
+ * next backfill. The route sidecar is a file and does travel, so its stamp survives when the file
+ * came along and was written by this version of the filter. Endpoint correction writes lat/lon
+ * onto the ride row, which is exported, so it survives too; the axis stage persists nothing and is
+ * re-derived whenever detection runs, whatever its stamp says.
+ */
+internal fun adoptableAnalysisState(
+    stage: String,
+    routeCurrent: Boolean,
+    routeFileIncluded: Boolean,
+): Boolean =
+    when (stage) {
+        "events", "score", "eco" -> false
+        "route" -> routeCurrent && routeFileIncluded
+        else -> true
+    }
+
 /** Atomic rename of an already-fsynced staged file; a crash leaves either nothing or the whole file. */
 internal fun publishImportFile(
     staged: File,
@@ -412,9 +439,12 @@ internal class RideBackupImporter(
                 .toSet()
         manifest.analysisStates
             .filter { it.rideArchiveId in insertedRideArchiveIds }
-            .filterNot {
-                it.stage == "route" &&
-                    (manifest.processingVersions.route != ROUTE_VERSION || it.rideArchiveId !in routesAvailable)
+            .filter {
+                adoptableAnalysisState(
+                    stage = it.stage,
+                    routeCurrent = manifest.processingVersions.route == ROUTE_VERSION,
+                    routeFileIncluded = it.rideArchiveId in routesAvailable,
+                )
             }.forEach { state ->
                 db.rideAnalysisDao().stamp(RideAnalysisState(rideIds.getValue(state.rideArchiveId), state.stage, state.version))
             }
