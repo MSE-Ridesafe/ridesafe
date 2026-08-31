@@ -54,7 +54,7 @@ data class DirectionHistogram(
  * A ride's driving-dynamics profile (ANL-01): how its time was distributed across force and onset
  * rate, per direction of travel, plus how much of the ride was measurable at all.
  *
- * Stored as one JSON column on the ride, the same way [RideFuel] is: a small owned value, read and
+ * Stored as one JSON column on the ride, the same way [RideEco] is: a small owned value, read and
  * written whole and never queried across, so a change to the shape costs no migration. It is derived
  * and regenerable — the raw NDJSON sample file stays the source of truth.
  *

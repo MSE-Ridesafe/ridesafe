@@ -11,7 +11,7 @@ import java.util.zip.GZIPInputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 
-/** Reference reader used after every export and by tests as the contract a future importer follows. */
+/** Reference reader: checks every export, gates every import, and is the contract tests hold both to. */
 internal object RideBackupArchiveValidator {
     /**
      * @param onRide called once per ride, after its raw entry has been read, with how many rides the

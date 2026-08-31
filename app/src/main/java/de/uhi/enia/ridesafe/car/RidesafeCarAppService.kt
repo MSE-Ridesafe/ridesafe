@@ -78,7 +78,7 @@ private const val OUTCOME_MAX_AGE_MS = 2 * 60 * 1000L
  * here that destroys data.
  *
  * Colour is carried by the text, never by a button fill: the host already styles its buttons, and a
- * screen full of coloured slabs is noise a driver has to read past. See [CarPalette] for where the
+ * screen full of coloured slabs is noise a driver has to read past. See [CarAccent] for where the
  * accents come from.
  *
  * The shape obeys the host's template quota: a task may show five templates, and a push only counts

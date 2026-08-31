@@ -39,7 +39,7 @@ sealed interface RideOutcome {
 
 /**
  * Whether a ride is recording right now, and how the last one ended — for surfaces outside the
- * recording engine, currently the car screen.
+ * recording engine: the floating status bar, the Home record button, the Logbook, the car screen.
  *
  * Written by [RideRecordingEngine] as sessions start and stop, so it follows the ride rather than
  * the service: a car that reconnects within the grace (TRK-09) keeps its original start, and

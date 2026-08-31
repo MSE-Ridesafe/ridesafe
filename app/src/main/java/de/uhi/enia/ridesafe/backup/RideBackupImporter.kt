@@ -47,10 +47,11 @@ data class RideBackupImportPreview(
  * How far a restore has got. Both halves need one: checking a backup reads the whole archive once,
  * importing it reads the archive again and writes every ride file out.
  *
- * [passes] counts per-ride passes rather than rides, because the passes cannot be interleaved —
- * every entry is verified before any is extracted — so a per-ride counter would run 1..n twice over.
- * [rides] is 0 until the archive's manifest has been read, which the dialog shows as an
- * indeterminate ring.
+ * [passes] counts per-ride passes rather than rides, scaled by [passesPerRide], so a half that reads
+ * each ride more than once still fills the bar linearly. Both currently report one pass per ride:
+ * extraction verifies each entry against the manifest as it streams it out, rather than in a
+ * verification pass of its own. [rides] is 0 until the archive's manifest has been read, which the
+ * dialog shows as an indeterminate ring.
  */
 data class RideBackupImportProgress(
     val passes: Int = 0,

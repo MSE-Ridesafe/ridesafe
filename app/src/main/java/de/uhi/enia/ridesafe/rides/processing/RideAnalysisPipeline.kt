@@ -39,7 +39,10 @@ private const val TAG = "RideAnalysis"
  */
 private const val MAX_PARALLEL_RIDES = 3
 
-/** How often the sample loop checks for cancellation — ~every 80 ms of recorded driving. */
+/**
+ * How often the sample loop checks for cancellation — ~every 27 s of recorded driving. Every
+ * sample is counted, and motion alone arrives at 50 Hz across three sensors.
+ */
 private const val CANCELLATION_CHECK_SAMPLES = 4096L
 
 /**

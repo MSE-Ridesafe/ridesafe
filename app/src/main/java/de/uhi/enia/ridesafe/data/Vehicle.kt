@@ -11,7 +11,7 @@ import java.util.UUID
  * A vehicle in the user's garage (entity DR-VEH).
  *
  * Odometer is stored canonically in kilometers ([mileageKm]); display converts via
- * [de.uhi.enia.ridesafe.util.formatDistance]. [name] (an optional nickname), [year],
+ * [de.uhi.enia.ridesafe.util.formatOdometer]. [name] (an optional nickname), [year],
  * [fuelEconomy] and [tankSize] are optional — blank/null means "not set". The nickname
  * is rendered via [displayTitle].
  */
@@ -37,7 +37,7 @@ data class Vehicle(
     val vehicleType: String? = null,
     val engine: String? = null,
     val manufacturingCountry: String? = null,
-    /** Stable identity used to recognize this vehicle across RideSafe backup generations. */
+    /** Stable identity used to recognize this vehicle across Ridesafe backup generations. */
     @ColumnInfo(defaultValue = "''") val vehicleUuid: String = UUID.randomUUID().toString(),
     /** Last user/data update; import conflict resolution never relies on database numeric IDs. */
     @ColumnInfo(defaultValue = "0") val updatedAtEpochMs: Long = System.currentTimeMillis(),

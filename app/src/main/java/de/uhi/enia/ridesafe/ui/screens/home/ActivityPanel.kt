@@ -45,7 +45,7 @@ fun ActivitySection(activityByDay: Map<LocalDate, ActivityBar>) {
     var selectedMetric by rememberSaveable { mutableStateOf(ActivityChartMetric.DISTANCE) }
     var startDayOffset by rememberSaveable { mutableIntStateOf(0) }
     // The region's conventions, not the in-app language's — a device set to English in
-    // Germany still reads "25.08." here (see docs/regional-formatting.md).
+    // Germany still reads "25.08." here (see formattingLocale for why the two differ).
     val locale = formattingLocale()
     val today = LocalDate.now()
     val initialMonday = startOfCalendarWeek(today)
