@@ -218,11 +218,13 @@ internal fun RideBackupImportScreen(
     }
 
     when (val current = state) {
-        is RideBackupImportState.Inspecting ->
+        is RideBackupImportState.Inspecting -> {
             ImportProgressDialog(current.progress, stringResource(R.string.settings_backup_import_checking), importViewModel::cancel)
+        }
 
-        is RideBackupImportState.Importing ->
+        is RideBackupImportState.Importing -> {
             ImportProgressDialog(current.progress, stringResource(R.string.settings_backup_import_importing), importViewModel::cancel)
+        }
 
         is RideBackupImportState.Ready -> {
             AlertDialog(

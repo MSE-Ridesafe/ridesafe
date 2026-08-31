@@ -56,7 +56,9 @@ internal object RideBackupArchiveValidator {
                             onRide(manifest.rides.size)
                         }
 
-                        ROUTE_ROLE -> zip.getInputStream(entry).use(::validateEncodedRoute)
+                        ROUTE_ROLE -> {
+                            zip.getInputStream(entry).use(::validateEncodedRoute)
+                        }
                     }
                 }
                 return manifest
