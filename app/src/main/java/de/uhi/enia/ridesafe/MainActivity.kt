@@ -11,10 +11,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import de.uhi.enia.ridesafe.ui.onboarding.OnboardingGate
-import de.uhi.enia.ridesafe.ui.screens.settings.SettingsFade
-import de.uhi.enia.ridesafe.ui.theme.RidesafeTheme
-import de.uhi.enia.ridesafe.ui.theme.resolvedDarkTheme
+import de.uhi.enia.ridesafe.app.OnboardingGate
+import de.uhi.enia.ridesafe.core.components.theme.RidesafeTheme
+import de.uhi.enia.ridesafe.core.components.theme.resolvedDarkTheme
+import de.uhi.enia.ridesafe.feature.settings.SettingsFade
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -1,6 +1,6 @@
 package de.uhi.enia.ridesafe.permissions
 
-import de.uhi.enia.ridesafe.rides.trigger.AutoTrackMode
+import de.uhi.enia.ridesafe.recording.trigger.AutoTrackMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

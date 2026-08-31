@@ -32,9 +32,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import de.uhi.enia.ridesafe.R
-import de.uhi.enia.ridesafe.rides.trigger.AutoTrackMode
-import de.uhi.enia.ridesafe.rides.trigger.AutoTrackPrefs
-import de.uhi.enia.ridesafe.ui.components.MaterialSymbol
+import de.uhi.enia.ridesafe.core.components.MaterialSymbol
+import de.uhi.enia.ridesafe.recording.trigger.AutoTrackMode
+import de.uhi.enia.ridesafe.recording.trigger.AutoTrackPrefs
 
 /**
  * NFR-05: the runtime permissions Ridesafe asks for, each with the purpose shown to the user.
@@ -145,7 +145,7 @@ fun bundleRequest(missing: List<AppPermission>): Array<String> =
  * the back stack changes, so the card kept listing permissions the user had just granted until
  * they navigated away and back — measured, not assumed. Reading this object subscribes each
  * composable directly, on both sides of that boundary (the card, and the navigation badge). Same
- * idiom as [de.uhi.enia.ridesafe.rides.trigger.AutoTracking]; main thread only.
+ * idiom as [de.uhi.enia.ridesafe.recording.trigger.AutoTracking]; main thread only.
  */
 object PermissionState {
     var missing by mutableStateOf(emptyList<AppPermission>())
