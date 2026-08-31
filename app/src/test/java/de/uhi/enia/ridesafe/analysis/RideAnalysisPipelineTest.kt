@@ -97,7 +97,10 @@ class RideAnalysisPipelineTest {
     fun `a sinkless pass still filters when no fixes are cached`() =
         runBlocking {
             val fixes = streamSamples(1L, rideFile(seconds = 30), emptyList())
-            assertTrue("the track must be filtered for a stage that has no sink", !fixes.isNullOrEmpty())
+            assertTrue(
+                "the track must be filtered for a stage that has no sink",
+                fixes.isNotEmpty(),
+            )
         }
 
     /**

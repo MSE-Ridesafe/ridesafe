@@ -3,8 +3,6 @@ package de.uhi.enia.ridesafe.domain.ride
 import de.uhi.enia.ridesafe.data.entity.Ride
 import de.uhi.enia.ridesafe.data.entity.SavedAddress
 import de.uhi.enia.ridesafe.data.entity.SavedPlaceKind
-import de.uhi.enia.ridesafe.domain.ride.summarizeMerge
-import de.uhi.enia.ridesafe.feature.logbook.ui.icon
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
